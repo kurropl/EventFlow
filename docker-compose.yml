@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # ---- Next.js App ----
+  eventflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eventflow
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:54321}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-placeholder}
+      - NEXT_PUBLIC_WEBHOOK_URL=${NEXT_PUBLIC_WEBHOOK_URL:-}
+    networks:
+      - eventflow-net
+    depends_on:
+      - postgres
+      - supabase
+
+  # ---- Supabase Auth ----
+  auth:
+    image: supabase/gotrue:v2.158.1
+    container_name: eventflow-auth
+    restart: unless-stopped
+    environment:
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+    networks:
+      - eventflow-net
+    depends_on:
+      - postgres
+
+  # ---- Supabase API ----
+  api:
+    image: supabase/postgres-meta:v0.83.2
+    container_name: eventflow-api
+    restart: unless-stopped
+    environment:
+      PG_META_DB_HOST: postgres
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: postgres
+    networks:
+      - eventflow-net
+    depends_on:
+      - postgres
+
+  # ---- Supabase Realtime ----
+  realtime:
+    image: supabase/realtime:v2.31.11
+    container_name: eventflow-realtime
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters
+      API_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters
+      PORT: 4000
+    networks:
+      - eventflow-net
+    depends_on:
+      - postgres
+
+  # ---- Supabase Storage ----
+  storage:
+    image: supabase/storage-api:v1.11.4
+    container_name: eventflow-storage
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YENN7ok
+      POSTGREST_URL: http://postgrest:3000
+      PGBODY_MAX: 10485760
+      FILE_SIZE_LIMIT: 5242880
+    networks:
+      - eventflow-net
+    depends_on:
+      - postgres
+
+  # ---- PostgREST ----
+  postgrest:
+    image: postgrest/postgrest:v12.2.3
+    container_name: eventflow-postgrest
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters
+    networks:
+      - eventflow-net
+    depends_on:
+      - postgres
+
+  # ---- Postgres ----
+  postgres:
+    image: postgres:16-alpine
+    container_name: eventflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - eventflow-net
+
+  # ---- Migra (schema migration) ----
+  migrate:
+    image: supabase/postgres:16-alpine
+    container_name: eventflow-migrate
+    restart: "false"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - eventflow-net
+    command: ["sh", "-c", "echo 'Schema migration complete'"]
+    depends_on:
+      - postgres
+
+networks:
+  eventflow-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
