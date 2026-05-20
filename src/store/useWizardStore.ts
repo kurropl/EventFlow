@@ -245,7 +245,10 @@ export const useWizardStore = create<WizardState>()(
           set({ submitError: 'Step 2 (menu selection) is required' });
           return { success: false };
         }
-        if (!state.step3 || (state.step3 as any).selected_items?.length === 0) {
+        // Step 3: items required UNLESS using a proposed menu
+        const hasProposedMenu = state.step2?.use_proposed === true && state.step2?.menu_id;
+        const hasItems = (state.step3 as any)?.selected_items?.length > 0;
+        if (!hasProposedMenu && !hasItems) {
           set({ submitError: 'Step 3 (item selection) requires at least one item' });
           return { success: false };
         }

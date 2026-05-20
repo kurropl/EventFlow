@@ -240,7 +240,7 @@ export const WizardStep2Schema = z.object({
 export type WizardStep2 = z.infer<typeof WizardStep2Schema>;
 
 export const WizardStep3Schema = z.object({
-  selected_items: z.array(SelectedItemSchema).min(1, 'Debe seleccionar al menos un artículo'),
+  selected_items: z.array(SelectedItemSchema).min(0, 'Selecciona platos o usa un menú propuesto').optional().default([]),
 });
 export type WizardStep3 = z.infer<typeof WizardStep3Schema>;
 
