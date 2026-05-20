@@ -1,44 +1,22 @@
-'use client';
-/**
- * EventFlow — Configurador Page (B2C)
- * 
- * Orquesta los 5 pasos del wizard con transiciones Framer Motion.
- * Sin precios en ningún lado.
- */
+import { ReactNode } from 'react';
 
-import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useWizardStore } from '@/store/useWizardStore';
-import WizardStep1 from '@/components/b2c/WizardStep1';
-import WizardStep2 from '@/components/b2c/WizardStep2';
-import WizardStep3 from '@/components/b2c/WizardStep3';
-import WizardStep4 from '@/components/b2c/WizardStep4';
-import WizardStep5 from '@/components/b2c/WizardStep5';
+interface WizardLayoutProps {
+  children: ReactNode;
+  currentStep: number;
+  onBack?: () => void;
+}
 
-const STEP_LABELS = ['Detalles', 'Menú', 'Personaliza', 'Extras', 'Resumen'];
+const STEPS = ['Detalles', 'Menú', 'Personaliza', 'Extras', 'Resumen'];
 
-// Map step number to component
-const STEP_COMPONENTS: Record<number, React.ComponentType<{ onNext: () => void; onPrev: () => void }>> = {
-  1: WizardStep1,
-  2: WizardStep2,
-  3: WizardStep3,
-  4: WizardStep4,
-  5: WizardStep5,
-};
-
-export default function ConfiguradorPage() {
-  const { currentStep, nextStep, prevStep } = useWizardStore();
-  const StepComponent = STEP_COMPONENTS[currentStep] || WizardStep1;
-
+export default function WizardLayout({ children, currentStep, onBack }: WizardLayoutProps) {
   return (
     <div className="min-h-screen bg-cream">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-ink-900/95 backdrop-blur border-b border-gold/20">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {currentStep > 1 && (
+            {onBack && (
               <button
-                onClick={prevStep}
+                onClick={onBack}
                 className="text-gold/70 hover:text-gold transition-colors p-1"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -49,7 +27,7 @@ export default function ConfiguradorPage() {
             <span className="font-serif text-gold text-lg">Alboroto Eventos</span>
           </div>
           <div className="flex items-center gap-1">
-            {STEP_LABELS.map((label, i) => (
+            {STEPS.map((label, i) => (
               <div key={label} className="flex items-center">
                 <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs transition-all
                   ${i + 1 === currentStep
@@ -65,7 +43,7 @@ export default function ConfiguradorPage() {
                   </span>
                   <span className="hidden sm:inline">{label}</span>
                 </div>
-                {i < STEP_LABELS.length - 1 && (
+                {i < STEPS.length - 1 && (
                   <div className={`w-4 h-0.5 mx-1 ${i + 1 < currentStep ? 'bg-gold' : 'bg-ink/20'}`} />
                 )}
               </div>
@@ -73,20 +51,8 @@ export default function ConfiguradorPage() {
           </div>
         </div>
       </header>
-
-      {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentStep}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <StepComponent onNext={nextStep} onPrev={prevStep} />
-          </motion.div>
-        </AnimatePresence>
+        {children}
       </main>
     </div>
   );
