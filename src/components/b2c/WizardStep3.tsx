@@ -2,8 +2,8 @@
 /**
  * EventFlow — Wizard Step 3: Personalización de Platos
  * 
- * Tabs por categoría, tarjetas de platos SIN precios.
- * Selección múltiple con actualización visual.
+ * Tabs por categoría, tarjetas de platos limpias.
+ * Sin emojis. Tipografía clara sobre fondos blancos.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -13,13 +13,12 @@ import { CATALOG_CATEGORIES, CATALOG_ITEMS } from '@/data/menus';
 import DishCard from './DishCard';
 
 export default function WizardStep3() {
-  const { step3, setStepData, nextStep, prevStep, step1 } = useWizardStore();
+  const { step3, setStepData, nextStep } = useWizardStore();
   const [activeCategory, setActiveCategory] = useState(CATALOG_CATEGORIES[0].id);
   const [selectedItems, setSelectedItems] = useState<string[]>(
     (step3 as any)?.selected_items?.map((si: { item_id: string }) => si.item_id) || []
   );
 
-  // Persist selections back to store on change
   useEffect(() => {
     const items = selectedItems.map((id) => ({
       item_id: id,
@@ -28,8 +27,7 @@ export default function WizardStep3() {
       quantity: 1,
     }));
     setStepData('step3', { selected_items: items } as any);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedItems]);
+  }, [selectedItems, activeCategory]);
 
   const toggleItem = (name: string) => {
     setSelectedItems((prev) =>
@@ -40,6 +38,8 @@ export default function WizardStep3() {
   const currentItems = CATALOG_ITEMS[activeCategory] || [];
   const currentCategory = CATALOG_CATEGORIES.find((c) => c.id === activeCategory);
   const minSelect = currentCategory?.minSelect || 0;
+  const currentSelected = selectedItems.filter((id) => CATALOG_ITEMS[activeCategory]?.includes(id)).length;
+  const isComplete = minSelect === 0 || currentSelected >= minSelect;
 
   const handleNext = () => {
     nextStep();
@@ -53,49 +53,54 @@ export default function WizardStep3() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
+      {/* Header */}
       <div className="text-center">
-        <h2 className="font-serif text-3xl md:text-4xl text-ink mb-2">Personaliza tu Menú</h2>
-        <p className="text-ink-soft/60">
-          Selecciona los platos que desees. 
+        <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
+          Personaliza tu Menú
+        </h2>
+        <p className="text-stone-500 text-base max-w-md mx-auto">
+          Selecciona los platos que desees de cada categoría.
           {minSelect > 0 && ` Mínimo ${minSelect} por categoría.`}
         </p>
       </div>
 
       {/* Category tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {CATALOG_CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
-              ${activeCategory === cat.id
-                ? 'bg-gold text-ink shadow-md'
-                : 'bg-paper text-ink/60 hover:bg-gold/10 hover:text-ink'
-              }`}
-          >
-            {cat.label}
-            <span className="ml-1.5 text-xs opacity-60">
-              ({selectedItems.filter((id) => CATALOG_ITEMS[cat.id]?.includes(id)).length})
-            </span>
-          </button>
-        ))}
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+        {CATALOG_CATEGORIES.map((cat) => {
+          const count = selectedItems.filter((id) => CATALOG_ITEMS[cat.id]?.includes(id)).length;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border
+                ${activeCategory === cat.id
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-md'
+                  : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300 hover:bg-stone-50'
+                }`}
+            >
+              {cat.label}
+              <span className={`ml-1.5 text-xs ${activeCategory === cat.id ? 'text-amber-200' : 'text-stone-400'}`}>
+                ({count})
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Selected count bar */}
-      <div className="bg-paper rounded-xl p-4 border border-gold/10 flex items-center justify-between">
-        <div>
-          <span className="text-sm text-ink/60">Seleccionados en esta categoría:</span>
-          <span className="ml-2 font-semibold text-gold">
-            {selectedItems.filter((id) => CATALOG_ITEMS[activeCategory]?.includes(id)).length}
-            {minSelect > 0 && (
-              <span className={`ml-1.5 text-xs ${selectedItems.filter((id) => CATALOG_ITEMS[activeCategory]?.includes(id)).length >= minSelect ? 'text-green-600' : 'text-amber-600'}`}>
-                / {minSelect} mínimo
-              </span>
-            )}
+      {/* Selection status bar */}
+      <div className={`rounded-xl p-4 border ${
+        isComplete ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isComplete ? 'bg-green-500' : 'bg-amber-500'}`} />
+            <span className={`text-sm font-medium ${isComplete ? 'text-green-800' : 'text-amber-800'}`}>
+              {currentSelected} / {minSelect || '∞'} seleccionados
+            </span>
+          </div>
+          <span className="text-sm text-stone-500">
+            Total: {selectedItems.length} platos
           </span>
-        </div>
-        <div className="text-sm text-ink/40">
-          Total: {selectedItems.length} platos
         </div>
       </div>
 
@@ -112,16 +117,13 @@ export default function WizardStep3() {
         ))}
       </div>
 
-      {/* Buttons */}
-      <div className="flex gap-3 pt-4">
-        <button onClick={prevStep} className="px-6 py-4 rounded-xl border-2 border-gold/20 text-ink/60 hover:border-gold/50 hover:text-ink transition-all">← Atrás</button>
-        <button
-          onClick={handleNext}
-          className="flex-1 py-4 rounded-xl bg-gold text-ink font-semibold text-lg hover:bg-amber-400 transition-all shadow-lg shadow-gold/20"
-        >
-          Sugerencias →
-        </button>
-      </div>
+      {/* Continue button */}
+      <button
+        onClick={handleNext}
+        className="w-full py-4 rounded-xl font-semibold text-base bg-amber-600 text-white hover:bg-amber-700 transition-all shadow-md hover:shadow-lg mt-4"
+      >
+        Sugerencias →
+      </button>
     </motion.div>
   );
 }
