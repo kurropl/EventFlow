@@ -1,98 +1,113 @@
 'use client';
 /**
- * EventFlow — Landing Page (B2C) Rediseñada
+ * EventFlow — Landing Page (B2C)
  * 
- * Hero con video de fondo + galería masonry con imágenes reales
- * Animaciones premium con Framer Motion
- * Estilo elegante: serif headlines, cream/gold/burgundy palette
+ * Estilo La Arqueria de Umbrete: elegante, oscuro, premium.
+ * Textos blancos SOLO sobre fondos oscuros.
+ * Textos oscuros (stone-800) sobre fondos claros.
+ * Imagenes de Unsplash verificadas (todas 200).
+ * Iconos Lucide React (solo iconos que existen en v0.400.0).
  */
 
 import Link from 'next/link';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import {
+  ChefHat, Star, Users, Calendar, MapPin, Phone, Mail,
+  Sparkles, Utensils, CupSoda, Cake, Building2, Baby,
+  Heart, Flower, Gift, Award, Music, Bell, Flame, Sun,
+} from 'lucide-react';
 
 // ============================================================
-// Image assets from Unsplash (free, high-quality event venue photos)
+// Verified Unsplash images (all return HTTP 200)
 // ============================================================
 const HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80', // elegant event hall
-  'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=80', // wedding reception
-  'https://images.unsplash.com/photo-1530023367847-a683933f4672?w=1920&q=80', // elegant table setting
+  'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80',
+  'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=80',
+  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&q=80',
 ];
 
 const GALLERY_IMAGES = [
   {
     src: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80',
-    title: 'Salón Principal',
+    title: 'Salon Principal',
     desc: 'Hasta 300 comensales',
     span: 'md:col-span-2 md:row-span-2',
   },
   {
     src: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80',
     title: 'Terraza',
-    desc: 'Vistas al jardín',
+    desc: 'Vistas al jardin',
     span: 'md:col-span-1 md:row-span-1',
   },
   {
-    src: 'https://images.unsplash.com/photo-1530023367847-a683933f4672?w=800&q=80',
+    src: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
     title: 'Sala VIP',
     desc: 'Eventos exclusivos',
     span: 'md:col-span-1 md:row-span-1',
   },
   {
     src: 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=80',
-    title: 'Jardín',
+    title: 'Jardin',
     desc: 'Ceremonias al aire libre',
     span: 'md:col-span-1 md:row-span-1',
   },
   {
     src: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=80',
     title: 'Sala de Fiestas',
-    desc: 'Celebraciones íntimas',
+    desc: 'Celebraciones intimas',
     span: 'md:col-span-1 md:row-span-1',
   },
   {
     src: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
-    title: 'Gastronomía',
-    desc: 'Más de 100 platos',
+    title: 'Gastronomia',
+    desc: 'Mas de 100 platos',
     span: 'md:col-span-2 md:row-span-1',
   },
 ];
 
+const EVENT_TYPES = [
+  { id: 'boda', label: 'Bodas', icon: <Utensils className="w-7 h-7" />, desc: 'El dia mas importante' },
+  { id: 'cumpleanos', label: 'Cumpleanos', icon: <Cake className="w-7 h-7" />, desc: 'Celebra tu dia' },
+  { id: 'corporativo', label: 'Corporativos', icon: <Building2 className="w-7 h-7" />, desc: 'Eventos de empresa' },
+  { id: 'bautizo', label: 'Bautizos', icon: <Baby className="w-7 h-7" />, desc: 'Momentos especiales' },
+  { id: 'comunión', label: 'Comuniones', icon: <Sparkles className="w-7 h-7" />, desc: 'Celebraciones familiares' },
+  { id: 'otro', label: 'Otros Eventos', icon: <Gift className="w-7 h-7" />, desc: 'Personaliza tu evento' },
+];
+
 const FEATURES = [
   {
-    icon: '🍽️',
-    title: 'Menú Personalizado',
-    desc: 'Diseña tu carta con más de 100 platos seleccionados por nuestros chefs. Cada celebración merece un menú a medida.',
-    image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80',
+    icon: <ChefHat className="w-9 h-9" />,
+    title: 'Menu Personalizado',
+    desc: 'Disena tu carta con mas de 100 platos seleccionados por nuestros chefs. Cada celebracion merece un menu a medida.',
+    image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
   },
   {
-    icon: '✨',
-    title: 'Espacios Premium',
-    desc: 'Salones versátiles que se adaptan a cada tipo de celebración. Desde bodas íntimas hasta grandes eventos corporativos.',
-    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=80',
+    icon: <MapPin className="w-9 h-9" />,
+    title: 'Espacios Unicos',
+    desc: 'Salones versatiles que se adaptan a cada tipo de celebracion. Desde bodas intimas hasta grandes eventos corporativos.',
+    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80',
   },
   {
-    icon: '🎉',
-    title: 'Experiencia Única',
-    desc: 'Desde la primera llamada hasta el último baile, nos encargamos de todo. Tu único trabajo es disfrutar.',
-    image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80',
+    icon: <Star className="w-9 h-9" />,
+    title: 'Experiencia Premium',
+    desc: 'Desde la primera llamada hasta el ultimo baile, nos encargamos de todo. Tu unico trabajo es disfrutar.',
+    image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80',
   },
 ];
 
 const TESTIMONIALS = [
   {
-    text: 'Nuestra boda fue exactamente como la soñamos. El equipo de Alboroto se encargó de cada detalle.',
-    author: 'María & Carlos',
+    text: 'Nuestra boda fue exactamente como la sonamos. El equipo de Alboroto se encargo de cada detalle.',
+    author: 'Maria & Carlos',
     event: 'Boda — Junio 2025',
   },
   {
-    text: 'La comida es espectacular. Nuestros invitados aún hablan de los postres meses después.',
-    author: 'Familia García',
-    event: 'Comunión — Marzo 2025',
+    text: 'La comida es espectacular. Nuestros invitados aun hablan de los postres meses despues.',
+    author: 'Familia Garcia',
+    event: 'Comunion — Marzo 2025',
   },
   {
-    text: 'Organizamos nuestra cena de empresa aquí y fue un éxito total. Profesionalidad y calidad.',
+    text: 'Organizamos nuestra cena de empresa aqui y fue un exito total. Profesionalidad y calidad.',
     author: 'TechCorp Solutions',
     event: 'Evento Corporativo — Enero 2025',
   },
@@ -101,27 +116,20 @@ const TESTIMONIALS = [
 // ============================================================
 // Animations
 // ============================================================
-const fadeInUp = {
-  initial: { opacity: 0, y: 40 },
+const fadeUp = {
+  initial: { opacity: 0, y: 30 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-50px' },
-  transition: { duration: 0.7, ease: 'easeOut' },
-};
-
-const fadeIn = {
-  initial: { opacity: 0 },
-  whileInView: { opacity: 1 },
-  viewport: { once: true },
-  transition: { duration: 0.8 },
+  viewport: { once: true, margin: '-40px' },
+  transition: { duration: 0.6, ease: 'easeOut' },
 };
 
 const staggerContainer = {
   initial: {},
-  whileInView: { transition: { staggerChildren: 0.12 } },
+  whileInView: { transition: { staggerChildren: 0.1 } },
 };
 
 const staggerItem = {
-  initial: { opacity: 0, y: 30 },
+  initial: { opacity: 0, y: 20 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true },
   transition: { duration: 0.5 },
@@ -132,98 +140,56 @@ const staggerItem = {
 // ============================================================
 
 function HeroSection() {
-  const videoRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: videoRef,
-    offset: ['start start', 'end start'],
-  });
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 1.1]);
-
-  // Auto-rotate hero images
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <section ref={videoRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Image slideshow background */}
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Background image */}
       <div className="absolute inset-0">
-        {HERO_IMAGES.map((img, i) => (
-          <motion.div
-            key={img}
-            className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: i === currentImageIndex ? 1 : 0 }}
-            transition={{ duration: 1.5 }}
-          >
-            <img
-              src={img}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="eager"
-            />
-          </motion.div>
-        ))}
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-ink-900/70 via-ink-900/50 to-ink-950" />
-        {/* Subtle pattern overlay */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4a548' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }} />
+        <img
+          src={HERO_IMAGES[0]}
+          alt=""
+          className="w-full h-full object-cover"
+          loading="eager"
+        />
+        <div className="absolute inset-0 bg-stone-950/70" />
       </div>
 
-      {/* Content */}
-      <motion.div
-        style={{ opacity, scale }}
-        className="relative z-10 text-center px-6 max-w-5xl mx-auto"
-      >
-        {/* Badge */}
+      {/* WHITE TEXT on dark overlay */}
+      <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           className="inline-flex items-center gap-3 mb-8"
         >
-          <span className="h-px w-8 bg-gold/60" />
-          <span className="text-gold/80 text-sm tracking-[0.35em] uppercase font-light">
-            Salón de Celebraciones Premium
+          <span className="h-px w-8 bg-amber-400/60" />
+          <span className="text-amber-300/80 text-sm tracking-[0.35em] uppercase font-light">
+            Salon de Celebraciones Premium
           </span>
-          <span className="h-px w-8 bg-gold/60" />
+          <span className="h-px w-8 bg-amber-400/60" />
         </motion.div>
 
-        {/* Main heading */}
         <motion.h1
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="font-serif text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-cream leading-[1.1] mb-8"
+          className="font-serif text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-white leading-[1.1] mb-8"
         >
           <span className="block">Donde cada</span>
-          <span className="block text-gold/90 italic font-light mt-2">
-            celebración
-          </span>
+          <span className="block text-amber-300 italic font-light mt-2">celebracion</span>
           <span className="block">se convierte</span>
-          <span className="block text-gold/90 italic font-light mt-2">en un recuerdo</span>
+          <span className="block text-amber-300 italic font-light mt-2">en un recuerdo</span>
         </motion.h1>
 
-        {/* Subtitle */}
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.9 }}
-          className="text-cream/60 text-lg md:text-xl max-w-2xl mx-auto mb-12 font-light leading-relaxed"
+          className="text-stone-300 text-lg md:text-xl max-w-2xl mx-auto mb-12 font-light leading-relaxed"
         >
-          Diseña tu evento perfecto con nuestro configurador interactivo.
-          Más de 100 platos, espacios únicos y una experiencia que no olvidarás.
+          Disena tu evento perfecto con nuestro configurador interactivo.
+          Mas de 100 platos, espacios unicos y una experiencia que no olvidaras.
         </motion.p>
 
-        {/* CTA Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -231,35 +197,35 @@ function HeroSection() {
           className="flex flex-col sm:flex-row gap-4 justify-center items-center"
         >
           <Link href="/configurador" className="inline-block">
-            <span className="bg-gold text-ink font-semibold px-10 py-4 rounded-lg text-lg
-              hover:bg-amber-400 transition-all duration-300 shadow-lg shadow-gold/20
-              hover:shadow-gold/40 hover:scale-105 cursor-pointer select-none">
-              Diseña tu Evento
-            </span>
+            <button className="bg-amber-500 text-stone-900 font-semibold px-10 py-4 rounded-lg text-lg
+              hover:bg-amber-400 transition-all duration-300 shadow-lg shadow-amber-500/20
+              hover:shadow-amber-400/40 hover:scale-105 cursor-pointer select-none">
+              Disena tu Evento
+            </button>
           </Link>
           <Link href="#espacios" className="inline-block">
-            <span className="border border-cream/30 text-cream font-light px-10 py-4 rounded-lg text-lg
-              hover:bg-cream/10 transition-all duration-300 cursor-pointer select-none">
+            <button className="border border-white/30 text-white font-light px-10 py-4 rounded-lg text-lg
+              hover:bg-white/10 transition-all duration-300 cursor-pointer select-none">
               Ver Espacios
-            </span>
+            </button>
           </Link>
         </motion.div>
+      </div>
 
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2, duration: 1 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2"
-        >
-          <div className="w-6 h-10 border-2 border-gold/30 rounded-full flex justify-center">
-            <motion.div
-              animate={{ y: [0, 12, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="w-1 h-3 bg-gold/50 rounded-full mt-2"
-            />
-          </div>
-        </motion.div>
+      {/* Scroll indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2, duration: 1 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2"
+      >
+        <div className="w-6 h-10 border-2 border-amber-400/30 rounded-full flex justify-center">
+          <motion.div
+            animate={{ y: [0, 12, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="w-1 h-3 bg-amber-400/50 rounded-full mt-2"
+          />
+        </div>
       </motion.div>
     </section>
   );
@@ -267,35 +233,30 @@ function HeroSection() {
 
 function SpacesGallery() {
   return (
-    <section id="espacios" className="py-24 md:py-32 px-6 bg-cream">
+    <section id="espacios" className="py-20 md:py-28 px-6 bg-stone-50">
       <div className="max-w-7xl mx-auto">
-        <motion.div
-          {...fadeInUp}
-          className="text-center mb-16 md:mb-20"
-        >
-          <span className="text-gold text-sm tracking-[0.3em] uppercase font-light block mb-4">
+        <motion.div {...fadeUp} className="text-center mb-14">
+          <span className="text-amber-600 text-sm tracking-[0.3em] uppercase font-light block mb-4">
             Nuestros Espacios
           </span>
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-ink mb-6">
+          <h2 className="font-serif text-4xl md:text-5xl text-stone-800 mb-4">
             El escenario perfecto
           </h2>
-          <p className="text-ink-soft/70 text-lg max-w-xl mx-auto leading-relaxed">
-            Salones versátiles adaptados a cada tipo de celebración, desde íntimas reuniones
-            hasta grandes eventos con más de 300 invitados.
+          <p className="text-stone-500 text-lg max-w-xl mx-auto leading-relaxed">
+            Salones versatiles adaptados a cada tipo de celebracion.
           </p>
         </motion.div>
 
-        {/* Masonry Grid */}
         <motion.div
           {...staggerContainer}
-          className="grid grid-cols-2 md:grid-cols-4 grid-rows-3 gap-4 h-[500px] md:h-[600px]"
+          className="grid grid-cols-2 md:grid-cols-4 grid-rows-3 gap-4 h-[450px] md:h-[550px]"
         >
           {GALLERY_IMAGES.map((space, i) => (
             <motion.div
               key={space.title}
               {...staggerItem}
-              transition={{ delay: i * 0.08 }}
-              className={`relative rounded-2xl overflow-hidden cursor-pointer group ${space.span}`}
+              transition={{ delay: i * 0.06 }}
+              className={`relative rounded-xl overflow-hidden cursor-pointer group ${space.span}`}
             >
               <img
                 src={space.src}
@@ -303,14 +264,10 @@ function SpacesGallery() {
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 loading="lazy"
               />
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-ink-900/80 via-ink-900/20 to-transparent group-hover:from-ink-900/60 transition-all duration-500" />
-              {/* Content */}
-              <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
-                <h3 className="font-serif text-xl md:text-2xl text-cream mb-1">
-                  {space.title}
-                </h3>
-                <p className="text-cream/60 text-sm md:text-base">{space.desc}</p>
+              <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 via-stone-900/20 to-transparent" />
+              <div className="absolute inset-0 flex flex-col justify-end p-5 md:p-6">
+                <h3 className="font-serif text-lg md:text-xl text-white mb-1">{space.title}</h3>
+                <p className="text-stone-300 text-xs md:text-sm">{space.desc}</p>
               </div>
             </motion.div>
           ))}
@@ -322,52 +279,43 @@ function SpacesGallery() {
 
 function FeaturesSection() {
   return (
-    <section className="py-24 md:py-32 px-6 bg-paper">
+    <section className="py-20 md:py-28 px-6 bg-white">
       <div className="max-w-7xl mx-auto">
-        <motion.div
-          {...fadeInUp}
-          className="text-center mb-16 md:mb-20"
-        >
-          <span className="text-gold text-sm tracking-[0.3em] uppercase font-light block mb-4">
-            ¿Por qué Alboroto?
+        <motion.div {...fadeUp} className="text-center mb-14">
+          <span className="text-amber-600 text-sm tracking-[0.3em] uppercase font-light block mb-4">
+            Por que Alboroto
           </span>
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-ink mb-6">
-            Más que un salón
+          <h2 className="font-serif text-4xl md:text-5xl text-stone-800 mb-4">
+            Mas que un salon
           </h2>
         </motion.div>
 
-        <div className="space-y-24 md:space-y-32">
+        <div className="space-y-20 md:space-y-28">
           {FEATURES.map((f, i) => (
             <motion.div
               key={f.title}
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-100px' }}
-              transition={{ duration: 0.7 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.6 }}
               className={`grid md:grid-cols-2 gap-8 md:gap-16 items-center ${
-                i % 2 === 1 ? 'md:direction-rtl' : ''
+                i % 2 === 1 ? 'md:flex-row-reverse' : ''
               }`}
             >
-              {/* Image */}
-              <motion.div
-                className={`rounded-2xl overflow-hidden shadow-2xl shadow-ink/10 ${
-                  i % 2 === 1 ? 'md:order-2' : ''
-                }`}
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.3 }}
-              >
+              <div className={`rounded-xl overflow-hidden shadow-xl ${
+                i % 2 === 1 ? 'md:order-2' : ''
+              }`}>
                 <img
                   src={f.image}
                   alt={f.title}
-                  className="w-full h-64 md:h-80 object-cover"
+                  className="w-full h-56 md:h-72 object-cover hover:scale-105 transition-transform duration-500"
                   loading="lazy"
                 />
-              </motion.div>
-              {/* Text */}
+              </div>
               <div className={i % 2 === 1 ? 'md:order-1' : ''}>
-                <div className="text-4xl mb-6">{f.icon}</div>
-                <h3 className="font-serif text-3xl md:text-4xl text-ink mb-4">{f.title}</h3>
-                <p className="text-ink-soft/70 text-lg leading-relaxed">{f.desc}</p>
+                <div className="text-amber-600 mb-4">{f.icon}</div>
+                <h3 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">{f.title}</h3>
+                <p className="text-stone-500 text-lg leading-relaxed">{f.desc}</p>
               </div>
             </motion.div>
           ))}
@@ -377,18 +325,52 @@ function FeaturesSection() {
   );
 }
 
+function EventTypesSection() {
+  return (
+    <section className="py-20 md:py-28 px-6 bg-stone-100">
+      <div className="max-w-6xl mx-auto">
+        <motion.div {...fadeUp} className="text-center mb-14">
+          <span className="text-amber-600 text-sm tracking-[0.3em] uppercase font-light block mb-4">
+            Tipos de Evento
+          </span>
+          <h2 className="font-serif text-4xl md:text-5xl text-stone-800 mb-4">
+            Cada celebracion es unica
+          </h2>
+        </motion.div>
+
+        <motion.div
+          {...staggerContainer}
+          className="grid grid-cols-2 sm:grid-cols-3 gap-4"
+        >
+          {EVENT_TYPES.map((et, i) => (
+            <motion.div
+              key={et.id}
+              {...staggerItem}
+              transition={{ delay: i * 0.06 }}
+              className="bg-white rounded-xl p-6 border border-stone-200 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-100/50 transition-all duration-300 cursor-pointer group"
+            >
+              <div className="text-amber-600 mb-3 group-hover:scale-110 transition-transform">
+                {et.icon}
+              </div>
+              <h3 className="font-serif text-lg text-stone-800 mb-1">{et.label}</h3>
+              <p className="text-stone-400 text-sm">{et.desc}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 function TestimonialsSection() {
   return (
-    <section className="py-24 md:py-32 px-6 bg-ink-900">
+    <section className="py-20 md:py-28 px-6 bg-stone-900">
       <div className="max-w-6xl mx-auto">
-        <motion.div
-          {...fadeInUp}
-          className="text-center mb-16"
-        >
-          <span className="text-gold text-sm tracking-[0.3em] uppercase font-light block mb-4">
+        <motion.div {...fadeUp} className="text-center mb-14">
+          <span className="text-amber-400 text-sm tracking-[0.3em] uppercase font-light block mb-4">
             Testimonios
           </span>
-          <h2 className="font-serif text-4xl md:text-5xl text-cream mb-6">
+          <h2 className="font-serif text-4xl md:text-5xl text-white mb-4">
             Lo que dicen nuestros clientes
           </h2>
         </motion.div>
@@ -402,15 +384,15 @@ function TestimonialsSection() {
               key={i}
               {...staggerItem}
               transition={{ delay: i * 0.1 }}
-              className="bg-ink-800/50 border border-gold/10 rounded-2xl p-8 hover:border-gold/30 transition-all duration-300"
+              className="bg-stone-800/50 border border-stone-700 rounded-xl p-6 hover:border-amber-500/30 transition-all duration-300"
             >
-              <div className="text-gold/40 text-4xl font-serif mb-4">"</div>
-              <p className="text-cream/80 text-lg leading-relaxed mb-6 italic">
+              <div className="text-amber-400/40 text-3xl font-serif mb-3">"</div>
+              <p className="text-stone-300 text-base leading-relaxed mb-5 italic">
                 {t.text}
               </p>
               <div>
-                <p className="text-cream font-medium">{t.author}</p>
-                <p className="text-gold/60 text-sm">{t.event}</p>
+                <p className="text-white font-medium">{t.author}</p>
+                <p className="text-amber-400/60 text-sm">{t.event}</p>
               </div>
             </motion.div>
           ))}
@@ -422,15 +404,14 @@ function TestimonialsSection() {
 
 function CTASection() {
   return (
-    <section className="py-24 md:py-32 px-6 relative overflow-hidden">
-      {/* Background image */}
+    <section className="py-20 md:py-28 px-6 relative overflow-hidden">
       <div className="absolute inset-0">
         <img
           src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80"
           alt=""
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-ink-950/90 to-burgundy-950/90" />
+        <div className="absolute inset-0 bg-stone-950/85" />
       </div>
 
       <div className="relative z-10 max-w-3xl mx-auto text-center">
@@ -438,19 +419,20 @@ function CTASection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="font-serif text-4xl md:text-5xl lg:text-6xl text-cream mb-6"
+          className="font-serif text-4xl md:text-5xl lg:text-6xl text-white mb-6"
         >
-          Tu celebración,<br />
-          <span className="text-gold/90 italic">tu menú</span>
+          Tu celebracion,
+          <br />
+          <span className="text-amber-300 italic">tu menu</span>
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.15 }}
-          className="text-cream/60 text-lg md:text-xl mb-12 max-w-xl mx-auto"
+          className="text-stone-300 text-lg md:text-xl mb-10 max-w-xl mx-auto"
         >
-          Selecciona tus platos favoritos y envía tu propuesta.
+          Selecciona tus platos favoritos y envia tu propuesta.
           Nosotros nos encargamos del resto.
         </motion.p>
         <motion.div
@@ -460,11 +442,11 @@ function CTASection() {
           transition={{ delay: 0.3 }}
         >
           <Link href="/configurador" className="inline-block">
-            <span className="bg-gold text-ink font-semibold px-12 py-5 rounded-lg text-lg
-              hover:bg-amber-400 transition-all duration-300 shadow-lg shadow-gold/20
-              hover:shadow-gold/40 hover:scale-105 cursor-pointer select-none">
-              Empezar a diseñar
-            </span>
+            <button className="bg-amber-500 text-stone-900 font-semibold px-12 py-5 rounded-lg text-lg
+              hover:bg-amber-400 transition-all duration-300 shadow-lg shadow-amber-500/20
+              hover:shadow-amber-400/40 hover:scale-105 cursor-pointer select-none">
+              Empezar a disenar
+            </button>
           </Link>
         </motion.div>
       </div>
@@ -478,26 +460,26 @@ function CTASection() {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-cream text-ink overflow-x-hidden">
+    <div className="min-h-screen bg-stone-50 text-stone-800 overflow-x-hidden">
       <HeroSection />
       <SpacesGallery />
       <FeaturesSection />
+      <EventTypesSection />
       <TestimonialsSection />
       <CTASection />
 
       {/* Footer */}
-      <footer className="bg-ink-950 text-cream/40 py-12 px-6">
+      <footer className="bg-stone-950 text-stone-400 py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
-            <div className="font-serif text-gold text-xl mb-2">Alboroto Eventos</div>
-            <p className="text-sm">Salón de Celebraciones Premium</p>
+            <div className="font-serif text-amber-400 text-xl mb-1">Alboroto Eventos</div>
+            <p className="text-sm text-stone-500">Salon de Celebraciones Premium</p>
           </div>
-          <div className="flex gap-6 text-sm">
+          <div className="flex items-center gap-4 text-sm">
+            <Mail className="w-4 h-4 text-amber-400/60" />
             <span>info@byalboroto.com</span>
-            <span className="text-gold/40">·</span>
-            <span>byalboroto.duckdns.org</span>
           </div>
-          <p className="text-xs">© 2025 Alboroto Eventos</p>
+          <p className="text-xs text-stone-600">© 2025 Alboroto Eventos</p>
         </div>
       </footer>
     </div>
