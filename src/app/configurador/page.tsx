@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Configurador de Menú — Estilo byalboroto.duckdns.org
  * 
@@ -14,3 +16,16 @@
  * 
  * Fuentes: Playfair Display (serif headings), Inter (sans-serif body)
  */
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function ConfiguradorPage() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    router.replace('/configurador/v1');
+  }, [router]);
+  
+  return null;
+}
