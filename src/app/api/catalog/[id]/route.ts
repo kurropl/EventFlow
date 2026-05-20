@@ -32,8 +32,7 @@ export async function GET(
 
     const supabase = getSupabaseServerClient();
 
-    const { data, error } = await supabase
-      .from('catalog_items')
+    const { data, error } = await (supabase as any).from('catalog_items' as any)
       .select('*')
       .eq('id', id)
       .single();
@@ -107,7 +106,7 @@ export async function PATCH(
     }
 
     // Update the catalog item
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('catalog_items')
       .update(validated)
       .eq('id', id)
@@ -179,8 +178,7 @@ export async function DELETE(
     }
 
     // Soft delete: set active=false
-    const { data, error } = await supabase
-      .from('catalog_items')
+    const { data, error } = await (supabase as any).from('catalog_items' as any)
       .update({ active: false })
       .eq('id', id)
       .select()

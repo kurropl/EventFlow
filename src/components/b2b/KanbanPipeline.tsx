@@ -36,8 +36,8 @@ const COLUMNS: { status: EventStatus; label: string; color: string; icon: string
 ];
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
-  boda: 'Boda', cumpleanos: 'Cumpleaños', corporativo: 'Corporativo',
-  bautizo: 'Bautizo', comunion: 'Comunión', otro: 'Otro',
+  boda: 'Boda', 'cumpleaños': 'Cumpleaños', corporativo: 'Corporativo',
+  bautizo: 'Bautizo', 'comunión': 'Comunión', otro: 'Otro',
 };
 
 // Mock data for demo

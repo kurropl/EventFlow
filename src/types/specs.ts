@@ -312,7 +312,8 @@ export function calculateStock(
   const stock: Record<string, { base_amount: number; with_buffer: number; unit: string }> = {};
   
   for (const item of items) {
-    for (const ing of item.ingredientes_base || []) {
+    const itemAny = item as any;
+    for (const ing of itemAny.ingredientes_base || []) {
       const key = ing.name;
       const base = ing.grams ?? ing.ml ?? ing.count ?? 0;
       const amount = base * item.quantity;

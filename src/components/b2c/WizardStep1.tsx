@@ -12,16 +12,16 @@ import { useWizardStore } from '@/store/useWizardStore';
 
 const EVENT_TYPES = [
   { id: 'boda', label: 'Boda', icon: '💒', desc: 'El día más importante' },
-  { id: 'cumpleanos', label: 'Cumpleaños', icon: '🎂', desc: 'Celebra tu día' },
+  { id: 'cumpleaños', label: 'Cumpleaños', icon: '🎂', desc: 'Celebra tu día' },
   { id: 'corporativo', label: 'Corporativo', icon: '🏢', desc: 'Eventos de empresa' },
   { id: 'bautizo', label: 'Bautizo', icon: '👶', desc: 'Momentos especiales' },
-  { id: 'comunion', label: 'Comunión', icon: '⛪', desc: 'Celebraciones familiares' },
+  { id: 'comunión', label: 'Comunión', icon: '⛪', desc: 'Celebraciones familiares' },
   { id: 'otro', label: 'Otro', icon: '🎉', desc: 'Personaliza tu evento' },
 ];
 
 export default function WizardStep1() {
   const { step1, setStepData, nextStep } = useWizardStore();
-  const [eventType, setEventType] = useState(step1?.event_type || '');
+  const [eventType, setEventType] = useState<string>(step1?.event_type || '');
   const [eventDate, setEventDate] = useState(step1?.event_date || '');
   const [guestCount, setGuestCount] = useState(step1?.guest_count?.toString() || '');
   const [kidsCount, setKidsCount] = useState(step1?.kids_count?.toString() || '');
@@ -30,7 +30,7 @@ export default function WizardStep1() {
 
   const handleNext = () => {
     setStepData('step1', {
-      event_type: eventType,
+      event_type: eventType as any,
       event_date: eventDate,
       guest_count: parseInt(guestCount) || 0,
       kids_count: parseInt(kidsCount) || 0,

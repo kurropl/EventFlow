@@ -14,8 +14,7 @@ export async function GET() {
   try {
     const supabase = getSupabaseServerClient();
 
-    const { data: config, error } = await supabase
-      .from('bar_config')
+    const { data: config, error } = await (supabase as any).from('bar_config' as any)
       .select('*')
       .order('hours', { ascending: true });
 

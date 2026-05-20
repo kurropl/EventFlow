@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
     // Build query
     let query = supabase
-      .from('events')
+      .from('events' as any)
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
@@ -91,8 +91,7 @@ export async function POST(request: Request) {
     }
 
     // Insert event into database
-    const { data: event, error: insertError } = await supabase
-      .from('events')
+    const { data: event, error: insertError } = await (supabase as any).from('events' as any)
       .insert({
         menu_id: validated.menu_id ?? null,
         client_name: validated.client_name,

@@ -97,31 +97,18 @@ async function fetchWithRetry(
  * @param options - Optional event ID and changes
  */
 export async function emitWebhook(
-  topic: WebhookTopic,
-  event: {
-    id: string;
-    client_name: string;
-    client_email: string;
-    event_type: string;
-    guest_count: number;
-    kids_count: number;
-    event_date: string;
-    status: string;
-    total_pvp: number;
-    total_cost: number;
-    bar_hours: number;
-    bar_price: number;
-  },
-  options: EmitWebhookOptions = {}
+  topic: string,
+  event: Record<string, unknown>,
+  options: Record<string, unknown> = {}
 ): Promise<void> {
   const supabase = getSupabaseServerClient();
 
   // Calculate derived fields for the payload
-  const profit = event.total_pvp - event.total_cost;
-  const marginPct =
-    event.total_pvp > 0
-      ? Math.round(((event.total_pvp - event.total_cost) / event.total_pvp) * 100 * 100) / 100
-      : 0;
+  const ev = event as Record<string, unknown>;
+  const pvp = Number(ev.total_pvp) || 0;
+  const cost = Number(ev.total_cost) || 0;
+  const profit = pvp - cost;
+  const marginPct = pvp > 0 ? Math.round((profit / pvp) * 10000) / 100 : 0;
 
   // Build and validate payload
   const payload = WebhookPayloadSchema.parse({
@@ -133,7 +120,7 @@ export async function emitWebhook(
       profit,
       margin_pct: marginPct,
     },
-    changes: options.changes,
+    changes: (options as Record<string, unknown>).changes,
     metadata: {
       source: 'eventflow',
       version: '1.0',
@@ -153,7 +140,7 @@ export async function emitWebhook(
         payload,
         status: 'pending',
         retries: 0,
-      } as Parameters<typeof supabase.from<'webhook_logs'>.insert>[0]);
+      } as any);
     return;
   }
 
@@ -183,5 +170,5 @@ export async function emitWebhook(
       response: responseBody,
       retries: deliveryStatus === 'sent' ? 0 : MAX_RETRIES,
       sent_at: deliveryStatus === 'sent' ? new Date().toISOString() : null,
-    } as Parameters<typeof supabase.from<'webhook_logs'>.insert>[0]);
+    } as any);
 }

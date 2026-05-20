@@ -14,8 +14,7 @@ export async function GET() {
   try {
     const supabase = getSupabaseServerClient();
 
-    const { data: menus, error } = await supabase
-      .from('proposed_menus')
+    const { data: menus, error } = await (supabase as any).from('proposed_menus' as any)
       .select('*')
       .order('suggested_price', { ascending: true });
 

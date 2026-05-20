@@ -17,8 +17,7 @@ export async function GET() {
   try {
     const supabase = getSupabaseServerClient();
 
-    const { data: items, error } = await supabase
-      .from('catalog_items')
+    const { data: items, error } = await (supabase as any).from('catalog_items' as any)
       .select('*')
       .eq('active', true)
       .order('category', { ascending: true })
@@ -80,8 +79,7 @@ export async function POST(request: Request) {
     }
 
     // Insert into catalog_items
-    const { data, error } = await supabase
-      .from('catalog_items')
+    const { data, error } = await (supabase as any).from('catalog_items' as any)
       .insert({
         name: validated.name,
         category: validated.category,

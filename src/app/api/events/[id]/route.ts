@@ -33,8 +33,7 @@ export async function GET(
     const supabase = getSupabaseServerClient();
 
     // Fetch the event
-    const { data: event, error: eventError } = await supabase
-      .from('events')
+    const { data: event, error: eventError } = await (supabase as any).from('events' as any)
       .select('*')
       .eq('id', id)
       .single();
@@ -58,8 +57,7 @@ export async function GET(
     }
 
     // Fetch cost breakdown (cost_desgloses)
-    const { data: costBreakdown, error: costError } = await supabase
-      .from('cost_desgloses')
+    const { data: costBreakdown, error: costError } = await (supabase as any).from('cost_desgloses' as any)
       .select('*')
       .eq('event_id', id)
       .order('created_at', { ascending: true });
@@ -115,8 +113,7 @@ export async function PATCH(
     }).parse(body);
 
     // Get current event to check for status change
-    const { data: currentEvent, error: fetchError } = await supabase
-      .from('events')
+    const { data: currentEvent, error: fetchError } = await (supabase as any).from('events' as any)
       .select('*')
       .eq('id', id)
       .single();
@@ -149,8 +146,7 @@ export async function PATCH(
     }
 
     // Apply update
-    const { data: updatedEvent, error: updateError } = await supabase
-      .from('events')
+    const { data: updatedEvent, error: updateError } = await (supabase as any).from('events' as any)
       .update(updateData)
       .eq('id', id)
       .select()
@@ -174,7 +170,7 @@ export async function PATCH(
 
     if (oldStatus !== newStatus) {
       try {
-        await emitWebhook('STATUS_CHANGED', updatedEvent, {
+        await emitWebhook('STATUS_CHANGED', updatedEvent as any, {
           old_status: oldStatus,
           new_status: newStatus,
         });
@@ -186,7 +182,7 @@ export async function PATCH(
     // Check if status is 'confirmado' — emit BUDGET_CONFIRMED
     if (newStatus === 'confirmado') {
       try {
-        await emitWebhook('BUDGET_CONFIRMED', updatedEvent, {
+        await emitWebhook('BUDGET_CONFIRMED', updatedEvent as any, {
           confirmed_at: new Date().toISOString(),
         });
       } catch (webhookError) {
@@ -197,7 +193,7 @@ export async function PATCH(
     // Check if status is 'cancelado' — emit BUDGET_CANCELLED
     if (newStatus === 'cancelado') {
       try {
-        await emitWebhook('BUDGET_CANCELLED', updatedEvent, {
+        await emitWebhook('BUDGET_CANCELLED', updatedEvent as any, {
           cancelled_at: new Date().toISOString(),
         });
       } catch (webhookError) {

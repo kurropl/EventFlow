@@ -3,20 +3,19 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-burgundy text-paper hover:bg-burgundy-dark',
-        secondary: 'bg-gold text-paper hover:bg-gold-dark',
-        outline:
-          'border border-burgundy text-burgundy hover:bg-burgundy hover:text-paper',
-        ghost: 'hover:bg-cream hover:text-ink',
-        link: 'text-burgundy underline-offset-4 hover:underline',
-        destructive: 'bg-red-600 text-white hover:bg-red-700',
+        default: 'bg-amber-600 text-white hover:bg-amber-700',
+        destructive: 'bg-red-500 text-white hover:bg-red-600',
+        outline: 'border border-cream-dark text-ink hover:bg-cream',
+        secondary: 'bg-cream text-ink hover:bg-cream/80',
+        ghost: 'hover:bg-cream',
+        link: 'text-amber-600 underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-10 px-5 py-2',
+        default: 'h-10 px-4 py-2',
         sm: 'h-9 rounded-md px-3',
         lg: 'h-11 rounded-lg px-8',
         icon: 'h-10 w-10',
@@ -31,7 +30,9 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, ...props }, ref) => {

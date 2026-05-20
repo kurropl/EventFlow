@@ -11,8 +11,8 @@ import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
-  boda: 'Boda', cumpleanos: 'Cumpleaños', corporativo: 'Corporativo',
-  bautizo: 'Bautizo', comunion: 'Comunión', otro: 'Otro',
+  boda: 'Boda', 'cumpleaños': 'Cumpleaños', corporativo: 'Corporativo',
+  bautizo: 'Bautizo', 'comunión': 'Comunión', otro: 'Otro',
 };
 
 export default function WizardStep5() {
@@ -112,11 +112,11 @@ export default function WizardStep5() {
         )}
 
         {/* Selected dishes */}
-        {step3?.selectedItems && step3.selectedItems.length > 0 && (
+        {(step3 as any)?.selected_items && (step3 as any).selected_items.length > 0 && (
           <div className="p-6 border-b border-gold/10">
-            <h3 className="font-serif text-lg text-ink mb-3">🥘 Platos Seleccionados</h3>
+            <h3 className="font-serif text-lg text-ink mb-3">Platos Seleccionados</h3>
             <div className="space-y-1">
-              {step3.selectedItems.map((item: { name: string; category: string }, i: number) => (
+              {((step3 as any).selected_items).map((item: { name: string; category: string }, i: number) => (
                 <div key={i} className="text-sm flex items-center gap-2">
                   <span className="text-gold">•</span>
                   <span className="text-ink/80">{item.name}</span>

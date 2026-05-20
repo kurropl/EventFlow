@@ -6,8 +6,7 @@
  * Browser-side client is used in client components (RLS-protected).
  */
 
-import { createServerClient } from '@supabase/ssr';
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 // ============================================================
 // Database Types (mirrors schema.sql)
@@ -191,42 +190,30 @@ export type Database = {
 };
 
 // ============================================================
-// Shared environment
+// Shared environment (used by validation in seed script)
 // ============================================================
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.'
-  );
-}
-
 // ============================================================
 // Server-side client (used in API routes)
 // ============================================================
 
-export function getSupabaseServerClient(): ReturnType<
-  typeof createServerClient
-> & { _type: 'server' } {
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get() {
-        return undefined;
-      },
-    },
-  }) as ReturnType<typeof createServerClient> & { _type: 'server' };
+export function getSupabaseServerClient(): ReturnType<typeof createClient> & { _type: 'server' } {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(url, key) as ReturnType<typeof createClient> & { _type: 'server' };
 }
 
 // ============================================================
 // Browser-side client (used in client components)
 // ============================================================
 
-export function getSupabaseBrowserClient(): ReturnType<
-  typeof createBrowserClient
-> & { _type: 'browser' } {
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+export function getSupabaseBrowserClient(): ReturnType<typeof createClient> & { _type: 'browser' } {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(url, key) as ReturnType<typeof createClient> & { _type: 'browser' };
 }
 
 // ============================================================

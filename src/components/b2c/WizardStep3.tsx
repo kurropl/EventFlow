@@ -16,7 +16,7 @@ export default function WizardStep3() {
   const { step3, setStepData, nextStep, prevStep, step1 } = useWizardStore();
   const [activeCategory, setActiveCategory] = useState(CATALOG_CATEGORIES[0].id);
   const [selectedItems, setSelectedItems] = useState<string[]>(
-    step3?.selectedItems?.map((si: { item_id: string }) => si.item_id) || []
+    (step3 as any)?.selected_items?.map((si: { item_id: string }) => si.item_id) || []
   );
 
   // Persist selections back to store on change
@@ -27,7 +27,7 @@ export default function WizardStep3() {
       category: activeCategory,
       quantity: 1,
     }));
-    setStepData('step3', { selectedItems: items });
+    setStepData('step3', { selected_items: items } as any);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedItems]);
 

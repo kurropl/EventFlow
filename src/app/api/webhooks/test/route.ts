@@ -26,8 +26,7 @@ export async function POST(request: Request) {
     const validated = WebhookPayloadSchema.parse(body);
 
     // Log to webhook_logs table
-    const { data: logEntry, error: logError } = await supabase
-      .from('webhook_logs')
+    const { data: logEntry, error: logError } = await (supabase as any).from('webhook_logs' as any)
       .insert({
         event_id: validated.event?.id ?? null,
         topic: validated.topic,
@@ -36,7 +35,7 @@ export async function POST(request: Request) {
         response: 'Received via test endpoint',
         retries: 0,
         sent_at: new Date().toISOString(),
-      } as Parameters<typeof supabase.from<'webhook_logs'>.insert>[0])
+      } as any)
       .select()
       .single();
 

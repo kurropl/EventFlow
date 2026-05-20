@@ -66,12 +66,14 @@ interface WizardState {
 
   // ---- UI state ----
   currentStep: number;
+  readonly totalSteps: number;
   isSubmitting: boolean;
   submitError: string | null;
   submitSuccess: boolean;
 
   // ---- Actions ----
   nextStep: () => void;
+  previousStep: () => void;
   prevStep: () => void;
   setStep: (step: number) => void;
   setStepData: <T extends keyof WizardState>(
@@ -124,6 +126,7 @@ export const useWizardStore = create<WizardState>()(
       totalPvp: 0,
       totalCost: 0,
       currentStep: 1,
+      totalSteps: 5,
       isSubmitting: false,
       submitError: null,
       submitSuccess: false,
@@ -133,6 +136,13 @@ export const useWizardStore = create<WizardState>()(
         const { currentStep } = get();
         if (currentStep < 5) {
           set({ currentStep: currentStep + 1 });
+        }
+      },
+
+      previousStep: () => {
+        const { currentStep } = get();
+        if (currentStep > 1) {
+          set({ currentStep: currentStep - 1 });
         }
       },
 
@@ -149,7 +159,7 @@ export const useWizardStore = create<WizardState>()(
       },
 
       // ---- Step data setters (with Zod validation) ----
-      setStepData: <T extends keyof WizardState>(step, data) => {
+      setStepData: <T extends keyof WizardState>(step: T, data: WizardState[T]) => {
         switch (step) {
           case 'step1': {
             const validated = WizardStep1Schema.parse(data);
@@ -235,7 +245,7 @@ export const useWizardStore = create<WizardState>()(
           set({ submitError: 'Step 2 (menu selection) is required' });
           return { success: false };
         }
-        if (!state.step3 || state.step3.selectedItems.length === 0) {
+        if (!state.step3 || (state.step3 as any).selected_items?.length === 0) {
           set({ submitError: 'Step 3 (item selection) requires at least one item' });
           return { success: false };
         }
@@ -256,7 +266,7 @@ export const useWizardStore = create<WizardState>()(
           // Prices are always calculated server-side using catalog_item.pvp and catalog_item.cost
 
           const selectedItemsPayload = state.mode === 'b2c'
-            ? state.step3.selectedItems.map((item) => ({
+            ? (state.step3 as any).selected_items.map((item: any) => ({
                 item_id: item.item_id,
                 name: item.name,
                 category: item.category,
@@ -267,7 +277,7 @@ export const useWizardStore = create<WizardState>()(
                 subtotal_pvp: 0,
                 subtotal_cost: 0,
               }))
-            : state.step3.selectedItems;
+            : (state.step3 as any).selected_items;
 
           const payload: EventSetupCreate = {
             client_name: state.clientInfo.name,

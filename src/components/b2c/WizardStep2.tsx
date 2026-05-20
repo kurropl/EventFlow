@@ -20,7 +20,7 @@ export default function WizardStep2() {
 
   const handleNext = () => {
     if (selectedMenu) {
-      setStepData('step2', { menu_id: selectedMenu });
+      setStepData('step2', { menu_id: selectedMenu } as any);
       nextStep();
     }
   };

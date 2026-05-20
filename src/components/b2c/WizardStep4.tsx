@@ -12,7 +12,7 @@ import { useWizardStore } from '@/store/useWizardStore';
 import { CATALOG_ITEMS } from '@/data/menus';
 
 const SUGGESTIONS = [
-  { id: 'bar-libre', label: 'Barra Libre', icon: '🍷', desc: 'Cócteles, cervezas y vinos a disposición de tus invitados', condition: (step1: any) => ['boda', 'comunion', 'bautizo'].includes(step1?.event_type) },
+  { id: 'bar-libre', label: 'Barra Libre', icon: '🍷', desc: 'Cócteles, cervezas y vinos a disposición de tus invitados', condition: (step1: any) => ['boda', 'comunión', 'bautizo'].includes(step1?.event_type) },
   { id: 'estacion-mariscos', label: 'Estación de Mariscos', icon: '🦐', desc: 'Langostinos, gambas, ostras y más', condition: (step1: any) => (step1?.guest_count || 0) > 100 },
   { id: 'menu-nino', label: 'Menú Infantil', icon: '🧸', desc: 'Opciones especiales para los más pequeños', condition: (step1: any) => (step1?.kids_count || 0) > 0 },
   { id: 'estacion-ahumados', label: 'Estación de Ahumados', icon: '🥓', desc: 'Jamón, quesos y carnes ahumadas en directo', condition: () => true },
@@ -25,13 +25,13 @@ export default function WizardStep4() {
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>(
     step4?.selected_suggestions || []
   );
-  const [barHours, setBarHours] = useState(step4?.bar_hours || 0);
+  const [barHours, setBarHours] = useState(Number(step4?.bar_hours) || 0);
 
   useEffect(() => {
     setStepData('step4', {
-      bar_hours: barHours,
+      bar_hours: Number(barHours),
       selected_suggestions: selectedSuggestions,
-    });
+    } as any);
   }, [barHours, selectedSuggestions]);
 
   const toggleSuggestion = (id: string) => {
