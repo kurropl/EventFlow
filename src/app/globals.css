@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   EventFlow — Alboroto Theme (CSS Variables)
+   ============================================================ */
+
+:root {
+  /* Alboroto palette */
+  --color-cream: #f6f1e7;
+  --color-cream-dark: #e8e0d0;
+  --color-gold: #b08a3e;
+  --color-gold-light: #c9a85c;
+  --color-gold-dark: #8f6e2e;
+  --color-burgundy: #6b2737;
+  --color-burgundy-light: #8a3647;
+  --color-burgundy-dark: #4e1d28;
+  --color-ink: #2a2118;
+  --color-ink-light: #3d3228;
+  --color-paper: #fbf8f1;
+  --color-paper-dark: #ede8da;
+
+  /* Font families */
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+  line-height: 1.6;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-ink);
+}
+
+/* ============================================================
+   COMPONENT UTILITIES
+   ============================================================ */
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg
+           bg-burgundy text-paper px-5 py-2.5 text-sm font-medium
+           transition-colors duration-200
+           hover:bg-burgundy-dark focus:outline-none focus:ring-2
+           focus:ring-burgundy focus:ring-offset-2 focus:ring-offset-paper;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg
+           bg-gold text-paper px-5 py-2.5 text-sm font-medium
+           transition-colors duration-200
+           hover:bg-gold-dark focus:outline-none focus:ring-2
+           focus:ring-gold focus:ring-offset-2 focus:ring-offset-paper;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center rounded-lg
+           border border-burgundy text-burgundy px-5 py-2.5 text-sm font-medium
+           transition-colors duration-200
+           hover:bg-burgundy hover:text-paper
+           focus:outline-none focus:ring-2 focus:ring-burgundy focus:ring-offset-2;
+  }
+
+  .card {
+    @apply rounded-xl border border-cream-dark bg-paper p-6 shadow-sm;
+  }
+}
+
+/* ============================================================
+   SCROLLBAR (webkit)
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold-dark);
+}
