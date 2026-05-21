@@ -3,7 +3,10 @@
  * EventFlow — Wizard Step 1: Detalles del Evento
  * 
  * Tipo de evento, fecha, comensales.
- * Diseño premium: iconos SVG, tipografía clara, sin emojis.
+ * 
+ * REGLA NIÑOS:
+ * - Si kids_count > 0 → OBLIGATORIO seleccionar 1 menú adulto + 1 menú niño
+ * - Si kids_count === 0 → Solo menús adultos
  */
 
 import { useState } from 'react';
@@ -84,14 +87,18 @@ export default function WizardStep1() {
   const [guestCount, setGuestCount] = useState(step1?.guest_count?.toString() || '');
   const [kidsCount, setKidsCount] = useState(step1?.kids_count?.toString() || '');
 
-  const canProceed = eventType && eventDate && guestCount && parseInt(guestCount) > 0;
+  const kids = parseInt(kidsCount) || 0;
+  const adults = parseInt(guestCount) || 0;
+
+  // Validación: si hay niños, se requiere al menos 1 adulto
+  const canProceed = eventType && eventDate && adults > 0 && (kids === 0 || adults > 0);
 
   const handleNext = () => {
     setStepData('step1', {
       event_type: eventType as any,
       event_date: eventDate,
-      guest_count: parseInt(guestCount) || 0,
-      kids_count: parseInt(kidsCount) || 0,
+      guest_count: adults,
+      kids_count: kids,
     });
     nextStep();
   };
@@ -198,6 +205,19 @@ export default function WizardStep1() {
           />
         </div>
       </div>
+
+      {/* Kids warning */}
+      {kids > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border border-amber-200 rounded-xl p-4"
+        >
+          <p className="text-amber-800 text-sm font-medium">
+            Con {kids} {kids === 1 ? 'niño' : 'niños'}, necesitarás seleccionar un menú adulto y un menú infantil en el siguiente paso.
+          </p>
+        </motion.div>
+      )}
 
       {/* Next button */}
       <button
