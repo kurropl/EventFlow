@@ -84,6 +84,21 @@ export const PROPOSED_MENUS: ProposedMenu[] = [
       { section: 'Postre y bebida', items: ['Helado de vainilla o chocolate','Zumos','Refrescos','Agua'] },
     ],
   },
+  {
+    id: 'cocktail1', name: 'Cóctel 1', tag: 'Canapés', is_kid: false,
+    sections: [
+      { section: 'Canapés fríos', items: ['Mini toast de salmón y queso crema', 'Mini toast de ventresca y tomate', 'Mini toast de jamón ibérico y queso de cabra', 'Mini toast de ensaladilla rusa', 'Mini toast de hummus y verduras', 'Mini toast de aguacate y langostino'] },
+      { section: 'Canapés calientes', items: ['Mini croquetas de jamón ibérico', 'Mini empanadillas de boletus', 'Mini pinchos de tortilla', 'Mini bocadillos de jamón y tomate', 'Mini quiches de lomo y queso', 'Mini volovanes de pollo y champiñón'] },
+    ],
+  },
+  {
+    id: 'cocktail2', name: 'Cóctel 2', tag: 'Premium', is_kid: false,
+    sections: [
+      { section: 'Canapés fríos', items: ['Mini toast de salmón y queso crema', 'Mini toast de ventresca y tomate', 'Mini toast de jamón ibérico y queso de cabra', 'Mini toast de ensaladilla rusa', 'Mini toast de hummus y verduras', 'Mini toast de aguacate y langostino', 'Mini toast de atún rojo y aguacate', 'Mini toast de foie y pera'] },
+      { section: 'Canapés calientes', items: ['Mini croquetas de jamón ibérico', 'Mini empanadillas de boletus', 'Mini pinchos de tortilla', 'Mini bocadillos de jamón y tomate', 'Mini quiches de lomo y queso', 'Mini volovanes de pollo y champiñón', 'Mini empanadillas de ventresca', 'Mini croquetas de queso de cabra'] },
+      { section: 'A compartir', items: ['Selección de jacinas', 'Selección de quesos', 'Tabla de ibéricos'] },
+    ],
+  },
 ];
 
 // Categorías del catálogo individual (118 items)
