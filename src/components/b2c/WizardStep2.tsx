@@ -1,12 +1,13 @@
 'use client';
 /**
- * EventFlow — Wizard Step 2: Menú Propuesto
+ * EventFlow — Wizard Step 2: Menús Propuestos
  * 
- * DOS OPCIONES CLARAS:
- * 1. Menú predefinido — elige uno de los menús completos (estilo PDF)
- * 2. Personalizado — elige platos uno a uno (wizard manual)
- * 
- * Si elige menú predefinido, puede personalizar después o usarlo tal cual.
+ * Diseño visual elegante estilo captura:
+ * - Tarjetas con fondo cream, tipografía Playfair Display, burgundy/gold
+ * - Secciones con etiquetas doradas mayúsculas
+ * - Lista de platos con viñetas
+ * - Botón "Usar este menú" → salta directo a Extras
+ * - Botón "Personalizar" → va al paso 3
  */
 
 import { useState, useEffect } from 'react';
@@ -14,49 +15,62 @@ import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 import { PROPOSED_MENUS } from '@/data/menus';
 
-const TAG_STYLES: Record<string, string> = {
-  'Recomendado': 'bg-amber-100 text-amber-800',
-  'Premium': 'bg-stone-800 text-white',
-  'Premium +': 'bg-stone-800 text-white',
-  'Gran Selección': 'bg-amber-100 text-amber-800',
-  'Infantil': 'bg-green-100 text-green-800',
-  'Esencial': 'bg-stone-100 text-stone-600',
-  'Completo': 'bg-amber-100 text-amber-800',
+// Font injection
+if (typeof document !== 'undefined') {
+  const link = document.createElement('link');
+  link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap';
+  link.rel = 'stylesheet';
+  if (!document.querySelector('[href*="Playfair"]')) {
+    document.head.appendChild(link);
+  }
+}
+
+const TAG_COLORS: Record<string, string> = {
+  'Esencial': 'text-stone-500',
+  'Recomendado': 'text-amber-700',
+  'Completo': 'text-amber-700',
+  'Premium': 'text-amber-700',
+  'Premium +': 'text-amber-700',
+  'Gran Selección': 'text-amber-700',
+  'Infantil': 'text-green-700',
+};
+
+const TAG_BG: Record<string, string> = {
+  'Esencial': 'bg-stone-100',
+  'Recomendado': 'bg-amber-50',
+  'Completo': 'bg-amber-50',
+  'Premium': 'bg-amber-50',
+  'Premium +': 'bg-amber-50',
+  'Gran Selección': 'bg-amber-50',
+  'Infantil': 'bg-green-50',
 };
 
 export default function WizardStep2() {
   const { step2, setStepData, nextStep } = useWizardStore();
-  const [mode, setMode] = useState<'proposed' | 'custom'>('proposed');
   const [selectedMenu, setSelectedMenu] = useState<string | null>(step2?.menu_id || null);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
   useEffect(() => {
     if (step2?.menu_id) setSelectedMenu(step2.menu_id);
-    if (step2?.use_proposed === false) setMode('custom');
   }, [step2]);
 
   const handleSelect = (menuId: string) => {
     setSelectedMenu(menuId);
-    setExpandedMenu(menuId);
+    setExpandedMenu(expandedMenu === menuId ? null : menuId);
   };
 
-  const handleModeChange = (newMode: 'proposed' | 'custom') => {
-    setMode(newMode);
-    if (newMode === 'custom') {
-      // Clear menu selection when switching to custom
-      setSelectedMenu(null);
-      setStepData('step2', { menu_id: null, use_proposed: false } as any);
-    }
+  const handleUseMenu = () => {
+    if (!selectedMenu) return;
+    setStepData('step2', { menu_id: selectedMenu, use_proposed: true } as any);
+    // Skip step 3 (personalization) and go to step 4 (extras)
+    nextStep(); // 2→3
+    nextStep(); // 3→4
   };
 
-  const handleNext = () => {
-    if (mode === 'proposed' && selectedMenu) {
-      setStepData('step2', { menu_id: selectedMenu, use_proposed: true } as any);
-      nextStep();
-    } else if (mode === 'custom') {
-      setStepData('step2', { menu_id: null, use_proposed: false } as any);
-      nextStep();
-    }
+  const handleCustomize = () => {
+    if (!selectedMenu) return;
+    setStepData('step2', { menu_id: selectedMenu, use_proposed: true } as any);
+    nextStep(); // 2→3 (personalization)
   };
 
   const selectedMenuData = PROPOSED_MENUS.find((m) => m.id === selectedMenu);
@@ -71,199 +85,135 @@ export default function WizardStep2() {
     >
       {/* Header */}
       <div className="text-center">
-        <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
-          Elige tu Menú
+        <h2 className="font-serif text-3xl md:text-4xl text-[#6b2737] mb-3"
+            style={{ fontFamily: "'Playfair Display', serif" }}>
+          Menús Propuestos
         </h2>
         <p className="text-stone-500 text-base max-w-md mx-auto">
           Selecciona un menú completo o personaliza cada plato.
         </p>
       </div>
 
-      {/* Mode selector — two clear options */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Option 1: Proposed menu */}
-        <button
-          onClick={() => handleModeChange('proposed')}
-          className={`rounded-2xl p-6 border-2 text-left transition-all duration-200
-            ${mode === 'proposed'
-              ? 'border-amber-600 bg-amber-50/50 shadow-lg shadow-amber-100/50'
-              : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md'
-            }`}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center
-              ${mode === 'proposed' ? 'bg-amber-600 text-white' : 'bg-stone-100 text-stone-500'}`}>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-serif text-lg text-stone-800">Menú Predefinido</h3>
-              <p className="text-xs text-stone-500">Menús completos listos para usar</p>
-            </div>
-          </div>
-          <p className="text-sm text-stone-600">
-            Elige entre 6 menús completos con secciones ya organizadas. Puedes usarlos tal cual o personalizar después.
-          </p>
-          {mode === 'proposed' && (
-            <div className="absolute top-3 right-3">
-              <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          )}
-        </button>
+      {/* Menu cards grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {PROPOSED_MENUS.map((menu, i) => {
+          const isSelected = selectedMenu === menu.id;
+          const isExpanded = expandedMenu === menu.id;
+          const totalItems = menu.sections.reduce((sum, s) => sum + s.items.length, 0);
 
-        {/* Option 2: Custom */}
-        <button
-          onClick={() => handleModeChange('custom')}
-          className={`rounded-2xl p-6 border-2 text-left transition-all duration-200
-            ${mode === 'custom'
-              ? 'border-amber-600 bg-amber-50/50 shadow-lg shadow-amber-100/50'
-              : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md'
-            }`}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center
-              ${mode === 'custom' ? 'bg-amber-600 text-white' : 'bg-stone-100 text-stone-500'}`}>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-serif text-lg text-stone-800">Personalizado</h3>
-              <p className="text-xs text-stone-500">Elige cada plato a tu medida</p>
-            </div>
-          </div>
-          <p className="text-sm text-stone-600">
-            Construye tu menú plato a plato. Selecciona entrantes, carnes, pescados, postres y bebidas.
-          </p>
-          {mode === 'custom' && (
-            <div className="absolute top-3 right-3">
-              <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          )}
-        </button>
-      </div>
+          return (
+            <motion.div
+              key={menu.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08, duration: 0.4 }}
+              className={`rounded-2xl border-2 transition-all duration-300 overflow-hidden
+                ${isSelected
+                  ? 'border-[#6b2737] shadow-xl shadow-[#6b2737]/10'
+                  : 'border-stone-200 shadow-md hover:shadow-lg'
+                }`}
+              style={{
+                background: isSelected ? '#faf8f3' : '#fdfbf7',
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              {/* Card header */}
+              <button
+                onClick={() => handleSelect(menu.id)}
+                className="w-full text-left p-6 pb-4"
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex-1">
+                    <span className={`text-xs font-semibold uppercase tracking-widest ${TAG_COLORS[menu.tag] || 'text-stone-400'}`}>
+                      {menu.tag}
+                    </span>
+                    <h3
+                      className="text-3xl font-bold text-[#6b2737] mt-1"
+                      style={{ fontFamily: "'Playfair Display', serif" }}
+                    >
+                      {menu.name}
+                    </h3>
+                  </div>
+                  <div className={`w-7 h-7 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all mt-2
+                    ${isSelected ? 'border-[#6b2737] bg-[#6b2737]' : 'border-stone-300'}`}>
+                    {isSelected && (
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
 
-      {/* Proposed menu list (shown when mode is proposed) */}
-      {mode === 'proposed' && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          transition={{ duration: 0.3 }}
-          className="space-y-4"
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-amber-600" />
-            <span className="text-sm font-semibold text-stone-700">Elige un menú de la lista</span>
-          </div>
+                {/* Separator line */}
+                <div className="w-full h-px bg-gradient-to-r from-[#b08a3e]/30 to-transparent mb-4" />
 
-          <div className="space-y-3">
-            {PROPOSED_MENUS.map((menu, i) => {
-              const isSelected = selectedMenu === menu.id;
-              const isExpanded = expandedMenu === menu.id;
-              const totalItems = menu.sections.reduce((sum, s) => sum + s.items.length, 0);
+                {/* Sections preview */}
+                <div className="space-y-3">
+                  {menu.sections.slice(0, isExpanded ? undefined : 2).map((section, si) => (
+                    <div key={si}>
+                      <h4 className="text-xs font-bold text-[#b08a3e] uppercase tracking-widest mb-1.5">
+                        {section.section}
+                      </h4>
+                      <ul className="space-y-0.5">
+                        {section.items.slice(0, isExpanded ? undefined : 3).map((item, ii) => (
+                          <li key={ii} className="text-sm text-stone-700 flex items-start gap-1.5">
+                            <span className="text-[#b08a3e] mt-1.5 text-xs">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                        {section.items.length > 3 && !isExpanded && (
+                          <li className="text-xs text-stone-400 italic">
+                            +{section.items.length - 3} más...
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  ))}
+                  {menu.sections.length > 2 && !isExpanded && (
+                    <div className="text-xs text-stone-400 italic">
+                      +{menu.sections.length - 2} secciones más...
+                    </div>
+                  )}
+                </div>
+              </button>
 
-              return (
+              {/* Expand/collapse */}
+              <button
+                onClick={() => handleSelect(menu.id)}
+                className="w-full py-2.5 text-center text-xs font-medium text-[#b08a3e] hover:text-[#6b2737] transition-colors border-t border-stone-100 bg-white/50"
+              >
+                {isExpanded ? '▲ Cerrar' : `▼ Ver todos los platos`}
+              </button>
+
+              {/* Action buttons (shown when selected) */}
+              {isSelected && (
                 <motion.div
-                  key={menu.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                  className={`rounded-2xl border-2 transition-all duration-200 overflow-hidden
-                    ${isSelected
-                      ? 'border-amber-600 bg-amber-50/30 shadow-lg shadow-amber-100/50'
-                      : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md'
-                    }`}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="p-4 pt-0 space-y-2"
                 >
                   <button
-                    onClick={() => handleSelect(menu.id)}
-                    className="w-full text-left p-5"
+                    onClick={handleUseMenu}
+                    className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
+                      bg-[#6b2737] text-white hover:bg-[#4a1a26] shadow-md hover:shadow-lg"
+                    style={{ fontFamily: "'Inter', sans-serif" }}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1 flex-wrap">
-                          <h3 className="font-serif text-xl text-stone-800">
-                            {menu.name}
-                          </h3>
-                          <span className={`px-3 py-0.5 rounded-full text-xs font-semibold ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-600'}`}>
-                            {menu.tag}
-                          </span>
-                          {menu.is_kid && (
-                            <span className="px-3 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                              Infantil
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-stone-500">
-                          <span>{menu.sections.length} secciones</span>
-                          <span>·</span>
-                          <span>{totalItems} platos</span>
-                        </div>
-                      </div>
-                      <div className={`w-7 h-7 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all
-                        ${isSelected ? 'border-amber-600 bg-amber-600 scale-110' : 'border-stone-300'}`}>
-                        {isSelected && (
-                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
+                    Usar este menú →
                   </button>
-
-                  {/* Expanded sections */}
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="border-t border-amber-200/50 bg-white/50"
-                    >
-                      <div className="p-5 pt-4 space-y-4">
-                        {menu.sections.map((section, si) => (
-                          <div key={si}>
-                            <h4 className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-2">
-                              {section.section}
-                            </h4>
-                            <div className="flex flex-wrap gap-1.5">
-                              {section.items.map((item, ii) => (
-                                <span
-                                  key={ii}
-                                  className="text-sm text-stone-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100"
-                                >
-                                  {item}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
+                  <button
+                    onClick={handleCustomize}
+                    className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
+                      border-2 border-[#b08a3e] text-[#b08a3e] hover:bg-[#b08a3e]/5"
+                    style={{ fontFamily: "'Inter', sans-serif" }}
+                  >
+                    Personalizar este menú
+                  </button>
                 </motion.div>
-              );
-            })}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Continue button */}
-      <button
-        onClick={handleNext}
-        disabled={!(mode === 'proposed' && selectedMenu)}
-        className={`w-full py-4 rounded-xl font-semibold text-base transition-all duration-200
-          ${(mode === 'proposed' && selectedMenu)
-            ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-md hover:shadow-lg'
-            : 'bg-stone-200 text-stone-400 cursor-not-allowed'
-          }`}
-      >
-        {mode === 'custom' ? 'Personalizar Platos →' : 'Continuar →'}
-      </button>
+              )}
+            </motion.div>
+          );
+        })}
+      </div>
     </motion.div>
   );
 }

@@ -2,7 +2,7 @@
 /**
  * EventFlow — Configurador Page (B2C)
  * 
- * Orquesta los 5 pasos del wizard con transiciones Framer Motion.
+ * Orquesta los pasos del wizard con transiciones Framer Motion.
  * Sin precios en ningún lado.
  */
 
@@ -15,7 +15,14 @@ import WizardStep3 from '@/components/b2c/WizardStep3';
 import WizardStep4 from '@/components/b2c/WizardStep4';
 import WizardStep5 from '@/components/b2c/WizardStep5';
 
-const STEP_LABELS = ['Detalles', 'Menú', 'Personaliza', 'Extras', 'Resumen'];
+// Step labels matching the visual design
+const STEP_LABELS = [
+  'Detalles',
+  'Menús Propuestos',
+  'Personalizar',
+  'Extras',
+  'Resumen',
+];
 
 // Map step number to component
 const STEP_COMPONENTS: Record<number, React.ComponentType<{ onNext: () => void; onPrev: () => void }>> = {
@@ -37,25 +44,38 @@ export default function ConfiguradorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen" style={{ background: '#f6f1e7', fontFamily: "'Inter', sans-serif" }}>
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-ink-900/95 backdrop-blur border-b border-gold/20">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-50" style={{ background: 'linear-gradient(135deg, #0d0a06 0%, #1a1208 100%)' }}>
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between" style={{ borderBottom: '2px solid #d4a548' }}>
+          {/* Brand */}
           <div className="flex items-center gap-3">
             {currentStep > 1 && (
               <button
                 onClick={prevStep}
-                className="text-gold/70 hover:text-gold transition-colors p-1"
+                className="text-[#d4a548]/70 hover:text-[#d4a548] transition-colors p-1"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
             )}
-            <span className="font-serif text-gold text-lg">Alboroto Eventos</span>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full border border-[#d4a548] flex items-center justify-center"
+                   style={{ fontFamily: "'Playfair Display', serif", color: '#d4a548', fontStyle: 'italic', fontWeight: 700 }}>
+                A
+              </div>
+              <div>
+                <span className="font-serif text-[#d4a548] text-base" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Alboroto Eventos
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Reset button + Steps */}
           <div className="flex items-center gap-3">
-            {/* Reset button */}
+            {/* Reset */}
             <div className="relative">
               <button
                 onClick={() => setShowResetConfirm(!showResetConfirm)}
@@ -87,26 +107,29 @@ export default function ConfiguradorPage() {
                 </div>
               )}
             </div>
-            {/* Steps */}
-            <div className="flex items-center gap-1">
+
+            {/* Steps indicator — styled like the screenshot */}
+            <div className="flex items-center gap-1 bg-white/10 rounded-xl p-1.5 backdrop-blur">
               {STEP_LABELS.map((label, i) => (
                 <div key={label} className="flex items-center">
-                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs transition-all
+                  <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer
                     ${i + 1 === currentStep
-                      ? 'bg-gold text-ink font-semibold'
+                      ? 'bg-[#6b2737] text-white font-semibold'
                       : i + 1 < currentStep
-                      ? 'bg-gold/30 text-gold'
-                      : 'bg-ink/20 text-cream/30'
-                    }`}>
+                      ? 'bg-[#d4a548]/20 text-[#d4a548]'
+                      : 'bg-transparent text-stone-500 hover:text-stone-300'
+                    }`}
+                    onClick={() => { if (i + 1 <= currentStep) { /* allow going back */ } }}
+                  >
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs
-                      ${i + 1 === currentStep ? 'bg-ink text-gold' : ''}
-                      ${i + 1 < currentStep ? 'bg-gold text-ink' : ''}`}>
+                      ${i + 1 === currentStep ? 'bg-white text-[#6b2737]' : ''}
+                      ${i + 1 < currentStep ? 'bg-[#d4a548] text-white' : ''}`}>
                       {i + 1 < currentStep ? '✓' : i + 1}
                     </span>
-                    <span className="hidden sm:inline">{label}</span>
+                    <span className="hidden lg:inline">{label}</span>
                   </div>
                   {i < STEP_LABELS.length - 1 && (
-                    <div className={`w-4 h-0.5 mx-1 ${i + 1 < currentStep ? 'bg-gold' : 'bg-ink/20'}`} />
+                    <div className={`w-3 h-px mx-1 ${i + 1 < currentStep ? 'bg-[#d4a548]' : 'bg-stone-600'}`} />
                   )}
                 </div>
               ))}
@@ -116,7 +139,7 @@ export default function ConfiguradorPage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
