@@ -184,6 +184,7 @@ export default function OperationsManager() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-ink-900/40 rounded-xl border border-gold/10 overflow-hidden" style={{ height: 'calc(100vh - 320px)', minHeight: 500 }}>
           <TableMapEditor 
             eventName={`${selectedEvent.client_name} — ${selectedEvent.event_date}`}
+            eventId={selectedEvent.id}
             onSave={handleSavePlan}
           />
         </motion.div>

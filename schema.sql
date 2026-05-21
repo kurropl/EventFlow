@@ -388,3 +388,43 @@ BEGIN
     WHERE id = event_uuid;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- 13. TABLE PLANS — Save editor state per event
+-- ============================================================
+CREATE TABLE IF NOT EXISTS table_plans (
+    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id      UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL DEFAULT 'Plano principal',
+    tables_data   JSONB NOT NULL DEFAULT '[]'::jsonb,
+    elements_data JSONB NOT NULL DEFAULT '[]'::jsonb,
+    budget_data   JSONB NOT NULL DEFAULT '{}'::jsonb,
+    canvas_width  NUMERIC(10,2) NOT NULL DEFAULT 2400,
+    canvas_height NUMERIC(10,2) NOT NULL DEFAULT 1800,
+    zoom          NUMERIC(5,2) NOT NULL DEFAULT 1,
+    pan_x         NUMERIC(10,2) NOT NULL DEFAULT 100,
+    pan_y         NUMERIC(10,2) NOT NULL DEFAULT 100,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_table_plans_event ON table_plans(event_id);
+
+-- ============================================================
+-- 14. ADMINS — JWT auth users
+-- ============================================================
+CREATE TABLE IF NOT EXISTS admins (
+    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email         TEXT NOT NULL UNIQUE,
+    name          TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'admin',
+    active        BOOLEAN NOT NULL DEFAULT true,
+    last_login    TIMESTAMPTZ,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Seed default admin (password: admin123)
+INSERT INTO admins (email, name, password_hash, role)
+VALUES ('admin@eventflow.app', 'Admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin')
+ON CONFLICT (email) DO NOTHING;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import jsPDF from 'jspdf';
 
 // -------- TYPES --------
 
@@ -180,6 +181,58 @@ export default function TableMapEditor({ eventName: initialEventName = 'Evento s
     adults: 0, kids: 0, priceAdult: 0, priceKid: 0,
     barPrice: 0, discountPct: 0, ivaPct: 10, complements: [] as { id: string; label: string; price: number }[]
   });
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Save table plan to API
+  const handleSave = useCallback(async () => {
+    if (!eventId) return;
+    setSaving(true);
+    setLoadError(null);
+    try {
+      const res = await fetch('/api/plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: eventId,
+          name: `Plano - ${eventName}`,
+          tables_data: tables,
+          elements_data: elements,
+          budget_data: budget,
+          zoom,
+          pan_x: pan.x,
+          pan_y: pan.y,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Error al guardar');
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  }, [eventId, eventName, tables, elements, budget, zoom, pan]);
+
+  // Export to PDF
+  const handleExportPDF = useCallback(async () => {
+    try {
+      const canvasWrap = wrapperRef.current?.querySelector('.canvas-content') as HTMLElement;
+      if (!canvasWrap) return;
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(canvasWrap, {
+        scale: 2, useCORS: true,
+        backgroundColor: '#faf8f3',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('landscape', 'mm', 'a3');
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = (canvas.height / canvas.width) * pdfW;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+      pdf.save(`plano-${eventName.replace(/[^a-zA-Z0-9-_\s]/g, '')}.pdf`);
+    } catch (err) {
+      console.error('PDF export error:', err);
+    }
+  }, [eventName]);
 
   // Undo history
   const [history, setHistory] = useState<{ tables: TableItem[]; elements: ElementItem[] }[]>([]);
@@ -561,7 +614,7 @@ export default function TableMapEditor({ eventName: initialEventName = 'Evento s
         if (plan.zoom) setZoom(plan.zoom);
         if (plan.pan_x != null && plan.pan_y != null) setPan({ x: plan.pan_x, y: plan.pan_y });
         if (plan.name) setEventName(plan.name);
-        saveHistory();
+        pushHistory();
         alert('Plano cargado correctamente');
       } else {
         alert('No hay plano guardado para este evento');
@@ -570,42 +623,6 @@ export default function TableMapEditor({ eventName: initialEventName = 'Evento s
       alert('Error de conexión al cargar el plano');
     }
   }, [eventId, setTables, setElements]);
-
-  // ---- Export PDF ----
-  const handleExportPDF = useCallback(async () => {
-    try {
-      const wrapper = wrapperRef.current;
-      if (!wrapper) return;
-      const { default: html2canvas } = await import('html2canvas');
-      const { default: jsPDF } = await import('jspdf');
-      const canvas = await html2canvas(wrapper, {
-        backgroundColor: '#f5f0e6',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('l', 'mm', 'a4');
-      const pdfW = 297;
-      const pdfH = 210;
-      const margin = 10;
-      const imgW = pdfW - margin * 2;
-      const imgH = (canvas.height / canvas.width) * imgW;
-      pdf.setFillColor(245, 240, 230);
-      pdf.rect(0, 0, pdfW, pdfH, 'F');
-      // Title
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(14);
-      pdf.setTextColor(45, 45, 45);
-      pdf.text(eventName || 'Plano del Evento', pdfW / 2, 12, { align: 'center' });
-      // Image
-      pdf.addImage(imgData, 'PNG', margin, 16, imgW, Math.min(imgH, pdfH - 26));
-      pdf.save(`${(eventName || 'plano-evento').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-    } catch (err) {
-      console.error('PDF export error:', err);
-      alert('Error al exportar PDF');
-    }
-  }, [eventName]);
 
   const findItem = useCallback((id: string): CanvasItem | undefined => {
     return [...tables, ...elements].find(t => t.id === id);
@@ -889,10 +906,28 @@ export default function TableMapEditor({ eventName: initialEventName = 'Evento s
               className="p-1.5 rounded text-[#1a1a1a]/60 hover:bg-[#b08a3e]/10 transition-colors disabled:opacity-30" title="Rehacer (Ctrl+Y)" disabled={historyIdx + 2 > history.length}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6M3 17a9 9 0 0 1 15-6.7L21 13"/></svg>
             </button>
+            {eventId && (
+              <>
+                <div className="w-px h-5 bg-[#b08a3e]/20" />
+                <button onClick={handleSave}
+                  disabled={saving}
+                  className="p-1.5 rounded text-[#1a1a1a]/60 hover:bg-[#b08a3e]/10 transition-colors disabled:opacity-30" title="Guardar plano">
+                  {saving ? (
+                    <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2"/></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  )}
+                </button>
+                <button onClick={handleExportPDF}
+                  className="p-1.5 rounded text-[#1a1a1a]/60 hover:bg-[#b08a3e]/10 transition-colors" title="Exportar PDF">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Canvas inner */}
-          <div ref={canvasRef} className="absolute" style={{ transformOrigin: '0 0', top: 0, left: 0 }}>
+          <div ref={canvasRef} className="absolute canvas-content" style={{ transformOrigin: '0 0', top: 0, left: 0 }}>
             <div style={{ width: CANVAS_W, height: CANVAS_H, position: 'relative', backgroundImage: 'radial-gradient(circle, #b08a3e20 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
               {/* Head marker */}
               <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[#b08a3e]/30 text-[11px] tracking-[3px] uppercase font-serif italic pointer-events-none" style={{ fontFamily: "'Georgia', serif" }}>
