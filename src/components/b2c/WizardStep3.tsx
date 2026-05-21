@@ -2,46 +2,75 @@
 /**
  * EventFlow — Wizard Step 3: Personalización de Platos
  * 
- * Tabs por categoría con validación: no permite avanzar hasta completar
- * los mínimos de cada categoría. Diseño estilo byalboroto.duckdns.org
- * con colores cream/burgundy/gold.
+ * Mínimos dinámicos según el menú elegido:
+ * - Si es menú predefinido: mínimos adaptativos (carne 1-2, pescado 1-2, arroz 0-1)
+ * - Si es personalizado: mínimos base del catálogo
+ * 
+ * No permite avanzar si no se cumplen los mínimos de cada categoría.
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
-import { CATALOG_CATEGORIES, CATALOG_ITEMS } from '@/data/menus';
+import { CATALOG_CATEGORIES, CATALOG_ITEMS, ProposedMenu } from '@/data/menus';
+import { PROPOSED_MENUS } from '@/data/menus';
 
-// Map proposed menu IDs to their item lists for pre-selection
-const PROPOSED_MENU_MAP: Record<string, string[]> = {
-  'menu1': [],
-  'menu2': [],
-  'menu3': [],
-  'menu4': [],
-  'menu5': [],
-  'menu6': [],
-  'kid1': [],
-  'kid2': [],
+// Dynamic minimums per menu
+const MENU_MINIMUMS: Record<string, Record<string, number>> = {
+  // menu1: Esencial — carne 1, pescado 0, arroz 0
+  'menu1': { 'carne': 1, 'pescado': 0, 'arroz': 0, 'sorbete': 1, 'postre': 1 },
+  // menu2: Recomendado — carne 1, pescado 0, arroz 0
+  'menu2': { 'carne': 1, 'pescado': 0, 'arroz': 0, 'sorbete': 1, 'postre': 1 },
+  // menu3: Completo — carne 1, pescado 1, arroz 0
+  'menu3': { 'carne': 1, 'pescado': 1, 'arroz': 0, 'sorbete': 1, 'postre': 1 },
+  // menu4: Premium — carne 1, pescado 1, arroz 1
+  'menu4': { 'carne': 1, 'pescado': 1, 'arroz': 1, 'sorbete': 1, 'postre': 1 },
+  // menu5: Premium+ — carne 2, pescado 1, arroz 1
+  'menu5': { 'carne': 2, 'pescado': 1, 'arroz': 1, 'sorbete': 1, 'postre': 1 },
+  // menu6: Gran Selección — carne 2, pescado 2, arroz 1
+  'menu6': { 'carne': 2, 'pescado': 2, 'arroz': 1, 'sorbete': 1, 'postre': 1 },
 };
 
+// Default minimums for custom mode
+const DEFAULT_MINIMUMS: Record<string, number> = {
+  'carne': 1,
+  'pescado': 1,
+  'arroz': 0,
+  'sorbete': 1,
+  'postre': 1,
+  'aperitivo-frio': 4,
+  'aperitivo-caliente': 4,
+  'compartir-mesa': 1,
+  'bebida': 0,
+  'complemento': 0,
+};
+
+function getEffectiveMinimums(menuId: string | null | undefined): Record<string, number> {
+  if (!menuId || !MENU_MINIMUMS[menuId]) {
+    return { ...DEFAULT_MINIMUMS };
+  }
+  // Merge: start with catalog defaults, override with menu-specific
+  const merged = { ...DEFAULT_MINIMUMS };
+  for (const [cat, min] of Object.entries(MENU_MINIMUMS[menuId])) {
+    if (min > 0) {
+      merged[cat] = min;
+    }
+  }
+  return merged;
+}
+
 export default function WizardStep3() {
-  const { step3, setStepData, nextStep, step2 } = useWizardStore();
+  const { step3, step2, setStepData, nextStep } = useWizardStore();
   const [activeCategory, setActiveCategory] = useState(CATALOG_CATEGORIES[0].id);
   const [selectedItems, setSelectedItems] = useState<string[]>(
     (step3 as any)?.selected_items?.map((si: { item_id: string }) => si.item_id) || []
   );
   const [showValidationWarning, setShowValidationWarning] = useState(false);
 
-  // Load selected items from step2 if a proposed menu was selected
-  useEffect(() => {
-    if (step2?.menu_id && selectedItems.length === 0) {
-      // Pre-select items from the proposed menu
-      const menuItems = PROPOSED_MENU_MAP[step2.menu_id as string];
-      if (menuItems) {
-        setSelectedItems(menuItems);
-      }
-    }
-  }, [step2?.menu_id]);
+  // Determine if using proposed menu or custom
+  const isProposed = step2?.use_proposed === true;
+  const menuId = step2?.menu_id || null;
+  const effectiveMinimums = getEffectiveMinimums(menuId);
 
   const toggleItem = (name: string) => {
     setSelectedItems((prev) =>
@@ -52,34 +81,32 @@ export default function WizardStep3() {
 
   const currentItems = CATALOG_ITEMS[activeCategory] || [];
   const currentCategory = CATALOG_CATEGORIES.find((c) => c.id === activeCategory);
-  const minSelect = currentCategory?.minSelect || 0;
+  const minSelect = effectiveMinimums[activeCategory] || currentCategory?.minSelect || 0;
   const currentSelected = selectedItems.filter((id) => CATALOG_ITEMS[activeCategory]?.includes(id)).length;
   const isComplete = minSelect === 0 || currentSelected >= minSelect;
 
   // Check ALL categories are complete
   const allCategoriesComplete = useMemo(() => {
     return CATALOG_CATEGORIES.every((cat) => {
-      const min = cat.minSelect || 0;
+      const min = effectiveMinimums[cat.id] || 0;
       if (min === 0) return true;
       const count = selectedItems.filter((id) => CATALOG_ITEMS[cat.id]?.includes(id)).length;
       return count >= min;
     });
-  }, [selectedItems]);
+  }, [selectedItems, effectiveMinimums]);
 
   // Get incomplete categories list
   const incompleteCategories = useMemo(() => {
     return CATALOG_CATEGORIES.filter((cat) => {
-      const min = cat.minSelect || 0;
+      const min = effectiveMinimums[cat.id] || 0;
       if (min === 0) return false;
       const count = selectedItems.filter((id) => CATALOG_ITEMS[cat.id]?.includes(id)).length;
       return count < min;
     });
-  }, [selectedItems]);
+  }, [selectedItems, effectiveMinimums]);
 
   const handleNext = () => {
-    // Validate all categories
     if (!allCategoriesComplete) {
-      // Find first incomplete category and switch to it
       if (incompleteCategories.length > 0) {
         setActiveCategory(incompleteCategories[0].id);
       }
@@ -98,7 +125,10 @@ export default function WizardStep3() {
 
   // Total items across all categories
   const totalSelected = selectedItems.length;
-  const totalRequired = CATALOG_CATEGORIES.reduce((sum, cat) => sum + (cat.minSelect || 0), 0);
+  const totalRequired = CATALOG_CATEGORIES.reduce((sum, cat) => sum + (effectiveMinimums[cat.id] || 0), 0);
+
+  // Show menu info if proposed
+  const selectedMenuData = PROPOSED_MENUS.find((m) => m.id === menuId);
 
   return (
     <motion.div
@@ -111,10 +141,13 @@ export default function WizardStep3() {
       {/* Header */}
       <div className="text-center">
         <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
-          Personaliza tu Menú
+          {isProposed ? 'Personaliza tu Menú' : 'Elige tus Platos'}
         </h2>
         <p className="text-stone-500 text-base max-w-md mx-auto">
-          Selecciona los platos de cada categoría. Debes cumplir el mínimo antes de continuar.
+          {isProposed
+            ? `Menú ${selectedMenuData?.name || ''} — ajusta los platos según tu gusto.`
+            : 'Selecciona los platos de cada categoría. Debes cumplir el mínimo antes de continuar.'
+          }
         </p>
       </div>
 
@@ -133,11 +166,28 @@ export default function WizardStep3() {
             <div>
               <p className="text-sm font-semibold text-red-800">Menú incompleto</p>
               <p className="text-xs text-red-600 mt-1">
-                Necesitas completar todas las categorías. Pulsa en las pestañas marcadas en rojo para ver cuáles faltan.
+                Necesitas completar todas las categorías. Pulsa en las pestañas marcadas en rojo.
               </p>
             </div>
           </div>
         </motion.div>
+      )}
+
+      {/* Menu info (if proposed) */}
+      {isProposed && selectedMenuData && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            <span className="text-sm font-semibold text-amber-800">
+              Menú {selectedMenuData.name} ({selectedMenuData.tag})
+            </span>
+          </div>
+          <p className="text-xs text-amber-700">
+            Este menú incluye: {selectedMenuData.sections.map(s => s.section).join(' · ')}
+          </p>
+        </div>
       )}
 
       {/* Overall progress */}
@@ -162,7 +212,7 @@ export default function WizardStep3() {
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
         {CATALOG_CATEGORIES.map((cat) => {
           const count = selectedItems.filter((id) => CATALOG_ITEMS[cat.id]?.includes(id)).length;
-          const min = cat.minSelect || 0;
+          const min = effectiveMinimums[cat.id] || 0;
           const isComplete = min === 0 || count >= min;
           const isIncomplete = !isComplete && min > 0;
 
@@ -201,7 +251,7 @@ export default function WizardStep3() {
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${isComplete ? 'bg-green-500' : 'bg-amber-500'}`} />
             <span className={`text-sm font-semibold ${isComplete ? 'text-green-800' : 'text-amber-800'}`}>
-              {isComplete ? '✓ Categoría completa' : `Faltan ${minSelect - currentSelected} platos`}
+              {isComplete ? '✓ Categoría completa' : `Faltan ${Math.max(0, minSelect - currentSelected)} platos`}
             </span>
           </div>
           <span className="text-sm text-stone-500">
@@ -252,7 +302,7 @@ export default function WizardStep3() {
             : 'bg-stone-200 text-stone-400 cursor-not-allowed'
           }`}
       >
-        {allCategoriesComplete ? 'Sugerencias →' : `Completa el menú (${incompleteCategories.length} categoría${incompleteCategories.length > 1 ? 's' : ''} pendiente${incompleteCategories.length > 1 ? 's' : ''})`}
+        {allCategoriesComplete ? 'Sugerencias →' : `Completa el menú (${incompleteCategories.length} pendiente${incompleteCategories.length > 1 ? 's' : ''})`}
       </button>
     </motion.div>
   );
