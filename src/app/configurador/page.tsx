@@ -27,8 +27,14 @@ const STEP_COMPONENTS: Record<number, React.ComponentType<{ onNext: () => void; 
 };
 
 export default function ConfiguradorPage() {
-  const { currentStep, nextStep, prevStep } = useWizardStore();
+  const { currentStep, nextStep, prevStep, reset } = useWizardStore();
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const StepComponent = STEP_COMPONENTS[currentStep] || WizardStep1;
+
+  const handleReset = () => {
+    reset();
+    setShowResetConfirm(false);
+  };
 
   return (
     <div className="min-h-screen bg-cream">
@@ -48,28 +54,63 @@ export default function ConfiguradorPage() {
             )}
             <span className="font-serif text-gold text-lg">Alboroto Eventos</span>
           </div>
-          <div className="flex items-center gap-1">
-            {STEP_LABELS.map((label, i) => (
-              <div key={label} className="flex items-center">
-                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs transition-all
-                  ${i + 1 === currentStep
-                    ? 'bg-gold text-ink font-semibold'
-                    : i + 1 < currentStep
-                    ? 'bg-gold/30 text-gold'
-                    : 'bg-ink/20 text-cream/30'
-                  }`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs
-                    ${i + 1 === currentStep ? 'bg-ink text-gold' : ''}
-                    ${i + 1 < currentStep ? 'bg-gold text-ink' : ''}`}>
-                    {i + 1 < currentStep ? '✓' : i + 1}
-                  </span>
-                  <span className="hidden sm:inline">{label}</span>
+          <div className="flex items-center gap-3">
+            {/* Reset button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowResetConfirm(!showResetConfirm)}
+                className="text-stone-400 hover:text-red-400 transition-colors p-1"
+                title="Restablecer todo"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M20.015 4.356v4.992" />
+                </svg>
+              </button>
+              {showResetConfirm && (
+                <div className="absolute right-0 top-8 bg-white rounded-xl shadow-xl border border-stone-200 p-4 w-64 z-50">
+                  <p className="text-sm text-stone-700 mb-3 font-medium">¿Restablecer todo?</p>
+                  <p className="text-xs text-stone-500 mb-3">Se perderán todas las selecciones del menú.</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowResetConfirm(false)}
+                      className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleReset}
+                      className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
+                    >
+                      Restablecer
+                    </button>
+                  </div>
                 </div>
-                {i < STEP_LABELS.length - 1 && (
-                  <div className={`w-4 h-0.5 mx-1 ${i + 1 < currentStep ? 'bg-gold' : 'bg-ink/20'}`} />
-                )}
-              </div>
-            ))}
+              )}
+            </div>
+            {/* Steps */}
+            <div className="flex items-center gap-1">
+              {STEP_LABELS.map((label, i) => (
+                <div key={label} className="flex items-center">
+                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs transition-all
+                    ${i + 1 === currentStep
+                      ? 'bg-gold text-ink font-semibold'
+                      : i + 1 < currentStep
+                      ? 'bg-gold/30 text-gold'
+                      : 'bg-ink/20 text-cream/30'
+                    }`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs
+                      ${i + 1 === currentStep ? 'bg-ink text-gold' : ''}
+                      ${i + 1 < currentStep ? 'bg-gold text-ink' : ''}`}>
+                      {i + 1 < currentStep ? '✓' : i + 1}
+                    </span>
+                    <span className="hidden sm:inline">{label}</span>
+                  </div>
+                  {i < STEP_LABELS.length - 1 && (
+                    <div className={`w-4 h-0.5 mx-1 ${i + 1 < currentStep ? 'bg-gold' : 'bg-ink/20'}`} />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </header>
