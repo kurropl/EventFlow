@@ -173,6 +173,7 @@ export const useWizardStore = create<WizardState>()(
               menu_id: raw.menu_id ?? raw.selected_menu,
               selected_menu: raw.selected_menu,
               use_proposed: raw.use_proposed ?? true,
+              kid_menu_id: raw.kid_menu_id,
             });
             set({ step2: validated });
             break;

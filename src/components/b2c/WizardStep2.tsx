@@ -2,116 +2,126 @@
 /**
  * EventFlow — Wizard Step 2: Menú Propuesto
  * 
- * DOS OPCIONES CLARAS:
- * 1. Menú Predefinido — elige uno de los menús completos (estilo PDF)
- * 2. Personalizado — construye tu menú plato a plato
+ * Diseño visual original (tarjetas expandibles con secciones).
+ * Control de niños: si kids_count > 0, se selecciona menú adulto + infantil.
  * 
- * REGLA NIÑOS:
- * - Si kids_count > 0: se muestran TODOS los menús (adultos + niños)
- *   El usuario debe elegir al menos 1 adulto + 1 niño
- * - Si kids_count === 0: solo se muestran menús adultos
+ * DOS ACCIONES:
+ * - "Usar este menú" → salta directo a Extras
+ * - "Personalizar Menú" → va a Step 3 con los platos del menú cargados
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 import { PROPOSED_MENUS, CATALOG_CATEGORIES, CATALOG_ITEMS } from '@/data/menus';
-
-// Mapeo de sección del menú → categoría del catálogo
-const SECTION_TO_CATEGORY: Record<string, string> = {
-  'Aperitivos en mesa': 'aperitivo-frio',
-  'Aperitivos fríos': 'aperitivo-frio',
-  'Aperitivos calientes': 'aperitivo-caliente',
-  'En mesa a compartir': 'compartir-mesa',
-  'A compartir cada 4': 'compartir-mesa',
-  'A compartir': 'compartir-mesa',
-  'Plato principal': 'carne', // placeholder
-  'Postre y bebida': 'postre',
-};
 
 // Mapeo nombre → categoría catálogo (heurístico)
 function getDishCategory(dish: string): string {
   const d = dish.toLowerCase();
   if (d.includes('arroz') || d.includes('paella') || d.includes('fideuá')) return 'arroz';
-  if (d.includes('carne') || d.includes('pollo') || d.includes('ternera') || d.includes('cordero') || d.includes('cerdo') || d.includes('carrill') || d.includes('solomillo') || d.includes('hamburguesa')) return 'carne';
-  if (d.includes('pescado') || d.includes('lenguado') || d.includes('merluza') || d.includes('bacalao') || d.includes('gamb') || d.includes('langostino') || d.includes('pulpo') || d.includes('merluz')) return 'pescado';
+  if (d.includes('carne') || d.includes('pollo') || d.includes('ternera') || d.includes('cordero') || d.includes('cerdo') || d.includes('carrill') || d.includes('solomillo') || d.includes('hamburguesa') || d.includes('pechuga') || d.includes('mini hamburguesa')) return 'carne';
+  if (d.includes('pescado') || d.includes('lenguado') || d.includes('merluza') || d.includes('bacalao') || d.includes('gamb') || d.includes('langostino') || d.includes('pulpo') || d.includes('merluz') || d.includes('rap') || d.includes('lubina') || d.includes('rodaballo') || d.includes('ventresca')) return 'pescado';
   if (d.includes('sorbete') || d.includes('helado') || d.includes('granizado')) return 'sorbete';
-  if (d.includes('postre') || d.includes('pastelito') || d.includes('tarta') || d.includes('brownie') || d.includes('crema') || d.includes('flan') || d.includes('mousse')) return 'postre';
+  if (d.includes('postre') || d.includes('pastelito') || d.includes('tarta') || d.includes('brownie') || d.includes('crema') || d.includes('flan') || d.includes('mousse') || d.includes('lemon pie') || d.includes('torrija') || d.includes('pantera') || d.includes('surtido')) return 'postre';
   if (d.includes('bebida') || d.includes('vino') || d.includes('cerveza') || d.includes('cava') || d.includes('refresc') || d.includes('zum') || d.includes('agua') || d.includes('manzanilla') || d.includes('verdejo') || d.includes('frizzant')) return 'bebida';
-  if (d.includes('canapé') || d.includes('canape') || d.includes('tosta') || d.includes('mini toast') || d.includes('croqueta') || d.includes('empanadilla') || d.includes('pincho') || d.includes('volovane') || d.includes('quiche') || d.includes('chupito') || d.includes('gordita') || d.includes('oliva') || d.includes('patata') || d.includes('pan ') || d.includes('jamón') || d.includes('jamón') || d.includes('queso') || d.includes('lomo') || d.includes('ensaladilla') || d.includes('hummu') || d.includes('aguacate') || d.includes('atún') || d.includes('ventresca') || d.includes('pingá') || d.includes('revuelto') || d.includes('adobo') || d.includes('choco') || d.includes('adobo')) return 'aperitivo-frio';
-  if (d.includes('frito') || d.includes('frit') || d.includes('adobo') || d.includes('delici') || d.includes('mini pita') || d.includes('mini de')) return 'aperitivo-caliente';
-  return 'carne'; // default
+  if (d.includes('canapé') || d.includes('canape') || d.includes('tosta') || d.includes('mini toast') || d.includes('croqueta') || d.includes('empanadilla') || d.includes('pincho') || d.includes('volovane') || d.includes('quiche') || d.includes('chupito') || d.includes('gordita') || d.includes('oliva') || d.includes('patata') || d.includes('pan ') || d.includes('jamón') || d.includes('queso') || d.includes('lomo') || d.includes('ensaladilla') || d.includes('hummu') || d.includes('aguacate') || d.includes('atún') || d.includes('ventresca') || d.includes('pingá') || d.includes('revuelto') || d.includes('adobo') || d.includes('choco') || d.includes('mini pita') || d.includes('mini de') || d.includes('mini hot dog') || d.includes('bao') || d.includes('alita') || d.includes('brocheta') || d.includes('empana')) return 'aperitivo-caliente';
+  return 'aperitivo-frio';
 }
+
+const TAG_STYLES: Record<string, string> = {
+  'Recomendado': 'bg-amber-100 text-amber-800',
+  'Premium': 'bg-stone-800 text-white',
+  'Premium +': 'bg-stone-800 text-white',
+  'Gran Selección': 'bg-amber-100 text-amber-800',
+  'Infantil': 'bg-pink-100 text-pink-700',
+  'Esencial': 'bg-stone-100 text-stone-600',
+  'Completo': 'bg-amber-100 text-amber-800',
+  'Canapés': 'bg-purple-100 text-purple-700',
+};
 
 export default function WizardStep2() {
   const { step1, step2, setStepData, nextStep, prevStep } = useWizardStore();
-  const [selectedMenuId, setSelectedMenuId] = useState<string>(step2?.menu_id || '');
-  const [useProposed, setUseProposed] = useState<boolean>(step2?.use_proposed ?? true);
+  const [selectedAdultId, setSelectedAdultId] = useState<string>(step2?.menu_id || '');
+  const [selectedKidId, setSelectedKidId] = useState<string>(step2?.kid_menu_id || '');
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
   const kids = step1?.kids_count || 0;
 
-  // Filtrar menús según si hay niños
+  // Filtrar menús
   const adultMenus = useMemo(() => PROPOSED_MENUS.filter(m => !m.is_kid), []);
   const kidMenus = useMemo(() => PROPOSED_MENUS.filter(m => m.is_kid), []);
 
   // Validación: si kids > 0, necesita 1 adulto + 1 niño
-  const adultSelected = selectedMenuId ? adultMenus.find(m => m.id === selectedMenuId) : null;
-  const kidSelected = selectedMenuId ? kidMenus.find(m => m.id === selectedMenuId) : null;
-  const hasAdult = !!adultSelected;
-  const hasKid = !!kidSelected;
+  const hasAdult = !!selectedAdultId;
+  const hasKid = !!selectedKidId;
   const kidsValid = kids === 0 || (hasAdult && hasKid);
+  const canUseMenu = kidsValid && (hasAdult || !kids);
 
-  // Si kids > 0 y ya tiene ambos, skip a extras
-  const canSkipToExtras = kidsValid && hasAdult;
-
-  const handleUseMenu = () => {
-    if (!kidsValid) return;
+  // Sync store when selection changes
+  useEffect(() => {
     setStepData('step2', {
-      menu_id: selectedMenuId,
+      menu_id: selectedAdultId,
+      kid_menu_id: selectedKidId,
       use_proposed: true,
     } as any);
-    nextStep(); // va directo a paso 4 (Extras)
+  }, [selectedAdultId, selectedKidId]);
+
+  const handleUseMenu = () => {
+    if (!canUseMenu) return;
+    setStepData('step2', {
+      menu_id: selectedAdultId,
+      kid_menu_id: selectedKidId,
+      use_proposed: true,
+    } as any);
+    // Skip step 3 (personalización) → go to step 4 (Extras)
+    nextStep();
+    nextStep();
   };
 
   const handleCustomize = () => {
-    if (!kidsValid) return;
-    // Cargar los platos del menú seleccionado en step3
-    const selectedMenu = [...adultMenus, ...kidMenus].find(m => m.id === selectedMenuId);
+    if (!canUseMenu) return;
+    const selectedMenu = [...adultMenus, ...kidMenus].find(m => m.id === (selectedAdultId || selectedKidId));
     if (!selectedMenu) return;
 
     // Convertir secciones del menú en items del catálogo
     const items: any[] = [];
     for (const section of selectedMenu.sections) {
-      const catId = SECTION_TO_CATEGORY[section.section] || 'carne';
       for (const dish of section.items) {
-        const catId2 = getDishCategory(dish);
-        const catItems = CATALOG_ITEMS[catId2] || [];
-        // Buscar item en catálogo por nombre
+        const catId = getDishCategory(dish);
+        const catItems = CATALOG_ITEMS[catId] || [];
+        const dishKey = dish.toLowerCase().substring(0, 15);
         const match = catItems.find((c: string) =>
-          c.toLowerCase().includes(dish.toLowerCase().split('mini ')[1] || dish.toLowerCase())
+          c.toLowerCase().includes(dishKey) || dishKey.includes(c.toLowerCase().substring(0, 10))
         );
         if (match) {
           items.push({
             item_id: match,
             name: dish,
-            category: catId2,
+            category: catId,
             quantity: 1,
           });
         }
       }
     }
 
-    // Si no se encontraron items exactos, cargar al menos placeholders
-    // (en producción esto vendría del catálogo real)
     setStepData('step2', {
-      menu_id: selectedMenuId,
+      menu_id: selectedAdultId,
+      kid_menu_id: selectedKidId,
       use_proposed: false,
     } as any);
     setStepData('step3', {
-      selected_items: items.length > 0 ? items : [],
+      selected_items: items.length > 0 ? items : selectedMenu.sections.flatMap(s => s.items.map(name => ({
+        item_id: name,
+        name: name,
+        category: getDishCategory(name),
+        quantity: 1,
+      }))),
     } as any);
     nextStep();
   };
+
+  const adultSelected = adultMenus.find(m => m.id === selectedAdultId);
+  const kidSelected = kidMenus.find(m => m.id === selectedKidId);
 
   return (
     <motion.div
@@ -160,7 +170,8 @@ export default function WizardStep2() {
               </p>
               {!kidsValid && (
                 <p className="text-xs text-amber-600 mt-1">
-                  Adulto: {hasAdult ? '✓' : '○'} | Niño: {hasKid ? '✓' : '○'}
+                  Adulto: {hasAdult ? `✓ ${adultSelected?.name}` : '○ Sin seleccionar'} | 
+                  Niño: {hasKid ? `✓ ${kidSelected?.name}` : '○ Sin seleccionar'}
                 </p>
               )}
             </div>
@@ -168,69 +179,114 @@ export default function WizardStep2() {
         </motion.div>
       )}
 
-      {/* Menu Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[...adultMenus, ...kidMenus].map((menu) => {
-          const isSelected = selectedMenuId === menu.id;
+      {/* Menu Selection — original visual style */}
+      <div className="space-y-3">
+        {[...adultMenus, ...kidMenus].map((menu, i) => {
+          const isSelected = menu.is_kid
+            ? selectedKidId === menu.id
+            : selectedAdultId === menu.id;
+          const isExpanded = expandedMenu === menu.id;
           const isKid = menu.is_kid;
+          const totalItems = menu.sections.reduce((sum, s) => sum + s.items.length, 0);
+
           return (
-            <button
+            <motion.div
               key={menu.id}
-              onClick={() => setSelectedMenuId(menu.id)}
-              className={`group relative text-left rounded-2xl border-2 overflow-hidden transition-all duration-200
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.3 }}
+              className={`rounded-2xl border-2 transition-all duration-200 overflow-hidden
                 ${isSelected
-                  ? 'border-amber-600 shadow-lg shadow-amber-100'
+                  ? isKid
+                    ? 'border-pink-500 bg-pink-50/30 shadow-lg shadow-pink-100/50'
+                    : 'border-amber-600 bg-amber-50/30 shadow-lg shadow-amber-100/50'
                   : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md'
                 }`}
             >
-              {/* Top accent bar */}
-              <div className={`h-2 ${
-                isKid ? 'bg-pink-400' : 'bg-amber-500'
-              }`} />
-
-              <div className="p-6">
-                {/* Menu header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-serif text-xl text-stone-800">{menu.name}</h3>
-                    <span className={`inline-block mt-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                      isKid
-                        ? 'bg-pink-100 text-pink-700'
-                        : menu.tag === 'Premium' || menu.tag === 'Premium +'
-                          ? 'bg-amber-100 text-amber-800'
-                          : menu.tag === 'Gran Selección'
-                            ? 'bg-stone-800 text-white'
-                            : 'bg-stone-100 text-stone-600'
-                    }`}>
-                      {menu.tag}
-                      {isKid && ' · Infantil'}
-                    </span>
+              <button
+                onClick={() => {
+                  if (isKid) {
+                    setSelectedKidId(isSelected ? '' : menu.id);
+                  } else {
+                    setSelectedAdultId(isSelected ? '' : menu.id);
+                  }
+                  setExpandedMenu(isExpanded ? null : menu.id);
+                }}
+                className="w-full text-left p-5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1 flex-wrap">
+                      <h3 className="font-serif text-xl text-stone-800">
+                        {menu.name}
+                      </h3>
+                      <span className={`px-3 py-0.5 rounded-full text-xs font-semibold ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-600'}`}>
+                        {menu.tag}
+                      </span>
+                      {isKid && (
+                        <span className="px-3 py-0.5 rounded-full text-xs font-semibold bg-pink-100 text-pink-700">
+                          Infantil
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-stone-500">
+                      <span>{menu.sections.length} secciones</span>
+                      <span>·</span>
+                      <span>{totalItems} platos</span>
+                    </div>
                   </div>
-                  {isSelected && (
-                    <div className="w-6 h-6 rounded-full bg-amber-600 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  <div className={`w-7 h-7 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all
+                    ${isSelected
+                      ? isKid
+                        ? 'border-pink-500 bg-pink-500 scale-110'
+                        : 'border-amber-600 bg-amber-600 scale-110'
+                      : 'border-stone-300'}`}>
+                    {isSelected && (
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
+              </button>
 
-                {/* Sections preview */}
-                <div className="space-y-2">
-                  {menu.sections.map((sec, i) => (
-                    <div key={i} className="text-sm">
-                      <span className="font-semibold text-stone-700">{sec.section}:</span>
-                      <span className="text-stone-500 ml-1">{sec.items.length} platos</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Total items */}
-                <div className="mt-3 pt-3 border-t border-stone-100 text-xs text-stone-400">
-                  {menu.sections.reduce((sum, s) => sum + s.items.length, 0)} platos en total
-                </div>
-              </div>
-            </button>
+              {/* Expanded sections */}
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`border-t ${isKid ? 'border-pink-200/50 bg-pink-50/30' : 'border-amber-200/50 bg-amber-50/30'}`}
+                >
+                  <div className="p-5 pt-4 space-y-4">
+                    {menu.sections.map((section, si) => (
+                      <div key={si}>
+                        <h4 className="text-xs font-bold uppercase tracking-widest mb-2"
+                          style={{ color: isKid ? '#be185d' : '#b45309' }}>
+                          {section.section}
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {section.items.map((item, ii) => (
+                            <span
+                              key={ii}
+                              className="text-sm px-2.5 py-1 rounded-md border"
+                              style={{
+                                backgroundColor: isKid ? '#fdf2f8' : '#fffbeb',
+                                borderColor: isKid ? '#fbcfe8' : '#fef3c7',
+                                color: '#44403c',
+                              }}
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
           );
         })}
       </div>
@@ -244,7 +300,7 @@ export default function WizardStep2() {
           ← Atrás
         </button>
 
-        {canSkipToExtras ? (
+        {canUseMenu ? (
           <button
             onClick={handleUseMenu}
             className="flex-1 py-4 rounded-xl font-semibold text-base bg-amber-600 text-white hover:bg-amber-700 shadow-md hover:shadow-lg transition-all"
@@ -253,18 +309,27 @@ export default function WizardStep2() {
           </button>
         ) : (
           <button
-            onClick={handleCustomize}
-            disabled={!kidsValid}
-            className={`flex-1 py-4 rounded-xl font-semibold text-base transition-all
-              ${kidsValid
-                ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-md'
-                : 'bg-stone-200 text-stone-400 cursor-not-allowed'
-              }`}
+            disabled
+            className="flex-1 py-4 rounded-xl font-semibold text-base bg-stone-200 text-stone-400 cursor-not-allowed"
           >
-            Personalizar Menú →
+            {kids > 0 && !hasAdult
+              ? 'Selecciona menú adulto'
+              : kids > 0 && !hasKid
+                ? 'Selecciona menú infantil'
+                : 'Selecciona menú'}
           </button>
         )}
       </div>
+
+      {/* Customize button — always visible when a menu is selected */}
+      {selectedAdultId && (
+        <button
+          onClick={handleCustomize}
+          className="w-full py-4 rounded-xl font-semibold text-base border-2 border-amber-600 text-amber-700 hover:bg-amber-50 transition-all"
+        >
+          ✏️ Personalizar este menú →
+        </button>
+      )}
     </motion.div>
   );
 }

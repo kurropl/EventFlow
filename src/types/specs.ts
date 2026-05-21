@@ -234,6 +234,7 @@ export type WizardStep1 = z.infer<typeof WizardStep1Schema>;
 
 export const WizardStep2Schema = z.object({
   menu_id: z.string().min(1, 'Debe seleccionar un menú base').optional(),
+  kid_menu_id: z.string().min(1, 'Debe seleccionar un menú infantil').optional(),
   selected_menu: z.string().uuid('Debe seleccionar un menú base').optional(),
   use_proposed: z.boolean().default(true),
 });
