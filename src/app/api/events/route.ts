@@ -1,24 +1,22 @@
 /**
  * EventFlow — Events API Routes
- * GET /api/events — List events (filtered by user email or admin)
- * POST /api/events — Create event from wizard submission (validated with Zod, emits BUDGET_CREATED webhook)
+ * GET /api/events — List events
+ * POST /api/events — Create event from wizard submission
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSupabaseServerClient } from '@/lib/supabase';
+import { queryMany, querySingle } from '@/lib/db';
 import { EventSetupCreateSchema } from '@/types/specs';
 import { emitWebhook } from '@/lib/webhooks';
 
 // ============================================================
-// GET — List events (filtered by user email or admin)
+// GET — List events
 // ============================================================
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
     const { searchParams } = new URL(request.url);
-    const userEmail = searchParams.get('email');
     const status = searchParams.get('status');
     const limit = Math.min(
       parseInt(searchParams.get('limit') ?? '50', 10) || 50,
@@ -26,35 +24,35 @@ export async function GET(request: Request) {
     );
     const offset = parseInt(searchParams.get('offset') ?? '0', 10) || 0;
 
-    // Build query
-    let query = supabase
-      .from('events' as any)
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    let query = `SELECT * FROM events`;
+    const params: any[] = [];
+    const conditions: string[] = [];
 
-    // Filter by user email (RLS also enforces this)
-    if (userEmail) {
-      query = query.eq('client_email', userEmail);
-    }
-
-    // Filter by status
     if (status) {
-      query = query.eq('status', status);
+      conditions.push(`status = $${params.length + 1}`);
+      params.push(status);
     }
 
-    const { data: events, error, count } = await query;
-
-    if (error) {
-      console.error('[events GET] Supabase error:', error);
-      throw new Error(`Failed to fetch events: ${error.message}`);
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
     }
+
+    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const events = await queryMany<any>(query, params);
+
+    // Get total count
+    const countResult = await querySingle<any>(
+      `SELECT COUNT(*) as count FROM events${conditions.length > 0 ? ' WHERE ' + conditions.map((c, i) => c.replace(`$${i + 1}`, `$${i + 1}`)) : ''}`,
+      params.slice(0, conditions.length)
+    );
 
     return NextResponse.json({
       success: true,
       data: events,
       pagination: {
-        total: count ?? 0,
+        total: parseInt(countResult?.count ?? '0'),
         limit,
         offset,
       },
@@ -70,53 +68,37 @@ export async function GET(request: Request) {
 
 // ============================================================
 // POST — Create event from wizard submission
-// Validates with Zod, emits BUDGET_CREATED webhook
 // ============================================================
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Parse and validate body with Zod
     const body = await request.json();
     const validated = EventSetupCreateSchema.parse(body);
 
-    // Get user auth (optional in development)
-    let authEmail: string | undefined;
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      authEmail = authData?.user?.email ?? undefined;
-    } catch {
-      // Auth not configured — proceed without it (development mode)
-    }
-
     // Insert event into database
-    const { data: event, error: insertError } = await (supabase as any).from('events' as any)
-      .insert({
-        menu_id: validated.menu_id ?? null,
-        client_name: validated.client_name,
-        client_email: validated.client_email,
-        client_phone: validated.client_phone ?? null,
-        event_type: validated.event_type,
-        guest_count: validated.guest_count,
-        kids_count: validated.kids_count,
-        event_date: validated.event_date,
-        status: validated.status,
-        selected_items: validated.selected_items,
-        total_pvp: validated.total_pvp,
-        total_cost: validated.total_cost,
-        bar_hours: validated.bar_hours,
-        bar_price: validated.bar_price,
-        iva_pct: validated.iva_pct,
-        notes: validated.notes ?? null,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('[events POST] Supabase insert error:', insertError);
-      throw new Error(`Failed to create event: ${insertError.message}`);
-    }
+    const event = await querySingle<any>(
+      `INSERT INTO events (menu_id, client_name, client_email, client_phone, event_type, guest_count, kids_count, event_date, status, selected_items, total_pvp, total_cost, bar_hours, bar_price, iva_pct, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       RETURNING *`,
+      [
+        validated.menu_id ?? null,
+        validated.client_name,
+        validated.client_email,
+        validated.client_phone ?? null,
+        validated.event_type,
+        validated.guest_count,
+        validated.kids_count,
+        validated.event_date,
+        validated.status,
+        JSON.stringify(validated.selected_items),
+        validated.total_pvp,
+        validated.total_cost,
+        validated.bar_hours,
+        validated.bar_price,
+        validated.iva_pct,
+        validated.notes ?? null,
+      ]
+    );
 
     if (!event) {
       throw new Error('Failed to create event: no data returned');
@@ -124,11 +106,8 @@ export async function POST(request: Request) {
 
     // Emit BUDGET_CREATED webhook
     try {
-      await emitWebhook('BUDGET_CREATED', event, {
-        created_by: authEmail,
-      });
+      await emitWebhook('BUDGET_CREATED', event, {});
     } catch (webhookError) {
-      // Log but don't fail the request if webhook fails
       console.error('[events POST] Webhook emission failed:', webhookError);
     }
 

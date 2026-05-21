@@ -1,61 +1,37 @@
 /**
- * EventFlow — Catalog Item API Routes (single item)
- * GET /api/catalog/[id] — Get a single catalog item by ID
- * PATCH /api/catalog/[id] — Update a catalog item (admin only)
- * DELETE /api/catalog/[id] — Soft delete (set active=false, admin only)
+ * EventFlow — Catalog Item by ID API Route
+ * GET /api/catalog/[id] — Get single catalog item
+ * PUT /api/catalog/[id] — Update catalog item
+ * DELETE /api/catalog/[id] — Delete catalog item
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSupabaseServerClient } from '@/lib/supabase';
-import { CatalogItemUpdateSchema } from '@/types/specs';
+import { querySingle } from '@/lib/db';
 
 // ============================================================
-// GET — Single catalog item by ID
+// GET — Single catalog item
 // ============================================================
 
 export async function GET(
-  _request: Request,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const item = await querySingle<any>(
+      `SELECT * FROM catalog_items WHERE id = $1`,
+      [id]
+    );
 
-    // Validate UUID
-    const parsedId = z.string().uuid().safeParse(id);
-    if (!parsedId.success) {
+    if (!item) {
       return NextResponse.json(
-        { success: false, error: 'Invalid catalog item ID (must be a UUID)' },
-        { status: 400 }
-      );
-    }
-
-    const supabase = getSupabaseServerClient();
-
-    const { data, error } = await (supabase as any).from('catalog_items' as any)
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { success: false, error: 'Catalog item not found' },
-          { status: 404 }
-        );
-      }
-      console.error('[catalog/[id] GET] Supabase error:', error);
-      throw new Error(`Failed to fetch catalog item: ${error.message}`);
-    }
-
-    if (!data) {
-      return NextResponse.json(
-        { success: false, error: 'Catalog item not found' },
+        { success: false, error: 'Item not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: item });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
@@ -66,73 +42,52 @@ export async function GET(
 }
 
 // ============================================================
-// PATCH — Update catalog item (admin only, validated with Zod)
+// PUT — Update catalog item
 // ============================================================
 
-export async function PATCH(
-  request: Request,
+export async function PUT(
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
-    // Validate UUID
-    const parsedId = z.string().uuid().safeParse(id);
-    if (!parsedId.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid catalog item ID (must be a UUID)' },
-        { status: 400 }
-      );
-    }
-
-    const supabase = getSupabaseServerClient();
-
-    // Parse and validate body with Zod
     const body = await request.json();
-    const validated = CatalogItemUpdateSchema.parse(body);
+    const { name, category, subcategory, pvp, cost, ingredientes_base, image_url, active } = body;
 
-    // Admin check
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError) {
-      throw new Error('Authentication required');
-    }
+    const item = await querySingle<any>(
+      `UPDATE catalog_items
+       SET name = COALESCE($1, name),
+           category = COALESCE($2, category),
+           subcategory = $3,
+           pvp = COALESCE($4, pvp),
+           cost = COALESCE($5, cost),
+           ingredients = COALESCE($6, ingredients),
+           image_url = $7,
+           active = COALESCE($8, active)
+       WHERE id = $9
+       RETURNING *`,
+      [
+        name ?? null,
+        category ?? null,
+        subcategory ?? null,
+        pvp ?? null,
+        cost ?? null,
+        ingredientes_base ? JSON.stringify(ingredientes_base) : null,
+        image_url ?? null,
+        active ?? null,
+        id,
+      ]
+    );
 
-    const userRole = (authData.user?.user_metadata?.role ?? '') as string;
-    if (userRole !== 'admin') {
+    if (!item) {
       return NextResponse.json(
-        { success: false, error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // Update the catalog item
-    const { data, error } = await (supabase as any)
-      .from('catalog_items')
-      .update(validated)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[catalog/[id] PATCH] Supabase error:', error);
-      throw new Error(`Failed to update catalog item: ${error.message}`);
-    }
-
-    if (!data) {
-      return NextResponse.json(
-        { success: false, error: 'Catalog item not found' },
+        { success: false, error: 'Item not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: item });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: 'Validation error', details: error.errors },
-        { status: 422 }
-      );
-    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { success: false, error: message },
@@ -142,61 +97,28 @@ export async function PATCH(
 }
 
 // ============================================================
-// DELETE — Soft delete (set active=false, admin only)
+// DELETE — Delete catalog item
 // ============================================================
 
 export async function DELETE(
-  _request: Request,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const deleted = await querySingle<any>(
+      `DELETE FROM catalog_items WHERE id = $1 RETURNING id`,
+      [id]
+    );
 
-    // Validate UUID
-    const parsedId = z.string().uuid().safeParse(id);
-    if (!parsedId.success) {
+    if (!deleted) {
       return NextResponse.json(
-        { success: false, error: 'Invalid catalog item ID (must be a UUID)' },
-        { status: 400 }
-      );
-    }
-
-    const supabase = getSupabaseServerClient();
-
-    // Admin check
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError) {
-      throw new Error('Authentication required');
-    }
-
-    const userRole = (authData.user?.user_metadata?.role ?? '') as string;
-    if (userRole !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // Soft delete: set active=false
-    const { data, error } = await (supabase as any).from('catalog_items' as any)
-      .update({ active: false })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[catalog/[id] DELETE] Supabase error:', error);
-      throw new Error(`Failed to delete catalog item: ${error.message}`);
-    }
-
-    if (!data) {
-      return NextResponse.json(
-        { success: false, error: 'Catalog item not found' },
+        { success: false, error: 'Item not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: { ...data, active: false } });
+    return NextResponse.json({ success: true, data: { id } });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(

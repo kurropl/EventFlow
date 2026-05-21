@@ -1,12 +1,4 @@
 'use client';
-/**
- * EventFlow — Kanban Pipeline (B2B)
- * 
- * Drag & drop board for events: Nuevo → Propuesta Enviada → Confirmado
- * Shows event summary WITHOUT prices (prices are calculated server-side)
- */
-
-'use client';
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -28,19 +20,18 @@ interface KanbanEvent {
   created_at: string;
 }
 
-const COLUMNS: { status: EventStatus; label: string; color: string; icon: string }[] = [
-  { status: 'nuevo', label: 'Nuevo', color: 'border-blue-500/40 bg-blue-500/5', icon: '🆕' },
-  { status: 'propuesta', label: 'Propuesta Enviada', color: 'border-amber-500/40 bg-amber-500/5', icon: '📤' },
-  { status: 'confirmado', label: 'Confirmado', color: 'border-green-500/40 bg-green-500/5', icon: '✅' },
-  { status: 'cancelado', label: 'Cancelado', color: 'border-red-500/40 bg-red-500/5', icon: '❌' },
+const COLUMNS: { status: EventStatus; label: string; accent: string }[] = [
+  { status: 'nuevo', label: 'Nuevo', accent: 'border-l-blue-500 bg-blue-500/5' },
+  { status: 'propuesta', label: 'Propuesta Enviada', accent: 'border-l-amber-500 bg-amber-500/5' },
+  { status: 'confirmado', label: 'Confirmado', accent: 'border-l-green-500 bg-green-500/5' },
+  { status: 'cancelado', label: 'Cancelado', accent: 'border-l-red-500 bg-red-500/5' },
 ];
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
-  boda: 'Boda', 'cumpleaños': 'Cumpleaños', corporativo: 'Corporativo',
-  bautizo: 'Bautizo', 'comunión': 'Comunión', otro: 'Otro',
+  boda: 'Boda', cumpleanos: 'Cumpleaños', corporativo: 'Corporativo',
+  bautizo: 'Bautizo', comunion: 'Comunión', otro: 'Otro',
 };
 
-// Mock data for demo
 const MOCK_EVENTS: KanbanEvent[] = [
   {
     id: 'evt-1', client_name: 'María García', client_email: 'maria@email.com',
@@ -66,27 +57,22 @@ export default function KanbanPipeline() {
   const [events, setEvents] = useState<KanbanEvent[]>(MOCK_EVENTS);
 
   const moveEvent = (eventId: string, fromStatus: EventStatus, toStatus: EventStatus) => {
-    setEvents((prev) =>
-      prev.map((e) => (e.id === eventId ? { ...e, status: toStatus } : e))
-    );
+    setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, status: toStatus } : e)));
   };
 
-  const getEventsByStatus = (status: EventStatus) =>
-    events.filter((e) => e.status === status);
+  const getEventsByStatus = (status: EventStatus) => events.filter((e) => e.status === status);
+
+  const statusOrder: EventStatus[] = ['nuevo', 'propuesta', 'confirmado', 'cancelado'];
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 min-h-[calc(100vh-140px)]">
       {COLUMNS.map((col) => (
-        <div
-          key={col.status}
-          className={`flex-shrink-0 w-72 rounded-xl border-2 ${col.color} flex flex-col max-h-[calc(100vh-160px)]`}
-        >
+        <div key={col.status} className={`flex-shrink-0 w-72 rounded-xl border border-gold/10 ${col.accent} flex flex-col max-h-[calc(100vh-160px)]`}>
           {/* Column header */}
-          <div className="p-4 border-b border-gold/10 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-gold/10 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span>{col.icon}</span>
               <span className="text-cream font-medium text-sm">{col.label}</span>
-              <span className="text-xs text-cream/40 bg-ink/30 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] text-cream/40 bg-ink/40 px-2 py-0.5 rounded-full font-mono">
                 {getEventsByStatus(col.status).length}
               </span>
             </div>
@@ -108,28 +94,26 @@ export default function KanbanPipeline() {
                     <h4 className="text-cream text-sm font-medium">{event.client_name}</h4>
                     <p className="text-cream/40 text-xs">{event.client_email}</p>
                   </div>
-                  <span className="text-xs bg-gold/10 text-gold px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] bg-gold/10 text-gold px-2 py-0.5 rounded-full">
                     {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
                   </span>
                 </div>
 
                 {/* Event details */}
-                <div className="space-y-1 text-xs text-cream/50 mb-3">
-                  <div className="flex justify-between">
-                    <span>📅 {event.event_date}</span>
-                    <span>{event.guest_count} pax</span>
-                  </div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-cream/50 mb-3">
+                  <span className="text-cream/30">{event.event_date}</span>
+                  <span className="text-right">{event.guest_count} adultos</span>
                   {event.kids_count > 0 && (
-                    <div className="flex justify-between">
-                      <span>👶 Niños:</span>
-                      <span>{event.kids_count}</span>
-                    </div>
+                    <>
+                      <span className="text-cream/30">Infantil</span>
+                      <span className="text-right">{event.kids_count}</span>
+                    </>
                   )}
                   {event.bar_hours > 0 && (
-                    <div className="flex justify-between">
-                      <span>🍸 Barra:</span>
-                      <span>{event.bar_hours}h</span>
-                    </div>
+                    <>
+                      <span className="text-cream/30">Barra libre</span>
+                      <span className="text-right">{event.bar_hours}h</span>
+                    </>
                   )}
                 </div>
 
@@ -148,25 +132,21 @@ export default function KanbanPipeline() {
                 {/* Action buttons */}
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {col.status !== 'nuevo' && col.status !== 'cancelado' && (
-                    <button
-                      onClick={() => {
-                        const idx = COLUMNS.findIndex((c) => c.status === col.status);
-                        moveEvent(event.id, col.status, COLUMNS[idx - 1].status);
-                      }}
-                      className="flex-1 text-xs bg-cream/5 text-cream/40 hover:bg-cream/10 py-1 rounded transition-colors"
-                    >
-                      ←
+                    <button onClick={() => {
+                      const idx = statusOrder.indexOf(col.status);
+                      moveEvent(event.id, col.status, statusOrder[idx - 1]);
+                    }}
+                      className="flex-1 text-xs bg-cream/5 text-cream/40 hover:bg-cream/10 py-1 rounded transition-colors">
+                      Retroceder
                     </button>
                   )}
                   {col.status !== 'confirmado' && col.status !== 'cancelado' && (
-                    <button
-                      onClick={() => {
-                        const idx = COLUMNS.findIndex((c) => c.status === col.status);
-                        moveEvent(event.id, col.status, COLUMNS[idx + 1].status);
-                      }}
-                      className="flex-1 text-xs bg-gold/10 text-gold hover:bg-gold/20 py-1 rounded transition-colors"
-                    >
-                      →
+                    <button onClick={() => {
+                      const idx = statusOrder.indexOf(col.status);
+                      moveEvent(event.id, col.status, statusOrder[idx + 1]);
+                    }}
+                      className="flex-1 text-xs bg-gold/10 text-gold hover:bg-gold/20 py-1 rounded transition-colors">
+                      Avanzar
                     </button>
                   )}
                 </div>

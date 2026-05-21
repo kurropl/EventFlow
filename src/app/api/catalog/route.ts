@@ -4,9 +4,9 @@
  * POST /api/catalog — Create a new catalog item (admin only, validated with Zod)
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSupabaseServerClient } from '@/lib/supabase';
+import { queryMany, querySingle } from '@/lib/db';
 import { CatalogItemCreateSchema } from '@/types/specs';
 
 // ============================================================
@@ -15,18 +15,12 @@ import { CatalogItemCreateSchema } from '@/types/specs';
 
 export async function GET() {
   try {
-    const supabase = getSupabaseServerClient();
-
-    const { data: items, error } = await (supabase as any).from('catalog_items' as any)
-      .select('*')
-      .eq('active', true)
-      .order('category', { ascending: true })
-      .order('name', { ascending: true });
-
-    if (error) {
-      console.error('[catalog GET] Supabase error:', error);
-      throw new Error(`Failed to fetch catalog items: ${error.message}`);
-    }
+    const items = await queryMany<any>(
+      `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, active, created_at, updated_at
+       FROM catalog_items
+       WHERE active = true
+       ORDER BY category, name`
+    );
 
     // Group by category
     const grouped: Record<string, typeof items> = {};
@@ -49,56 +43,33 @@ export async function GET() {
 }
 
 // ============================================================
-// POST — Create a new catalog item (admin only, validated with Zod)
+// POST — Create a new catalog item
 // ============================================================
 
-const handler = { GET };
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
     // Parse and validate body with Zod
     const body = await request.json();
     const validated = CatalogItemCreateSchema.parse(body);
 
-    // Admin check — Supabase RLS handles this, but we also check the role
-    // In a real app, you'd verify the JWT role claim here
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError) {
-      throw new Error('Authentication required');
-    }
-
-    // Check admin role (RLS policy also enforces this)
-    const userRole = (authData.user?.user_metadata?.role ?? '') as string;
-    if (userRole !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
     // Insert into catalog_items
-    const { data, error } = await (supabase as any).from('catalog_items' as any)
-      .insert({
-        name: validated.name,
-        category: validated.category,
-        subcategory: validated.subcategory ?? null,
-        pvp: validated.pvp,
-        cost: validated.cost,
-        ingredientes_base: validated.ingredientes_base,
-        image_url: validated.image_url || null,
-        active: validated.active,
-      })
-      .select()
-      .single();
+    const item = await querySingle<any>(
+      `INSERT INTO catalog_items (name, category, subcategory, pvp, cost, ingredients, image_url, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        validated.name,
+        validated.category,
+        validated.subcategory ?? null,
+        validated.pvp,
+        validated.cost,
+        JSON.stringify(validated.ingredientes_base || []),
+        validated.image_url || null,
+        validated.active,
+      ]
+    );
 
-    if (error) {
-      console.error('[catalog POST] Supabase error:', error);
-      throw new Error(`Failed to create catalog item: ${error.message}`);
-    }
-
-    return NextResponse.json({ success: true, data }, { status: 201 });
+    return NextResponse.json({ success: true, data: item }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

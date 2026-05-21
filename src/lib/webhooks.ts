@@ -9,7 +9,7 @@
  */
 
 import { z } from 'zod';
-import { getSupabaseServerClient } from '@/lib/supabase';
+import { querySingle } from '@/lib/db';
 import { WebhookPayloadSchema } from '@/types/specs';
 
 // ============================================================
@@ -69,7 +69,6 @@ async function fetchWithRetry(
       console.error(`[webhook] attempt ${attempt + 1}/${retries} error:`, lastError);
     }
 
-    // Exponential backoff before next attempt (not after last)
     if (attempt < retries - 1) {
       const delay = BASE_DELAY_MS * Math.pow(2, attempt);
       console.log(`[webhook] retrying in ${delay}ms...`);
@@ -84,25 +83,11 @@ async function fetchWithRetry(
 // Core: emitWebhook
 // ============================================================
 
-/**
- * Emit a webhook event.
- *
- * - Validates payload with Zod WebhookPayloadSchema
- * - POSTs to NEXT_PUBLIC_WEBHOOK_URL (from env)
- * - Logs to webhook_logs table
- * - Retries up to 3 times with exponential backoff
- *
- * @param topic - The webhook topic
- * @param event - The event data (must satisfy EventRow shape)
- * @param options - Optional event ID and changes
- */
 export async function emitWebhook(
   topic: string,
   event: Record<string, unknown>,
-  options: Record<string, unknown> = {}
+  _options: Record<string, unknown> = {}
 ): Promise<void> {
-  const supabase = getSupabaseServerClient();
-
   // Calculate derived fields for the payload
   const ev = event as Record<string, unknown>;
   const pvp = Number(ev.total_pvp) || 0;
@@ -120,7 +105,7 @@ export async function emitWebhook(
       profit,
       margin_pct: marginPct,
     },
-    changes: (options as Record<string, unknown>).changes,
+    changes: (_options as Record<string, unknown>).changes,
     metadata: {
       source: 'eventflow',
       version: '1.0',
@@ -132,15 +117,11 @@ export async function emitWebhook(
   if (!webhookUrl) {
     console.warn('[webhook] NEXT_PUBLIC_WEBHOOK_URL not configured, skipping delivery');
     // Still log to DB
-    await supabase
-      .from('webhook_logs')
-      .insert({
-        event_id: options.eventId ?? null,
-        topic,
-        payload,
-        status: 'pending',
-        retries: 0,
-      } as any);
+    await querySingle(
+      `INSERT INTO webhook_logs (event_id, topic, payload, status, retries)
+       VALUES ($1, $2, $3, 'pending', 0)`,
+      [ev.id ?? null, topic, JSON.stringify(payload)]
+    );
     return;
   }
 
@@ -160,15 +141,17 @@ export async function emitWebhook(
   }
 
   // Log to webhook_logs table
-  await supabase
-    .from('webhook_logs')
-    .insert({
-      event_id: options.eventId ?? null,
+  await querySingle(
+    `INSERT INTO webhook_logs (event_id, topic, payload, status, response, retries, sent_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      ev.id ?? null,
       topic,
-      payload,
-      status: deliveryStatus,
-      response: responseBody,
-      retries: deliveryStatus === 'sent' ? 0 : MAX_RETRIES,
-      sent_at: deliveryStatus === 'sent' ? new Date().toISOString() : null,
-    } as any);
+      JSON.stringify(payload),
+      deliveryStatus,
+      responseBody,
+      deliveryStatus === 'sent' ? 0 : MAX_RETRIES,
+      deliveryStatus === 'sent' ? new Date().toISOString() : null,
+    ]
+  );
 }

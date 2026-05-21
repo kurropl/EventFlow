@@ -1,53 +1,23 @@
 /**
- * EventFlow — Event Item API Routes (single event)
- * GET /api/events/[id] — Get single event with cost breakdown
- * PATCH /api/events/[id] — Update event status (triggers STATUS_CHANGED webhook if status changes)
+ * EventFlow — Event by ID API Route
+ * GET /api/events/[id] — Get single event
+ * PUT /api/events/[id] — Update event (status, details)
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSupabaseServerClient } from '@/lib/supabase';
-import { EventStatusSchema } from '@/types/specs';
-import { emitWebhook } from '@/lib/webhooks';
-
-// ============================================================
-// GET — Single event with cost breakdown
-// ============================================================
+import { querySingle } from '@/lib/db';
 
 export async function GET(
-  _request: Request,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
-    // Validate UUID
-    const parsedId = z.string().uuid().safeParse(id);
-    if (!parsedId.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid event ID (must be a UUID)' },
-        { status: 400 }
-      );
-    }
-
-    const supabase = getSupabaseServerClient();
-
-    // Fetch the event
-    const { data: event, error: eventError } = await (supabase as any).from('events' as any)
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (eventError) {
-      if (eventError.code === 'PGRST116') {
-        return NextResponse.json(
-          { success: false, error: 'Event not found' },
-          { status: 404 }
-        );
-      }
-      console.error('[events/[id] GET] Supabase error:', eventError);
-      throw new Error(`Failed to fetch event: ${eventError.message}`);
-    }
+    const event = await querySingle<any>(
+      `SELECT * FROM events WHERE id = $1`,
+      [id]
+    );
 
     if (!event) {
       return NextResponse.json(
@@ -56,24 +26,7 @@ export async function GET(
       );
     }
 
-    // Fetch cost breakdown (cost_desgloses)
-    const { data: costBreakdown, error: costError } = await (supabase as any).from('cost_desgloses' as any)
-      .select('*')
-      .eq('event_id', id)
-      .order('created_at', { ascending: true });
-
-    if (costError) {
-      console.error('[events/[id] GET] Cost breakdown error:', costError);
-      // Don't fail if cost breakdown is unavailable
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...event,
-        cost_breakdown: costBreakdown ?? [],
-      },
-    });
+    return NextResponse.json({ success: true, data: event });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
@@ -83,132 +36,36 @@ export async function GET(
   }
 }
 
-// ============================================================
-// PATCH — Update event status (triggers STATUS_CHANGED webhook)
-// ============================================================
-
-export async function PATCH(
-  request: Request,
+export async function PUT(
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
-    // Validate UUID
-    const parsedId = z.string().uuid().safeParse(id);
-    if (!parsedId.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid event ID (must be a UUID)' },
-        { status: 400 }
-      );
-    }
-
-    const supabase = getSupabaseServerClient();
-
-    // Parse and validate body with Zod
     const body = await request.json();
-    const validated = z.object({
-      status: EventStatusSchema.optional(),
-      notes: z.string().max(2000).optional(),
-    }).parse(body);
+    const { status, notes, total_pvp, total_cost, bar_hours } = body;
 
-    // Get current event to check for status change
-    const { data: currentEvent, error: fetchError } = await (supabase as any).from('events' as any)
-      .select('*')
-      .eq('id', id)
-      .single();
+    const event = await querySingle<any>(
+      `UPDATE events
+       SET status = COALESCE($1, status),
+           notes = COALESCE($2, notes),
+           total_pvp = COALESCE($3, total_pvp),
+           total_cost = COALESCE($4, total_cost),
+           bar_hours = COALESCE($5, bar_hours)
+       WHERE id = $6
+       RETURNING *`,
+      [status ?? null, notes ?? null, total_pvp ?? null, total_cost ?? null, bar_hours ?? null, id]
+    );
 
-    if (fetchError) {
-      if (fetchError.code === 'PGRST116') {
-        return NextResponse.json(
-          { success: false, error: 'Event not found' },
-          { status: 404 }
-        );
-      }
-      console.error('[events/[id] PATCH] Supabase fetch error:', fetchError);
-      throw new Error(`Failed to fetch event: ${fetchError.message}`);
-    }
-
-    if (!currentEvent) {
+    if (!event) {
       return NextResponse.json(
         { success: false, error: 'Event not found' },
         { status: 404 }
       );
     }
 
-    // Build update object
-    const updateData: Record<string, unknown> = {};
-    if (validated.status !== undefined) {
-      updateData.status = validated.status;
-    }
-    if (validated.notes !== undefined) {
-      updateData.notes = validated.notes;
-    }
-
-    // Apply update
-    const { data: updatedEvent, error: updateError } = await (supabase as any).from('events' as any)
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('[events/[id] PATCH] Supabase update error:', updateError);
-      throw new Error(`Failed to update event: ${updateError.message}`);
-    }
-
-    if (!updatedEvent) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to update event' },
-        { status: 500 }
-      );
-    }
-
-    // Check if status changed — emit STATUS_CHANGED webhook
-    const oldStatus = currentEvent.status;
-    const newStatus = updatedEvent.status;
-
-    if (oldStatus !== newStatus) {
-      try {
-        await emitWebhook('STATUS_CHANGED', updatedEvent as any, {
-          old_status: oldStatus,
-          new_status: newStatus,
-        });
-      } catch (webhookError) {
-        console.error('[events/[id] PATCH] Webhook emission failed:', webhookError);
-      }
-    }
-
-    // Check if status is 'confirmado' — emit BUDGET_CONFIRMED
-    if (newStatus === 'confirmado') {
-      try {
-        await emitWebhook('BUDGET_CONFIRMED', updatedEvent as any, {
-          confirmed_at: new Date().toISOString(),
-        });
-      } catch (webhookError) {
-        console.error('[events/[id] PATCH] BUDGET_CONFIRMED webhook failed:', webhookError);
-      }
-    }
-
-    // Check if status is 'cancelado' — emit BUDGET_CANCELLED
-    if (newStatus === 'cancelado') {
-      try {
-        await emitWebhook('BUDGET_CANCELLED', updatedEvent as any, {
-          cancelled_at: new Date().toISOString(),
-        });
-      } catch (webhookError) {
-        console.error('[events/[id] PATCH] BUDGET_CANCELLED webhook failed:', webhookError);
-      }
-    }
-
-    return NextResponse.json({ success: true, data: updatedEvent });
+    return NextResponse.json({ success: true, data: event });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: 'Validation error', details: error.errors },
-        { status: 422 }
-      );
-    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { success: false, error: message },

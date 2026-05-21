@@ -1,26 +1,17 @@
 'use client';
-/**
- * EventFlow — Admin Dashboard Layout (B2B)
- * 
- * Sidebar navigation + main content area.
- * Protected: only accessible via /admin
- * Uses internal tab state for navigation.
- */
-
-'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
-type Tab = 'kanban' | 'catalog' | 'operations' | 'webhooks';
+type Tab = 'kanban' | 'catalog' | 'operations' | 'webhooks' | 'login';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'kanban', label: 'Pipeline', icon: '📋' },
-  { id: 'catalog', label: 'Catálogo', icon: '🍽️' },
-  { id: 'operations', label: 'Operaciones', icon: '⚙️' },
-  { id: 'webhooks', label: 'Webhooks', icon: '🔗' },
+  { id: 'kanban', label: 'Pipeline', icon: 'K' },
+  { id: 'catalog', label: 'Catálogo', icon: 'C' },
+  { id: 'operations', label: 'Operaciones', icon: 'O' },
+  { id: 'webhooks', label: 'Webhooks', icon: 'W' },
 ];
 
 interface AdminLayoutProps {
@@ -29,28 +20,41 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' }),
+    });
+    router.push('/admin/login');
+    router.refresh();
+  };
 
   const currentTab: Tab = TABS.find((t) => pathname?.includes(t.id))?.id || 'kanban';
 
   return (
-    <div className="min-h-screen bg-ink-950 flex">
+    <div className="min-h-screen flex" style={{ background: '#0d0a06' }}>
       {/* Sidebar */}
       <motion.aside
         initial={{ x: -240 }}
         animate={{ x: 0 }}
-        className={`fixed lg:relative z-30 h-full bg-ink-900 border-r border-gold/20 flex flex-col
-          ${sidebarOpen ? 'w-60' : 'w-0 lg:w-16'} overflow-hidden transition-all duration-300`}
+        className={`fixed lg:relative z-30 h-full flex flex-col transition-all duration-300 overflow-hidden border-r ${
+          sidebarOpen ? 'w-60' : 'w-0 lg:w-16'
+        }`}
+        style={{ background: '#14100a', borderColor: '#d4a54833' }}
       >
         {/* Logo */}
-        <div className="p-4 border-b border-gold/10 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gold flex items-center justify-center flex-shrink-0">
-            <span className="text-ink font-bold text-sm">AE</span>
+        <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid #d4a5481a' }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#d4a548' }}>
+            <span className="font-bold text-sm" style={{ color: '#0d0a06' }}>AE</span>
           </div>
           {sidebarOpen && (
             <div>
-              <div className="text-cream font-serif text-sm">Alboroto</div>
-              <div className="text-gold/60 text-xs">Admin Panel</div>
+              <div className="font-serif text-sm" style={{ color: '#f8f3e6' }}>Alboroto</div>
+              <div style={{ color: '#d4a54899', fontSize: '0.7rem' }}>Admin Panel</div>
             </div>
           )}
         </div>
@@ -61,25 +65,40 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <Link
               key={tab.id}
               href={`/admin/${tab.id}`}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                ${currentTab === tab.id
-                  ? 'bg-gold/15 text-gold'
-                  : 'text-cream/50 hover:text-cream hover:bg-cream/5'
-                }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                currentTab === tab.id
+                  ? 'text-[#d4a548]'
+                  : 'text-[#f8f3e680] hover:text-[#f8f3e6]'
+              }`}
+              style={currentTab === tab.id ? { background: '#d4a54826' } : {}}
             >
-              <span className="text-lg">{tab.icon}</span>
+              <span
+                className="w-6 h-6 rounded text-xs flex items-center justify-center font-bold"
+                style={currentTab === tab.id
+                  ? { background: '#d4a5481a', color: '#d4a548' }
+                  : { background: '#f8f3e60a', color: '#f8f3e680' }
+                }
+              >
+                {tab.icon}
+              </span>
               {sidebarOpen && <span>{tab.label}</span>}
             </Link>
           ))}
         </nav>
 
         {/* B2C Link */}
-        <div className="p-3 border-t border-gold/10">
+        <div className="p-3" style={{ borderTop: '1px solid #d4a5481a' }}>
           <Link
             href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/40 hover:text-cream/70 transition-all"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all"
+            style={{ color: '#f8f3e666' }}
           >
-            <span className="text-lg">🌐</span>
+            <span
+              className="w-6 h-6 rounded text-xs flex items-center justify-center"
+              style={{ background: '#f8f3e60a', color: '#f8f3e666' }}
+            >
+              V
+            </span>
             {sidebarOpen && <span>Ver Portal</span>}
           </Link>
         </div>
@@ -88,18 +107,28 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-14 bg-ink-900/80 border-b border-gold/10 flex items-center px-4 gap-3">
+        <header className="h-14 flex items-center px-4 gap-3 border-b" style={{ background: '#14100acc', borderColor: '#d4a5481a' }}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-cream/50 hover:text-cream p-1 rounded hover:bg-cream/5"
+            className="p-1 rounded transition-all"
+            style={{ color: '#f8f3e680' }}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <h1 className="text-cream font-serif text-lg">
-            {TABS.find((t) => t.id === currentTab)?.icon} {TABS.find((t) => t.id === currentTab)?.label}
+          <h1 className="font-serif text-lg flex-1" style={{ color: '#f8f3e6' }}>
+            {TABS.find((t) => t.id === currentTab)?.label}
           </h1>
+          <button
+            onClick={handleLogout}
+            className="text-xs px-3 py-1.5 rounded transition-all"
+            style={{ color: '#f8f3e666' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#ef44441a'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#f8f3e666'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            Salir
+          </button>
         </header>
 
         {/* Content */}

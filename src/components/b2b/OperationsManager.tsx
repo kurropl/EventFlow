@@ -1,18 +1,12 @@
 'use client';
 /**
  * EventFlow — Operations Manager (B2B)
- * 
- * When opening a budget, shows:
- * - Net profit margin (PVP vs Cost)
- * - Visual table distribution map
- * - Auto staff assignment (1 waiter/15 pax, 1 metre/ensemble)
- * - Purchase order (grams/units * guests + 10% margin)
+ * ERP de gestión del salón de celebraciones
  */
 
-'use client';
-
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import TableMapEditor from './TableMapEditor';
 
 interface SelectedItem {
   name: string;
@@ -34,7 +28,6 @@ interface OperationEvent {
   bar_hours: number;
 }
 
-// Mock event for demo
 const MOCK_EVENT: OperationEvent = {
   id: 'evt-1',
   client_name: 'María García',
@@ -56,22 +49,14 @@ const MOCK_EVENT: OperationEvent = {
   bar_hours: 3,
 };
 
-// Calculate operational needs
 function calculateOperations(guestCount: number, kidsCount: number, items: SelectedItem[]) {
   const totalPax = guestCount + kidsCount;
-
-  // Staff: 1 waiter per 15 guests
   const waiters = Math.ceil(guestCount / 15);
-
-  // Tables: assume 4 per table for adults, 2 for kids
   const adultTables = Math.ceil(guestCount / 4);
   const kidsTables = kidsCount > 0 ? Math.ceil(kidsCount / 2) : 0;
   const totalTables = adultTables + kidsTables;
-
-  // Mete (tablecloths/sets): 1 per table ensemble
   const metres = totalTables;
 
-  // Purchase order: quantities * guests + 10% margin
   const purchaseOrder = items.map((item) => ({
     name: item.name,
     baseQty: item.quantity,
@@ -79,44 +64,17 @@ function calculateOperations(guestCount: number, kidsCount: number, items: Selec
     margin: Math.ceil(item.quantity * 0.10),
   }));
 
-  return {
-    totalPax,
-    waiters,
-    totalTables,
-    adultTables,
-    kidsTables,
-    metres,
-    purchaseOrder,
-  };
-}
-
-// Table layout component
-function TableLayout({ adultTables, kidsTables }: { adultTables: number; kidsTables: number }) {
-  return (
-    <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 p-4">
-      {Array.from({ length: adultTables }).map((_, i) => (
-        <div key={`a-${i}`} className="aspect-square rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center text-xs text-gold/60">
-          <div className="text-center">
-            <div className="text-lg">🪑</div>
-            <div className="text-[10px]">M{i + 1}</div>
-          </div>
-        </div>
-      ))}
-      {Array.from({ length: kidsTables }).map((_, i) => (
-        <div key={`k-${i}`} className="aspect-square rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-xs text-green-400/60">
-          <div className="text-center">
-            <div className="text-lg">👶</div>
-            <div className="text-[10px]">N{i + 1}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return { totalPax, waiters, totalTables, adultTables, kidsTables, metres, purchaseOrder };
 }
 
 export default function OperationsManager() {
   const [selectedEvent, setSelectedEvent] = useState<OperationEvent | null>(MOCK_EVENT);
   const [activeTab, setActiveTab] = useState<'overview' | 'tables' | 'purchase'>('overview');
+  
+  const handleSavePlan = useCallback((data: { tables: any[]; elements: any[] }) => {
+    console.log('Plano guardado:', data);
+    // Here you'd sync to Supabase
+  }, []);
 
   if (!selectedEvent) {
     return (
@@ -145,7 +103,9 @@ export default function OperationsManager() {
           <div className="flex gap-4">
             <div className="text-right">
               <div className="text-xs text-cream/40 uppercase tracking-wider">Margen Neto</div>
-              <div className="text-2xl font-bold text-green-400">{marginPct}%</div>
+              <div className={`text-2xl font-bold ${marginPct >= 30 ? 'text-green-400' : marginPct >= 15 ? 'text-gold' : 'text-red-400'}`}>
+                {marginPct}%
+              </div>
             </div>
             <div className="text-right">
               <div className="text-xs text-cream/40 uppercase tracking-wider">Beneficio</div>
@@ -164,7 +124,7 @@ export default function OperationsManager() {
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-all
               ${activeTab === tab ? 'bg-gold/15 text-gold' : 'text-cream/40 hover:text-cream/70'}`}
           >
-            {tab === 'overview' ? '📊 Resumen' : tab === 'tables' ? '🪑 Distribución' : '📦 Compras'}
+            {tab === 'overview' ? 'Resumen' : tab === 'tables' ? 'Mapa de Mesas' : 'Escandallo'}
           </button>
         ))}
       </div>
@@ -175,25 +135,21 @@ export default function OperationsManager() {
           {/* Staff & tables cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4 text-center">
-              <div className="text-3xl mb-2">🍽️</div>
-              <div className="text-2xl font-bold text-cream">{ops.waiters}</div>
+              <div className="text-2xl font-bold text-cream mb-1">{ops.waiters}</div>
               <div className="text-xs text-cream/40">Camareros</div>
               <div className="text-[10px] text-cream/30">1 por cada 15 pax</div>
             </div>
             <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4 text-center">
-              <div className="text-3xl mb-2">🪑</div>
-              <div className="text-2xl font-bold text-cream">{ops.totalTables}</div>
+              <div className="text-2xl font-bold text-cream mb-1">{ops.totalTables}</div>
               <div className="text-xs text-cream/40">Mesas</div>
               <div className="text-[10px] text-cream/30">{ops.adultTables} adult. + {ops.kidsTables} niños</div>
             </div>
             <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4 text-center">
-              <div className="text-3xl mb-2">🍸</div>
-              <div className="text-2xl font-bold text-cream">{selectedEvent.bar_hours}h</div>
+              <div className="text-2xl font-bold text-cream mb-1">{selectedEvent.bar_hours}h</div>
               <div className="text-xs text-cream/40">Barra Libre</div>
             </div>
             <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4 text-center">
-              <div className="text-3xl mb-2">🧻</div>
-              <div className="text-2xl font-bold text-cream">{ops.metres}</div>
+              <div className="text-2xl font-bold text-cream mb-1">{ops.metres}</div>
               <div className="text-xs text-cream/40">Metres</div>
               <div className="text-[10px] text-cream/30">1 por conjunto</div>
             </div>
@@ -225,11 +181,11 @@ export default function OperationsManager() {
       )}
 
       {activeTab === 'tables' && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4">
-            <h4 className="text-cream font-medium text-sm mb-4">Distribución de Mesas</h4>
-            <TableLayout adultTables={ops.adultTables} kidsTables={ops.kidsTables} />
-          </div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-ink-900/40 rounded-xl border border-gold/10 overflow-hidden" style={{ height: 'calc(100vh - 320px)', minHeight: 500 }}>
+          <TableMapEditor 
+            eventName={`${selectedEvent.client_name} — ${selectedEvent.event_date}`}
+            onSave={handleSavePlan}
+          />
         </motion.div>
       )}
 
