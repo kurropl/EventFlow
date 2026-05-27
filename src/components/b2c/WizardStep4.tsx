@@ -2,7 +2,7 @@
 /**
  * J.Benitez — Wizard Step 4: Extras
  * 
- * Selección de extras y complementos para el evento.
+ * Colores coherentes gold/cream/ink
  */
 
 import { useState, useEffect } from 'react';
@@ -17,7 +17,7 @@ export default function WizardStep4() {
   const allExtras = CATALOG_ITEMS['complemento'] || [];
 
   const toggleExtra = (extra: string) => {
-    setExtras(prev => 
+    setExtras(prev =>
       prev.includes(extra)
         ? prev.filter(e => e !== extra)
         : [...prev, extra]
@@ -25,7 +25,7 @@ export default function WizardStep4() {
   };
 
   const handleNext = () => {
-    setStepData('step4', { 
+    setStepData('step4', {
       selected_suggestions: extras,
       suggestions: extras,
       bar_hours: 0,
@@ -42,39 +42,38 @@ export default function WizardStep4() {
       className="space-y-8"
     >
       <div className="text-center">
-        <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
+        <h2 className="font-serif text-3xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
           Extras y Complementos
         </h2>
-        <p className="text-stone-500 text-base max-w-md mx-auto">
-          Añade toques especiales a tu celebración
+        <p className="text-stone-500 text-sm max-w-md mx-auto font-light">
+          Anade toques especiales a tu celebracion
         </p>
       </div>
 
-      {/* Extras Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
         {allExtras.map((extra) => {
           const isSelected = extras.includes(extra);
           return (
             <button
               key={extra}
               onClick={() => toggleExtra(extra)}
-              className={`p-4 rounded-xl border-2 transition-all duration-300 text-left ${
+              className={`p-3.5 rounded-xl border-2 transition-all duration-200 text-left ${
                 isSelected
-                  ? 'border-[#C9A84C] bg-[#C9A84C]/10 shadow-md shadow-[#C9A84C]/20'
+                  ? 'border-[#C9A84C] bg-[#C9A84C]/8 shadow-sm'
                   : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+              <div className="flex items-center gap-2.5">
+                <div className={`w-4.5 h-4.5 rounded border flex-shrink-0 flex items-center justify-center transition-all ${
                   isSelected ? 'bg-[#C9A84C] border-[#C9A84C]' : 'border-stone-300'
-                }`}>
+                }`} style={{ width: '18px', height: '18px' }}>
                   {isSelected && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   )}
                 </div>
-                <span className={`text-sm ${isSelected ? 'text-[#C9A84C] font-medium' : 'text-stone-600'}`}>
+                <span className={`text-sm ${isSelected ? 'text-[#1A1A1A] font-medium' : 'text-stone-600'}`}>
                   {extra}
                 </span>
               </div>
@@ -83,17 +82,13 @@ export default function WizardStep4() {
         })}
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-end pt-6 border-t border-stone-200">
-        <button
-          onClick={prevStep}
-          className="px-6 py-3 rounded-xl text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors"
-        >
+      <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-stone-200">
+        <button onClick={prevStep} className="px-5 py-2.5 rounded-xl text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors">
           Anterior
         </button>
         <button
           onClick={handleNext}
-          className="px-6 py-3 rounded-xl text-sm font-medium bg-[#C9A84C] text-white hover:bg-[#A88A3A] shadow-lg shadow-[#C9A84C]/30 transition-all duration-300"
+          className="px-6 py-2.5 rounded-xl text-sm font-medium bg-[#1A1A1A] text-white hover:bg-stone-800 shadow-lg shadow-stone-900/20 transition-all duration-300"
         >
           Ver Resumen
         </button>

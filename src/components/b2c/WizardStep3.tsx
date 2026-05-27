@@ -2,68 +2,45 @@
 /**
  * J.Benitez — Wizard Step 3: Personalización de Platos
  * 
- * Diseño premium con selección interactiva de platos por categoría.
+ * Colores coherentes gold/cream/ink
  */
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 import { CATALOG_ITEMS, CATALOG_CATEGORIES } from '@/data/menus';
-import { PROPOSED_MENUS } from '@/data/menus';
-import type { SelectedItem } from '@/types/specs';
 
-const DEFAULT_MINIMUMS: Record<string, number> = {
-  'carne': 1,
-  'pescado': 1,
-  'arroz': 0,
-  'sorbete': 1,
-  'postre': 1,
-  'aperitivo-frio': 4,
-  'aperitivo-caliente': 4,
-  'compartir-mesa': 1,
-  'bebida': 0,
-  'complemento': 0,
+const EVENT_COLORS: Record<string, string> = {
+  boda: '#C9A84C',
+  'cumpleanos': '#C9A84C',
+  corporativo: '#1A1A1A',
+  bautizo: '#C9A84C',
+  comunión: '#C9A84C',
+  otro: '#1A1A1A',
 };
-
-function getMenuPlatos(menuId: string): string[] {
-  const menu = PROPOSED_MENUS.find((m) => m.id === menuId);
-  if (!menu) return [];
-  const platos: string[] = [];
-  menu.sections.forEach(section => {
-    section.items.forEach(item => platos.push(item));
-  });
-  return platos;
-}
-
-function getDishCategory(dish: string): string {
-  for (const [category, items] of Object.entries(CATALOG_ITEMS)) {
-    if (items.some(i => i === dish)) return category;
-  }
-  return 'aperitivo-frio';
-}
 
 export default function WizardStep3() {
   const { step1, step2, step3, setStepData, nextStep, prevStep } = useWizardStore();
   const [selections, setSelections] = useState<Record<string, string[]>>({});
-  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
 
-  const isPredefined = !!step2?.menu_id;
-  const predefinedPlatos = step2?.menu_id ? getMenuPlatos(step2.menu_id) : [];
+  const adults = step1?.guest_count || 0;
+  const minPerCat = Math.max(1, Math.ceil(adults / 15));
 
-  // Initialize selections from predefined menu
+  // Pre-select from step2 if using proposed menu
   useEffect(() => {
-    if (isPredefined && predefinedPlatos.length > 0 && Object.keys(selections).length === 0) {
-      const initialSelections: Record<string, string[]> = {};
-      predefinedPlatos.forEach(plato => {
-        const cat = getDishCategory(plato);
-        if (!initialSelections[cat]) initialSelections[cat] = [];
-        if (!initialSelections[cat].includes(plato)) {
-          initialSelections[cat].push(plato);
+    if (step2?.use_proposed && step2?.menu_id && !step3?.selected_items?.length) {
+      const preselected: Record<string, string[]> = {};
+      const menuItems = step2.menu_id.split(',');
+      // Default: select first item from each category
+      Object.entries(CATALOG_ITEMS).forEach(([cat, items]) => {
+        if (items.length > 0) {
+          preselected[cat] = [items[0]];
         }
       });
-      setSelections(initialSelections);
+      setSelections(preselected);
     }
-  }, [isPredefined, predefinedPlatos]);
+  }, [step2?.menu_id, step2?.use_proposed]);
 
   const toggleSelection = (category: string, item: string) => {
     setSelections(prev => {
@@ -75,179 +52,118 @@ export default function WizardStep3() {
     });
   };
 
-  const getMinRequired = (catId: string) => {
-    const cat = CATALOG_CATEGORIES.find(c => c.id === catId);
-    return cat?.minSelect || DEFAULT_MINIMUMS[catId] || 0;
-  };
+  const countSelected = (category: string) => (selections[category] || []).length;
+  const totalSelected = Object.values(selections).reduce((sum, items) => sum + items.length, 0);
+  const canProceed = totalSelected >= Object.keys(CATALOG_ITEMS).length;
 
-  const isCategoryComplete = (catId: string) => {
-    const count = (selections[catId] || []).length;
-    return count >= getMinRequired(catId);
-  };
-
-  const canProceed = () => {
-    if (isPredefined) return true;
-    return CATALOG_CATEGORIES.every(cat => isCategoryComplete(cat.id));
-  };
-
-  const handleProceed = () => {
-    if (!canProceed()) return;
-    
-    // Convert selections to the format expected by the store
-    const selectedItems: SelectedItem[] = [];
-    
-    // Add predefined items if using a menu
-    if (isPredefined) {
-      predefinedPlatos.forEach(plato => {
-        const cat = getDishCategory(plato);
-        selectedItems.push({
-          item_id: plato,
-          name: plato,
-          category: cat as SelectedItem['category'],
-          quantity: 1,
-          unit_price_pvp: 0,
-          unit_price_cost: 0,
-          subtotal_pvp: 0,
-          subtotal_cost: 0,
-        });
-      });
-    } else {
-      // Add custom selections
-      Object.entries(selections).forEach(([category, items]) => {
-        items.forEach(itemName => {
-          selectedItems.push({
-            item_id: itemName,
-            name: itemName,
-            category: category as SelectedItem['category'],
-            quantity: 1,
-            unit_price_pvp: 0,
-            unit_price_cost: 0,
-            subtotal_pvp: 0,
-            subtotal_cost: 0,
-          });
-        });
-      });
-    }
-    
-    setStepData('step3', { selected_items: selectedItems });
+  const handleNext = () => {
+    if (!canProceed) return;
+    setStepData('step3', { selected_items: [] });
     nextStep();
   };
 
-  const filteredItems = (catId: string) => {
-    const items = CATALOG_ITEMS[catId] || [];
-    if (!searchTerm) return items;
-    return items.filter(item => item.toLowerCase().includes(searchTerm.toLowerCase()));
-  };
-
-  const getCategoryName = (catId: string) => {
-    const cat = CATALOG_CATEGORIES.find(c => c.id === catId);
-    return cat?.label || catId;
-  };
+  const catItems = (cat: string) => CATALOG_ITEMS[cat] || [];
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-8"
+    >
       <div className="text-center">
-        <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
-          Personaliza tu Menú
+        <h2 className="font-serif text-3xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          Personaliza tu Menu
         </h2>
-        <p className="text-stone-500 text-base max-w-md mx-auto">
-          {isPredefined 
-            ? 'Tu menú ha sido preconfigurado. Puedes añadir o quitar platos.'
-            : 'Selecciona al menos un plato por categoría.'
-          }
+        <p className="text-stone-500 text-sm max-w-md mx-auto font-light">
+          Selecciona al menos un plato por categoria ({Object.keys(CATALOG_ITEMS).length} categorias)
         </p>
-      </div>
-
-      {/* Search */}
-      <div className="max-w-md mx-auto">
-        <input
-          type="text"
-          placeholder="Buscar plato..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border-2 border-stone-200 bg-white focus:border-amber-600 focus:outline-none transition-colors text-stone-800 text-base"
-        />
+        <div className="mt-2 inline-flex items-center gap-2 text-xs text-stone-400">
+          <span>{totalSelected} seleccionados</span>
+          <span>·</span>
+          <span>{Object.keys(CATALOG_ITEMS).filter(c => countSelected(c) > 0).length}/{Object.keys(CATALOG_ITEMS).length} categorias</span>
+        </div>
       </div>
 
       {/* Categories */}
-      <div className="space-y-6">
-        {CATALOG_CATEGORIES.map((category) => {
-          const items = filteredItems(category.id);
-          const count = (selections[category.id] || []).length;
-          const minRequired = getMinRequired(category.id);
-          const isComplete = isCategoryComplete(category.id);
-
-          if (items.length === 0) return null;
-
+      <div className="space-y-2">
+        {Object.entries(CATALOG_ITEMS).map(([cat, items]) => {
+          const count = countSelected(cat);
+          const isExpanded = expandedCat === cat;
           return (
-            <div
-              key={category.id}
-              className={`rounded-xl border-2 p-4 transition-all ${
-                isComplete
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-stone-200 bg-white'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
+            <div key={cat} className="rounded-xl border border-stone-200 bg-white overflow-hidden transition-all">
+              <button
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-stone-50 transition-colors"
+                onClick={() => setExpandedCat(isExpanded ? null : cat)}
+              >
                 <div className="flex items-center gap-3">
-                  <span
-                    className="w-6 h-6 rounded text-xs flex items-center justify-center font-bold"
-                    style={{ background: '#C9A84C', color: '#fff' }}
-                  >
-                    {category.id.split('-')[0].toUpperCase()}
+                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-500" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    {cat}
                   </span>
-                  <h3 className="font-semibold text-stone-800">
-                    {getCategoryName(category.id)}
-                  </h3>
-                  <span className="text-sm text-stone-500">
-                    {count}/{minRequired} seleccionados
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    count > 0 ? 'bg-[#C9A84C]/15 text-[#C9A84C]' : 'bg-stone-100 text-stone-400'
+                  }`}>
+                    {count}
                   </span>
                 </div>
-                {isComplete && (
-                  <span className="text-green-600 text-sm font-medium">✓ Completo</span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {items.map((item) => {
-                  const isSelected = (selections[category.id] || []).includes(item);
-                  return (
-                    <button
-                      key={item}
-                      onClick={() => toggleSelection(category.id, item)}
-                      className={`p-3 rounded-lg text-left transition-all ${
-                        isSelected
-                          ? 'bg-[#C9A84C] text-white border-2 border-[#C9A84C]'
-                          : 'bg-stone-50 hover:bg-stone-100 border-2 border-transparent'
-                      }`}
-                    >
-                      <div className="font-medium text-sm">{item}</div>
-                    </button>
-                  );
-                })}
-              </div>
+                <svg className={`w-4 h-4 text-stone-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isExpanded && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                  <div className="px-4 pb-4 space-y-1">
+                    {items.map((item) => {
+                      const isSelected = (selections[cat] || []).includes(item);
+                      return (
+                        <button
+                          key={item}
+                          onClick={() => toggleSelection(cat, item)}
+                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-sm transition-all duration-200 text-left ${
+                            isSelected
+                              ? 'bg-[#C9A84C]/10 text-[#1A1A1A] font-medium'
+                              : 'text-stone-600 hover:bg-stone-50'
+                          }`}
+                        >
+                          <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all ${
+                            isSelected ? 'bg-[#C9A84C] border-[#C9A84C]' : 'border-stone-300'
+                          }`}>
+                            {isSelected && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <span>{item}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Navigation */}
-      <div className="flex gap-3 pt-4">
-        <button
-          onClick={prevStep}
-          className="flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-200 border-2 border-stone-200 text-stone-600 hover:bg-stone-50"
-        >
-          ← Atrás
+      {/* Actions */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-stone-200">
+        <button onClick={prevStep} className="px-5 py-2.5 rounded-xl text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors">
+          Anterior
         </button>
         <button
-          onClick={handleProceed}
-          disabled={!canProceed()}
-          className="flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-200 bg-[#C9A84C] text-white hover:bg-[#A88A3A] disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed"
+          onClick={handleNext}
+          disabled={!canProceed}
+          className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+            canProceed
+              ? 'bg-[#1A1A1A] text-white hover:bg-stone-800 shadow-lg shadow-stone-900/20'
+              : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+          }`}
         >
-          Siguiente →
+          Siguiente
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }

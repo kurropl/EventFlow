@@ -5,12 +5,12 @@ import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 
 const EVENT_TYPES = [
-  { id: 'boda', label: 'Boda', desc: 'El día más importante', icon: '♡' },
-  { id: 'cumpleaños', label: 'Cumpleaños', desc: 'Celebra tu día especial', icon: '☆' },
-  { id: 'corporativo', label: 'Corporativo', desc: 'Eventos de empresa', icon: '◈' },
-  { id: 'bautizo', label: 'Bautizo', desc: 'Momentos especiales', icon: '✧' },
-  { id: 'comunión', label: 'Comunión', desc: 'Celebraciones familiares', icon: '✦' },
-  { id: 'otro', label: 'Otro', desc: 'Personaliza tu evento', icon: '⋆' },
+  { id: 'boda', label: 'Boda', desc: 'El dia mas importante' },
+  { id: 'cumpleanos', label: 'Cumpleanos', desc: 'Celebra tu dia especial' },
+  { id: 'corporativo', label: 'Corporativo', desc: 'Eventos de empresa' },
+  { id: 'bautizo', label: 'Bautizo', desc: 'Momentos especiales' },
+  { id: 'comunión', label: 'Comunion', desc: 'Celebraciones familiares' },
+  { id: 'otro', label: 'Otro', desc: 'Personaliza tu evento' },
 ];
 
 const MONTHS = [
@@ -33,7 +33,6 @@ function yearsRange() {
 export default function WizardStep1() {
   const { step1, setStepData, nextStep } = useWizardStore();
   
-  // State
   const [eventType, setEventType] = useState<string>(step1?.event_type || '');
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
@@ -46,11 +45,9 @@ export default function WizardStep1() {
   const adults = parseInt(guestCount) || 0;
   const kids = parseInt(kidsCount) || 0;
   
-  // Build ISO date string from three selects
   const eventDate = (month && day && year) ? `${year}-${month}-${day.padStart(2, '0')}` : '';
   const canProceed = eventType && eventDate && adults >= 10;
 
-  // Update day when month/year changes (to prevent invalid dates)
   const maxDays = getDays(month, year);
   useEffect(() => {
     if (parseInt(day) > maxDays) setDay(maxDays.toString());
@@ -59,7 +56,6 @@ export default function WizardStep1() {
   const handleNext = () => {
     setError(null);
     setIsLoading(true);
-    
     try {
       setStepData('step1', {
         event_type: eventType as any,
@@ -67,15 +63,21 @@ export default function WizardStep1() {
         guest_count: adults,
         kids_count: kids,
       });
-      // Use setTimeout to ensure state is committed before advancing
-      setTimeout(() => {
-        nextStep();
-      }, 50);
+      setTimeout(() => nextStep(), 50);
     } catch (err: any) {
-      setError(err?.message || 'Error al validar los datos. Revisa los campos.');
+      setError(err?.message || 'Error al validar los datos.');
       setIsLoading(false);
     }
   };
+
+  const inputClass = "w-full px-4 py-3 rounded-xl border border-stone-200 bg-white focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all text-sm";
+  const selectClass = inputClass;
+  const cardClass = (active: boolean) =>
+    `group relative p-4 rounded-xl border-2 text-center transition-all duration-200 cursor-pointer ${
+      active
+        ? 'border-[#C9A84C] bg-[#C9A84C]/8 shadow-md shadow-[#C9A84C]/15'
+        : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm'
+    }`;
 
   return (
     <motion.div
@@ -86,10 +88,10 @@ export default function WizardStep1() {
       className="space-y-10"
     >
       <div className="text-center">
-        <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
+        <h2 className="font-serif text-3xl md:text-4xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
           Detalles del Evento
         </h2>
-        <p className="text-stone-500 text-base max-w-md mx-auto">
+        <p className="text-stone-500 text-sm max-w-md mx-auto font-light">
           Cuéntanos qué tipo de celebración tienes en mente
         </p>
       </div>
@@ -100,27 +102,19 @@ export default function WizardStep1() {
 
       {/* Event Type */}
       <div>
-        <label className="block text-sm font-semibold text-stone-700 mb-4">¿Qué tipo de evento es?</label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <label className="block text-sm font-semibold text-stone-700 mb-3">Tipo de evento</label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           {EVENT_TYPES.map((et) => (
             <button
               key={et.id}
               type="button"
               onClick={() => setEventType(et.id)}
-              data-testid={`event-type-${et.id}`}
-              className={`group relative p-5 rounded-xl border-2 text-center transition-all duration-200 ${
-                eventType === et.id
-                  ? 'border-[#C9A84C] bg-[#C9A84C]/10 shadow-md shadow-[#C9A84C]/20'
-                  : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm'
-              }`}
+              className={cardClass(eventType === et.id)}
             >
-              <div className={`text-2xl mb-2 ${
-                eventType === et.id ? 'text-[#C9A84C]' : 'text-stone-400'
-              }`}>{et.icon}</div>
-              <div className={`text-sm font-semibold ${
-                eventType === et.id ? 'text-stone-800' : 'text-stone-700'
+              <div className={`text-sm font-semibold mb-0.5 ${
+                eventType === et.id ? 'text-[#1A1A1A]' : 'text-stone-700'
               }`}>{et.label}</div>
-              <div className="text-xs text-stone-400 mt-1">{et.desc}</div>
+              <div className="text-[11px] text-stone-400">{et.desc}</div>
               {eventType === et.id && (
                 <div className="absolute top-2 right-2">
                   <svg className="w-4 h-4 text-[#C9A84C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -133,82 +127,50 @@ export default function WizardStep1() {
         </div>
       </div>
 
-      {/* Date: Three Selects */}
+      {/* Date */}
       <div>
         <label className="block text-sm font-semibold text-stone-700 mb-2">Fecha del evento</label>
-        <div className="flex gap-3">
-          <select
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="flex-1 px-4 py-3 rounded-xl border border-stone-200 bg-white focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
-          >
+        <div className="flex gap-2.5">
+          <select value={month} onChange={(e) => setMonth(e.target.value)} className={selectClass}>
             <option value="">Mes</option>
-            {MONTHS.map((m) => (
-              <option key={m.v} value={m.v}>{m.n}</option>
-            ))}
+            {MONTHS.map((m) => (<option key={m.v} value={m.v}>{m.n}</option>))}
           </select>
-          <select
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-            className="flex-1 px-4 py-3 rounded-xl border border-stone-200 bg-white focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
-          >
+          <select value={day} onChange={(e) => setDay(e.target.value)} className={selectClass}>
             <option value="">Día</option>
             {Array.from({ length: maxDays }, (_, i) => i + 1).map((d) => (
               <option key={d} value={d.toString().padStart(2, '0')}>{d}</option>
             ))}
           </select>
-          <select
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            className="flex-1 px-4 py-3 rounded-xl border border-stone-200 bg-white focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
-          >
+          <select value={year} onChange={(e) => setYear(e.target.value)} className={selectClass}>
             <option value="">Año</option>
-            {yearsRange().map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+            {yearsRange().map((y) => (<option key={y} value={y}>{y}</option>))}
           </select>
         </div>
       </div>
 
       {/* Guest Count */}
       <div>
-        <label className="block text-sm font-semibold text-stone-700 mb-2">Número de comensales</label>
-        <div className="flex gap-4">
+        <label className="block text-sm font-semibold text-stone-700 mb-2">Comensales</label>
+        <div className="flex gap-3">
           <div className="flex-1">
-            <input
-              type="number"
-              min="10"
-              max="300"
-              value={guestCount}
-              onChange={(e) => setGuestCount(e.target.value)}
-              placeholder="Adultos"
-              className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
-            />
+            <input type="number" min="10" max="300" value={guestCount} onChange={(e) => setGuestCount(e.target.value)} placeholder="Adultos" className={inputClass} />
           </div>
           <div className="flex-1">
-            <input
-              type="number"
-              min="0"
-              max="50"
-              value={kidsCount}
-              onChange={(e) => setKidsCount(e.target.value)}
-              placeholder="Niños"
-              className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
-            />
+            <input type="number" min="0" max="50" value={kidsCount} onChange={(e) => setKidsCount(e.target.value)} placeholder="Niños" className={inputClass} />
           </div>
         </div>
-        <p className="text-xs text-stone-500 mt-2">Mínimo 10 comensales adultos</p>
+        <p className="text-xs text-stone-400 mt-1.5">Minimo 10 comensales adultos</p>
       </div>
 
       {/* Next Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-2">
         <button
           onClick={handleNext}
           disabled={!canProceed || isLoading}
           className={`px-8 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
             canProceed
-              ? 'bg-[#C9A84C] text-white hover:bg-[#A88A3A] shadow-lg shadow-[#C9A84C]/30'
-              : 'bg-stone-200 text-stone-500 cursor-not-allowed'
+              ? 'bg-[#1A1A1A] text-white hover:bg-stone-800 shadow-lg shadow-stone-900/20'
+              : 'bg-stone-200 text-stone-400 cursor-not-allowed'
           }`}
         >
           {isLoading ? 'Procesando...' : 'Siguiente'}

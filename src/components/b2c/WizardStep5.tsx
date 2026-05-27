@@ -2,7 +2,7 @@
 /**
  * J.Benitez — Wizard Step 5: Resumen
  * 
- * Muestra el resumen final del evento configurado.
+ * Colores coherentes gold/cream/ink
  */
 
 import { motion } from 'framer-motion';
@@ -22,6 +22,15 @@ export default function WizardStep5() {
     return `${parseInt(day)} de ${months[parseInt(month) - 1]} de ${year}`;
   };
 
+  const eventTypeLabels: Record<string, string> = {
+    boda: 'Boda',
+    'cumpleanos': 'Cumpleanos',
+    corporativo: 'Corporativo',
+    bautizo: 'Bautizo',
+    comunión: 'Comunion',
+    otro: 'Otro',
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -31,46 +40,52 @@ export default function WizardStep5() {
       className="space-y-8"
     >
       <div className="text-center">
-        <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
+        <h2 className="font-serif text-3xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
           Resumen de tu Evento
         </h2>
-        <p className="text-stone-500 text-base max-w-md mx-auto">
+        <p className="text-stone-500 text-sm max-w-md mx-auto font-light">
           Revisa los detalles antes de enviar tu propuesta
         </p>
       </div>
 
       {/* Event Details */}
-      <div className="rounded-xl border border-stone-200 p-6 bg-white">
-        <h3 className="font-serif text-xl text-stone-800 mb-4">Detalles del Evento</h3>
+      <div className="rounded-xl border border-stone-200 p-5 bg-white">
+        <h3 className="font-serif text-base font-semibold mb-4" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#1A1A1A' }}>
+          Detalles del Evento
+        </h3>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-stone-500">Tipo de evento</p>
-            <p className="font-medium text-stone-800">{step1?.event_type}</p>
+            <p className="text-xs text-stone-400 uppercase tracking-wider mb-0.5">Tipo</p>
+            <p className="text-sm font-medium text-stone-800">{eventTypeLabels[step1?.event_type || ''] || step1?.event_type}</p>
           </div>
           <div>
-            <p className="text-sm text-stone-500">Fecha</p>
-            <p className="font-medium text-stone-800">{formatDate(step1?.event_date || "")}</p>
+            <p className="text-xs text-stone-400 uppercase tracking-wider mb-0.5">Fecha</p>
+            <p className="text-sm font-medium text-stone-800">{formatDate(step1?.event_date || '')}</p>
           </div>
           <div>
-            <p className="text-sm text-stone-500">Comensales</p>
-            <p className="font-medium text-stone-800">{step1?.guest_count} adultos{step1?.kids_count ? `, ${step1.kids_count} niños` : ''}</p>
+            <p className="text-xs text-stone-400 uppercase tracking-wider mb-0.5">Comensales</p>
+            <p className="text-sm font-medium text-stone-800">
+              {step1?.guest_count} adultos{step1?.kids_count ? `, ${step1.kids_count} niños` : ''}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Menu Selection */}
-      <div className="rounded-xl border border-stone-200 p-6 bg-white">
-        <h3 className="font-serif text-xl text-stone-800 mb-4">Menú Seleccionado</h3>
+      {/* Menu */}
+      <div className="rounded-xl border border-stone-200 p-5 bg-white">
+        <h3 className="font-serif text-base font-semibold mb-4" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#1A1A1A' }}>
+          Menu Seleccionado
+        </h3>
         {selectedMenu && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
-              <p className="text-sm text-stone-500">Menú Adulto</p>
-              <p className="font-medium text-stone-800">{selectedMenu.name} ({selectedMenu.tag})</p>
+              <p className="text-xs text-stone-400 uppercase tracking-wider mb-0.5">Adultos</p>
+              <p className="text-sm font-medium text-stone-800">{selectedMenu.name} <span className="text-xs text-stone-400">({selectedMenu.tag})</span></p>
             </div>
             {selectedKidMenu && (
               <div>
-                <p className="text-sm text-stone-500">Menú Infantil</p>
-                <p className="font-medium text-stone-800">{selectedKidMenu.name} ({selectedKidMenu.tag})</p>
+                <p className="text-xs text-stone-400 uppercase tracking-wider mb-0.5">Infantil</p>
+                <p className="text-sm font-medium text-stone-800">{selectedKidMenu.name} <span className="text-xs text-stone-400">({selectedKidMenu.tag})</span></p>
               </div>
             )}
           </div>
@@ -79,11 +94,13 @@ export default function WizardStep5() {
 
       {/* Extras */}
       {step4?.selected_suggestions && step4.selected_suggestions.length > 0 && (
-        <div className="rounded-xl border border-stone-200 p-6 bg-white">
-          <h3 className="font-serif text-xl text-stone-800 mb-4">Extras</h3>
+        <div className="rounded-xl border border-stone-200 p-5 bg-white">
+          <h3 className="font-serif text-base font-semibold mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#1A1A1A' }}>
+            Extras
+          </h3>
           <div className="flex flex-wrap gap-2">
-            {step4.selected_suggestions.map((extra, i) => (
-              <span key={i} className="px-3 py-1 rounded-full bg-[#C9A84C]/20 text-[#C9A84C] text-sm font-medium">
+            {step4.selected_suggestions.map((extra: string, i: number) => (
+              <span key={i} className="px-3 py-1 rounded-full bg-[#C9A84C]/15 text-[#C9A84C] text-xs font-medium">
                 {extra}
               </span>
             ))}
@@ -92,8 +109,8 @@ export default function WizardStep5() {
       )}
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
-        <button className="px-8 py-4 rounded-xl text-sm font-medium bg-[#C9A84C] text-white hover:bg-[#A88A3A] shadow-lg shadow-[#C9A84C]/30 transition-all duration-300">
+      <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+        <button className="px-8 py-3 rounded-xl text-sm font-medium bg-[#1A1A1A] text-white hover:bg-stone-800 shadow-lg shadow-stone-900/20 transition-all duration-300">
           Enviar Propuesta
         </button>
       </div>
