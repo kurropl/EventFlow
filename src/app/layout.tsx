@@ -15,8 +15,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'EventFlow — J. Benitez',
-  description: 'Configurador de menús y eventos para J. Benitez. Crea propuestas personalizadas para bodas, cumpleaños, eventos corporativos y más.',
+  title: 'J.Benitez — Salon de Celebraciones Premium',
+  description: 'J.Benitez. Salon de celebraciones premium en Sevilla. Configura tu evento perfecto con nuestro disenador interactivo. Mas de 100 platos, espacios unicos y una experiencia inolvidable.',
 };
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
 'use client';
 /**
- * EventFlow — Configurador Page (B2C)
+ * J.Benitez — Configurador Page (B2C)
  * 
  * Orquesta los pasos del wizard con transiciones Framer Motion.
  * Sin precios en ningún lado.
@@ -44,16 +44,16 @@ export default function ConfiguradorPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#f6f1e7', fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen" style={{ background: '#FAF8F5', fontFamily: "'Inter', sans-serif" }}>
       {/* Header */}
-      <header className="sticky top-0 z-50" style={{ background: 'linear-gradient(135deg, #0d0a06 0%, #1a1208 100%)' }}>
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between" style={{ borderBottom: '2px solid #d4a548' }}>
+      <header className="sticky top-0 z-50" style={{ background: 'linear-gradient(135deg, #1A1A1A 0%, #2A2A2A 100%)' }}>
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(201,168,76,0.3)' }}>
           {/* Brand */}
           <div className="flex items-center gap-3">
             {currentStep > 1 && (
               <button
                 onClick={prevStep}
-                className="text-[#d4a548]/70 hover:text-[#d4a548] transition-colors p-1"
+                className="text-white/60 hover:text-[#C9A84C] transition-colors p-1"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -61,13 +61,15 @@ export default function ConfiguradorPage() {
               </button>
             )}
             <div className="flex items-center gap-2">
-<div className="w-8 h-8 rounded-full border border-[#d4a548] flex items-center justify-center"
-              style={{ fontFamily: "'Playfair Display', serif", color: '#d4a548', fontStyle: 'italic', fontWeight: 700 }}>
-              JB
+              <div
+                className="w-9 h-9 rounded-full border border-[#C9A84C] flex items-center justify-center"
+                style={{ fontFamily: "'Playfair Display', serif", color: '#C9A84C', fontStyle: 'italic', fontWeight: 700 }}
+              >
+                J
               </div>
               <div>
-                <span className="font-serif text-[#d4a548] text-base" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  Jose Benitez
+                <span className="font-serif text-[#C9A84C] text-base" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  J.Benitez
                 </span>
               </div>
             </div>
@@ -79,7 +81,7 @@ export default function ConfiguradorPage() {
             <div className="relative">
               <button
                 onClick={() => setShowResetConfirm(!showResetConfirm)}
-                className="text-stone-400 hover:text-red-400 transition-colors p-1"
+                className="text-stone-400 hover:text-[#C9A84C] transition-colors p-1"
                 title="Restablecer todo"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -112,24 +114,25 @@ export default function ConfiguradorPage() {
             <div className="flex items-center gap-1 bg-white/10 rounded-xl p-1.5 backdrop-blur">
               {STEP_LABELS.map((label, i) => (
                 <div key={label} className="flex items-center">
-                  <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer
-                    ${i + 1 === currentStep
-                      ? 'bg-[#6b2737] text-white font-semibold'
-                      : i + 1 < currentStep
-                      ? 'bg-[#d4a548]/20 text-[#d4a548]'
-                      : 'bg-transparent text-stone-500 hover:text-stone-300'
-                    }`}
+                  <div
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer
+                      ${i + 1 === currentStep
+                        ? 'bg-[#C9A84C] text-white font-semibold'
+                        : i + 1 < currentStep
+                        ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                        : 'bg-transparent text-stone-500 hover:text-stone-300'
+                      }`}
                     onClick={() => { if (i + 1 <= currentStep) { /* allow going back */ } }}
                   >
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs
-                      ${i + 1 === currentStep ? 'bg-white text-[#6b2737]' : ''}
-                      ${i + 1 < currentStep ? 'bg-[#d4a548] text-white' : ''}`}>
+                      ${i + 1 === currentStep ? 'bg-white text-[#C9A84C]' : ''}
+                      ${i + 1 < currentStep ? 'bg-[#C9A84C] text-white' : ''}`}>
                       {i + 1 < currentStep ? '✓' : i + 1}
                     </span>
                     <span className="hidden lg:inline">{label}</span>
                   </div>
                   {i < STEP_LABELS.length - 1 && (
-                    <div className={`w-3 h-px mx-1 ${i + 1 < currentStep ? 'bg-[#d4a548]' : 'bg-stone-600'}`} />
+                    <div className={`w-3 h-px mx-1 ${i + 1 < currentStep ? 'bg-[#C9A84C]' : 'bg-stone-600'}`} />
                   )}
                 </div>
               ))}

@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
-type Tab = 'kanban' | 'catalog' | 'operations' | 'webhooks' | 'login';
+type Tab = 'kanban' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'kanban', label: 'Pipeline', icon: 'K' },
   { id: 'catalog', label: 'Catálogo', icon: 'C' },
   { id: 'operations', label: 'Operaciones', icon: 'O' },
+  { id: 'mapa-mesas', label: 'Mapa Mesas', icon: 'M' },
   { id: 'webhooks', label: 'Webhooks', icon: 'W' },
 ];
 

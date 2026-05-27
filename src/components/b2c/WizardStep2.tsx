@@ -1,8 +1,8 @@
 'use client';
 /**
- * EventFlow — Wizard Step 2: Menú Propuesto
+ * J.Benitez — Wizard Step 2: Menú Propuesto
  * 
- * Diseño visual original (tarjetas expandibles con secciones).
+ * Diseño visual premium con tarjetas expandibles y secciones.
  * Control de niños: si kids_count > 0, se selecciona menú adulto + infantil.
  * 
  * DOS ACCIONES:
@@ -29,13 +29,13 @@ function getDishCategory(dish: string): string {
 }
 
 const TAG_STYLES: Record<string, string> = {
-  'Recomendado': 'bg-amber-100 text-amber-800',
+  'Recomendado': 'bg-[#C9A84C]/20 text-[#C9A84C]',
   'Premium': 'bg-stone-800 text-white',
   'Premium +': 'bg-stone-800 text-white',
-  'Gran Selección': 'bg-amber-100 text-amber-800',
+  'Gran Selección': 'bg-[#C9A84C]/20 text-[#C9A84C]',
   'Infantil': 'bg-pink-100 text-pink-700',
   'Esencial': 'bg-stone-100 text-stone-600',
-  'Completo': 'bg-amber-100 text-amber-800',
+  'Completo': 'bg-[#C9A84C]/20 text-[#C9A84C]',
   'Canapés': 'bg-purple-100 text-purple-700',
 };
 
@@ -59,11 +59,12 @@ export default function WizardStep2() {
 
   // Sync store when selection changes
   useEffect(() => {
-    setStepData('step2', {
-      menu_id: selectedAdultId,
-      kid_menu_id: selectedKidId,
-      use_proposed: true,
-    } as any);
+    if (selectedAdultId && selectedKidId) {
+      setStepData('step2', {
+        menu_id: selectedAdultId,
+        kid_menu_id: selectedKidId,
+      });
+    }
   }, [selectedAdultId, selectedKidId]);
 
   const handleUseMenu = () => {
@@ -71,57 +72,37 @@ export default function WizardStep2() {
     setStepData('step2', {
       menu_id: selectedAdultId,
       kid_menu_id: selectedKidId,
-      use_proposed: true,
-    } as any);
-    // Skip step 3 (personalización) → go to step 4 (Extras)
-    nextStep();
+    });
     nextStep();
   };
 
-  const handleCustomize = () => {
+  const handleCustomizeMenu = () => {
     if (!canUseMenu) return;
-    const selectedMenu = [...adultMenus, ...kidMenus].find(m => m.id === (selectedAdultId || selectedKidId));
+    
+    const selectedMenu = PROPOSED_MENUS.find(m => m.id === selectedAdultId);
     if (!selectedMenu) return;
 
-    // Convertir secciones del menú en items del catálogo
-    const items: any[] = [];
-    for (const section of selectedMenu.sections) {
-      for (const dish of section.items) {
-        const catId = getDishCategory(dish);
-        const catItems = CATALOG_ITEMS[catId] || [];
-        const dishKey = dish.toLowerCase().substring(0, 15);
-        const match = catItems.find((c: string) =>
-          c.toLowerCase().includes(dishKey) || dishKey.includes(c.toLowerCase().substring(0, 10))
-        );
-        if (match) {
-          items.push({
-            item_id: match,
-            name: dish,
-            category: catId,
-            quantity: 1,
-          });
-        }
-      }
-    }
+    // Convertir menú propuesto a estructura de personalización
+    const selections: Record<string, string[]> = {};
+    selectedMenu.sections.forEach(section => {
+      const category = getDishCategory(section.items[0] || '');
+      if (!selections[category]) selections[category] = [];
+      selections[category].push(...section.items);
+    });
 
     setStepData('step2', {
       menu_id: selectedAdultId,
       kid_menu_id: selectedKidId,
-      use_proposed: false,
-    } as any);
+    });
     setStepData('step3', {
-      selected_items: items.length > 0 ? items : selectedMenu.sections.flatMap(s => s.items.map(name => ({
-        item_id: name,
-        name: name,
-        category: getDishCategory(name),
-        quantity: 1,
-      }))),
-    } as any);
+      selections,
+      extras: [],
+    });
     nextStep();
   };
 
-  const adultSelected = adultMenus.find(m => m.id === selectedAdultId);
-  const kidSelected = kidMenus.find(m => m.id === selectedKidId);
+  const selectedMenu = adultMenus.find(m => m.id === selectedAdultId);
+  const selectedKidMenu = kidMenus.find(m => m.id === selectedKidId);
 
   return (
     <motion.div
@@ -129,207 +110,191 @@ export default function WizardStep2() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.3 }}
-      className="space-y-8"
+      className="space-y-10"
     >
-      {/* Header */}
       <div className="text-center">
         <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
           Elige tu Menú
         </h2>
         <p className="text-stone-500 text-base max-w-md mx-auto">
-          {kids > 0
-            ? 'Selecciona un menú para adultos y otro para niños'
-            : 'Selecciona un menú predefinido o personaliza el tuyo'
-          }
+          Selecciona un menú propuesto o personaliza cada plato a tu gusto
         </p>
       </div>
 
-      {/* Kids menu requirement */}
-      {kids > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`rounded-xl p-4 border-2 ${
-            kidsValid ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              {kidsValid ? (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3l9.5 16.5H2.5L12 3z" />
-              )}
-            </svg>
-            <div>
-              <p className={`text-sm font-semibold ${kidsValid ? 'text-emerald-800' : 'text-amber-800'}`}>
-                {kidsValid
-                  ? `¡Perfecto! Menú adulto + infantil seleccionados`
-                  : `Necesitas 1 menú adulto y 1 menú infantil (${kids} ${kids === 1 ? 'niño' : 'niños'})`
-                }
-              </p>
-              {!kidsValid && (
-                <p className="text-xs text-amber-600 mt-1">
-                  Adulto: {hasAdult ? `✓ ${adultSelected?.name}` : '○ Sin seleccionar'} | 
-                  Niño: {hasKid ? `✓ ${kidSelected?.name}` : '○ Sin seleccionar'}
-                </p>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Menu Selection — original visual style */}
-      <div className="space-y-3">
-        {[...adultMenus, ...kidMenus].map((menu, i) => {
-          const isSelected = menu.is_kid
-            ? selectedKidId === menu.id
-            : selectedAdultId === menu.id;
-          const isExpanded = expandedMenu === menu.id;
-          const isKid = menu.is_kid;
-          const totalItems = menu.sections.reduce((sum, s) => sum + s.items.length, 0);
-
-          return (
-            <motion.div
+      {/* Adult Menus */}
+      <div>
+        <h3 className="font-serif text-xl text-stone-700 mb-4">Menús para adultos</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          {adultMenus.map((menu) => (
+            <div
               key={menu.id}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.3 }}
-              className={`rounded-2xl border-2 transition-all duration-200 overflow-hidden
-                ${isSelected
-                  ? isKid
-                    ? 'border-pink-500 bg-pink-50/30 shadow-lg shadow-pink-100/50'
-                    : 'border-amber-600 bg-amber-50/30 shadow-lg shadow-amber-100/50'
+              className={`rounded-xl border-2 p-5 transition-all duration-300 cursor-pointer ${
+                selectedAdultId === menu.id
+                  ? 'border-[#C9A84C] bg-[#C9A84C]/5 shadow-lg shadow-[#C9A84C]/20'
                   : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md'
-                }`}
+              }`}
+              onClick={() => setSelectedAdultId(menu.id)}
             >
-              <button
-                onClick={() => {
-                  if (isKid) {
-                    setSelectedKidId(isSelected ? '' : menu.id);
-                  } else {
-                    setSelectedAdultId(isSelected ? '' : menu.id);
-                  }
-                  setExpandedMenu(isExpanded ? null : menu.id);
-                }}
-                className="w-full text-left p-5"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1 flex-wrap">
-                      <h3 className="font-serif text-xl text-stone-800">
-                        {menu.name}
-                      </h3>
-                      <span className={`px-3 py-0.5 rounded-full text-xs font-semibold ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-600'}`}>
-                        {menu.tag}
-                      </span>
-                      {isKid && (
-                        <span className="px-3 py-0.5 rounded-full text-xs font-semibold bg-pink-100 text-pink-700">
-                          Infantil
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-stone-500">
-                      <span>{menu.sections.length} secciones</span>
-                      <span>·</span>
-                      <span>{totalItems} platos</span>
-                    </div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="font-serif text-lg text-stone-800">{menu.name}</h4>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-600'}`}>
+                    {menu.tag}
+                  </span>
+                </div>
+                {selectedAdultId === menu.id && (
+                  <div className="w-6 h-6 rounded-full bg-[#C9A84C] flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
                   </div>
-                  <div className={`w-7 h-7 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all
-                    ${isSelected
-                      ? isKid
-                        ? 'border-pink-500 bg-pink-500 scale-110'
-                        : 'border-amber-600 bg-amber-600 scale-110'
-                      : 'border-stone-300'}`}>
-                    {isSelected && (
-                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                )}
+              </div>
+              
+              {/* Expandable sections */}
+              <div className="space-y-2">
+                {menu.sections.map((section, idx) => (
+                  <div key={idx}>
+                    <button
+                      className="flex items-center justify-between w-full text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedMenu(expandedMenu === `${menu.id}-${idx}` ? null : `${menu.id}-${idx}`);
+                      }}
+                    >
+                      <span>{section.section}</span>
+                      <svg className={`w-4 h-4 transition-transform ${expandedMenu === `${menu.id}-${idx}` ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
+                    </button>
+                    {expandedMenu === `${menu.id}-${idx}` && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <ul className="mt-2 space-y-1">
+                          {section.items.map((item, i) => (
+                            <li key={i} className="text-sm text-stone-500 pl-4 border-l-2 border-[#C9A84C]/30">
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.div>
                     )}
                   </div>
-                </div>
-              </button>
-
-              {/* Expanded sections */}
-              {isExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`border-t ${isKid ? 'border-pink-200/50 bg-pink-50/30' : 'border-amber-200/50 bg-amber-50/30'}`}
-                >
-                  <div className="p-5 pt-4 space-y-4">
-                    {menu.sections.map((section, si) => (
-                      <div key={si}>
-                        <h4 className="text-xs font-bold uppercase tracking-widest mb-2"
-                          style={{ color: isKid ? '#be185d' : '#b45309' }}>
-                          {section.section}
-                        </h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {section.items.map((item, ii) => (
-                            <span
-                              key={ii}
-                              className="text-sm px-2.5 py-1 rounded-md border"
-                              style={{
-                                backgroundColor: isKid ? '#fdf2f8' : '#fffbeb',
-                                borderColor: isKid ? '#fbcfe8' : '#fef3c7',
-                                color: '#44403c',
-                              }}
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </motion.div>
-          );
-        })}
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex gap-3 pt-4">
+      {/* Kid Menus */}
+      {kids > 0 && (
+        <div>
+          <h3 className="font-serif text-xl text-stone-700 mb-4">Menús para niños</h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            {kidMenus.map((menu) => (
+              <div
+                key={menu.id}
+                className={`rounded-xl border-2 p-5 transition-all duration-300 cursor-pointer ${
+                  selectedKidId === menu.id
+                    ? 'border-pink-400 bg-pink-50 shadow-lg shadow-pink-200/50'
+                    : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md'
+                }`}
+                onClick={() => setSelectedKidId(menu.id)}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-serif text-lg text-stone-800">{menu.name}</h4>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-600'}`}>
+                      {menu.tag}
+                    </span>
+                  </div>
+                  {selectedKidId === menu.id && (
+                    <div className="w-6 h-6 rounded-full bg-pink-400 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  {menu.sections.map((section, idx) => (
+                    <div key={idx}>
+                      <button
+                        className="flex items-center justify-between w-full text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedMenu(expandedMenu === `${menu.id}-${idx}` ? null : `${menu.id}-${idx}`);
+                        }}
+                      >
+                        <span>{section.section}</span>
+                        <svg className={`w-4 h-4 transition-transform ${expandedMenu === `${menu.id}-${idx}` ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {expandedMenu === `${menu.id}-${idx}` && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <ul className="mt-2 space-y-1">
+                            {section.items.map((item, i) => (
+                              <li key={i} className="text-sm text-stone-500 pl-4 border-l-2 border-pink-300">
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </motion.div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-end pt-6 border-t border-stone-200">
         <button
           onClick={prevStep}
-          className="px-6 py-4 rounded-xl font-semibold text-stone-600 border-2 border-stone-200 hover:border-stone-300 transition-all"
+          className="px-6 py-3 rounded-xl text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors"
         >
-          ← Atrás
+          Anterior
         </button>
-
-        {canUseMenu ? (
+        <div className="flex gap-3">
+          <button
+            onClick={handleCustomizeMenu}
+            disabled={!canUseMenu}
+            className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+              canUseMenu
+                ? 'bg-[#C9A84C] text-white hover:bg-[#A88A3A] shadow-lg shadow-[#C9A84C]/30'
+                : 'bg-stone-200 text-stone-500 cursor-not-allowed'
+            }`}
+          >
+            Personalizar Menú
+          </button>
           <button
             onClick={handleUseMenu}
-            className="flex-1 py-4 rounded-xl font-semibold text-base bg-amber-600 text-white hover:bg-amber-700 shadow-md hover:shadow-lg transition-all"
+            disabled={!canUseMenu}
+            className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+              canUseMenu
+                ? 'bg-stone-800 text-white hover:bg-stone-900'
+                : 'bg-stone-200 text-stone-500 cursor-not-allowed'
+            }`}
           >
-            ✓ Usar este menú →
+            Usar este Menú
           </button>
-        ) : (
-          <button
-            disabled
-            className="flex-1 py-4 rounded-xl font-semibold text-base bg-stone-200 text-stone-400 cursor-not-allowed"
-          >
-            {kids > 0 && !hasAdult
-              ? 'Selecciona menú adulto'
-              : kids > 0 && !hasKid
-                ? 'Selecciona menú infantil'
-                : 'Selecciona menú'}
-          </button>
-        )}
+        </div>
       </div>
-
-      {/* Customize button — always visible when a menu is selected */}
-      {selectedAdultId && (
-        <button
-          onClick={handleCustomize}
-          className="w-full py-4 rounded-xl font-semibold text-base border-2 border-amber-600 text-amber-700 hover:bg-amber-50 transition-all"
-        >
-          ✏️ Personalizar este menú →
-        </button>
-      )}
     </motion.div>
   );
 }

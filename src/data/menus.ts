@@ -1,8 +1,8 @@
 /**
- * EventFlow — Menús Propuestos (J. Benitez 2025)
- * Fuente: https://byalboroto.duckdns.org/
+ * J.Benitez — Menus Propuestos
+ * Fuente: https://jbenitez.duckdns.org/
  * 
- * Estos menús se muestran en el configurador B2C SIN precios.
+ * Estos menus se muestran en el configurador B2C SIN precios.
  * Solo el admin B2B ve los precios.
  */
 
