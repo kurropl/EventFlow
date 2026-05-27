@@ -44,10 +44,10 @@ export default function AdminLoginPage() {
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-full border-2 border-[#d4a548] flex items-center justify-center mx-auto mb-4"
             style={{ fontFamily: "'Playfair Display', serif", color: '#d4a548', fontStyle: 'italic', fontWeight: 700, fontSize: '1.8rem' }}>
-            A
+            J.B
           </div>
           <h1 className="text-[#d4a548] text-2xl font-serif mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Alboroto Eventos
+            J. Benitez
           </h1>
           <p className="text-stone-500 text-sm">Panel de Administración</p>
         </div>
@@ -99,7 +99,7 @@ export default function AdminLoginPage() {
         </form>
 
         <p className="text-center mt-8 text-xs text-stone-600">
-          EventFlow v1.0 &mdash; Alboroto Eventos
+          EventFlow v1.0 &mdash; J. Benitez
         </p>
       </div>
     </div>

@@ -56,7 +56,7 @@ const eventTypes = [
 ];
 
 const testimonials = [
-  { text: 'Nuestra boda fue exactamente como la soñamos. El equipo de Alboroto se encargó de cada detalle.', initial: 'M', name: 'María & Carlos', meta: 'Boda — Junio 2025' },
+  { text: 'Nuestra boda fue exactamente como la soñamos. El equipo de Jose Benitez se encargó de cada detalle.', initial: 'M', name: 'María & Carlos', meta: 'Boda — Junio 2025' },
   { text: 'La comida es espectacular. Nuestros invitados aún hablan de los postres meses después.', initial: 'F', name: 'Familia García', meta: 'Comunión — Marzo 2025' },
   { text: 'Organizamos nuestra cena de empresa aquí y fue un éxito total. Profesionalidad y calidad.', initial: 'T', name: 'TechCorp Solutions', meta: 'Evento Corporativo — Enero 2025' },
 ];
@@ -105,10 +105,10 @@ function Nav() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500"
               style={{ background: scrolled ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}>
-              <span className="font-bold text-lg transition-colors duration-500" style={{ color: gold, fontFamily: serif }}>A</span>
+              <span className="font-bold text-lg transition-colors duration-500" style={{ color: gold, fontFamily: serif }}>JB</span>
             </div>
             <span className="text-lg tracking-wide transition-colors duration-500" style={{ color: scrolled ? '#FFFFFF' : '#FFFFFF', fontFamily: serif }}>
-              Alboroto
+              Jose Benitez
             </span>
           </Link>
           <div className="hidden md:flex items-center gap-10">
@@ -339,7 +339,7 @@ function ServicesSection() {
     <section id="servicios" className="py-28 md:py-36 px-6" style={{ background: '#FFFFFF' }}>
       <div className="max-w-7xl mx-auto">
         <div className={`${revealClass} text-center mb-20`}>
-          <span className="text-[11px] tracking-[0.4em] uppercase font-light block mb-4" style={{ color: gold }}>Por qué Alboroto</span>
+          <span className="text-[11px] tracking-[0.4em] uppercase font-light block mb-4" style={{ color: gold }}>Por qué Jose Benitez</span>
           <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl" style={{ color: ink, fontFamily: serif, fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
             Más que un salón
           </h2>
@@ -511,7 +511,7 @@ function FooterSection() {
     <footer className="py-16 px-6" style={{ background: ink, color: '#888888' }}>
       <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-12">
         <div>
-          <div className="text-lg mb-3 tracking-wide" style={{ color: gold, fontFamily: serif }}>Alboroto Eventos</div>
+<div className="text-lg mb-3 tracking-wide" style={{ color: gold, fontFamily: serif }}>Jose Benitez</div>
           <p className="text-sm leading-relaxed font-light" style={{ color: '#6B6B6B' }}>
             Salón de Celebraciones Premium en Sevilla.
           </p>
@@ -547,7 +547,7 @@ function FooterSection() {
       </div>
       <div className="max-w-6xl mx-auto mt-12 pt-8 text-center text-xs font-light"
         style={{ borderTop: '1px solid rgba(255,255,255,0.06)', color: '#555555' }}>
-        &copy; 2025 Alboroto Eventos. Todos los derechos reservados.
+        &copy; 2025 Jose Benitez. Todos los derechos reservados.
       </div>
     </footer>
   );

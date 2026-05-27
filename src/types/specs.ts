@@ -1,7 +1,7 @@
 /**
  * EventFlow — Zod Schemas (Data Validation Layer)
  * 
- * Catálogo real: Alboroto Eventos 2025
+ * Catálogo real: J. Benitez 2025
  * Fuente: https://byalboroto.duckdns.org/
  * 
  * REGLA CRÍTICA: El configurador B2C NUNCA muestra precios.

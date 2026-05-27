@@ -94,7 +94,7 @@ const CATEGORY_ITEMS: Record<string, string[]> = {
     'Berenjena a la brasa, glaseada con teriyaki y celery',
     'Espárrago blanco 00 relleno de langostinos al ajillo',
     'Canelón de boletus con cola de toro y salsa de foie al PX',
-    'Huevos rotos estilo Alboroto (papada ibérica y gambones)',
+    'Huevos rotos estilo J. Benitez (papada ibérica y gambones)',
     'Pulpo a la brasa, parmentier de patata y mojo picón',
   ],
   'carne': [

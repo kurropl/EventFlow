@@ -35,7 +35,7 @@ export default function HeroSection() {
       <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
         <motion.div {...fadeInUp}>
           <span className="inline-block rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 text-xs font-medium tracking-widest text-gold-light uppercase">
-            Alboroto Eventos
+            J. Benitez
           </span>
         </motion.div>
 

@@ -1,5 +1,5 @@
 /**
- * Alboroto Eventos — Full Catalog (118 items across 10 categories)
+ * J. Benitez — Full Catalog (118 items across 10 categories)
  * B2C: names only, NO prices
  */
 

@@ -15,8 +15,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'EventFlow — Alboroto Eventos',
-  description: 'Configurador de menús y eventos para Alboroto Eventos. Crea propuestas personalizadas para bodas, cumpleaños, eventos corporativos y más.',
+  title: 'EventFlow — J. Benitez',
+  description: 'Configurador de menús y eventos para J. Benitez. Crea propuestas personalizadas para bodas, cumpleaños, eventos corporativos y más.',
 };
 
 export default function RootLayout({

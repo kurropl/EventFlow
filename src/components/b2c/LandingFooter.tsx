@@ -10,7 +10,7 @@ export default function LandingFooter() {
           {/* Brand */}
           <div>
             <h3 className="font-heading text-2xl font-bold text-ink">
-              Alboroto <span className="text-gold">Eventos</span>
+              J. Benitez
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-ink/60">
               Creamos experiencias gastronómicas únicas e inolvidables.
@@ -59,7 +59,7 @@ export default function LandingFooter() {
         </div>
 
         <div className="mt-12 border-t border-cream-dark pt-8 text-center text-sm text-ink/40">
-          <p>© {new Date().getFullYear()} Alboroto Eventos. Todos los derechos reservados.</p>
+          <p>© {new Date().getFullYear()} J. Benitez. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>

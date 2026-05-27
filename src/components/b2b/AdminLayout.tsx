@@ -53,7 +53,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
           {sidebarOpen && (
             <div>
-              <div className="font-serif text-sm" style={{ color: '#f8f3e6' }}>Alboroto</div>
+              <div className="font-serif text-sm" style={{ color: '#f8f3e6' }}>J. Benitez</div>
               <div style={{ color: '#d4a54899', fontSize: '0.7rem' }}>Admin Panel</div>
             </div>
           )}

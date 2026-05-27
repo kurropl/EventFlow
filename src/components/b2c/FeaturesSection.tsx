@@ -19,7 +19,7 @@ const features = [
       </svg>
     ),
     title: 'Menú Personalizado',
-    description: 'Elige entre más de 118 platos del catálogo Alboroto y crea una carta única para tu evento.',
+    description: 'Elige entre más de 118 platos del catálogo J. Benitez y crea una carta única para tu evento.',
   },
   {
     icon: (

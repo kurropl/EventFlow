@@ -61,13 +61,13 @@ export default function ConfiguradorPage() {
               </button>
             )}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full border border-[#d4a548] flex items-center justify-center"
-                   style={{ fontFamily: "'Playfair Display', serif", color: '#d4a548', fontStyle: 'italic', fontWeight: 700 }}>
-                A
+<div className="w-8 h-8 rounded-full border border-[#d4a548] flex items-center justify-center"
+              style={{ fontFamily: "'Playfair Display', serif", color: '#d4a548', fontStyle: 'italic', fontWeight: 700 }}>
+              JB
               </div>
               <div>
                 <span className="font-serif text-[#d4a548] text-base" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  Alboroto Eventos
+                  Jose Benitez
                 </span>
               </div>
             </div>

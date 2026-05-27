@@ -60,7 +60,7 @@ export default function ClientEventView({
               A
             </div>
             <span className="font-serif text-[#d4a548] text-base" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Alboroto Eventos
+              J. Benitez
             </span>
           </div>
           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.color}`}>
@@ -147,7 +147,7 @@ export default function ClientEventView({
         {/* Footer */}
         <div className="text-center py-8 border-t border-stone-200">
           <p className="text-xs text-stone-400">
-            Presentado el {formatDate(createdAt)} · Alboroto Eventos
+            Presentado el {formatDate(createdAt)} · J. Benitez
           </p>
           <p className="text-xs text-stone-300 mt-1">
             by EventFlow · Salón de Celebraciones
