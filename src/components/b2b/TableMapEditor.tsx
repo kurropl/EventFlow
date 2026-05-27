@@ -26,7 +26,13 @@ const TABLE_COLORS = [
   '#5B8B8B', '#8B5B8B', '#8B8B5B', '#5B5B8B', '#8B5B5B', '#5B8B5B'
 ];
 
-export default function TableMapEditor() {
+interface TableMapEditorProps {
+  eventName?: string;
+  eventId?: string;
+  onSave?: (data: { tables: any[]; elements: any[]; }) => void;
+}
+
+export default function TableMapEditor({ eventName, eventId, onSave }: TableMapEditorProps) {
   const [tables, setTables] = useState<Table[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -53,11 +59,9 @@ export default function TableMapEditor() {
   const handleMouseDown = useCallback((e: React.MouseEvent, tableId: string) => {
     e.stopPropagation();
     const table = tables.find(t => t.id === tableId);
-    if (!table || containerRef.current) return;
+    if (!table || !containerRef.current) return;
 
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
+    const rect = containerRef.current.getBoundingClientRect();
     setDragging(tableId);
     setSelectedTable(tableId);
     setDragOffset({

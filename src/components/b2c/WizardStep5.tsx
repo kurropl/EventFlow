@@ -49,7 +49,7 @@ export default function WizardStep5() {
           </div>
           <div>
             <p className="text-sm text-stone-500">Fecha</p>
-            <p className="font-medium text-stone-800">{formatDate(step1?.event_date)}</p>
+            <p className="font-medium text-stone-800">{formatDate(step1?.event_date || "")}</p>
           </div>
           <div>
             <p className="text-sm text-stone-500">Comensales</p>
@@ -78,11 +78,11 @@ export default function WizardStep5() {
       </div>
 
       {/* Extras */}
-      {step4?.extras && step4.extras.length > 0 && (
+      {step4?.selected_suggestions && step4.selected_suggestions.length > 0 && (
         <div className="rounded-xl border border-stone-200 p-6 bg-white">
           <h3 className="font-serif text-xl text-stone-800 mb-4">Extras</h3>
           <div className="flex flex-wrap gap-2">
-            {step4.extras.map((extra, i) => (
+            {step4.selected_suggestions.map((extra, i) => (
               <span key={i} className="px-3 py-1 rounded-full bg-[#C9A84C]/20 text-[#C9A84C] text-sm font-medium">
                 {extra}
               </span>

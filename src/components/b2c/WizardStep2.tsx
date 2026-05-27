@@ -60,7 +60,7 @@ export default function WizardStep2() {
   // Sync store when selection changes
   useEffect(() => {
     if (selectedAdultId && selectedKidId) {
-      setStepData('step2', {
+      setStepData('step2', { use_proposed: true,
         menu_id: selectedAdultId,
         kid_menu_id: selectedKidId,
       });
@@ -69,7 +69,7 @@ export default function WizardStep2() {
 
   const handleUseMenu = () => {
     if (!canUseMenu) return;
-    setStepData('step2', {
+    setStepData('step2', { use_proposed: true,
       menu_id: selectedAdultId,
       kid_menu_id: selectedKidId,
     });
@@ -90,13 +90,11 @@ export default function WizardStep2() {
       selections[category].push(...section.items);
     });
 
-    setStepData('step2', {
+    setStepData('step2', { use_proposed: true,
       menu_id: selectedAdultId,
       kid_menu_id: selectedKidId,
     });
-    setStepData('step3', {
-      selections,
-      extras: [],
+    setStepData('step3', { selected_items: [],
     });
     nextStep();
   };

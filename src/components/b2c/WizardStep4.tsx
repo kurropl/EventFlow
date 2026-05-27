@@ -12,7 +12,7 @@ import { CATALOG_ITEMS } from '@/data/menus';
 
 export default function WizardStep4() {
   const { step3, setStepData, nextStep, prevStep } = useWizardStore();
-  const [extras, setExtras] = useState<string[]>(step3?.extras || []);
+  const [extras, setExtras] = useState<string[]>([]);
 
   const allExtras = CATALOG_ITEMS['complemento'] || [];
 
@@ -25,7 +25,11 @@ export default function WizardStep4() {
   };
 
   const handleNext = () => {
-    setStepData('step4', { extras });
+    setStepData('step4', { 
+      selected_suggestions: extras,
+      suggestions: extras,
+      bar_hours: 0,
+    });
     nextStep();
   };
 
