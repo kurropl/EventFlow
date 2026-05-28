@@ -4,13 +4,10 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 
 /* ============================================================
-   J.Benitez — Landing Page Rediseñada
-   - Hero con vídeo de fondo (placeholder de alta calidad)
-   - Sin scroll indicator (Tell banido)
-   - Eyebrows controlados: max 3 para 7 secciones
-   - Sin zigzag repetitivo en servicios
-   - Sin números fake redondos
-   - CTA final: solo contacto, no duplica hero CTA
+   J.Benitez — Landing Page
+   - Hero: imagen de fondo de alta calidad (placeholder)
+     Preparado para vídeo propio: colocar public/video/hero.mp4
+   - Eliminados todos los AI Tells
    - Paleta: cream / gold / ink
    ============================================================ */
 
@@ -18,7 +15,6 @@ export default function HomePage() {
   const [navSolid, setNavSolid] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
-  const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setNavSolid(window.scrollY > 60);
@@ -155,10 +151,21 @@ export default function HomePage() {
       </nav>
 
       {/* ============================================================
-          HERO — Vídeo de fondo con overlay elegante
+          HERO — Imagen de fondo de alta calidad
+          Para vídeo: colocar public/video/hero.mp4 y descomentar
           ============================================================ */}
-      <section ref={heroRef} className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
-        {/* Video Background */}
+      <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
+        {/*
+          VIDEO BACKGROUND — Descomenta cuando tengas el vídeo propio:
+          
+          1. Coloca tu vídeo en: public/video/hero.mp4
+          2. Debe ser: 15-30s loop, 4-8MB, formato H.264
+          3. Fuentes gratuitas para referencia:
+             - Pexels.com (descarga directa, no hotlink)
+             - Mixkit.co (licencia gratuita)
+          3. Descomenta el bloque <video> y comenta el <div> de imagen
+        */}
+        {/*
         <div className="absolute inset-0 z-0">
           <video
             autoPlay
@@ -166,26 +173,23 @@ export default function HomePage() {
             loop
             playsInline
             className="w-full h-full object-cover"
-            poster="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80"
+            poster="/img/hero-poster.jpg"
           >
-            {/*
-              NOTE: Replace this source with the actual venue video.
-              Recommended: a 15-30s cinematic loop of the venue decorated,
-              around 4-8MB for web. Sources:
-              - Free: Pexels.com/videos (search "banquet hall", "wedding reception")
-              - Paid: Storyblocks, Artgrid
-              - Self-produced: drone + interior shots
-              
-              Placeholder using a free Pexels video:
-            */}
-            <source
-              src="https://videos.pexels.com/video-files/3191284/3191284-uhd_2560_1440_25fps.mp4"
-              type="video/mp4"
-            />
+            <source src="/video/hero.mp4" type="video/mp4" />
           </video>
-          {/* Gradient overlay for text readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
-          {/* Subtle vignette */}
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%)' }} />
+        </div>
+        */}
+
+        {/* IMAGEN DE FONDO (placeholder — reemplazar con foto real del salón) */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80"
+            alt="Salon de celebraciones J.Benitez"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/55" />
           <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%)' }} />
         </div>
 
@@ -322,8 +326,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          SERVICIOS — Horizontal feature list (no zigzag)
-          Reemplaza las 3 secciones zigzag por un layout horizontal limpio
+          SERVICIOS — 3 columnas (sin zigzag repetitivo)
           ============================================================ */}
       <section id="servicios" className="py-24 md:py-32 px-6" style={{ background: '#FFFFFF' }}>
         <div className="max-w-6xl mx-auto">
@@ -396,7 +399,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          EVENTOS — Cards con letter badges (sin eyebrow)
+          EVENTOS — Cards con letter badges
           ============================================================ */}
       <section id="eventos" className="py-24 md:py-32 px-6" style={{ background: '#F8F3E6' }}>
         <div className="max-w-5xl mx-auto">
@@ -456,7 +459,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          TESTIMONIOS — Sin estrellas (scoring bars banidos)
+          TESTIMONIOS — Sin estrellas (scoring banido)
           ============================================================ */}
       <section id="testimonios" className="py-24 md:py-32 px-6" style={{ background: '#FFFFFF' }}>
         <div className="max-w-5xl mx-auto">
@@ -516,7 +519,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          CTA FINAL — Solo contacto, sin duplicar CTA del hero
+          CTA FINAL — Solo contacto, sin duplicar hero CTA
           ============================================================ */}
       <section className="py-24 md:py-30 px-6" style={{ background: '#1A1A1A' }}>
         <div className="max-w-3xl mx-auto text-center">
