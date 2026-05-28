@@ -54,7 +54,7 @@ export default function WizardStep2() {
       setStepData('step2', {
         use_proposed: true,
         menu_id: selectedAdultId,
-        kid_menu_id: selectedKidId || '',
+        kid_menu_id: selectedKidId || undefined,
       });
     }
   }, [selectedAdultId, selectedKidId]);
@@ -64,7 +64,7 @@ export default function WizardStep2() {
     setStepData('step2', {
       use_proposed: true,
       menu_id: selectedAdultId,
-      kid_menu_id: selectedKidId || '',
+      kid_menu_id: selectedKidId || undefined,
     });
     // Saltar a step4 directamente → menú ya hecho, no necesita personalizar
     setStepData('step3', { selected_items: [] });
@@ -99,7 +99,7 @@ export default function WizardStep2() {
     setStepData('step2', {
       use_proposed: true,
       menu_id: selectedAdultId,
-      kid_menu_id: selectedKidId || '',
+      kid_menu_id: selectedKidId || undefined,
     });
     setStepData('step3', { selected_items: selectedItems });
     // Ir a step3 para personalizar

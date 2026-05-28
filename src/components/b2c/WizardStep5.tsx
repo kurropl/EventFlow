@@ -17,7 +17,7 @@ export default function WizardStep5() {
     step1, step2, step3, step4, 
     clientInfo, setClientInfo,
     submit, isSubmitting, submitError, submitSuccess,
-    prevStep 
+    prevStep, reset
   } = useWizardStore();
   const [submitted, setSubmitted] = useState(false);
 
@@ -34,7 +34,7 @@ export default function WizardStep5() {
 
   const eventTypeLabels: Record<string, string> = {
     boda: 'Boda',
-    'cumpleanos': 'Cumpleaños',
+    'cumpleaños': 'Cumpleaños',
     corporativo: 'Corporativo',
     bautizo: 'Bautizo',
     comunión: 'Comunión',
@@ -80,6 +80,12 @@ export default function WizardStep5() {
         <p className="text-stone-500 text-sm max-w-md mx-auto font-light">
           Hemos recibido tu propuesta. En breve nos pondremos en contacto contigo para confirmar los detalles.
         </p>
+        <button
+          onClick={() => reset()}
+          className="mt-8 px-7 py-3 rounded-xl text-sm font-medium bg-[#1A1A1A] text-white hover:bg-stone-800 transition-colors"
+        >
+          Diseñar otra propuesta
+        </button>
       </motion.div>
     );
   }

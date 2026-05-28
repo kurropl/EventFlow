@@ -167,13 +167,17 @@ export const useWizardStore = create<WizardState>()(
             break;
           }
           case 'step2': {
-            // Accept both menu_id and selected_menu for flexibility
+            // Accept both menu_id and selected_menu for flexibility.
+            // Empty strings are coerced to undefined so optional fields
+            // (kid_menu_id, selected_menu) don't fail the `.min(1)` rule.
             const raw = data as Record<string, unknown>;
+            const emptyToUndefined = (v: unknown) =>
+              typeof v === 'string' && v.trim() === '' ? undefined : v;
             const validated = WizardStep2Schema.parse({
-              menu_id: raw.menu_id ?? raw.selected_menu,
-              selected_menu: raw.selected_menu,
+              menu_id: emptyToUndefined(raw.menu_id ?? raw.selected_menu),
+              selected_menu: emptyToUndefined(raw.selected_menu),
               use_proposed: raw.use_proposed ?? true,
-              kid_menu_id: raw.kid_menu_id,
+              kid_menu_id: emptyToUndefined(raw.kid_menu_id),
             });
             set({ step2: validated });
             break;
@@ -315,7 +319,9 @@ export const useWizardStore = create<WizardState>()(
             throw new Error(errorMsg);
           }
 
-          // Success: reset store
+          // Success: stay on step 5 so the confirmation screen is shown.
+          // Underlying step data is cleared, but WizardStep5 returns the
+          // success view early based on `submitSuccess`.
           set({
             submitSuccess: true,
             step1: null,
@@ -326,7 +332,7 @@ export const useWizardStore = create<WizardState>()(
             selectedItems: [],
             totalPvp: 0,
             totalCost: 0,
-            currentStep: 1,
+            currentStep: 5,
             isSubmitting: false,
             submitError: null,
             selectedMenu: null,

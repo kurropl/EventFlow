@@ -9,15 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Alboroto palette
+        // J.Benitez brand palette — unified gold / cream / ink
         cream: {
-          DEFAULT: '#f6f1e7',
-          dark: '#e8e0d0',
+          DEFAULT: '#faf8f5',
+          dark: '#f0ead9',
         },
         gold: {
-          DEFAULT: '#b08a3e',
-          light: '#c9a85c',
-          dark: '#8f6e2e',
+          DEFAULT: '#c9a84c',
+          light: '#d4b85c',
+          dark: '#a88a3a',
         },
         burgundy: {
           DEFAULT: '#6b2737',
@@ -25,8 +25,13 @@ const config: Config = {
           dark: '#4e1d28',
         },
         ink: {
-          DEFAULT: '#2a2118',
+          DEFAULT: '#1a1a1a',
           light: '#3d3228',
+          // Dark luxury scale (admin panel)
+          700: '#221a10',
+          800: '#1a140c',
+          900: '#14100a',
+          950: '#0d0a06',
           soft: {
             DEFAULT: '#6b6158',
             '40': '#6b615866',

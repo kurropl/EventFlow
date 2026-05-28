@@ -65,6 +65,15 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    const els = Array.from(document.querySelectorAll('[data-reveal]'));
+
+    // Accesibilidad: si el usuario prefiere menos movimiento, mostramos todo.
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+      setRevealed(new Set(els.map((el) => el.id)));
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -75,8 +84,21 @@ export default function HomePage() {
       },
       { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
     );
-    document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    els.forEach((el) => observer.observe(el));
+
+    // Red de seguridad: si algo no llega a intersecar, se revela igualmente.
+    const fallback = setTimeout(() => {
+      setRevealed((prev) => {
+        const next = new Set(prev);
+        els.forEach((el) => next.add(el.id));
+        return next;
+      });
+    }, 4000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(fallback);
+    };
   }, []);
 
   useEffect(() => {

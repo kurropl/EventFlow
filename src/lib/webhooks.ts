@@ -95,6 +95,14 @@ export async function emitWebhook(
   const profit = pvp - cost;
   const marginPct = pvp > 0 ? Math.round((profit / pvp) * 10000) / 100 : 0;
 
+  // Normalize event_date to YYYY-MM-DD (DB returns a full ISO timestamp,
+  // but the webhook schema expects a date-only string).
+  const rawDate = ev.event_date;
+  const eventDate =
+    typeof rawDate === 'string' && rawDate.length >= 10
+      ? rawDate.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
   // Build and validate payload
   const payload = WebhookPayloadSchema.parse({
     id: crypto.randomUUID(),
@@ -102,6 +110,7 @@ export async function emitWebhook(
     timestamp: new Date().toISOString(),
     event: {
       ...event,
+      event_date: eventDate,
       profit,
       margin_pct: marginPct,
     },

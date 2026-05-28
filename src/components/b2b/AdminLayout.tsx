@@ -50,7 +50,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Logo */}
         <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid #d4a5481a' }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#d4a548' }}>
-            <span className="font-bold text-sm" style={{ color: '#0d0a06' }}>AE</span>
+            <span className="font-bold text-sm" style={{ color: '#0d0a06', fontFamily: "'Playfair Display', Georgia, serif" }}>JB</span>
           </div>
           {sidebarOpen && (
             <div>
