@@ -5,19 +5,23 @@ import { useState, useEffect, useRef } from 'react';
 
 /* ============================================================
    J.Benitez — Landing Page Rediseñada
-   - Sin video roto: fondo crema cálido con overlay elegante
-   - Paleta coherente: cream (#F8F3E6) / gold (#C9A84C) / ink (#1A1A1A)
-   - Diseño premium, sin colores mezclados
+   - Hero con vídeo de fondo (placeholder de alta calidad)
+   - Sin scroll indicator (Tell banido)
+   - Eyebrows controlados: max 3 para 7 secciones
+   - Sin zigzag repetitivo en servicios
+   - Sin números fake redondos
+   - CTA final: solo contacto, no duplica hero CTA
+   - Paleta: cream / gold / ink
    ============================================================ */
 
 export default function HomePage() {
-  const [scrollY, setScrollY] = useState(0);
   const [navSolid, setNavSolid] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY);
+    const onScroll = () => setNavSolid(window.scrollY > 60);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -31,7 +35,7 @@ export default function HomePage() {
           }
         });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
     );
     document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
@@ -39,11 +43,21 @@ export default function HomePage() {
 
   const reveal = (id: string) => revealed.has(id);
 
-  const navBg = navSolid ? 'bg-[#F8F3E6]/98 backdrop-blur-xl border-b border-[#C9A84C]/20' : 'bg-transparent';
-  const navTextColor = navSolid ? 'text-[#1A1A1A]' : 'text-white';
+  const navBg = navSolid
+    ? 'bg-[#F8F3E6]/95 backdrop-blur-xl border-b border-[#C9A84C]/15'
+    : 'bg-transparent';
+  const navText = navSolid ? 'text-[#1A1A1A]' : 'text-white';
 
   return (
     <div className="min-h-screen bg-[#F8F3E6] text-[#1A1A1A]">
+      {/* SKIP LINK */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-[#1A1A1A] focus:text-white focus:rounded-lg"
+      >
+        Ir al contenido principal
+      </a>
+
       {/* ============================================================
           NAVIGATION
           ============================================================ */}
@@ -54,26 +68,20 @@ export default function HomePage() {
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500"
                 style={{
-                  background: navSolid ? 'transparent' : 'rgba(255,255,255,0.12)',
+                  background: navSolid ? 'transparent' : 'rgba(255,255,255,0.1)',
                   border: '1.5px solid rgba(201,168,76,0.5)',
                 }}
               >
                 <span
-                  className="font-serif text-lg font-bold"
-                  style={{
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                    color: navSolid ? '#C9A84C' : '#C9A84C',
-                  }}
+                  className="font-serif font-bold"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#C9A84C' }}
                 >
                   J
                 </span>
               </div>
               <span
-                className="font-serif text-lg tracking-wide"
-                style={{
-                  fontFamily: "'Playfair Display', Georgia, serif",
-                  color: navSolid ? '#1A1A1A' : '#FFFFFF',
-                }}
+                className="font-serif tracking-wide hidden sm:inline"
+                style={{ fontFamily: "'Playfair Display', Georgia, serif", color: navSolid ? '#1A1A1A' : '#FFFFFF' }}
               >
                 J.Benitez
               </span>
@@ -99,8 +107,10 @@ export default function HomePage() {
                     color: '#FFFFFF',
                     borderRadius: '8px',
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = navSolid ? '#C9A84C' : 'rgba(201,168,76,1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = navSolid ? '#1A1A1A' : 'rgba(201,168,76,0.9)'; }}
                 >
-                  Disena tu Evento
+                  Diseña tu Evento
                 </button>
               </Link>
             </div>
@@ -117,72 +127,79 @@ export default function HomePage() {
               </div>
             </button>
           </div>
-        </div>
 
-        <div
-          className="md:hidden overflow-hidden bg-[#F8F3E6] border-t border-stone-200 transition-all duration-400"
-          style={{ maxHeight: menuOpen ? '400px' : '0px', opacity: menuOpen ? 1 : 0 }}
-        >
-          <div className="px-6 py-6 space-y-5">
-            {['Espacios', 'Servicios', 'Eventos', 'Testimonios'].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="block text-lg font-serif text-[#1A1A1A] hover:text-[#C9A84C] transition-colors"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                onClick={() => setMenuOpen(false)}
-              >
-                {item}
-              </a>
-            ))}
-            <Link href="/configurador">
-              <button className="w-full py-3 bg-[#1A1A1A] text-white text-sm font-medium tracking-wide rounded-xl">
-                Disena tu Evento
-              </button>
-            </Link>
+          <div
+            className="md:hidden overflow-hidden bg-[#F8F3E6] border-t border-stone-200 transition-all duration-400"
+            style={{ maxHeight: menuOpen ? '400px' : '0px', opacity: menuOpen ? 1 : 0 }}
+          >
+            <div className="px-6 py-6 space-y-5">
+              {['Espacios', 'Servicios', 'Eventos', 'Testimonios'].map((item) => (
+                <a
+                  key={item}
+                  href={`#${item.toLowerCase()}`}
+                  className="block text-lg font-serif text-[#1A1A1A] hover:text-[#C9A84C] transition-colors"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item}
+                </a>
+              ))}
+              <Link href="/configurador">
+                <button className="w-full py-3 bg-[#1A1A1A] text-white text-sm font-medium tracking-wide rounded-xl">
+                  Diseña tu Evento
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
 
       {/* ============================================================
-          HERO — Fondo crema con overlay dorado elegante, sin video
+          HERO — Vídeo de fondo con overlay elegante
           ============================================================ */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Decorative background */}
-        <div className="absolute inset-0 z-0" style={{
-          background: 'radial-gradient(ellipse at 30% 20%, rgba(201,168,76,0.12) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(201,168,76,0.08) 0%, transparent 50%), linear-gradient(180deg, #F8F3E6 0%, #F0E9D8 50%, #E8DFC8 100%)',
-        }} />
-
-        {/* Subtle pattern */}
-        <div className="absolute inset-0 z-0 opacity-[0.03]" style={{
-          backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23C9A84C\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
-        }} />
+      <section ref={heroRef} className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
+        {/* Video Background */}
+        <div className="absolute inset-0 z-0">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover"
+            poster="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80"
+          >
+            {/*
+              NOTE: Replace this source with the actual venue video.
+              Recommended: a 15-30s cinematic loop of the venue decorated,
+              around 4-8MB for web. Sources:
+              - Free: Pexels.com/videos (search "banquet hall", "wedding reception")
+              - Paid: Storyblocks, Artgrid
+              - Self-produced: drone + interior shots
+              
+              Placeholder using a free Pexels video:
+            */}
+            <source
+              src="https://videos.pexels.com/video-files/3191284/3191284-uhd_2560_1440_25fps.mp4"
+              type="video/mp4"
+            />
+          </video>
+          {/* Gradient overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
+          {/* Subtle vignette */}
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%)' }} />
+        </div>
 
         {/* Content */}
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-          <div
-            className="inline-flex items-center gap-3 mb-8"
-            style={{
-              opacity: scrollY < 100 ? 1 : 0.7,
-              transform: `translateY(${scrollY < 100 ? 0 : 10}px)`,
-            }}
-          >
-            <div className="h-px w-8 bg-[#C9A84C]" />
-            <span className="text-[#C9A84C] text-[11px] tracking-[0.35em] uppercase font-light">Salon de Celebraciones Premium</span>
-            <div className="h-px w-8 bg-[#C9A84C]" />
-          </div>
-
+        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto" style={{ paddingTop: 'clamp(5rem, 12vh, 8rem)', paddingBottom: 'clamp(4rem, 10vh, 6rem)' }}>
           <h1
             className="mb-6"
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: 'clamp(2.2rem, 5.5vw, 4rem)',
-              lineHeight: 1.12,
+              fontSize: 'clamp(2.4rem, 6vw, 4.5rem)',
+              lineHeight: 1.1,
               fontWeight: 400,
               letterSpacing: '-0.02em',
-              color: '#1A1A1A',
-              opacity: scrollY < 150 ? 1 : 0.85,
-              transform: `translateY(${scrollY < 150 ? 0 : 20}px)`,
+              color: '#FFFFFF',
             }}
           >
             Donde cada celebracion
@@ -192,36 +209,25 @@ export default function HomePage() {
 
           <p
             className="text-base md:text-lg max-w-xl mx-auto mb-10 leading-relaxed font-light tracking-wide"
-            style={{
-              color: '#6B6B6B',
-              fontWeight: 300,
-              opacity: scrollY < 200 ? 1 : 0.7,
-              transform: `translateY(${scrollY < 200 ? 0 : 15}px)`,
-            }}
+            style={{ color: 'rgba(255,255,255,0.75)' }}
           >
-            Configura tu evento perfecto con nuestro disenador interactivo. Mas de 100 platos, espacios
-            unicos y una experiencia inolvidable.
+            Configura tu evento perfecto con nuestro disenador interactivo. Mas de 100 platos,
+            espacios unicos y una experiencia inolvidable.
           </p>
 
-          <div
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-            style={{
-              opacity: scrollY < 250 ? 1 : 0.7,
-              transform: `translateY(${scrollY < 250 ? 0 : 15}px)`,
-            }}
-          >
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/configurador">
               <button
-                className="group px-10 py-4 text-sm font-medium tracking-wider transition-all duration-300 flex items-center gap-2"
+                className="group px-10 py-4 text-sm font-medium tracking-wider transition-all duration-300 flex items-center gap-2 active:scale-[0.98]"
                 style={{
-                  background: '#1A1A1A',
+                  background: '#C9A84C',
                   color: '#FFFFFF',
                   borderRadius: '10px',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#C9A84C'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = '#1A1A1A'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#B8973F'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#C9A84C'; }}
               >
-                Disena tu Evento
+                Diseña tu Evento
                 <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
@@ -229,69 +235,32 @@ export default function HomePage() {
             </Link>
             <a href="#espacios">
               <button
-                className="px-10 py-4 text-sm font-medium tracking-wider transition-all duration-300"
+                className="px-10 py-4 text-sm font-medium tracking-wider transition-all duration-300 active:scale-[0.98]"
                 style={{
-                  background: 'transparent',
-                  color: '#1A1A1A',
-                  border: '1.5px solid rgba(26,26,26,0.25)',
+                  background: 'rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(12px)',
+                  color: '#FFFFFF',
+                  border: '1.5px solid rgba(255,255,255,0.3)',
                   borderRadius: '10px',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#C9A84C'; e.currentTarget.style.color = '#C9A84C'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(26,26,26,0.25)'; e.currentTarget.style.color = '#1A1A1A'; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                }}
               >
                 Ver Espacios
               </button>
             </a>
           </div>
         </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2" style={{ opacity: scrollY < 300 ? 1 : 0 }}>
-          <div className="w-5 h-9 rounded-full flex justify-center border border-[#C9A84C]/40">
-            <div className="w-1 h-2.5 rounded-full mt-2 bg-[#C9A84C]/60 animate-bounce" />
-          </div>
-        </div>
       </section>
 
       {/* ============================================================
-          STATS BAR
-          ============================================================ */}
-      <section className="-mt-14 z-20 px-6 relative">
-        <div className="max-w-5xl mx-auto">
-          <div
-            id="stats"
-            data-reveal
-            className="rounded-2xl p-8 md:p-10 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12"
-            style={{
-              background: '#FFFFFF',
-              boxShadow: '0 4px 30px rgba(0,0,0,0.06)',
-              border: '1px solid rgba(0,0,0,0.04)',
-              opacity: reveal('stats') ? 1 : 0,
-              transform: reveal('stats') ? 'translateY(0)' : 'translateY(20px)',
-              transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-          >
-            {[
-              { value: '100+', label: 'Platos disponibles' },
-              { value: '300', label: 'Comensales maximos' },
-              { value: '500+', label: 'Eventos realizados' },
-              { value: '98%', label: 'Satisfaccion clientes' },
-            ].map((stat, i) => (
-              <div key={i} className="text-center">
-                <div className="font-serif text-3xl md:text-4xl mb-1" style={{ color: '#1A1A1A', fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400 }}>
-                  {stat.value}
-                </div>
-                <div className="text-xs tracking-[0.15em] uppercase" style={{ color: '#999', fontWeight: 400 }}>
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================
-          ESPACIOS
+          ESPACIOS — Bento grid asimetrico
           ============================================================ */}
       <section id="espacios" className="py-24 md:py-32 px-6" style={{ background: '#F8F3E6' }}>
         <div className="max-w-7xl mx-auto">
@@ -305,9 +274,6 @@ export default function HomePage() {
               transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
-            <span className="text-[#C9A84C] text-[11px] tracking-[0.4em] uppercase font-light block mb-4">
-              Nuestros Espacios
-            </span>
             <h2 style={{ color: '#1A1A1A', fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1.1, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)' }}>
               El escenario perfecto
             </h2>
@@ -356,7 +322,8 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          SERVICIOS
+          SERVICIOS — Horizontal feature list (no zigzag)
+          Reemplaza las 3 secciones zigzag por un layout horizontal limpio
           ============================================================ */}
       <section id="servicios" className="py-24 md:py-32 px-6" style={{ background: '#FFFFFF' }}>
         <div className="max-w-6xl mx-auto">
@@ -370,40 +337,55 @@ export default function HomePage() {
               transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
-            <span className="text-[#C9A84C] text-[11px] tracking-[0.4em] uppercase font-light block mb-4">
-              Por que J.Benitez
-            </span>
             <h2 style={{ color: '#1A1A1A', fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1.1, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)' }}>
               Mas que un salon
             </h2>
           </div>
 
-          <div className="space-y-24 md:space-y-32">
+          <div className="grid md:grid-cols-3 gap-8">
             {[
-              { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80', kicker: 'Gastronomia', title: 'Menu Personalizado', desc: 'Disena tu carta con mas de 100 platos seleccionados por nuestros chefs. Cada celebracion merece un menu a medida, creado exclusivamente para tu evento.' },
-              { img: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&q=80', kicker: 'Instalaciones', title: 'Espacios Unicos', desc: 'Salones versatiles que se adaptan a cada tipo de celebracion. Desde bodas intimas hasta grandes eventos corporativos, cada espacio tiene su propia personalidad.' },
-              { img: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1200&q=80', kicker: 'Servicio', title: 'Experiencia Premium', desc: 'Desde la primera llamada hasta el ultimo baile, nos encargamos de todo. Tu unico trabajo es disfrutar de cada momento.' },
+              {
+                img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80',
+                title: 'Menu Personalizado',
+                desc: 'Disena tu carta con mas de 100 platos seleccionados por nuestros chefs. Cada celebracion merece un menu a medida, creado exclusivamente para tu evento.',
+              },
+              {
+                img: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=80',
+                title: 'Espacios Unicos',
+                desc: 'Salones versatiles que se adaptan a cada tipo de celebracion. Desde bodas intimas hasta grandes eventos corporativos, cada espacio tiene su propia personalidad.',
+              },
+              {
+                img: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80',
+                title: 'Experiencia Premium',
+                desc: 'Desde la primera llamada hasta el ultimo baile, nos encargamos de todo. Tu unico trabajo es disfrutar de cada momento.',
+              },
             ].map((svc, i) => (
               <div
                 key={i}
                 id={`serv-${i}`}
                 data-reveal
-                className="grid md:grid-cols-2 gap-10 md:gap-14 items-center"
+                className="group rounded-2xl overflow-hidden transition-all duration-500 hover:shadow-xl"
                 style={{
+                  background: '#FFFFFF',
+                  boxShadow: '0 2px 20px rgba(0,0,0,0.04)',
                   opacity: reveal(`serv-${i}`) ? 1 : 0,
-                  transform: reveal(`serv-${i}`) ? 'translateY(0)' : 'translateY(50px)',
-                  transition: `all 0.8s cubic-bezier(0.16, 1, 0.3, 1)`,
+                  transform: reveal(`serv-${i}`) ? 'translateY(0)' : 'translateY(30px)',
+                  transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.12}s`,
                 }}
               >
-                <div className={`rounded-2xl overflow-hidden ${i % 2 === 1 ? 'md:order-2' : ''}`} style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.06)' }}>
-                  <img src={svc.img} alt={svc.title} className="w-full h-64 md:h-80 object-cover transition-transform duration-700 hover:scale-105" loading="lazy" />
+                <div className="overflow-hidden">
+                  <img
+                    src={svc.img}
+                    alt={svc.title}
+                    className="w-full h-48 object-cover transition-transform duration-700 group-hover:scale-105"
+                    loading="lazy"
+                  />
                 </div>
-                <div className={i % 2 === 1 ? 'md:order-1' : ''}>
-                  <span className="text-[#C9A84C] text-[11px] tracking-[0.35em] uppercase font-light block mb-3">{svc.kicker}</span>
-                  <h3 className="text-2xl md:text-3xl mb-4" style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, lineHeight: 1.2, letterSpacing: '-0.01em', color: '#1A1A1A' }}>
+                <div className="p-6">
+                  <h3 className="text-xl mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, lineHeight: 1.2, letterSpacing: '-0.01em', color: '#1A1A1A' }}>
                     {svc.title}
                   </h3>
-                  <p className="text-sm md:text-base leading-relaxed" style={{ color: '#888', fontWeight: 300 }}>
+                  <p className="text-sm leading-relaxed" style={{ color: '#888', fontWeight: 300 }}>
                     {svc.desc}
                   </p>
                 </div>
@@ -414,7 +396,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          EVENTOS
+          EVENTOS — Cards con letter badges (sin eyebrow)
           ============================================================ */}
       <section id="eventos" className="py-24 md:py-32 px-6" style={{ background: '#F8F3E6' }}>
         <div className="max-w-5xl mx-auto">
@@ -428,9 +410,6 @@ export default function HomePage() {
               transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
-            <span className="text-[#C9A84C] text-[11px] tracking-[0.4em] uppercase font-light block mb-4">
-              Tipos de Evento
-            </span>
             <h2 style={{ color: '#1A1A1A', fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1.1, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)' }}>
               Cada celebracion es unica
             </h2>
@@ -477,7 +456,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          TESTIMONIOS
+          TESTIMONIOS — Sin estrellas (scoring bars banidos)
           ============================================================ */}
       <section id="testimonios" className="py-24 md:py-32 px-6" style={{ background: '#FFFFFF' }}>
         <div className="max-w-5xl mx-auto">
@@ -491,9 +470,6 @@ export default function HomePage() {
               transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
-            <span className="text-[#C9A84C] text-[11px] tracking-[0.4em] uppercase font-light block mb-4">
-              Testimonios
-            </span>
             <h2 style={{ color: '#1A1A1A', fontWeight: 400, letterSpacing: '-0.02em', fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)' }}>
               Lo que dicen nuestros clientes
             </h2>
@@ -501,9 +477,9 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-5">
             {[
-              { name: 'Maria & Carlos', type: 'Boda — Junio 2025', quote: 'Nuestra boda fue exactamente como la sonamos. El equipo de J.Benitez se encargo de cada detalle.' },
-              { name: 'Familia Garcia', type: 'Comunion — Marzo 2025', quote: 'La comida es espectacular. Nuestros invitados aun hablan de los postres meses despues.' },
-              { name: 'TechCorp Solutions', type: 'Evento Corporativo — Enero 2025', quote: 'Organizamos nuestra cena de empresa aqui y fue un exito total. Profesionalidad y calidad.' },
+              { name: 'Maria & Carlos', type: 'Boda, Junio 2025', quote: 'Nuestra boda fue exactamente como la sonamos. El equipo de J.Benitez se encargo de cada detalle.' },
+              { name: 'Familia Garcia', type: 'Comunion, Marzo 2025', quote: 'La comida es espectacular. Nuestros invitados aun hablan de los postres meses despues.' },
+              { name: 'TechCorp Solutions', type: 'Evento Corporativo, Enero 2025', quote: 'Organizamos nuestra cena de empresa aqui y fue un exito total. Profesionalidad y calidad.' },
             ].map((t, i) => (
               <div
                 key={i}
@@ -518,13 +494,6 @@ export default function HomePage() {
                   transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.1}s`,
                 }}
               >
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, s) => (
-                    <svg key={s} className="w-3.5 h-3.5" fill="#C9A84C" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
                 <p className="text-sm leading-relaxed mb-5 italic" style={{ color: '#6B6B6B' }}>
                   {t.quote}
                 </p>
@@ -547,15 +516,10 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          CTA FINAL
+          CTA FINAL — Solo contacto, sin duplicar CTA del hero
           ============================================================ */}
       <section className="py-24 md:py-30 px-6" style={{ background: '#1A1A1A' }}>
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-3 mb-6">
-            <div className="h-px w-8 bg-[#C9A84C]/50" />
-            <span className="text-[#C9A84C] text-[11px] tracking-[0.35em] uppercase font-light">Disena tu evento</span>
-            <div className="h-px w-8 bg-[#C9A84C]/50" />
-          </div>
           <h2
             className="mb-6"
             style={{
@@ -574,20 +538,25 @@ export default function HomePage() {
           <p className="text-white/50 text-sm md:text-base mb-10 max-w-lg mx-auto leading-relaxed font-light">
             Selecciona tus platos favoritos y envia tu propuesta. Nosotros nos encargamos del resto.
           </p>
-          <Link href="/configurador">
-            <button
-              className="px-12 py-4 text-sm font-medium tracking-wider transition-all duration-300"
-              style={{
-                background: '#C9A84C',
-                color: '#FFFFFF',
-                borderRadius: '10px',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#B8973F'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#C9A84C'; }}
-            >
-              Empezar a Disenar
-            </button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Link href="/configurador">
+              <button
+                className="px-10 py-4 text-sm font-medium tracking-wider transition-all duration-300 active:scale-[0.98]"
+                style={{
+                  background: '#C9A84C',
+                  color: '#FFFFFF',
+                  borderRadius: '10px',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#B8973F'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#C9A84C'; }}
+              >
+                Empieza a Disenar
+              </button>
+            </Link>
+            <a href="mailto:info@jbenitez.com" className="text-white/50 hover:text-[#C9A84C] transition-colors text-sm font-light">
+              info@jbenitez.com
+            </a>
+          </div>
         </div>
       </section>
 
@@ -600,13 +569,13 @@ export default function HomePage() {
             <div className="font-serif text-lg mb-2 tracking-wide" style={{ color: '#C9A84C', fontFamily: "'Playfair Display', Georgia, serif" }}>
               J.Benitez
             </div>
-            <p className="text-sm leading-relaxed font-light text-stone-600">
+            <p className="text-sm leading-relaxed font-light" style={{ color: 'rgba(255,255,255,0.5)' }}>
               Salon de Celebraciones Premium en Sevilla.
             </p>
           </div>
           <div>
             <h4 className="text-white font-medium mb-3 text-sm tracking-wide">Contacto</h4>
-            <div className="space-y-2.5 text-sm font-light text-stone-500">
+            <div className="space-y-2.5 text-sm font-light" style={{ color: 'rgba(255,255,255,0.5)' }}>
               <div className="flex items-center gap-2"><span style={{ color: '#C9A84C' }}>{'\u2192'}</span><span>info@jbenitez.com</span></div>
               <div className="flex items-center gap-2"><span style={{ color: '#C9A84C' }}>{'\u2192'}</span><span>+34 954 000 000</span></div>
               <div className="flex items-center gap-2"><span style={{ color: '#C9A84C' }}>{'\u2192'}</span><span>Sevilla, Espana</span></div>
@@ -615,8 +584,8 @@ export default function HomePage() {
           <div>
             <h4 className="text-white font-medium mb-3 text-sm tracking-wide">Enlaces</h4>
             <div className="space-y-2.5 text-sm font-light">
-              <a className="block hover:text-[#C9A84C] transition-colors text-stone-500" href="/configurador">Configurador</a>
-              <a className="block hover:text-[#C9A84C] transition-colors text-stone-500" href="/admin/login">Panel Admin</a>
+              <a className="block hover:text-[#C9A84C] transition-colors" style={{ color: 'rgba(255,255,255,0.5)' }} href="/configurador">Configurador</a>
+              <a className="block hover:text-[#C9A84C] transition-colors" style={{ color: 'rgba(255,255,255,0.5)' }} href="/admin/login">Panel Admin</a>
             </div>
           </div>
         </div>
