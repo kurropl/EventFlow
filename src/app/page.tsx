@@ -5,10 +5,8 @@ import { useState, useEffect, useRef } from 'react';
 
 /* ============================================================
    J.Benitez — Landing Page
-   - Hero: imagen de fondo de alta calidad (placeholder)
-     Preparado para vídeo propio: colocar public/video/hero.mp4
-   - Eliminados todos los AI Tells
-   - Paleta: cream / gold / ink
+   Fondo crema uniforme (#FAF8F5), paleta gold/cream/ink
+   Sin video externo roto, sin imágenes de Unsplash
    ============================================================ */
 
 export default function HomePage() {
@@ -40,12 +38,12 @@ export default function HomePage() {
   const reveal = (id: string) => revealed.has(id);
 
   const navBg = navSolid
-    ? 'bg-[#F8F3E6]/95 backdrop-blur-xl border-b border-[#C9A84C]/15'
+    ? 'bg-[#FAF8F5]/95 backdrop-blur-xl border-b border-[#C9A84C]/15'
     : 'bg-transparent';
   const navText = navSolid ? 'text-[#1A1A1A]' : 'text-white';
 
   return (
-    <div className="min-h-screen bg-[#F8F3E6] text-[#1A1A1A]">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1A1A]">
       {/* SKIP LINK */}
       <a
         href="#main-content"
@@ -64,7 +62,7 @@ export default function HomePage() {
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500"
                 style={{
-                  background: navSolid ? 'transparent' : 'rgba(255,255,255,0.1)',
+                  background: navSolid ? 'transparent' : 'rgba(201,168,76,0.15)',
                   border: '1.5px solid rgba(201,168,76,0.5)',
                 }}
               >
@@ -125,7 +123,7 @@ export default function HomePage() {
           </div>
 
           <div
-            className="md:hidden overflow-hidden bg-[#F8F3E6] border-t border-stone-200 transition-all duration-400"
+            className="md:hidden overflow-hidden bg-[#FAF8F5] border-t border-stone-200 transition-all duration-400"
             style={{ maxHeight: menuOpen ? '400px' : '0px', opacity: menuOpen ? 1 : 0 }}
           >
             <div className="px-6 py-6 space-y-5">
@@ -151,47 +149,22 @@ export default function HomePage() {
       </nav>
 
       {/* ============================================================
-          HERO — Imagen de fondo de alta calidad
-          Para vídeo: colocar public/video/hero.mp4 y descomentar
+          HERO — Gradiente elegante sobre fondo crema
+          Sin imagen externa, sin video roto
           ============================================================ */}
       <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
-        {/*
-          VIDEO BACKGROUND — Descomenta cuando tengas el vídeo propio:
-          
-          1. Coloca tu vídeo en: public/video/hero.mp4
-          2. Debe ser: 15-30s loop, 4-8MB, formato H.264
-          3. Fuentes gratuitas para referencia:
-             - Pexels.com (descarga directa, no hotlink)
-             - Mixkit.co (licencia gratuita)
-          3. Descomenta el bloque <video> y comenta el <div> de imagen
-        */}
-        {/*
-        <div className="absolute inset-0 z-0">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-cover"
-            poster="/img/hero-poster.jpg"
-          >
-            <source src="/video/hero.mp4" type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%)' }} />
-        </div>
-        */}
-
-        {/* IMAGEN DE FONDO (placeholder — reemplazar con foto real del salón) */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80"
-            alt="Salon de celebraciones J.Benitez"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/55" />
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%)' }} />
-        </div>
+        {/* Background gradient — no external images */}
+        <div className="absolute inset-0 z-0" style={{
+          background: 'linear-gradient(135deg, #1A1A1A 0%, #2D2416 50%, #1A1A1A 100%)',
+        }} />
+        {/* Gold accent overlay */}
+        <div className="absolute inset-0 z-0" style={{
+          background: 'radial-gradient(ellipse at 30% 50%, rgba(201,168,76,0.15) 0%, transparent 60%)',
+        }} />
+        {/* Decorative lines */}
+        <div className="absolute inset-0 z-0 opacity-10" style={{
+          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(201,168,76,0.3) 35px, rgba(201,168,76,0.3) 36px)',
+        }} />
 
         {/* Content */}
         <div className="relative z-10 text-center px-6 max-w-4xl mx-auto" style={{ paddingTop: 'clamp(5rem, 12vh, 8rem)', paddingBottom: 'clamp(4rem, 10vh, 6rem)' }}>
@@ -266,7 +239,7 @@ export default function HomePage() {
       {/* ============================================================
           ESPACIOS — Bento grid asimetrico
           ============================================================ */}
-      <section id="espacios" className="py-24 md:py-32 px-6" style={{ background: '#F8F3E6' }}>
+      <section id="espacios" className="py-24 md:py-32 px-6" style={{ background: '#FAF8F5' }}>
         <div className="max-w-7xl mx-auto">
           <div
             id="espacios-header"
@@ -288,11 +261,11 @@ export default function HomePage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 grid-rows-3 gap-3 h-[480px] md:h-[550px]">
             {[
-              { img: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&q=80', title: 'Salon Principal', sub: 'Hasta 300 comensales', span: 'md:col-span-2 md:row-span-2' },
-              { img: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80', title: 'Terraza', sub: 'Vistas al jardin', span: '' },
-              { img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80', title: 'Sala VIP', sub: 'Eventos exclusivos', span: '' },
-              { img: 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=80', title: 'Jardin', sub: 'Ceremonias al aire libre', span: '' },
-              { img: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=80', title: 'Sala Intima', sub: 'Celebraciones pequenas', span: '' },
+              { title: 'Salon Principal', sub: 'Hasta 300 comensales', span: 'md:col-span-2 md:row-span-2', bg: 'linear-gradient(135deg, #C9A84C 0%, #B8973F 100%)' },
+              { title: 'Terraza', sub: 'Vistas al jardin', span: '', bg: 'linear-gradient(135deg, #2D2416 0%, #1A1A1A 100%)' },
+              { title: 'Sala VIP', sub: 'Eventos exclusivos', span: '', bg: 'linear-gradient(135deg, #1A1A1A 0%, #2D2416 100%)' },
+              { title: 'Jardin', sub: 'Ceremonias al aire libre', span: '', bg: 'linear-gradient(135deg, #B8973F 0%, #C9A84C 100%)' },
+              { title: 'Sala Intima', sub: 'Celebraciones pequenas', span: '', bg: 'linear-gradient(135deg, #1A1A1A 0%, #C9A84C 100%)' },
             ].map((space, i) => (
               <div
                 key={i}
@@ -305,12 +278,7 @@ export default function HomePage() {
                   transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.1}s`,
                 }}
               >
-                <img
-                  src={space.img}
-                  alt={space.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
-                  loading="lazy"
-                />
+                <div className="absolute inset-0 w-full h-full" style={{ background: space.bg }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C9A84C] scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
                 <div className="absolute inset-0 flex flex-col justify-end p-5">
@@ -326,7 +294,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          SERVICIOS — 3 columnas (sin zigzag repetitivo)
+          SERVICIOS — 3 columnas
           ============================================================ */}
       <section id="servicios" className="py-24 md:py-32 px-6" style={{ background: '#FFFFFF' }}>
         <div className="max-w-6xl mx-auto">
@@ -348,17 +316,14 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80',
                 title: 'Menu Personalizado',
                 desc: 'Disena tu carta con mas de 100 platos seleccionados por nuestros chefs. Cada celebracion merece un menu a medida, creado exclusivamente para tu evento.',
               },
               {
-                img: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=80',
                 title: 'Espacios Unicos',
                 desc: 'Salones versatiles que se adaptan a cada tipo de celebracion. Desde bodas intimas hasta grandes eventos corporativos, cada espacio tiene su propia personalidad.',
               },
               {
-                img: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80',
                 title: 'Experiencia Premium',
                 desc: 'Desde la primera llamada hasta el ultimo baile, nos encargamos de todo. Tu unico trabajo es disfrutar de cada momento.',
               },
@@ -376,14 +341,7 @@ export default function HomePage() {
                   transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.12}s`,
                 }}
               >
-                <div className="overflow-hidden">
-                  <img
-                    src={svc.img}
-                    alt={svc.title}
-                    className="w-full h-48 object-cover transition-transform duration-700 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                </div>
+                <div className="h-48" style={{ background: 'linear-gradient(135deg, #C9A84C 0%, #B8973F 100%)' }} />
                 <div className="p-6">
                   <h3 className="text-xl mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, lineHeight: 1.2, letterSpacing: '-0.01em', color: '#1A1A1A' }}>
                     {svc.title}
@@ -401,7 +359,7 @@ export default function HomePage() {
       {/* ============================================================
           EVENTOS — Cards con letter badges
           ============================================================ */}
-      <section id="eventos" className="py-24 md:py-32 px-6" style={{ background: '#F8F3E6' }}>
+      <section id="eventos" className="py-24 md:py-32 px-6" style={{ background: '#FAF8F5' }}>
         <div className="max-w-5xl mx-auto">
           <div
             id="eventos-header"
@@ -459,7 +417,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          TESTIMONIOS — Sin estrellas (scoring banido)
+          TESTIMONIOS — Sin estrellas
           ============================================================ */}
       <section id="testimonios" className="py-24 md:py-32 px-6" style={{ background: '#FFFFFF' }}>
         <div className="max-w-5xl mx-auto">
@@ -490,7 +448,7 @@ export default function HomePage() {
                 data-reveal
                 className="rounded-xl p-6 transition-all duration-400 border"
                 style={{
-                  background: '#F8F3E6',
+                  background: '#FAF8F5',
                   borderColor: 'rgba(0,0,0,0.04)',
                   opacity: reveal(`test-${i}`) ? 1 : 0,
                   transform: reveal(`test-${i}`) ? 'translateY(0)' : 'translateY(20px)',
@@ -519,7 +477,7 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================
-          CTA FINAL — Solo contacto, sin duplicar hero CTA
+          CTA FINAL
           ============================================================ */}
       <section className="py-24 md:py-30 px-6" style={{ background: '#1A1A1A' }}>
         <div className="max-w-3xl mx-auto text-center">
