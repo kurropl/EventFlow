@@ -34,7 +34,7 @@ const TAG_STYLES: Record<string, string> = {
 };
 
 export default function WizardStep2() {
-  const { step1, step2, setStepData, nextStep, prevStep } = useWizardStore();
+  const { step1, step2, setStepData, nextStep, prevStep, setStep } = useWizardStore();
   const [selectedAdultId, setSelectedAdultId] = useState<string>(step2?.menu_id || '');
   const [selectedKidId, setSelectedKidId] = useState<string>(step2?.kid_menu_id || '');
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
@@ -66,7 +66,9 @@ export default function WizardStep2() {
       menu_id: selectedAdultId,
       kid_menu_id: selectedKidId || '',
     });
-    nextStep();
+    // Saltar a step4 directamente → menú ya hecho, no necesita personalizar
+    setStepData('step3', { selected_items: [] });
+    setStep(4);
   };
 
   const handleCustomizeMenu = () => {
@@ -74,11 +76,24 @@ export default function WizardStep2() {
     const selectedMenu = PROPOSED_MENUS.find(m => m.id === selectedAdultId);
     if (!selectedMenu) return;
 
-    const selections: Record<string, string[]> = {};
+    // Cargar todos los items del menú seleccionado en step3
+    const selectedItems: any[] = [];
     selectedMenu.sections.forEach(section => {
-      const category = getDishCategory(section.items[0] || '');
-      if (!selections[category]) selections[category] = [];
-      selections[category].push(...section.items);
+      section.items.forEach(item => {
+        const category = getDishCategory(item);
+        // Estimar cantidad base: 1 por comensal para plato principal, 1/10 para compartir
+        const isMain = category === 'carne' || category === 'pescado';
+        selectedItems.push({
+          item_id: item,
+          name: item,
+          category,
+          quantity: isMain ? (step1?.guest_count || 1) : Math.ceil((step1?.guest_count || 1) / 10),
+          unit_price_pvp: 0,
+          unit_price_cost: 0,
+          subtotal_pvp: 0,
+          subtotal_cost: 0,
+        });
+      });
     });
 
     setStepData('step2', {
@@ -86,8 +101,9 @@ export default function WizardStep2() {
       menu_id: selectedAdultId,
       kid_menu_id: selectedKidId || '',
     });
-    setStepData('step3', { selected_items: [] });
-    nextStep();
+    setStepData('step3', { selected_items: selectedItems });
+    // Ir a step3 para personalizar
+    setStep(3);
   };
 
   const selectedMenu = adultMenus.find(m => m.id === selectedAdultId);
