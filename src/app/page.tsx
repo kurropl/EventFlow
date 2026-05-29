@@ -11,11 +11,11 @@ import { useState, useEffect, useRef } from 'react';
    ============================================================ */
 
 const SPACES = [
-  { title: 'Salón Principal', sub: 'Hasta 300 comensales', span: 'md:col-span-2 md:row-span-2', accent: '#C9A84C' },
-  { title: 'Terraza', sub: 'Vistas al jardín', span: '', accent: '#1A1A1A' },
-  { title: 'Sala VIP', sub: 'Eventos exclusivos', span: '', accent: '#6B2737' },
-  { title: 'Jardín', sub: 'Ceremonias al aire libre', span: '', accent: '#A88A3A' },
-  { title: 'Sala Íntima', sub: 'Celebraciones pequeñas', span: '', accent: '#8A3647' },
+  { title: 'Salón Principal', sub: 'Hasta 300 comensales', span: 'md:col-span-2 md:row-span-2', bg: 'url(https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&q=85) center/cover' },
+  { title: 'Terraza', sub: 'Vistas al jardín', span: '', bg: 'url(https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=85) center/cover' },
+  { title: 'Sala VIP', sub: 'Eventos exclusivos', span: '', bg: 'url(https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=85) center/cover' },
+  { title: 'Jardín', sub: 'Ceremonias al aire libre', span: '', bg: 'url(https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=85) center/cover' },
+  { title: 'Sala Íntima', sub: 'Celebraciones pequeñas', span: '', bg: 'url(https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=85) center/cover' },
 ];
 
 const SERVICES = [
@@ -327,16 +327,11 @@ export default function HomePage() {
                   transform: reveal(`space-${i}`) ? 'translateY(0)' : 'translateY(20px)',
                   transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.08}s`,
                 }}>
-                {/* Background gradient */}
+                {/* Background image */}
                 <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
-                  style={{ background: `linear-gradient(135deg, ${space.accent}88, ${space.accent}22)` }} />
-                {/* Pattern overlay */}
-                <div className="absolute inset-0 opacity-10"
-                  style={{
-                    backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.3) 0%, transparent 50%)',
-                  }} />
-                {/* Dark gradient bottom */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                  style={{ backgroundImage: space.bg }} />
+                {/* Dark overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
                 {/* Gold line hover */}
                 <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#C9A84C] scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
                 {/* Content */}
