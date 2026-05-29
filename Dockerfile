@@ -10,7 +10,6 @@ COPY --chown=nextjs:nodejs package.json ./
 COPY --chown=nextjs:nodejs public ./public
 COPY --chown=nextjs:nodejs .next/standalone ./
 COPY --chown=nextjs:nodejs .next/static ./.next/static
-COPY --chown=nextjs:nodejs node_modules ./node_modules
 
 USER nextjs
 EXPOSE 3000
