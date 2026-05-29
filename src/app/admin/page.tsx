@@ -15,6 +15,7 @@ import KanbanPipeline from '@/components/b2b/KanbanPipeline';
 import CatalogCRUD from '@/components/b2b/CatalogCRUD';
 import OperationsManager from '@/components/b2b/OperationsManager';
 import TableMapEditor from '@/components/b2b/TableMapEditor';
+import WebhooksPanel from '@/components/b2b/WebhooksPanel';
 
 export default function AdminDashboard() {
   const pathname = usePathname();
@@ -22,14 +23,23 @@ export default function AdminDashboard() {
   const isCatalog = pathname?.includes('catalog');
   const isOperations = pathname?.includes('operations');
   const isTableMap = pathname?.includes('mapa-mesas');
+  const isWebhooks = pathname?.includes('webhooks');
 
   return (
     <AdminLayout>
       {isKanban && <KanbanPipeline />}
       {isCatalog && <CatalogCRUD />}
       {isOperations && <OperationsManager />}
-      {isTableMap && <TableMapEditor />}
-      {!isKanban && !isCatalog && !isOperations && !isTableMap && (
+      {isTableMap && (
+        <div
+          className="rounded-xl border border-gold/10 bg-white overflow-hidden"
+          style={{ height: 'calc(100vh - 120px)', minHeight: 500 }}
+        >
+          <TableMapEditor />
+        </div>
+      )}
+      {isWebhooks && <WebhooksPanel />}
+      {!isKanban && !isCatalog && !isOperations && !isTableMap && !isWebhooks && (
         <div className="p-8">
           <div className="text-center py-12">
             <h2 className="font-serif text-2xl text-stone-800 mb-4">Panel de Control J.Benitez</h2>

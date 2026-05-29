@@ -1,18 +1,14 @@
-const STEPS = ['Detalles', 'Menú', 'Personaliza', 'Extras', 'Resumen'];
-
-export default function WizardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-cream">
-      <header className="sticky top-0 z-50 bg-ink-900/95 backdrop-blur border-b border-gold/20">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="font-serif text-gold text-lg">Jose Benitez</span>
-          </div>
-        </div>
-      </header>
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {children}
-      </main>
-    </div>
-  );
+/**
+ * J.Benitez — Configurador Layout
+ *
+ * El chrome (cabecera + indicador de pasos) se renderiza dentro de
+ * `page.tsx`, por lo que este layout solo actúa como contenedor para
+ * evitar cabeceras duplicadas.
+ */
+export default function ConfiguradorLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }

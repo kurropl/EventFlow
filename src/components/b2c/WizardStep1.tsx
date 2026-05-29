@@ -6,7 +6,7 @@ import { useWizardStore } from '@/store/useWizardStore';
 
 const EVENT_TYPES = [
   { id: 'boda', label: 'Boda', desc: 'El dia mas importante' },
-  { id: 'cumpleanos', label: 'Cumpleanos', desc: 'Celebra tu dia especial' },
+  { id: 'cumpleaños', label: 'Cumpleaños', desc: 'Celebra tu día especial' },
   { id: 'corporativo', label: 'Corporativo', desc: 'Eventos de empresa' },
   { id: 'bautizo', label: 'Bautizo', desc: 'Momentos especiales' },
   { id: 'comunión', label: 'Comunion', desc: 'Celebraciones familiares' },
