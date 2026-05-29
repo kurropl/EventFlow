@@ -380,6 +380,19 @@ export const useWizardStore = create<WizardState>()(
         step4: state.step4,
         currentStep: state.currentStep,
       }),
+      // On rehydration, validate data and reset if corrupt
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        try {
+          if (state.step1) WizardStep1Schema.parse(state.step1);
+          if (state.step2) WizardStep2Schema.parse(state.step2);
+          if (state.step3) WizardStep3Schema.parse(state.step3);
+          if (state.step4) WizardStep4Schema.parse(state.step4);
+        } catch {
+          // Data is corrupt (e.g., persisted with different schema) → reset
+          state.reset();
+        }
+      },
     }
   )
 );

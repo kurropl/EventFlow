@@ -6,7 +6,7 @@
  * Paleta: cream/gold/ink en todo
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 import { PROPOSED_MENUS } from '@/data/menus';
@@ -38,6 +38,7 @@ export default function WizardStep2() {
   const [selectedAdultId, setSelectedAdultId] = useState<string>(step2?.menu_id || '');
   const [selectedKidId, setSelectedKidId] = useState<string>(step2?.kid_menu_id || '');
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const kids = step1?.kids_count || 0;
 
@@ -49,26 +50,22 @@ export default function WizardStep2() {
   const kidsValid = kids === 0 || (hasAdult && hasKid);
   const canUseMenu = kidsValid && (hasAdult || !kids);
 
-  useEffect(() => {
-    if (selectedAdultId) {
-      setStepData('step2', {
-        use_proposed: true,
-        menu_id: selectedAdultId,
-        kid_menu_id: selectedKidId || undefined,
-      });
-    }
-  }, [selectedAdultId, selectedKidId]);
+  // NO useEffect that auto-saves — we save manually on button click
 
   const handleUseMenu = () => {
     if (!canUseMenu) return;
-    setStepData('step2', {
-      use_proposed: true,
-      menu_id: selectedAdultId,
-      kid_menu_id: selectedKidId || undefined,
-    });
-    // Saltar a step4 directamente → menú ya hecho, no necesita personalizar
-    setStepData('step3', { selected_items: [] });
-    setStep(4);
+    try {
+      setStepData('step2', {
+        use_proposed: true,
+        menu_id: selectedAdultId,
+        kid_menu_id: selectedKidId || '',
+      });
+      // Saltar a step4 directamente → menú ya hecho, no necesita personalizar
+      setStepData('step3', { selected_items: [] });
+      setStep(4);
+    } catch (err: any) {
+      setError(err?.message || 'Error al guardar el menú');
+    }
   };
 
   const handleCustomizeMenu = () => {
@@ -76,34 +73,38 @@ export default function WizardStep2() {
     const selectedMenu = PROPOSED_MENUS.find(m => m.id === selectedAdultId);
     if (!selectedMenu) return;
 
-    // Cargar todos los items del menú seleccionado en step3
-    const selectedItems: any[] = [];
-    selectedMenu.sections.forEach(section => {
-      section.items.forEach(item => {
-        const category = getDishCategory(item);
-        // Estimar cantidad base: 1 por comensal para plato principal, 1/10 para compartir
-        const isMain = category === 'carne' || category === 'pescado';
-        selectedItems.push({
-          item_id: item,
-          name: item,
-          category,
-          quantity: isMain ? (step1?.guest_count || 1) : Math.ceil((step1?.guest_count || 1) / 10),
-          unit_price_pvp: 0,
-          unit_price_cost: 0,
-          subtotal_pvp: 0,
-          subtotal_cost: 0,
+    try {
+      // Cargar todos los items del menú seleccionado en step3
+      const selectedItems: any[] = [];
+      selectedMenu.sections.forEach(section => {
+        section.items.forEach(item => {
+          const category = getDishCategory(item);
+          // Estimar cantidad base: 1 por comensal para plato principal, 1/10 para compartir
+          const isMain = category === 'carne' || category === 'pescado';
+          selectedItems.push({
+            item_id: item,
+            name: item,
+            category,
+            quantity: isMain ? (step1?.guest_count || 1) : Math.ceil((step1?.guest_count || 1) / 10),
+            unit_price_pvp: 0,
+            unit_price_cost: 0,
+            subtotal_pvp: 0,
+            subtotal_cost: 0,
+          });
         });
       });
-    });
 
-    setStepData('step2', {
-      use_proposed: true,
-      menu_id: selectedAdultId,
-      kid_menu_id: selectedKidId || undefined,
-    });
-    setStepData('step3', { selected_items: selectedItems });
-    // Ir a step3 para personalizar
-    setStep(3);
+      setStepData('step2', {
+        use_proposed: true,
+        menu_id: selectedAdultId,
+        kid_menu_id: selectedKidId || '',
+      });
+      setStepData('step3', { selected_items: selectedItems });
+      // Ir a step3 para personalizar
+      setStep(3);
+    } catch (err: any) {
+      setError(err?.message || 'Error al guardar el menú');
+    }
   };
 
   const selectedMenu = adultMenus.find(m => m.id === selectedAdultId);
@@ -132,6 +133,10 @@ export default function WizardStep2() {
           Selecciona un menu propuesto o personaliza cada plato
         </p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">{error}</div>
+      )}
 
       {/* Adult Menus */}
       <div>
