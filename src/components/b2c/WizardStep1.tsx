@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 
@@ -34,9 +34,16 @@ export default function WizardStep1() {
   const { step1, setStepData, nextStep } = useWizardStore();
   
   const [eventType, setEventType] = useState<string>(step1?.event_type || '');
-  const [day, setDay] = useState('');
-  const [month, setMonth] = useState('');
-  const [year, setYear] = useState('');
+  const today = useMemo(() => {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const y = String(d.getFullYear());
+    return { month: m, day: dd, year: y };
+  }, []);
+  const [day, setDay] = useState(step1?.event_date ? step1.event_date.split('-')[2] : today.day);
+  const [month, setMonth] = useState(step1?.event_date ? step1.event_date.split('-')[1] : today.month);
+  const [year, setYear] = useState(step1?.event_date ? step1.event_date.split('-')[0] : today.year);
   const [guestCount, setGuestCount] = useState(step1?.guest_count?.toString() || '');
   const [kidsCount, setKidsCount] = useState(step1?.kids_count?.toString() || '');
   const [error, setError] = useState<string | null>(null);
