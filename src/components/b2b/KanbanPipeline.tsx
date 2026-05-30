@@ -20,11 +20,11 @@ interface KanbanEvent {
   created_at: string;
 }
 
-const COLUMNS: { status: EventStatus; label: string; accent: string }[] = [
-  { status: 'nuevo', label: 'Nuevo', accent: 'border-l-blue-500 bg-blue-500/5' },
-  { status: 'propuesta_enviada', label: 'Propuesta Enviada', accent: 'border-l-amber-500 bg-amber-500/5' },
-  { status: 'confirmado', label: 'Confirmado', accent: 'border-l-green-500 bg-green-500/5' },
-  { status: 'cancelado', label: 'Cancelado', accent: 'border-l-red-500 bg-red-500/5' },
+const COLUMNS: { status: EventStatus; label: string; dot: string; tint: string; soft: string }[] = [
+  { status: 'nuevo', label: 'Nuevo', dot: '#3B82F6', tint: '#EFF4FF', soft: '#DCE7FF' },
+  { status: 'propuesta_enviada', label: 'Propuesta enviada', dot: '#D9920B', tint: '#FFF8EC', soft: '#FBE8C4' },
+  { status: 'confirmado', label: 'Confirmado', dot: '#16A34A', tint: '#EFFAF2', soft: '#CDEBD6' },
+  { status: 'cancelado', label: 'Cancelado', dot: '#DC2626', tint: '#FEF3F3', soft: '#F6D6D6' },
 ];
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -57,7 +57,15 @@ const DEMO_EVENTS: KanbanEvent[] = [
 
 function formatDate(d: string) {
   if (!d) return '';
-  return d.slice(0, 10);
+  const iso = d.slice(0, 10);
+  const [y, m, day] = iso.split('-');
+  if (!y || !m || !day) return iso;
+  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  return `${parseInt(day)} ${months[parseInt(m) - 1]} ${y}`;
+}
+
+function initials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map((n) => n[0]?.toUpperCase()).join('');
 }
 
 export default function KanbanPipeline() {
@@ -90,7 +98,6 @@ export default function KanbanPipeline() {
 
   const moveEvent = useCallback(async (eventId: string, toStatus: EventStatus) => {
     setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, status: toStatus } : e)));
-    // Persist only real (DB) events
     if (!eventId.startsWith('demo-')) {
       try {
         await fetch(`/api/events/${eventId}`, {
@@ -104,109 +111,141 @@ export default function KanbanPipeline() {
 
   const getEventsByStatus = (status: EventStatus) => events.filter((e) => e.status === status);
 
+  const totalGuests = events.filter((e) => e.status !== 'cancelado').reduce((s, e) => s + (e.guest_count || 0), 0);
+  const confirmedCount = getEventsByStatus('confirmado').length;
+  const activeCount = events.filter((e) => e.status !== 'cancelado').length;
+
+  const STATS = [
+    { label: 'Presupuestos activos', value: activeCount, accent: '#C9A84C' },
+    { label: 'Nuevos', value: getEventsByStatus('nuevo').length, accent: '#3B82F6' },
+    { label: 'Confirmados', value: confirmedCount, accent: '#16A34A' },
+    { label: 'Comensales (total)', value: totalGuests, accent: '#6B2737' },
+  ];
+
   return (
-    <div className="space-y-3">
-      {(isDemo || loading) && (
-        <p className="text-xs text-cream/40">
-          {loading ? 'Cargando presupuestos…' : 'Mostrando datos de demostración (aún no hay presupuestos reales).'}
-        </p>
-      )}
-      <div className="flex gap-4 overflow-x-auto pb-4 min-h-[calc(100vh-160px)]">
-        {COLUMNS.map((col) => (
-          <div key={col.status} className={`flex-shrink-0 w-72 rounded-xl border-l-2 border border-gold/10 ${col.accent} flex flex-col max-h-[calc(100vh-180px)]`}>
-            {/* Column header */}
-            <div className="px-4 py-3 border-b border-gold/10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-cream font-medium text-sm">{col.label}</span>
-                <span className="text-[10px] text-cream/40 bg-ink/40 px-2 py-0.5 rounded-full font-mono">
-                  {getEventsByStatus(col.status).length}
-                </span>
-              </div>
+    <div className="space-y-6">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {STATS.map((s) => (
+          <div key={s.label} className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="w-2 h-2 rounded-full" style={{ background: s.accent }} />
+              <span className="text-[12px] text-[#6B7280]">{s.label}</span>
             </div>
-
-            {/* Cards */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {getEventsByStatus(col.status).map((event, i) => (
-                <motion.div
-                  key={event.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="bg-ink-900/60 rounded-lg p-3 border border-gold/10 hover:border-gold/30 transition-colors cursor-pointer group"
-                >
-                  {/* Client info */}
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h4 className="text-cream text-sm font-medium">{event.client_name}</h4>
-                      <p className="text-cream/40 text-xs">{event.client_email}</p>
-                    </div>
-                    <span className="text-[10px] bg-gold/10 text-gold px-2 py-0.5 rounded-full whitespace-nowrap">
-                      {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
-                    </span>
-                  </div>
-
-                  {/* Event details */}
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-cream/50 mb-3">
-                    <span className="text-cream/30">{formatDate(event.event_date)}</span>
-                    <span className="text-right">{event.guest_count} adultos</span>
-                    {event.kids_count > 0 && (
-                      <>
-                        <span className="text-cream/30">Infantil</span>
-                        <span className="text-right">{event.kids_count}</span>
-                      </>
-                    )}
-                    {event.bar_hours > 0 && (
-                      <>
-                        <span className="text-cream/30">Barra libre</span>
-                        <span className="text-right">{event.bar_hours}h</span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Selected items preview */}
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {(event.selected_items || []).slice(0, 2).map((item, j) => (
-                      <span key={j} className="text-[10px] bg-cream/5 text-cream/40 px-1.5 py-0.5 rounded">
-                        {item.name}
-                      </span>
-                    ))}
-                    {(event.selected_items || []).length > 2 && (
-                      <span className="text-[10px] text-cream/30">+{event.selected_items.length - 2}</span>
-                    )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {col.status !== 'nuevo' && col.status !== 'cancelado' && (
-                      <button onClick={() => {
-                        const idx = statusOrder.indexOf(col.status);
-                        moveEvent(event.id, statusOrder[idx - 1]);
-                      }}
-                        className="flex-1 text-xs bg-cream/5 text-cream/40 hover:bg-cream/10 py-1 rounded transition-colors">
-                        Retroceder
-                      </button>
-                    )}
-                    {col.status !== 'confirmado' && col.status !== 'cancelado' && (
-                      <button onClick={() => {
-                        const idx = statusOrder.indexOf(col.status);
-                        moveEvent(event.id, statusOrder[idx + 1]);
-                      }}
-                        className="flex-1 text-xs bg-gold/10 text-gold hover:bg-gold/20 py-1 rounded transition-colors">
-                        Avanzar
-                      </button>
-                    )}
-                    {col.status !== 'cancelado' && (
-                      <button onClick={() => moveEvent(event.id, 'cancelado')}
-                        className="text-xs bg-red-500/10 text-red-400/70 hover:bg-red-500/20 px-2 py-1 rounded transition-colors">
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            <div className="text-2xl font-semibold text-[#1A1A1A] tabular-nums">{s.value}</div>
           </div>
         ))}
+      </div>
+
+      {isDemo && !loading && (
+        <p className="text-xs text-[#9CA3AF]">Mostrando datos de demostración (aún no hay presupuestos reales).</p>
+      )}
+      {loading && <p className="text-xs text-[#9CA3AF]">Cargando presupuestos…</p>}
+
+      {/* Board */}
+      <div className="flex gap-4 overflow-x-auto pb-4">
+        {COLUMNS.map((col) => {
+          const colEvents = getEventsByStatus(col.status);
+          return (
+            <div key={col.status} className="flex-shrink-0 w-[300px] flex flex-col rounded-2xl bg-[#FAFAFC] border border-[#ECECF1] max-h-[calc(100vh-280px)]">
+              {/* Column header */}
+              <div className="px-4 py-3 flex items-center justify-between rounded-t-2xl" style={{ background: col.tint }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: col.dot }} />
+                  <span className="text-[13px] font-semibold text-[#374151]">{col.label}</span>
+                </div>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70 text-[#6B7280]">
+                  {colEvents.length}
+                </span>
+              </div>
+
+              {/* Cards */}
+              <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+                {colEvents.length === 0 && (
+                  <div className="text-center text-[12px] text-[#B0B0B8] py-8">Sin presupuestos</div>
+                )}
+                {colEvents.map((event, i) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.04, 0.3) }}
+                    className="bg-white rounded-xl p-3.5 border border-[#ECECF1] shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all cursor-pointer group"
+                  >
+                    {/* Client */}
+                    <div className="flex items-start gap-2.5 mb-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold text-white flex-shrink-0"
+                        style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+                        {initials(event.client_name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-[13px] font-semibold text-[#1A1A1A] leading-tight truncate">{event.client_name}</h4>
+                        <p className="text-[11px] text-[#9CA3AF] truncate">{event.client_email}</p>
+                      </div>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#FBF6E9] text-[#A88A3A] whitespace-nowrap">
+                        {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
+                      </span>
+                    </div>
+
+                    {/* Meta */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#6B7280] mb-3">
+                      <span className="inline-flex items-center gap-1">
+                        <svg className="w-3 h-3 text-[#B0B0B8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        {formatDate(event.event_date)}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <svg className="w-3 h-3 text-[#B0B0B8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        {event.guest_count}{event.kids_count > 0 ? ` +${event.kids_count}` : ''}
+                      </span>
+                      {event.bar_hours > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="w-3 h-3 text-[#B0B0B8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                          {event.bar_hours}h barra
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Items preview */}
+                    {(event.selected_items || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {(event.selected_items || []).slice(0, 2).map((item, j) => (
+                          <span key={j} className="text-[10px] bg-[#F5F5F8] text-[#6B7280] px-1.5 py-0.5 rounded-md truncate max-w-[120px]">
+                            {item.name}
+                          </span>
+                        ))}
+                        {(event.selected_items || []).length > 2 && (
+                          <span className="text-[10px] text-[#B0B0B8] px-1">+{event.selected_items.length - 2}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-1.5 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {col.status !== 'nuevo' && col.status !== 'cancelado' && (
+                        <button onClick={() => moveEvent(event.id, statusOrder[statusOrder.indexOf(col.status) - 1])}
+                          className="flex-1 text-[11px] font-medium bg-[#F5F5F8] text-[#6B7280] hover:bg-[#ECECF1] py-1.5 rounded-lg transition-colors">
+                          ← Atrás
+                        </button>
+                      )}
+                      {col.status !== 'confirmado' && col.status !== 'cancelado' && (
+                        <button onClick={() => moveEvent(event.id, statusOrder[statusOrder.indexOf(col.status) + 1])}
+                          className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors">
+                          Avanzar →
+                        </button>
+                      )}
+                      {col.status !== 'cancelado' && (
+                        <button onClick={() => moveEvent(event.id, 'cancelado')}
+                          className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors">
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -117,26 +117,25 @@ INSERT INTO bar_config (hours, price, label) VALUES
 -- ============================================================
 -- 7. ROW LEVEL SECURITY (RLS)
 -- ============================================================
-ALTER TABLE catalog_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE proposed_menus ENABLE ROW LEVEL SECURITY;
-ALTER TABLE events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cost_desglose ENABLE ROW LEVEL SECURITY;
-ALTER TABLE webhook_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bar_config ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY catalog_public_read ON catalog_items FOR SELECT USING (active = true);
-CREATE POLICY catalog_admin_write ON catalog_items FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY menus_public_read ON proposed_menus FOR SELECT USING (true);
-CREATE POLICY events_own_read ON events FOR SELECT USING (
-    auth.jwt() ->> 'email' = client_email OR (auth.jwt() ->> 'role' = 'admin')
-);
-CREATE POLICY events_admin_all ON events FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY cost_desglose_event_read ON cost_desglose FOR SELECT USING (
-    EXISTS (SELECT 1 FROM events e WHERE e.id = cost_desglose.event_id
-            AND (e.client_email = auth.jwt() ->> 'email' OR auth.jwt() ->> 'role' = 'admin'))
-);
-CREATE POLICY webhook_logs_admin ON webhook_logs FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY bar_config_read ON bar_config FOR SELECT USING (true);
+-- NOTE: This is a self-hosted deployment. The app connects to Postgres with a
+-- single role via `pg` (src/lib/db.ts) and enforces authentication/authorization
+-- at the API + middleware layer (src/middleware.ts, src/lib/auth.ts).
+--
+-- The original Supabase-style policies below relied on `auth.jwt()`, a function
+-- that only exists inside Supabase. On plain Postgres that function is missing,
+-- so once RLS is enforced for a non-superuser role EVERY insert/select on these
+-- tables fails with "Database query failed" — which is exactly what broke the
+-- configurador when submitting a budget. We therefore leave RLS DISABLED here;
+-- access control lives in the application layer instead.
+--
+-- (Kept disabled intentionally — do not re-enable without providing an
+-- auth.jwt() equivalent.)
+ALTER TABLE catalog_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE proposed_menus DISABLE ROW LEVEL SECURITY;
+ALTER TABLE events DISABLE ROW LEVEL SECURITY;
+ALTER TABLE cost_desglose DISABLE ROW LEVEL SECURITY;
+ALTER TABLE webhook_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE bar_config DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- 8. TRIGGERS

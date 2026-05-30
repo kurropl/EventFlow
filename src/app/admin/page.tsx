@@ -32,7 +32,7 @@ export default function AdminDashboard() {
       {isOperations && <OperationsManager />}
       {isTableMap && (
         <div
-          className="rounded-xl border border-gold/10 bg-white overflow-hidden"
+          className="rounded-2xl border border-[#ECECF1] bg-white overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
           style={{ height: 'calc(100vh - 120px)', minHeight: 500 }}
         >
           <TableMapEditor />

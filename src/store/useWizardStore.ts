@@ -273,8 +273,11 @@ export const useWizardStore = create<WizardState>()(
           // B2B: selections include calculated totals (PVP, cost, margin)
           // Prices are always calculated server-side using catalog_item.pvp and catalog_item.cost
 
+          // step3 may be null when a proposed menu is used without
+          // customisation — fall back to an empty list so we never crash.
+          const rawSelectedItems: any[] = (state.step3 as any)?.selected_items ?? [];
           const selectedItemsPayload = state.mode === 'b2c'
-            ? (state.step3 as any).selected_items.map((item: any) => ({
+            ? rawSelectedItems.map((item: any) => ({
                 item_id: item.item_id,
                 name: item.name,
                 category: item.category,
@@ -285,7 +288,7 @@ export const useWizardStore = create<WizardState>()(
                 subtotal_pvp: 0,
                 subtotal_cost: 0,
               }))
-            : (state.step3 as any).selected_items;
+            : rawSelectedItems;
 
           const payload: EventSetupCreate = {
             client_name: state.clientInfo.name,

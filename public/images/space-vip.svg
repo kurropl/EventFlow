@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Sala VIP">
+  <defs>
+    <linearGradient id="s3bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a0f18"/><stop offset="55%" stop-color="#4e1d28"/><stop offset="100%" stop-color="#160508"/>
+    </linearGradient>
+    <radialGradient id="s3g" cx="50%" cy="30%" r="55%"><stop offset="0%" stop-color="#C9A84C" stop-opacity="0.4"/><stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/></radialGradient>
+    <radialGradient id="s3b" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFF3D0" stop-opacity="0.95"/><stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#s3bg)"/><rect width="800" height="800" fill="url(#s3g)"/>
+  <!-- single statement chandelier -->
+  <g transform="translate(400,90)">
+    <line x1="0" y1="0" x2="0" y2="70" stroke="#C9A84C" stroke-opacity="0.5" stroke-width="2"/>
+    <path d="M-90 110 Q0 60 90 110" fill="none" stroke="#D4B85C" stroke-opacity="0.55" stroke-width="2"/>
+    <g fill="url(#s3b)"><circle cx="-90" cy="112" r="16"/><circle cx="-45" cy="128" r="18"/><circle cx="0" cy="138" r="22"/><circle cx="45" cy="128" r="18"/><circle cx="90" cy="112" r="16"/></g>
+  </g>
+  <!-- velvet booth -->
+  <g>
+    <rect x="220" y="560" width="360" height="120" rx="40" fill="#6B2737" fill-opacity="0.6" stroke="#C9A84C" stroke-opacity="0.3"/>
+    <rect x="250" y="540" width="300" height="60" rx="30" fill="#8A3647" fill-opacity="0.5"/>
+  </g>
+  <ellipse cx="400" cy="720" rx="150" ry="40" fill="#F8F3E6" fill-opacity="0.07" stroke="#C9A84C" stroke-opacity="0.25"/>
+  <circle cx="400" cy="720" r="8" fill="url(#s3b)"/>
+</svg>

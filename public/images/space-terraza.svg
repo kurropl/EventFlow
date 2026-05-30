@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Terraza">
+  <defs>
+    <linearGradient id="s2sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a2a3a"/><stop offset="45%" stop-color="#7d4b46"/><stop offset="70%" stop-color="#c98b54"/><stop offset="100%" stop-color="#1d140e"/>
+    </linearGradient>
+    <radialGradient id="s2sun" cx="50%" cy="62%" r="40%"><stop offset="0%" stop-color="#FFE3A8" stop-opacity="0.85"/><stop offset="100%" stop-color="#FFE3A8" stop-opacity="0"/></radialGradient>
+    <radialGradient id="s2b" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFF3D0" stop-opacity="0.95"/><stop offset="100%" stop-color="#FFD37A" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#s2sky)"/>
+  <circle cx="400" cy="500" r="120" fill="url(#s2sun)"/>
+  <!-- string lights -->
+  <path d="M0 150 Q200 230 400 170 T800 150" fill="none" stroke="#C9A84C" stroke-opacity="0.4" stroke-width="2"/>
+  <g>
+    <circle cx="120" cy="196" r="7" fill="url(#s2b)"/><circle cx="250" cy="206" r="7" fill="url(#s2b)"/><circle cx="400" cy="170" r="8" fill="url(#s2b)"/>
+    <circle cx="550" cy="200" r="7" fill="url(#s2b)"/><circle cx="690" cy="183" r="7" fill="url(#s2b)"/>
+  </g>
+  <!-- planters / greenery silhouettes -->
+  <g fill="#10160d" fill-opacity="0.9">
+    <path d="M0 640 q60 -120 120 0 z"/><path d="M680 640 q60 -130 120 0 z"/>
+  </g>
+  <g fill="#1a2410" fill-opacity="0.8">
+    <ellipse cx="60" cy="620" rx="70" ry="60"/><ellipse cx="740" cy="620" rx="70" ry="60"/>
+  </g>
+  <rect y="640" width="800" height="160" fill="#140d06" fill-opacity="0.85"/>
+  <ellipse cx="400" cy="720" rx="170" ry="44" fill="#F8F3E6" fill-opacity="0.07" stroke="#C9A84C" stroke-opacity="0.25"/>
+  <circle cx="400" cy="720" r="8" fill="url(#s2b)"/>
+</svg>

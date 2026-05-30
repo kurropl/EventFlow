@@ -156,22 +156,23 @@ export default function CatalogCRUD() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h2 className="text-cream text-xl font-serif mb-1">Catálogo de Artículos</h2>
-          <p className="text-cream/40 text-sm">
-            <span className="text-gold font-medium">{totalItems}</span> artículos · <span className="text-green-400/60">{avgMargin.toFixed(0)}%</span> margen medio · <span className="text-cream/50">{activeItems}</span> activos
+          <h2 className="text-[#1A1A1A] text-xl font-serif mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Catálogo de artículos</h2>
+          <p className="text-[#6B7280] text-sm">
+            <span className="text-[#A88A3A] font-semibold">{totalItems}</span> artículos · <span className="text-[#16A34A] font-medium">{avgMargin.toFixed(0)}%</span> margen medio · <span className="text-[#6B7280]">{activeItems}</span> activos
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-gold text-ink px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-light transition-colors"
+          className="text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm hover:shadow transition-all"
+          style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
         >
-          + Nuevo Artículo
+          + Nuevo artículo
         </button>
       </div>
 
       {hasEstimated && (
-        <p className="text-[11px] text-cream/30 -mt-3">
-          Los precios marcados con <span className="text-gold/70">~</span> son estimaciones por categoría; edita el artículo para fijar su PVP real.
+        <p className="text-[12px] text-[#9CA3AF] -mt-3">
+          Los precios marcados con <span className="text-[#A88A3A]">~</span> son estimaciones por categoría; edita el artículo para fijar su PVP real.
         </p>
       )}
 
@@ -182,12 +183,12 @@ export default function CatalogCRUD() {
           placeholder="Buscar artículo..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2.5 rounded-lg bg-ink-900/60 border border-gold/10 text-cream text-sm focus:border-gold focus:outline-none"
+          className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all"
         />
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
-          className="px-4 py-2.5 rounded-lg bg-ink-900/60 border border-gold/10 text-cream text-sm focus:border-gold focus:outline-none"
+          className="px-4 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:outline-none"
         >
           <option value="all">Todas las categorías</option>
           {CATEGORIES.map((cat) => (
@@ -201,65 +202,66 @@ export default function CatalogCRUD() {
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="bg-ink-900/40 rounded-xl border border-gold/20 p-4 space-y-3"
+          className="bg-white rounded-2xl border border-[#ECECF1] p-4 space-y-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
         >
-          <h3 className="text-cream font-medium text-sm">Nuevo Artículo</h3>
+          <h3 className="text-[#1A1A1A] font-semibold text-sm">Nuevo artículo</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <input
               type="text" placeholder="Nombre del plato" value={newItem.name}
               onChange={(e) => setNewItem((n) => ({ ...n, name: e.target.value }))}
-              className="px-3 py-2 rounded-lg bg-ink-900/60 border border-gold/10 text-cream text-sm focus:border-gold focus:outline-none"
+              className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:outline-none"
             />
             <select value={newItem.category} onChange={(e) => setNewItem((n) => ({ ...n, category: e.target.value }))}
-              className="px-3 py-2 rounded-lg bg-ink-900/60 border border-gold/10 text-cream text-sm focus:border-gold focus:outline-none">
+              className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:outline-none">
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
               ))}
             </select>
             <input type="number" placeholder="PVP (€)" step="0.01" value={newItem.pvp}
               onChange={(e) => setNewItem((n) => ({ ...n, pvp: e.target.value }))}
-              className="px-3 py-2 rounded-lg bg-ink-900/60 border border-gold/10 text-cream text-sm focus:border-gold focus:outline-none" />
+              className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:outline-none" />
             <input type="number" placeholder="Coste (€)" step="0.01" value={newItem.cost}
               onChange={(e) => setNewItem((n) => ({ ...n, cost: e.target.value }))}
-              className="px-3 py-2 rounded-lg bg-ink-900/60 border border-gold/10 text-cream text-sm focus:border-gold focus:outline-none" />
+              className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:outline-none" />
           </div>
           <div className="flex gap-2">
-            <button onClick={handleAddItem} disabled={saving} className="bg-gold text-ink px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-light disabled:opacity-60">
+            <button onClick={handleAddItem} disabled={saving} className="text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
-            <button onClick={() => setShowForm(false)} className="text-cream/40 text-sm hover:text-cream/70">
+            <button onClick={() => setShowForm(false)} className="text-[#6B7280] text-sm px-3 hover:text-[#1A1A1A]">
               Cancelar
             </button>
           </div>
         </motion.div>
       )}
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+      {/* Category chips */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
         {CATEGORIES.map((cat) => {
           const count = items.filter((i) => i.category === cat && i.active).length;
+          const active = filterCategory === cat;
           return (
-            <div key={cat} className={`px-3 py-2 rounded-lg border cursor-pointer transition-all ${filterCategory === cat ? 'border-gold bg-gold/5' : 'border-gold/10 bg-ink-900/40 hover:border-gold/30'}`}
+            <div key={cat} className={`px-3 py-2 rounded-xl border cursor-pointer transition-all ${active ? 'border-[#C9A84C] bg-[#FBF6E9]' : 'border-[#ECECF1] bg-white hover:border-[#E0D3A8]'}`}
               onClick={() => setFilterCategory((f) => (f === cat ? 'all' : cat))}>
-              <div className="text-cream/40">{CATEGORY_LABELS[cat]}</div>
-              <div className="text-cream font-medium">{count}</div>
+              <div className="text-[#9CA3AF] truncate">{CATEGORY_LABELS[cat]}</div>
+              <div className="text-[#1A1A1A] font-semibold text-sm">{count}</div>
             </div>
           );
         })}
       </div>
 
       {/* Table */}
-      <div className="bg-ink-900/40 rounded-xl border border-gold/10 overflow-hidden">
-        <div className="max-h-[calc(100vh-320px)] overflow-y-auto">
+      <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="max-h-[calc(100vh-360px)] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-ink-950/95 z-10">
-              <tr className="border-b border-gold/10">
-                <th className="text-left px-4 py-3 text-cream/40 font-medium text-xs uppercase tracking-wider">Artículo</th>
-                <th className="text-left px-4 py-3 text-cream/40 font-medium text-xs uppercase tracking-wider">Categoría</th>
-                <th className="text-right px-4 py-3 text-cream/40 font-medium text-xs uppercase tracking-wider">PVP</th>
-                <th className="text-right px-4 py-3 text-cream/40 font-medium text-xs uppercase tracking-wider">Coste</th>
-                <th className="text-right px-4 py-3 text-cream/40 font-medium text-xs uppercase tracking-wider">Margen</th>
-                <th className="text-center px-4 py-3 text-cream/40 font-medium text-xs uppercase tracking-wider">Estado</th>
+            <thead className="sticky top-0 bg-[#FAFAFC] z-10">
+              <tr className="border-b border-[#ECECF1]">
+                <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Artículo</th>
+                <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Categoría</th>
+                <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">PVP</th>
+                <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Coste</th>
+                <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Margen</th>
+                <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -269,26 +271,26 @@ export default function CatalogCRUD() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: Math.min(i * 0.005, 0.4) }}
-                  className="border-b border-gold/5 hover:bg-cream/5 transition-colors"
+                  className="border-b border-[#F2F2F5] hover:bg-[#FAFAFC] transition-colors"
                 >
-                  <td className="px-4 py-2.5 text-cream text-xs max-w-[250px] truncate" title={item.name}>{item.name}</td>
+                  <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] max-w-[250px] truncate" title={item.name}>{item.name}</td>
                   <td className="px-4 py-2.5">
-                    <span className="text-[10px] bg-cream/5 text-cream/50 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-[#F5F5F8] text-[#6B7280] px-2 py-0.5 rounded-full">
                       {CATEGORY_LABELS[item.category] || item.category}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-right text-cream text-xs">{item.estimated && <span className="text-cream/30">~</span>}{item.pvp.toFixed(2)}€</td>
-                  <td className="px-4 py-2.5 text-right text-cream/50 text-xs">{item.cost.toFixed(2)}€</td>
+                  <td className="px-4 py-2.5 text-right text-[#1A1A1A] text-[13px] tabular-nums">{item.estimated && <span className="text-[#C9A84C]/70">~</span>}{item.pvp.toFixed(2)}€</td>
+                  <td className="px-4 py-2.5 text-right text-[#6B7280] text-[13px] tabular-nums">{item.cost.toFixed(2)}€</td>
                   <td className="px-4 py-2.5 text-right">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full
-                      ${getMargin(item.pvp, item.cost) >= 50 ? 'bg-green-500/10 text-green-400' :
-                        getMargin(item.pvp, item.cost) >= 30 ? 'bg-amber-500/10 text-amber-400' :
-                        'bg-red-500/10 text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
+                      ${getMargin(item.pvp, item.cost) >= 50 ? 'bg-[#EFFAF2] text-[#16A34A]' :
+                        getMargin(item.pvp, item.cost) >= 30 ? 'bg-[#FFF8EC] text-[#D9920B]' :
+                        'bg-[#FEF3F3] text-[#DC2626]'}`}>
                       {getMargin(item.pvp, item.cost)}%
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-center">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${item.active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${item.active ? 'bg-[#EFFAF2] text-[#16A34A]' : 'bg-[#FEF3F3] text-[#DC2626]'}`}>
                       {item.active ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
@@ -298,13 +300,13 @@ export default function CatalogCRUD() {
           </table>
         </div>
         {loading && (
-          <div className="text-center py-12 text-cream/30">Cargando catálogo…</div>
+          <div className="text-center py-12 text-[#9CA3AF]">Cargando catálogo…</div>
         )}
         {!loading && filteredItems.length === 0 && (
-          <div className="text-center py-12 text-cream/30">No se encontraron artículos</div>
+          <div className="text-center py-12 text-[#9CA3AF]">No se encontraron artículos</div>
         )}
         {filteredItems.length > 0 && (
-          <div className="px-4 py-2 border-t border-gold/5 text-xs text-cream/30 text-right">
+          <div className="px-4 py-2 border-t border-[#F2F2F5] text-xs text-[#9CA3AF] text-right">
             Mostrando {filteredItems.length} de {items.length} artículos
           </div>
         )}

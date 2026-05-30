@@ -10,12 +10,15 @@ import { useState, useEffect, useRef } from 'react';
    Tipografía: Playfair Display + Inter
    ============================================================ */
 
+// Self-hosted SVG artwork (public/images) — guaranteed to load with no external
+// dependency. A solid fallback colour sits under each image so a card never
+// renders blank, even before the SVG paints.
 const SPACES = [
-  { title: 'Salón Principal', sub: 'Hasta 300 comensales', span: 'md:col-span-2 md:row-span-2', bg: 'url(https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&q=85) center/cover' },
-  { title: 'Terraza', sub: 'Vistas al jardín', span: '', bg: 'url(https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=85) center/cover' },
-  { title: 'Sala VIP', sub: 'Eventos exclusivos', span: '', bg: 'url(https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=85) center/cover' },
-  { title: 'Jardín', sub: 'Ceremonias al aire libre', span: '', bg: 'url(https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=85) center/cover' },
-  { title: 'Sala Íntima', sub: 'Celebraciones pequeñas', span: '', bg: 'url(https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=85) center/cover' },
+  { title: 'Salón Principal', sub: 'Hasta 300 comensales', span: 'md:col-span-2 md:row-span-2', bg: '#241a0c url(/images/space-salon.svg) center/cover no-repeat' },
+  { title: 'Terraza', sub: 'Vistas al jardín', span: '', bg: '#7d4b46 url(/images/space-terraza.svg) center/cover no-repeat' },
+  { title: 'Sala VIP', sub: 'Eventos exclusivos', span: '', bg: '#4e1d28 url(/images/space-vip.svg) center/cover no-repeat' },
+  { title: 'Jardín', sub: 'Ceremonias al aire libre', span: '', bg: '#8fa173 url(/images/space-jardin.svg) center/cover no-repeat' },
+  { title: 'Sala Íntima', sub: 'Celebraciones pequeñas', span: '', bg: '#4a3318 url(/images/space-intima.svg) center/cover no-repeat' },
 ];
 
 const SERVICES = [
@@ -200,10 +203,39 @@ export default function HomePage() {
           HERO — Cinematográfico
           ============================================================ */}
       <section ref={heroRef} className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
-        {/* Background layers */}
-        <div className="absolute inset-0 z-0" style={{
-          background: 'linear-gradient(160deg, #0A0806 0%, #1A1208 30%, #2D2416 60%, #1A1208 80%, #0A0806 100%)',
+        {/* Background layers — cinematic, self-contained, always visible.
+            Sits behind the optional video so the hero is never blank. */}
+        <div className="absolute inset-0 z-0 hero-kenburns" style={{
+          background: 'linear-gradient(160deg, #0A0806 0%, #1A1208 30%, #2D2416 60%, #1A1208 80%, #0A0806 100%), url(/images/hero-poster.svg) center/cover no-repeat',
         }} />
+
+        {/* Impactful video — autoplays the venue footage when present.
+            Drop a file at public/video/hero.mp4 to use real footage; until then
+            the cinematic backdrop above carries the hero. Hides itself on error. */}
+        <video
+          className="absolute inset-0 z-0 h-full w-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster="/images/hero-poster.svg"
+          onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }}
+        >
+          <source src="/video/hero.mp4" type="video/mp4" />
+        </video>
+
+        {/* Cinematic colour grade + legibility scrim over the video */}
+        <div className="absolute inset-0 z-0 pointer-events-none" style={{
+          background: 'linear-gradient(160deg, rgba(10,8,6,0.78) 0%, rgba(26,18,8,0.55) 40%, rgba(45,36,22,0.5) 60%, rgba(10,8,6,0.82) 100%)',
+        }} />
+
+        {/* Diagonal light sweep */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <div className="hero-sweep absolute top-0 left-0 h-full w-1/3" style={{
+            background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.12), transparent)',
+          }} />
+        </div>
 
         {/* Ambient light orbs */}
         <div className="absolute top-1/4 -left-1/4 w-[60vw] h-[60vw] rounded-full z-0 pointer-events-none"
@@ -329,7 +361,7 @@ export default function HomePage() {
                 }}>
                 {/* Background image */}
                 <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
-                  style={{ backgroundImage: space.bg }} />
+                  style={{ background: space.bg }} />
                 {/* Dark overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
                 {/* Gold line hover */}

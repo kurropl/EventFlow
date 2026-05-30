@@ -78,8 +78,8 @@ export default function OperationsManager() {
 
   if (!selectedEvent) {
     return (
-      <div className="text-center py-20 text-cream/30">
-        <p className="text-lg mb-4">No hay eventos seleccionados</p>
+      <div className="text-center py-20 text-[#9CA3AF]">
+        <p className="text-lg mb-4 text-[#6B7280]">No hay eventos seleccionados</p>
         <p className="text-sm">Selecciona un evento del pipeline para ver las operaciones.</p>
       </div>
     );
@@ -92,39 +92,39 @@ export default function OperationsManager() {
   return (
     <div className="space-y-6">
       {/* Event header */}
-      <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-6">
+      <div className="bg-white rounded-2xl border border-[#ECECF1] p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div>
-            <h3 className="text-cream text-xl font-serif">{selectedEvent.client_name}</h3>
-            <p className="text-cream/40 text-sm">
+            <h3 className="text-[#1A1A1A] text-xl font-serif" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{selectedEvent.client_name}</h3>
+            <p className="text-[#6B7280] text-sm">
               {selectedEvent.event_date} · {selectedEvent.guest_count} adultos + {selectedEvent.kids_count} niños
             </p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-6">
             <div className="text-right">
-              <div className="text-xs text-cream/40 uppercase tracking-wider">Margen Neto</div>
-              <div className={`text-2xl font-bold ${marginPct >= 30 ? 'text-green-400' : marginPct >= 15 ? 'text-gold' : 'text-red-400'}`}>
+              <div className="text-[11px] text-[#9CA3AF] uppercase tracking-wider">Margen neto</div>
+              <div className={`text-2xl font-bold ${marginPct >= 30 ? 'text-[#16A34A]' : marginPct >= 15 ? 'text-[#A88A3A]' : 'text-[#DC2626]'}`}>
                 {marginPct}%
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-cream/40 uppercase tracking-wider">Beneficio</div>
-              <div className="text-2xl font-bold text-gold">{profit.toFixed(2)}€</div>
+              <div className="text-[11px] text-[#9CA3AF] uppercase tracking-wider">Beneficio</div>
+              <div className="text-2xl font-bold text-[#A88A3A]">{profit.toFixed(2)}€</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-ink-900/40 rounded-lg p-1">
+      <div className="flex gap-1 bg-[#F0F0F4] rounded-xl p-1">
         {(['overview', 'tables', 'purchase'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition-all
-              ${activeTab === tab ? 'bg-gold/15 text-gold' : 'text-cream/40 hover:text-cream/70'}`}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all
+              ${activeTab === tab ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#6B7280] hover:text-[#1A1A1A]'}`}
           >
-            {tab === 'overview' ? 'Resumen' : tab === 'tables' ? 'Mapa de Mesas' : 'Escandallo'}
+            {tab === 'overview' ? 'Resumen' : tab === 'tables' ? 'Mapa de mesas' : 'Escandallo'}
           </button>
         ))}
       </div>
@@ -134,44 +134,44 @@ export default function OperationsManager() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           {/* Staff & tables cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4 text-center">
-              <div className="text-2xl font-bold text-cream mb-1">{ops.waiters}</div>
-              <div className="text-xs text-cream/40">Camareros</div>
-              <div className="text-[10px] text-cream/30">1 por cada 15 pax</div>
+            <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <div className="text-2xl font-bold text-[#1A1A1A] mb-1">{ops.waiters}</div>
+              <div className="text-xs text-[#6B7280]">Camareros</div>
+              <div className="text-[10px] text-[#A8A8B0]">1 por cada 15 pax</div>
             </div>
-            <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4 text-center">
-              <div className="text-2xl font-bold text-cream mb-1">{ops.totalTables}</div>
-              <div className="text-xs text-cream/40">Mesas</div>
-              <div className="text-[10px] text-cream/30">{ops.adultTables} adult. + {ops.kidsTables} niños</div>
+            <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <div className="text-2xl font-bold text-[#1A1A1A] mb-1">{ops.totalTables}</div>
+              <div className="text-xs text-[#6B7280]">Mesas</div>
+              <div className="text-[10px] text-[#A8A8B0]">{ops.adultTables} adult. + {ops.kidsTables} niños</div>
             </div>
-            <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4 text-center">
-              <div className="text-2xl font-bold text-cream mb-1">{selectedEvent.bar_hours}h</div>
-              <div className="text-xs text-cream/40">Barra Libre</div>
+            <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <div className="text-2xl font-bold text-[#1A1A1A] mb-1">{selectedEvent.bar_hours}h</div>
+              <div className="text-xs text-[#6B7280]">Barra libre</div>
             </div>
-            <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4 text-center">
-              <div className="text-2xl font-bold text-cream mb-1">{ops.metres}</div>
-              <div className="text-xs text-cream/40">Metres</div>
-              <div className="text-[10px] text-cream/30">1 por conjunto</div>
+            <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <div className="text-2xl font-bold text-[#1A1A1A] mb-1">{ops.metres}</div>
+              <div className="text-xs text-[#6B7280]">Maîtres</div>
+              <div className="text-[10px] text-[#A8A8B0]">1 por conjunto</div>
             </div>
           </div>
 
           {/* Financial breakdown */}
-          <div className="bg-ink-900/40 rounded-xl border border-gold/10 p-4">
-            <h4 className="text-cream font-medium text-sm mb-3">Desglose Financiero</h4>
+          <div className="bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <h4 className="text-[#1A1A1A] font-semibold text-sm mb-3">Desglose financiero</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-cream/60">
+              <div className="flex justify-between text-[#6B7280]">
                 <span>Ingresos (PVP)</span>
-                <span className="text-cream">{selectedEvent.total_pvp.toFixed(2)}€</span>
+                <span className="text-[#1A1A1A] font-medium">{selectedEvent.total_pvp.toFixed(2)}€</span>
               </div>
-              <div className="flex justify-between text-cream/60">
+              <div className="flex justify-between text-[#6B7280]">
                 <span>Costes internos</span>
-                <span className="text-red-400">-{selectedEvent.total_cost.toFixed(2)}€</span>
+                <span className="text-[#DC2626]">-{selectedEvent.total_cost.toFixed(2)}€</span>
               </div>
-              <div className="border-t border-gold/10 pt-2 flex justify-between font-medium">
-                <span className="text-cream">Beneficio Neto</span>
-                <span className="text-green-400">{profit.toFixed(2)}€</span>
+              <div className="border-t border-[#ECECF1] pt-2 flex justify-between font-medium">
+                <span className="text-[#1A1A1A]">Beneficio neto</span>
+                <span className="text-[#16A34A]">{profit.toFixed(2)}€</span>
               </div>
-              <div className="flex justify-between text-cream/40 text-xs">
+              <div className="flex justify-between text-[#9CA3AF] text-xs">
                 <span>Margen de beneficio</span>
                 <span>{marginPct}%</span>
               </div>
@@ -181,8 +181,8 @@ export default function OperationsManager() {
       )}
 
       {activeTab === 'tables' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-ink-900/40 rounded-xl border border-gold/10 overflow-hidden" style={{ height: 'calc(100vh - 320px)', minHeight: 500 }}>
-          <TableMapEditor 
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]" style={{ height: 'calc(100vh - 320px)', minHeight: 500 }}>
+          <TableMapEditor
             eventName={`${selectedEvent.client_name} — ${selectedEvent.event_date}`}
             eventId={selectedEvent.id}
             onSave={handleSavePlan}
@@ -192,26 +192,26 @@ export default function OperationsManager() {
 
       {activeTab === 'purchase' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="bg-ink-900/40 rounded-xl border border-gold/10 overflow-hidden">
-            <div className="p-4 border-b border-gold/10">
-              <h4 className="text-cream font-medium text-sm">Escandallo de Compras (+10% margen)</h4>
+          <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <div className="p-4 border-b border-[#ECECF1]">
+              <h4 className="text-[#1A1A1A] font-semibold text-sm">Escandallo de compras (+10% margen)</h4>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gold/5">
-                  <th className="text-left px-4 py-2 text-cream/40 text-xs">Artículo</th>
-                  <th className="text-right px-4 py-2 text-cream/40 text-xs">Base</th>
-                  <th className="text-right px-4 py-2 text-gold/60 text-xs">+10%</th>
-                  <th className="text-right px-4 py-2 text-cream/30 text-xs">Margen</th>
+                <tr className="border-b border-[#ECECF1] bg-[#FAFAFC]">
+                  <th className="text-left px-4 py-2 text-[#9CA3AF] text-[11px] uppercase tracking-wider">Artículo</th>
+                  <th className="text-right px-4 py-2 text-[#9CA3AF] text-[11px] uppercase tracking-wider">Base</th>
+                  <th className="text-right px-4 py-2 text-[#A88A3A] text-[11px] uppercase tracking-wider">+10%</th>
+                  <th className="text-right px-4 py-2 text-[#9CA3AF] text-[11px] uppercase tracking-wider">Margen</th>
                 </tr>
               </thead>
               <tbody>
                 {ops.purchaseOrder.map((item, i) => (
-                  <tr key={i} className="border-b border-gold/5">
-                    <td className="px-4 py-2 text-cream">{item.name}</td>
-                    <td className="px-4 py-2 text-right text-cream/60">{item.baseQty}</td>
-                    <td className="px-4 py-2 text-right text-gold">{item.withMargin}</td>
-                    <td className="px-4 py-2 text-right text-cream/30">+{item.margin}</td>
+                  <tr key={i} className="border-b border-[#F2F2F5]">
+                    <td className="px-4 py-2 text-[#1A1A1A]">{item.name}</td>
+                    <td className="px-4 py-2 text-right text-[#6B7280] tabular-nums">{item.baseQty}</td>
+                    <td className="px-4 py-2 text-right text-[#A88A3A] font-medium tabular-nums">{item.withMargin}</td>
+                    <td className="px-4 py-2 text-right text-[#9CA3AF] tabular-nums">+{item.margin}</td>
                   </tr>
                 ))}
               </tbody>
