@@ -1,37 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 
-type Tab = 'kanban' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
+type Tab = 'kanban' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks';
 
-/* Inline icon set — clean line icons, no external dependency */
-const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; className?: string }) => {
-  const p: Record<string, React.ReactNode> = {
-    kanban: <><rect x="3" y="3" width="6" height="18" rx="1.5" /><rect x="15" y="3" width="6" height="11" rx="1.5" /></>,
-    catalog: <><path d="M4 6h16M4 12h16M4 18h10" /></>,
-    operations: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H0" /></>,
-    'mapa-mesas': <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
-    webhooks: <><path d="M18 8a6 6 0 0 0-9.3-5M6 8a6 6 0 0 0 4 10.5M12 18a6 6 0 0 0 6-6" /><circle cx="12" cy="8" r="2" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="14" r="2" /></>,
-    portal: <><path d="M3 12l9-9 9 9" /><path d="M5 10v10h14V10" /></>,
-    logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5M21 12H9" /></>,
-    menu: <><path d="M3 6h18M3 12h18M3 18h18" /></>,
-  };
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      {p[name]}
-    </svg>
-  );
-};
-
-const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: 'kanban', label: 'Pipeline', sub: 'Presupuestos' },
-  { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios' },
-  { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso' },
-  { id: 'mapa-mesas', label: 'Mapa de Mesas', sub: 'Distribución' },
-  { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones' },
+const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
+  { id: 'kanban', label: 'Pipeline', icon: 'K', desc: 'Presupuestos y cotizaciones' },
+  { id: 'catalog', label: 'Catálogo', icon: 'C', desc: 'Platos y menús' },
+  { id: 'operations', label: 'Operaciones', icon: 'O', desc: 'Gestión del día' },
+  { id: 'mapa-mesas', label: 'Mapa Mesas', icon: 'M', desc: 'Distribución del salón' },
+  { id: 'webhooks', label: 'Webhooks', icon: 'W', desc: 'Integraciones' },
 ];
 
 interface AdminLayoutProps {
@@ -42,6 +22,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  const currentTab: Tab = TABS.find((t) => pathname?.includes(t.id))?.id || 'kanban';
 
   const handleLogout = async () => {
     await fetch('/api/auth/login', {
@@ -53,111 +44,193 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     router.refresh();
   };
 
-  const currentTab: Tab = TABS.find((t) => pathname?.includes(t.id))?.id || 'kanban';
-  const current = TABS.find((t) => t.id === currentTab);
-
   return (
-    <div className="min-h-screen flex bg-[#F5F5F8] text-[#1A1A1A]">
-      {/* Sidebar */}
-      <motion.aside
-        initial={{ x: -240 }}
-        animate={{ x: 0 }}
-        className={`fixed lg:relative z-30 h-screen flex flex-col bg-white border-r border-[#ECECF1] transition-all duration-300 overflow-hidden ${
-          sidebarOpen ? 'w-64' : 'w-0 lg:w-[72px]'
+    <div className="min-h-screen flex flex-col md:flex-row" style={{ background: '#0d0a06' }}>
+      {/* MOBILE TOP BAR */}
+      <header className="md:hidden flex items-center justify-between px-4 h-14 border-b z-40"
+        style={{ background: '#14100a', borderColor: '#d4a5481a' }}>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            className="p-1 rounded"
+            style={{ color: '#f8f3e680' }}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d={mobileNavOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
+            </svg>
+          </button>
+          <span className="font-serif text-sm" style={{ color: '#f8f3e6' }}>J. Benitez Admin</span>
+        </div>
+        <button onClick={handleLogout} className="text-xs px-3 py-1.5 rounded" style={{ color: '#f8f3e666' }}>
+          Salir
+        </button>
+      </header>
+
+      {/* MOBILE SIDEBAR DRAWER */}
+      {isMobile && mobileNavOpen && (
+        <div className="fixed inset-0 z-30" onClick={() => setMobileNavOpen(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <aside
+            className="absolute left-0 top-14 bottom-0 w-64 flex flex-col border-r z-40"
+            style={{ background: '#14100a', borderColor: '#d4a54833' }}
+            onClick={(e) => e.stopPropagation()}>
+            <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+              {TABS.map((tab) => (
+                <Link
+                  key={tab.id}
+                  href={`/admin/${tab.id}`}
+                  onClick={() => setMobileNavOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all`}
+                  style={
+                    currentTab === tab.id
+                      ? { background: '#d4a54826', color: '#d4a548' }
+                      : { color: '#f8f3e680' }
+                  }>
+                  <span
+                    className="w-7 h-7 rounded text-xs flex items-center justify-center font-bold flex-shrink-0"
+                    style={
+                      currentTab === tab.id
+                        ? { background: '#d4a5481a', color: '#d4a548' }
+                        : { background: '#f8f3e60a', color: '#f8f3e680' }
+                    }>
+                    {tab.icon}
+                  </span>
+                  <div>
+                    <div>{tab.label}</div>
+                    <div className="text-xs opacity-60 font-normal">{tab.desc}</div>
+                  </div>
+                </Link>
+              ))}
+            </nav>
+            <div className="p-3 border-t" style={{ borderColor: '#d4a5481a' }}>
+              <Link
+                href="/"
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all"
+                style={{ color: '#f8f3e666' }}>
+                <span className="w-7 h-7 rounded text-xs flex items-center justify-center flex-shrink-0"
+                  style={{ background: '#f8f3e60a', color: '#f8f3e666' }}>V</span>
+                <span>Ver Portal Web</span>
+              </Link>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* DESKTOP SIDEBAR */}
+      <aside
+        className={`hidden md:flex flex-col transition-all duration-300 overflow-hidden border-r ${
+          sidebarOpen ? 'w-60' : 'w-16'
         }`}
-      >
-        {/* Brand */}
-        <div className="h-[72px] px-5 flex items-center gap-3 border-b border-[#F0F0F4]">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
-            style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-          >
-            <span className="font-bold text-sm text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>JB</span>
+        style={{ background: '#14100a', borderColor: '#d4a54833' }}>
+        <div className="p-4 flex items-center gap-3 min-h-[60px]" style={{ borderBottom: '1px solid #d4a5481a' }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#d4a548' }}>
+            <span className="font-bold text-sm" style={{ color: '#0d0a06', fontFamily: "'Playfair Display', Georgia, serif" }}>JB</span>
           </div>
           {sidebarOpen && (
-            <div className="min-w-0">
-              <div className="font-serif text-[15px] leading-tight text-[#1A1A1A] truncate" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>J. Benitez</div>
-              <div className="text-[11px] text-[#9CA3AF] tracking-wide">Panel de gestión</div>
+            <div>
+              <div className="font-serif text-sm" style={{ color: '#f8f3e6' }}>J. Benitez</div>
+              <div style={{ color: '#d4a54899', fontSize: '0.7rem' }}>Admin Panel</div>
             </div>
           )}
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {sidebarOpen && (
-            <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#B0B0B8]">Gestión</p>
-          )}
-          {TABS.map((tab) => {
-            const active = currentTab === tab.id;
-            return (
-              <Link
-                key={tab.id}
-                href={`/admin/${tab.id}`}
-                title={tab.label}
-                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
-                  active
-                    ? 'bg-[#FBF6E9] text-[#1A1A1A]'
-                    : 'text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A]'
-                }`}
-              >
-                <span className={active ? 'text-[#C9A84C]' : 'text-[#9CA3AF] group-hover:text-[#6B7280]'}>
-                  <Icon name={tab.id} />
-                </span>
-                {sidebarOpen && (
-                  <span className="flex-1 min-w-0">
-                    <span className={`block leading-tight font-medium ${active ? 'text-[#1A1A1A]' : ''}`}>{tab.label}</span>
-                    <span className="block text-[11px] text-[#A8A8B0] leading-tight">{tab.sub}</span>
-                  </span>
-                )}
-                {active && sidebarOpen && <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {TABS.map((tab) => (
+            <Link
+              key={tab.id}
+              href={`/admin/${tab.id}`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all`}
+              style={
+                currentTab === tab.id
+                  ? { background: '#d4a54826', color: '#d4a548' }
+                  : { color: '#f8f3e680' }
+              }>
+              <span
+                className="w-6 h-6 rounded text-xs flex items-center justify-center font-bold flex-shrink-0"
+                style={
+                  currentTab === tab.id
+                    ? { background: '#d4a5481a', color: '#d4a548' }
+                    : { background: '#f8f3e60a', color: '#f8f3e680' }
+                }>
+                {tab.icon}
+              </span>
+              {sidebarOpen && (
+                <div className="overflow-hidden">
+                  <div>{tab.label}</div>
+                  <div className="text-xs opacity-60 font-normal truncate">{tab.desc}</div>
+                </div>
+              )}
+            </Link>
+          ))}
         </nav>
 
-        {/* Footer: portal link */}
-        <div className="px-3 py-4 border-t border-[#F0F0F4]">
+        <div className="p-3" style={{ borderTop: '1px solid #d4a5481a' }}>
           <Link
             href="/"
-            title="Ver portal"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A] transition-all"
-          >
-            <span className="text-[#9CA3AF]"><Icon name="portal" /></span>
-            {sidebarOpen && <span className="font-medium">Ver portal</span>}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all"
+            style={{ color: '#f8f3e666' }}>
+            <span className="w-6 h-6 rounded text-xs flex items-center justify-center flex-shrink-0"
+              style={{ background: '#f8f3e60a', color: '#f8f3e666' }}>V</span>
+            {sidebarOpen && <span>Ver Portal Web</span>}
           </Link>
         </div>
-      </motion.aside>
+      </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="h-[72px] flex items-center px-5 gap-4 bg-white/80 backdrop-blur-xl border-b border-[#ECECF1] sticky top-0 z-20">
+      {/* MAIN CONTENT */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header className="hidden md:flex h-14 items-center px-4 gap-3 border-b flex-shrink-0"
+          style={{ background: '#14100acc', borderColor: '#d4a5481a' }}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A] transition-all"
-            aria-label="Alternar menú"
-          >
-            <Icon name="menu" className="w-5 h-5" />
+            className="p-1 rounded transition-all"
+            style={{ color: '#f8f3e680' }}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-serif text-lg text-[#1A1A1A] leading-tight" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-              {current?.label}
-            </h1>
-            <p className="text-[12px] text-[#9CA3AF] leading-tight">{current?.sub}</p>
-          </div>
+          <h1 className="font-serif text-lg flex-1" style={{ color: '#f8f3e6' }}>
+            {TABS.find((t) => t.id === currentTab)?.label}
+          </h1>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 text-sm px-3.5 py-2 rounded-lg text-[#6B7280] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all"
-          >
-            <Icon name="logout" className="w-4 h-4" />
-            <span className="hidden sm:inline">Salir</span>
+            className="text-xs px-3 py-1.5 rounded transition-all"
+            style={{ color: '#f8f3e666' }}>
+            Salir
           </button>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-auto p-5 md:p-7">
-          {children}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="p-3 md:p-6 max-w-full">
+            {children}
+          </div>
         </main>
+
+        {/* MOBILE BOTTOM NAV */}
+        <nav className="md:hidden flex border-t flex-shrink-0 overflow-x-auto"
+          style={{ background: '#14100a', borderColor: '#d4a5481a' }}>
+          {TABS.map((tab) => (
+            <Link
+              key={tab.id}
+              href={`/admin/${tab.id}`}
+              className="flex-1 flex flex-col items-center py-2 px-1 text-[10px] font-medium transition-all min-w-0"
+              style={
+                currentTab === tab.id
+                  ? { color: '#d4a548', background: '#d4a5480d' }
+                  : { color: '#f8f3e680' }
+              }>
+              <span className="w-6 h-6 rounded text-xs flex items-center justify-center font-bold mb-0.5"
+                style={
+                  currentTab === tab.id
+                    ? { background: '#d4a5481a', color: '#d4a548' }
+                    : { background: 'transparent', color: '#f8f3e680' }
+                }>
+                {tab.icon}
+              </span>
+              <span className="truncate w-full text-center">{tab.label}</span>
+            </Link>
+          ))}
+        </nav>
       </div>
     </div>
   );

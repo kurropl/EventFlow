@@ -47,17 +47,20 @@ export default function AdminDashboard() {
             
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
               {[
-                { title: 'Presupuestos', desc: 'Pipeline de cotizaciones', icon: '📋', path: '/admin/kanban' },
-                { title: 'Catálogo', desc: 'Gestión de platos y complementos', icon: '🍽️', path: '/admin/catalog' },
-                { title: 'Operaciones', desc: 'Gestión de eventos y operaciones', icon: '⚙️', path: '/admin/operations' },
-                { title: 'Mapa de Mesas', desc: 'Editor drag & drop de mesas', icon: '🗺️', path: '/admin/mapa-mesas' },
+                { title: 'Presupuestos', desc: 'Pipeline de cotizaciones', icon: 'P', path: '/admin/kanban' },
+                { title: 'Catálogo', desc: 'Gestión de platos y complementos', icon: 'C', path: '/admin/catalog' },
+                { title: 'Operaciones', desc: 'Gestión de eventos y operaciones', icon: 'O', path: '/admin/operations' },
+                { title: 'Mapa de Mesas', desc: 'Editor drag & drop de mesas', icon: 'M', path: '/admin/mapa-mesas' },
               ].map((item) => (
                 <a
                   key={item.title}
                   href={item.path}
                   className="p-6 rounded-xl border border-stone-200 bg-white hover:border-[#C9A84C] hover:shadow-lg transition-all duration-300 group"
                 >
-                  <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">{item.icon}</div>
+                  <div className="w-12 h-12 rounded-xl mb-4 flex items-center justify-center font-serif text-lg font-bold transition-all duration-300 group-hover:scale-110"
+                    style={{ background: 'linear-gradient(135deg, #1A1A1A, #2D2416)', color: '#C9A84C' }}>
+                    {item.icon}
+                  </div>
                   <h3 className="font-serif text-lg text-stone-800 mb-2">{item.title}</h3>
                   <p className="text-sm text-stone-500">{item.desc}</p>
                 </a>
