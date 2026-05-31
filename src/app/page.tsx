@@ -83,13 +83,12 @@ function useScrollReveal() {
   return useCallback((id: string) => revealed.has(id), [revealed]);
 }
 
-function useCounter(end: number, duration = 2000, startOnView = true) {
+function useCounter(end: number, duration = 2000) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   const started = useRef(false);
 
   useEffect(() => {
-    if (!startOnView) return;
     const el = ref.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -110,7 +109,7 @@ function useCounter(end: number, duration = 2000, startOnView = true) {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [end, duration, startOnView]);
+  }, [end, duration]);
 
   return { count, ref };
 }
@@ -123,6 +122,13 @@ export default function HomePage() {
   const [heroImg, setHeroImg] = useState(0);
   const reveal = useScrollReveal();
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // ── Counter hooks — MUST be at top level ──
+  const c0 = useCounter(15, 2000);
+  const c1 = useCounter(1200, 2500);
+  const c2 = useCounter(98, 1500);
+  const c3 = useCounter(5, 1000);
+  const counterHooks = [c0, c1, c2, c3];
 
   const counters = [
     { end: 15, suffix: '+', label: 'Años de experiencia' },
@@ -374,7 +380,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {counters.map((c, i) => {
-              const { count, ref } = useCounter(c.end);
+              const { count, ref } = counterHooks[i];
               return (
                 <div key={i} className="text-center" data-reveal
                   style={{
