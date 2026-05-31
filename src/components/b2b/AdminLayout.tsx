@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
-type Tab = 'kanban' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
+type Tab = 'dashboard' | 'kanban' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
 
 /* Inline icon set — clean line icons, no external dependency */
 const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; className?: string }) => {
@@ -13,6 +13,7 @@ const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; classNa
     kanban: <><rect x="3" y="3" width="6" height="18" rx="1.5" /><rect x="15" y="3" width="6" height="11" rx="1.5" /></>,
     catalog: <><path d="M4 6h16M4 12h16M4 18h10" /></>,
     operations: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H0" /></>,
+    dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
     'mapa-mesas': <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
     webhooks: <><path d="M18 8a6 6 0 0 0-9.3-5M6 8a6 6 0 0 0 4 10.5M12 18a6 6 0 0 0 6-6" /><circle cx="12" cy="8" r="2" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="14" r="2" /></>,
     portal: <><path d="M3 12l9-9 9 9" /><path d="M5 10v10h14V10" /></>,
@@ -26,12 +27,13 @@ const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; classNa
   );
 };
 
-const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: 'kanban', label: 'Pipeline', sub: 'Presupuestos' },
-  { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios' },
-  { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso' },
-  { id: 'mapa-mesas', label: 'Mapa de Mesas', sub: 'Distribución' },
-  { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones' },
+const TABS: { id: Tab; label: string; sub: string; href: string }[] = [
+  { id: 'dashboard', label: 'Resumen', sub: 'Panel general', href: '/admin' },
+  { id: 'kanban', label: 'Pipeline', sub: 'Presupuestos', href: '/admin/kanban' },
+  { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
+  { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
+  { id: 'mapa-mesas', label: 'Mapa de Mesas', sub: 'Distribución', href: '/admin/mapa-mesas' },
+  { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones', href: '/admin/webhooks' },
 ];
 
 interface AdminLayoutProps {
@@ -53,7 +55,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     router.refresh();
   };
 
-  const currentTab: Tab = TABS.find((t) => pathname?.includes(t.id))?.id || 'kanban';
+  const currentTab: Tab =
+    pathname === '/admin' || pathname === '/admin/'
+      ? 'dashboard'
+      : TABS.find((t) => t.id !== 'dashboard' && pathname?.includes(t.id))?.id || 'dashboard';
   const current = TABS.find((t) => t.id === currentTab);
 
   return (
@@ -92,7 +97,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             return (
               <Link
                 key={tab.id}
-                href={`/admin/${tab.id}`}
+                href={tab.href}
                 title={tab.label}
                 className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                   active
