@@ -35,8 +35,13 @@ if [ -f scripts/bodalab-modules.sql ]; then
     || echo "   ⚠ no se pudo aplicar la migración automáticamente; ejecútala a mano"
 fi
 
-echo "▶ 5/6  reinicio del contenedor"
-docker compose up -d eventflow
+echo "▶ 5/6  reinicio del contenedor (force-recreate)"
+# IMPORTANTE: 'npm run build' borra y recrea .next/standalone (inode nuevo). Un
+# contenedor que siga vivo mantiene el bind-mount apuntando al directorio viejo
+# ya borrado: el server en memoria sirve el HTML pero NO puede leer del disco los
+# estáticos -> 404 en /_next/static y /images. --force-recreate vuelve a resolver
+# el montaje al directorio nuevo. (Un simple 'restart' NO lo arregla.)
+docker compose up -d --force-recreate eventflow
 
 echo "▶ 6/6  verificación de estáticos"
 sleep 4
@@ -56,8 +61,19 @@ check "/images/hero-poster.svg"
 
 if [ "$fail" = "1" ]; then
   echo ""
-  echo "❌ DESPLIEGUE CON ASSETS ROTOS. Revisa que .next/standalone/.next/static exista"
-  echo "   y que el proxy inverso enrute /_next/ y /images/ al contenedor (puerto ${APP_PORT})."
+  echo "❌ DESPLIEGUE CON ASSETS ROTOS — diagnóstico:"
+  echo "--- HOST: .next/standalone/.next/static ---"
+  ls -la .next/standalone/.next/static 2>&1 | head -5
+  echo "--- HOST: .next/standalone/public/images ---"
+  ls -la .next/standalone/public/images 2>&1 | head -5
+  echo "--- CONTENEDOR: /app/.next/static ---"
+  docker compose exec -T eventflow ls -la /app/.next/static 2>&1 | head -5
+  echo "--- CONTENEDOR: /app/public/images ---"
+  docker compose exec -T eventflow ls -la /app/public/images 2>&1 | head -5
+  echo ""
+  echo "Si en HOST existen pero en CONTENEDOR no: el montaje quedó obsoleto."
+  echo "Ejecuta:  docker compose down eventflow && docker compose up -d eventflow"
+  echo "Si tampoco están en HOST: re-ejecuta 'npm run build' (postbuild copia estáticos)."
   exit 1
 fi
 echo ""
