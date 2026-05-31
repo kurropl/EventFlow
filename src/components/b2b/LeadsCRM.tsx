@@ -127,6 +127,10 @@ export default function LeadsCRM() {
       }),
     });
     if (res.ok) {
+      // Get client ID from response
+      const clientJson = await res.json();
+      const clientId = clientJson?.data?.client?.id;
+
       // Mark the quote as accepted
       const acceptedQuote = selectedLead.quotes.find(q => q.status === 'sent' || q.status === 'draft');
       if (acceptedQuote) {
@@ -135,6 +139,15 @@ export default function LeadsCRM() {
           body: JSON.stringify({ status: 'accepted' }),
         });
       }
+
+      // Create event order (this moves the event to in_progress)
+      if (acceptedQuote) {
+        await fetch('/api/event-orders', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quote_id: acceptedQuote.id, client_id: clientId || null }),
+        });
+      }
+
       setShowConvert(false);
       setConvertForm({ fiscal_name: '', fiscal_nif: '', fiscal_address: '' });
       fetchLeads();
