@@ -502,3 +502,287 @@ CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(start_date);
 ALTER TABLE appointments DISABLE ROW LEVEL SECURITY;
 DROP TRIGGER IF EXISTS trg_appointments_updated ON appointments;
 CREATE TRIGGER trg_appointments_updated BEFORE UPDATE ON appointments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- 16. FASE 2: LEADS (CRM — datos básicos de contacto)
+-- Separado de clients para que un lead pueda convertirse en cliente
+-- con datos fiscales completos sin perder el histórico.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS leads (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name        TEXT NOT NULL,
+    email       TEXT,
+    phone       TEXT,
+    source      TEXT DEFAULT 'configurador' CHECK (source IN ('configurador','manual','web','referido','otro')),
+    status      TEXT NOT NULL DEFAULT 'nuevo' CHECK (status IN ('nuevo','contactado','presupuestado','convertido','perdido')),
+    notes       TEXT,
+    event_type  TEXT,
+    guest_count INT,
+    event_date  DATE,
+    converted_to_client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_leads_email ON leads (lower(email)) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
+ALTER TABLE leads DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_leads_updated ON leads;
+CREATE TRIGGER trg_leads_updated BEFORE UPDATE ON leads FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- 17. QUOTES (Presupuestos) — ciclo de vida del precio
+-- ============================================================
+CREATE TABLE IF NOT EXISTS quotes (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id        UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    lead_id         UUID REFERENCES leads(id) ON DELETE SET NULL,
+    status          TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','sent','accepted','rejected','expired')),
+    base_pvp        NUMERIC(12,2) NOT NULL DEFAULT 0,
+    base_cost       NUMERIC(12,2) NOT NULL DEFAULT 0,
+    bar_price       NUMERIC(10,2) NOT NULL DEFAULT 0,
+    extras_pvp      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    extras_cost     NUMERIC(12,2) NOT NULL DEFAULT 0,
+    iva_pct         NUMERIC(5,2) NOT NULL DEFAULT 10,
+    total_pvp       NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total_cost      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    margin_pct      NUMERIC(5,2) NOT NULL DEFAULT 0,
+    valid_until     DATE,
+    sent_at         TIMESTAMPTZ,
+    accepted_at     TIMESTAMPTZ,
+    notes           TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_quotes_event ON quotes(event_id);
+CREATE INDEX IF NOT EXISTS idx_quotes_lead ON quotes(lead_id);
+CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status);
+ALTER TABLE quotes DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_quotes_updated ON quotes;
+CREATE TRIGGER trg_quotes_updated BEFORE UPDATE ON quotes FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- 18. EVENT ORDERS (Órdenes confirmadas)
+-- Una vez el presupuesto es aceptado, se genera una orden
+-- que es la entidad operativa para el ERP.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_orders (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id            UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    quote_id            UUID NOT NULL REFERENCES quotes(id) ON DELETE RESTRICT,
+    client_id           UUID REFERENCES clients(id) ON DELETE SET NULL,
+    confirmed_price     NUMERIC(12,2) NOT NULL DEFAULT 0,
+    final_price         NUMERIC(12,2) NOT NULL DEFAULT 0,  -- incluye consumos extra
+    status              TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress','completed','cancelled')),
+    extra_consumptions  JSONB NOT NULL DEFAULT '[]'::jsonb,
+    tables_suggested    INT NOT NULL DEFAULT 0,
+    tables_confirmed    INT NOT NULL DEFAULT 0,
+    waiters_suggested   INT NOT NULL DEFAULT 0,
+    waiters_confirmed   INT NOT NULL DEFAULT 0,
+    completed_at        TIMESTAMPTZ,
+    notes               TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_event_orders_event ON event_orders(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_orders_client ON event_orders(client_id);
+CREATE INDEX IF NOT EXISTS idx_event_orders_status ON event_orders(status);
+ALTER TABLE event_orders DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_event_orders_updated ON event_orders;
+CREATE TRIGGER trg_event_orders_updated BEFORE UPDATE ON event_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- 19. INVOICES (Facturas) — inmutables una vez generadas
+-- ============================================================
+CREATE TABLE IF NOT EXISTS invoices (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_order_id  UUID NOT NULL REFERENCES event_orders(id) ON DELETE RESTRICT,
+    event_id        UUID NOT NULL REFERENCES events(id) ON DELETE RESTRICT,
+    client_id       UUID REFERENCES clients(id) ON DELETE SET NULL,
+    invoice_number  TEXT NOT NULL UNIQUE,
+    fiscal_name     TEXT NOT NULL,
+    fiscal_nif      TEXT NOT NULL,
+    fiscal_address  TEXT,
+    subtotal        NUMERIC(12,2) NOT NULL DEFAULT 0,
+    iva_pct         NUMERIC(5,2) NOT NULL DEFAULT 10,
+    iva_amount      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total           NUMERIC(12,2) NOT NULL DEFAULT 0,
+    extras_pvp      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    payments_total  NUMERIC(12,2) NOT NULL DEFAULT 0,
+    balance_due     NUMERIC(12,2) NOT NULL DEFAULT 0,
+    status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','overdue','cancelled')),
+    paid_at         TIMESTAMPTZ,
+    pdf_data        TEXT,  -- base64 del PDF
+    notes           TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_order ON invoices(event_order_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_client ON invoices(client_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+ALTER TABLE invoices DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 20. INGREDIENTS (Materias primas para escandallos)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ingredients (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name            TEXT NOT NULL UNIQUE,
+    unit            TEXT NOT NULL DEFAULT 'gr' CHECK (unit IN ('gr','kg','ml','l','ud','docena','caja','bote')),
+    cost_per_unit   NUMERIC(10,4) NOT NULL DEFAULT 0,
+    supplier        TEXT,
+    active          BOOLEAN NOT NULL DEFAULT true,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE ingredients DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_ingredients_updated ON ingredients;
+CREATE TRIGGER trg_ingredients_updated BEFORE UPDATE ON ingredients FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- 21. RECIPE ITEMS (Relación plato-ingrediente con cantidad)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS recipe_items (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    catalog_item_id UUID NOT NULL REFERENCES catalog_items(id) ON DELETE CASCADE,
+    ingredient_id   UUID NOT NULL REFERENCES ingredients(id) ON DELETE RESTRICT,
+    quantity        NUMERIC(10,2) NOT NULL DEFAULT 0,  -- en la unidad del ingrediente
+    notes           TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_recipe_catalog ON recipe_items(catalog_item_id);
+CREATE INDEX IF NOT EXISTS idx_recipe_ingredient ON recipe_items(ingredient_id);
+ALTER TABLE recipe_items DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 22. STAFF ASSIGNMENTS (Asignación de personal al evento)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS staff_assignments (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_order_id  UUID NOT NULL REFERENCES event_orders(id) ON DELETE CASCADE,
+    role            TEXT NOT NULL CHECK (role IN ('camarero','cocinero','maitre','montaje','azafata','seguridad','otro')),
+    quantity        INT NOT NULL DEFAULT 0,
+    hours           NUMERIC(5,2) NOT NULL DEFAULT 8,
+    hourly_cost     NUMERIC(10,2) NOT NULL DEFAULT 18,
+    total_cost      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    notes           TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_staff_order ON staff_assignments(event_order_id);
+ALTER TABLE staff_assignments DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 23. UPDATE event STATUS ENUM (máquina de estados extendida)
+-- Primero migramos datos existentes, luego actualizamos CHECK
+-- ============================================================
+-- Los estados nuevos admitidos: draft -> sent -> accepted -> in_progress -> completed -> paid
+-- Mapeo de estados antiguos a nuevos:
+--   'nuevo'              -> 'draft'
+--   'propuesta_enviada'  -> 'sent'
+--   'confirmado'         -> 'accepted'
+--   'en_curso'           -> 'in_progress'
+--   'completado'         -> 'completed'
+--   'cancelado'          -> 'cancelled'
+
+-- Primero migrar datos existentes
+UPDATE events SET status = 'draft' WHERE status = 'nuevo';
+UPDATE events SET status = 'sent' WHERE status = 'propuesta_enviada';
+UPDATE events SET status = 'accepted' WHERE status = 'confirmado';
+UPDATE events SET status = 'in_progress' WHERE status = 'en_curso';
+UPDATE events SET status = 'completed' WHERE status = 'completado';
+UPDATE events SET status = 'cancelled' WHERE status = 'cancelado';
+
+-- Luego actualizar el CHECK constraint
+ALTER TABLE events DROP CONSTRAINT IF EXISTS events_status_check;
+ALTER TABLE events ADD CONSTRAINT events_status_check
+    CHECK (status IN ('draft','sent','accepted','in_progress','completed','paid','cancelled'));
+
+-- ============================================================
+-- 24. EXTEND client TABLE con datos fiscales
+-- ============================================================
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS fiscal_name TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS fiscal_nif TEXT UNIQUE;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS fiscal_address TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS lead_id UUID REFERENCES leads(id) ON DELETE SET NULL;
+
+-- ============================================================
+-- 25. TRIGGER: auto-calculate totals en quotes
+-- ============================================================
+CREATE OR REPLACE FUNCTION calc_quote_totals()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.total_pvp := NEW.base_pvp + NEW.bar_price + NEW.extras_pvp;
+    NEW.total_cost := NEW.base_cost + NEW.extras_cost;
+    NEW.margin_pct := CASE
+        WHEN NEW.total_pvp > 0 THEN ROUND(((NEW.total_pvp - NEW.total_cost) / NEW.total_pvp) * 100, 2)
+        ELSE 0
+    END;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_quote_calc ON quotes;
+CREATE TRIGGER trg_quote_calc BEFORE INSERT OR UPDATE ON quotes
+    FOR EACH ROW EXECUTE FUNCTION calc_quote_totals();
+
+-- ============================================================
+-- 26. TRIGGER: auto-create lead from events table on insert
+-- ============================================================
+CREATE OR REPLACE FUNCTION auto_create_lead()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO leads (name, email, phone, source, status, event_type, guest_count, event_date)
+    VALUES (NEW.client_name, NEW.client_email, NEW.client_phone, 'configurador', 'nuevo', NEW.event_type, NEW.guest_count, NEW.event_date);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_event_create_lead ON events;
+CREATE TRIGGER trg_event_create_lead AFTER INSERT ON events
+    FOR EACH ROW EXECUTE FUNCTION auto_create_lead();
+
+-- ============================================================
+-- 27. VIEW: shopping list (escandallo)
+-- ============================================================
+CREATE OR REPLACE VIEW shopping_list AS
+WITH event_items AS (
+    SELECT
+        eo.event_id,
+        eo.id AS order_id,
+        jsonb_array_elements(e.selected_items) AS item
+    FROM event_orders eo
+    JOIN events e ON e.id = eo.event_id
+    WHERE eo.status IN ('in_progress', 'completed')
+),
+item_details AS (
+    SELECT
+        ei.event_id,
+        ei.order_id,
+        (ei.item->>'item_id')::TEXT AS item_name,
+        (ei.item->>'category')::TEXT AS category,
+        (ei.item->>'quantity')::NUMERIC AS item_qty
+    FROM event_items ei
+),
+ingredient_breakdown AS (
+    SELECT
+        id.event_id,
+        id.order_id,
+        ci.id AS catalog_id,
+        (ing->>'name')::TEXT AS ingredient_name,
+        (ing->>'grams')::NUMERIC AS grams,
+        (ing->>'count')::NUMERIC AS count,
+        (ing->>'ml')::NUMERIC AS ml
+    FROM item_details id
+    JOIN catalog_items ci ON ci.name = id.item_name
+    CROSS JOIN LATERAL jsonb_array_elements(ci.ingredients) AS ing
+)
+SELECT
+    ib.event_id,
+    ib.order_id,
+    ib.ingredient_name,
+    SUM(COALESCE(ib.grams, 0) * ib.item_qty) AS total_grams,
+    SUM(COALESCE(ib.count, 0) * ib.item_qty) AS total_units,
+    SUM(COALESCE(ib.ml, 0) * ib.item_qty) AS total_ml
+FROM ingredient_breakdown ib
+GROUP BY ib.event_id, ib.order_id, ib.ingredient_name
+ORDER BY ib.ingredient_name;
