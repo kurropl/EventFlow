@@ -84,18 +84,33 @@ export default function HomePage() {
           }
         });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
+      // Revela el contenido ANTES de que entre en pantalla (400px de margen),
+      // así nunca se ve una sección vacía mientras se baja.
+      { threshold: 0, rootMargin: '0px 0px 400px 0px' }
     );
     els.forEach((el) => observer.observe(el));
 
-    // Red de seguridad: si algo no llega a intersecar, se revela igualmente.
+    // Revela de inmediato lo que ya está en (o cerca de) pantalla al cargar.
+    const revealVisible = () => {
+      setRevealed((prev) => {
+        const next = new Set(prev);
+        els.forEach((el) => {
+          const r = el.getBoundingClientRect();
+          if (r.top < window.innerHeight + 400) next.add(el.id);
+        });
+        return next;
+      });
+    };
+    revealVisible();
+
+    // Red de seguridad: como muy tarde, todo visible en 1,2 s.
     const fallback = setTimeout(() => {
       setRevealed((prev) => {
         const next = new Set(prev);
         els.forEach((el) => next.add(el.id));
         return next;
       });
-    }, 4000);
+    }, 1200);
 
     return () => {
       observer.disconnect();
@@ -332,10 +347,10 @@ export default function HomePage() {
       {/* ============================================================
           ESPACIOS — Bento grid
           ============================================================ */}
-      <section id="espacios" className="py-28 md:py-36 px-6" style={{ background: '#FAF8F5' }}>
+      <section id="espacios" className="py-16 md:py-24 px-6" style={{ background: '#FAF8F5' }}>
         <div className="max-w-7xl mx-auto">
           <div id="espacios-header" data-reveal
-            className="text-center mb-16"
+            className="text-center mb-10"
             style={{
               opacity: reveal('espacios-header') ? 1 : 0,
               transform: reveal('espacios-header') ? 'translateY(0)' : 'translateY(30px)',
@@ -381,10 +396,10 @@ export default function HomePage() {
       {/* ============================================================
           SERVICIOS — Split editorial layout
           ============================================================ */}
-      <section id="servicios" className="py-28 md:py-36 px-6" style={{ background: '#FFFFFF' }}>
+      <section id="servicios" className="py-16 md:py-24 px-6" style={{ background: '#FFFFFF' }}>
         <div className="max-w-6xl mx-auto">
           <div id="servicios-header" data-reveal
-            className="text-center mb-16 md:mb-20"
+            className="text-center mb-10 md:mb-14"
             style={{
               opacity: reveal('servicios-header') ? 1 : 0,
               transform: reveal('servicios-header') ? 'translateY(0)' : 'translateY(30px)',
@@ -426,10 +441,10 @@ export default function HomePage() {
       {/* ============================================================
           EVENTOS — Letter badges
           ============================================================ */}
-      <section id="eventos" className="py-28 md:py-36 px-6" style={{ background: '#FAF8F5' }}>
+      <section id="eventos" className="py-16 md:py-24 px-6" style={{ background: '#FAF8F5' }}>
         <div className="max-w-5xl mx-auto">
           <div id="eventos-header" data-reveal
-            className="text-center mb-16"
+            className="text-center mb-10"
             style={{
               opacity: reveal('eventos-header') ? 1 : 0,
               transform: reveal('eventos-header') ? 'translateY(0)' : 'translateY(30px)',
@@ -470,10 +485,10 @@ export default function HomePage() {
       {/* ============================================================
           TESTIMONIOS — Editorial quotes
           ============================================================ */}
-      <section id="testimonios" className="py-28 md:py-36 px-6" style={{ background: '#FFFFFF' }}>
+      <section id="testimonios" className="py-16 md:py-24 px-6" style={{ background: '#FFFFFF' }}>
         <div className="max-w-5xl mx-auto">
           <div id="test-header" data-reveal
-            className="text-center mb-16"
+            className="text-center mb-10"
             style={{
               opacity: reveal('test-header') ? 1 : 0,
               transform: reveal('test-header') ? 'translateY(0)' : 'translateY(30px)',
@@ -521,7 +536,7 @@ export default function HomePage() {
       {/* ============================================================
           CTA FINAL
           ============================================================ */}
-      <section className="relative py-28 md:py-40 px-6 overflow-hidden" style={{ background: '#1A1A1A' }}>
+      <section className="relative py-20 md:py-28 px-6 overflow-hidden" style={{ background: '#1A1A1A' }}>
         {/* Ambient glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[40vw] rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(ellipse, rgba(201,168,76,0.06) 0%, transparent 70%)' }} />
