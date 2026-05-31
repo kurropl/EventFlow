@@ -80,12 +80,13 @@ export default function WizardStep2() {
         section.items.forEach(item => {
           const category = getDishCategory(item);
           // Estimar cantidad base: 1 por comensal para plato principal, 1/10 para compartir
-          const isMain = category === 'carne' || category === 'pescado';
+          const isMain = category === 'carne' || category === 'pescado' || category === 'arroz';
+          const onePerGuest = isMain || category === 'compartir-mesa';
           selectedItems.push({
             item_id: item,
             name: item,
             category,
-            quantity: isMain ? (step1?.guest_count || 1) : Math.ceil((step1?.guest_count || 1) / 10),
+            quantity: onePerGuest ? (step1?.guest_count || 1) : 1,
             unit_price_pvp: 0,
             unit_price_cost: 0,
             subtotal_pvp: 0,
