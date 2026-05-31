@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
-type Tab = 'dashboard' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
+type Tab = 'dashboard' | 'leads' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
 
 /* Inline icon set — clean line icons, no external dependency */
 const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; className?: string }) => {
   const p: Record<string, React.ReactNode> = {
     dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
     agenda: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></>,
+  leads: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M17 8l2 2 4-4"/></>,
     kanban: <><rect x="3" y="3" width="6" height="18" rx="1.5" /><rect x="15" y="3" width="6" height="11" rx="1.5" /></>,
     clientes: <><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0-2-5.2M16 20a6 6 0 0 0-1.5-4" /></>,
     cobros: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>,
@@ -34,6 +35,7 @@ const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; classNa
 
 const TABS: { id: Tab; label: string; sub: string; href: string }[] = [
   { id: 'dashboard', label: 'Resumen', sub: 'Panel general', href: '/admin' },
+  { id: 'leads', label: 'Leads', sub: 'Prospectos y presupuestos', href: '/admin/leads' },
   { id: 'agenda', label: 'Agenda', sub: 'Calendario y citas', href: '/admin/agenda' },
   { id: 'kanban', label: 'Pipeline', sub: 'Presupuestos', href: '/admin/kanban' },
   { id: 'clientes', label: 'Clientes', sub: 'CRM y fichas', href: '/admin/clientes' },

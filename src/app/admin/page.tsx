@@ -21,6 +21,7 @@ import DashboardOverview from '@/components/b2b/DashboardOverview';
 import CalendarView from '@/components/b2b/CalendarView';
 import KanbanPipeline from '@/components/b2b/KanbanPipeline';
 import ClientsCRM from '@/components/b2b/ClientsCRM';
+import LeadsCRM from '@/components/b2b/LeadsCRM';
 import BillingPanel from '@/components/b2b/BillingPanel';
 import GuestsManager from '@/components/b2b/GuestsManager';
 import CatalogCRUD from '@/components/b2b/CatalogCRUD';
@@ -40,10 +41,12 @@ export default function AdminDashboard() {
   const isTableMap = pathname?.includes('mapa-mesas');
   const isWebhooks = pathname?.includes('webhooks');
 
-  const isOther = isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isTableMap || isWebhooks;
+  const isLeads = pathname?.includes('leads');
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isTableMap || isWebhooks;
 
   return (
     <AdminLayout>
+      {isLeads && <LeadsCRM />}
       {isAgenda && <CalendarView />}
       {isKanban && <KanbanPipeline />}
       {isClients && <ClientsCRM />}

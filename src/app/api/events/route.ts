@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const email =
+      searchParams.get('email') || searchParams.get('client_email');
     const limit = Math.min(
       parseInt(searchParams.get('limit') ?? '50', 10) || 50,
       200
@@ -31,6 +33,10 @@ export async function GET(request: NextRequest) {
     if (status) {
       conditions.push(`status = $${params.length + 1}`);
       params.push(status);
+    }
+    if (email) {
+      conditions.push(`client_email ILIKE $${params.length + 1}`);
+      params.push(`%${email}%`);
     }
 
     if (conditions.length > 0) {
