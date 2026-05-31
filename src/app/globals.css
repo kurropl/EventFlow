@@ -206,3 +206,23 @@ h4 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--jb-gold-dark); }
+
+/* ============================================================
+   ADMIN — shared form input (BodaLab modules)
+   ============================================================ */
+.crm-inp {
+  width: 100%;
+  font-size: 14px;
+  color: #1A1A1A;
+  background: #FFFFFF;
+  border: 1px solid #ECECF1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.crm-inp:focus {
+  outline: none;
+  border-color: #C9A84C;
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+}
+.crm-inp::placeholder { color: #B0B0B8; }

@@ -5,13 +5,17 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
-type Tab = 'dashboard' | 'kanban' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
+type Tab = 'dashboard' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
 
 /* Inline icon set — clean line icons, no external dependency */
 const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; className?: string }) => {
   const p: Record<string, React.ReactNode> = {
     dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
+    agenda: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></>,
     kanban: <><rect x="3" y="3" width="6" height="18" rx="1.5" /><rect x="15" y="3" width="6" height="11" rx="1.5" /></>,
+    clientes: <><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0-2-5.2M16 20a6 6 0 0 0-1.5-4" /></>,
+    cobros: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>,
+    invitados: <><path d="M16 11l2 2 4-4" /><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0" /></>,
     catalog: <><path d="M4 6h16M4 12h16M4 18h10" /></>,
     operations: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H0" /></>,
     'mapa-mesas': <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
@@ -30,7 +34,11 @@ const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; classNa
 
 const TABS: { id: Tab; label: string; sub: string; href: string }[] = [
   { id: 'dashboard', label: 'Resumen', sub: 'Panel general', href: '/admin' },
+  { id: 'agenda', label: 'Agenda', sub: 'Calendario y citas', href: '/admin/agenda' },
   { id: 'kanban', label: 'Pipeline', sub: 'Presupuestos', href: '/admin/kanban' },
+  { id: 'clientes', label: 'Clientes', sub: 'CRM y fichas', href: '/admin/clientes' },
+  { id: 'cobros', label: 'Cobros', sub: 'Pagos y vencimientos', href: '/admin/cobros' },
+  { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
   { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
   { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
   { id: 'mapa-mesas', label: 'Mapa de Mesas', sub: 'Distribución', href: '/admin/mapa-mesas' },
