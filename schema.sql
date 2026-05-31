@@ -672,18 +672,18 @@ ALTER TABLE staff_assignments DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- 23. UPDATE event STATUS ENUM (máquina de estados extendida)
--- Primero migramos datos existentes, luego actualizamos CHECK
+-- Primero actualizar el CHECK constraint (permitir ambos sets)
+-- Luego migrar datos existentes
+-- Finalmente restringir el CHECK a los nuevos valores
 -- ============================================================
--- Los estados nuevos admitidos: draft -> sent -> accepted -> in_progress -> completed -> paid
--- Mapeo de estados antiguos a nuevos:
---   'nuevo'              -> 'draft'
---   'propuesta_enviada'  -> 'sent'
---   'confirmado'         -> 'accepted'
---   'en_curso'           -> 'in_progress'
---   'completado'         -> 'completed'
---   'cancelado'          -> 'cancelled'
+-- Paso 1: Eliminar el CHECK existente para poder migrar
+ALTER TABLE events DROP CONSTRAINT IF EXISTS events_status_check;
 
--- Primero migrar datos existentes
+-- Paso 2: Permitir temporalmente todos los estados posibles
+ALTER TABLE events ADD CONSTRAINT events_status_check_temp
+    CHECK (status IN ('nuevo','propuesta_enviada','confirmado','cancelado','en_curso','completado','draft','sent','accepted','in_progress','completed','paid','cancelled'));
+
+-- Paso 3: Migrar datos existentes
 UPDATE events SET status = 'draft' WHERE status = 'nuevo';
 UPDATE events SET status = 'sent' WHERE status = 'propuesta_enviada';
 UPDATE events SET status = 'accepted' WHERE status = 'confirmado';
@@ -691,7 +691,8 @@ UPDATE events SET status = 'in_progress' WHERE status = 'en_curso';
 UPDATE events SET status = 'completed' WHERE status = 'completado';
 UPDATE events SET status = 'cancelled' WHERE status = 'cancelado';
 
--- Luego actualizar el CHECK constraint
+-- Paso 4: Eliminar el CHECK temporal y aplicar el definitivo
+ALTER TABLE events DROP CONSTRAINT IF EXISTS events_status_check_temp;
 ALTER TABLE events DROP CONSTRAINT IF EXISTS events_status_check;
 ALTER TABLE events ADD CONSTRAINT events_status_check
     CHECK (status IN ('draft','sent','accepted','in_progress','completed','paid','cancelled'));
@@ -767,6 +768,7 @@ ingredient_breakdown AS (
     SELECT
         id.event_id,
         id.order_id,
+        id.item_qty,
         ci.id AS catalog_id,
         (ing->>'name')::TEXT AS ingredient_name,
         (ing->>'grams')::NUMERIC AS grams,
