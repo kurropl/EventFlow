@@ -104,6 +104,34 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create event: no data returned');
     }
 
+    // Best-effort: upsert a CRM client from the booking and link it.
+    // Never blocks event creation (e.g. if the clients table isn't migrated yet).
+    try {
+      const existing = await querySingle<any>(
+        `SELECT id FROM clients WHERE lower(email) = lower($1)`,
+        [validated.client_email]
+      );
+      let clientId: string | undefined = existing?.id;
+      if (clientId) {
+        await querySingle(
+          `UPDATE clients SET name = $1, phone = COALESCE($2, phone) WHERE id = $3 RETURNING id`,
+          [validated.client_name, validated.client_phone ?? null, clientId]
+        );
+      } else {
+        const created = await querySingle<any>(
+          `INSERT INTO clients (name, email, phone) VALUES ($1, $2, $3) RETURNING id`,
+          [validated.client_name, validated.client_email, validated.client_phone ?? null]
+        );
+        clientId = created?.id;
+      }
+      if (clientId) {
+        await querySingle(`UPDATE events SET client_id = $1 WHERE id = $2 RETURNING id`, [clientId, event.id]);
+        event.client_id = clientId;
+      }
+    } catch (clientError) {
+      console.error('[events POST] client link skipped (non-fatal):', clientError);
+    }
+
     // Emit BUDGET_CREATED webhook
     try {
       await emitWebhook('BUDGET_CREATED', event, {});

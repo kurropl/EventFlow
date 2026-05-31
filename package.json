@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "sh copy-static-after-build.sh",
     "start": "next start",
     "lint": "next lint",
     "test": "playwright test",
