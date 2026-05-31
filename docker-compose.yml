@@ -8,10 +8,6 @@ services:
       - "3020:3000"
     environment:
       - NODE_ENV=production
-      # The app talks to Postgres directly via `pg` (src/lib/db.ts).
-      # Inside the compose network the DB is reachable at host `postgres:5432`,
-      # NOT localhost — without this the app fell back to localhost and every
-      # query failed with "Database query failed" (connection refused).
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/eventflow
       - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...n_I0
