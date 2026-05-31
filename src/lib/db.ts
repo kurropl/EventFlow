@@ -20,6 +20,15 @@ function getPool(): Pool {
       process.env.NEXT_PUBLIC_DATABASE_URL ||
       'postgresql://postgres:postgres@localhost:5432/eventflow';
 
+    // Log the connection target (host/user/db only — never the password) so
+    // misconfigured DATABASE_URL is obvious in container logs.
+    try {
+      const u = new URL(connectionString);
+      console.log(`[db] connecting -> ${u.username}@${u.hostname}:${u.port || '5432'}${u.pathname}`);
+    } catch {
+      console.log('[db] connecting -> (could not parse DATABASE_URL)');
+    }
+
     pool = new Pool({
       connectionString,
       max: 10,

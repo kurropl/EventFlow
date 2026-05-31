@@ -10,15 +10,14 @@ import { useState, useEffect, useRef } from 'react';
    Tipografía: Playfair Display + Inter
    ============================================================ */
 
-// Self-hosted SVG artwork (public/images) — guaranteed to load with no external
-// dependency. A solid fallback colour sits under each image so a card never
-// renders blank, even before the SVG paints.
+// Real venue photos (public/images). A solid fallback colour sits under each
+// image so a card never renders blank if a photo is missing or still loading.
 const SPACES = [
-  { title: 'Salón Principal', sub: 'Hasta 300 comensales', span: 'md:col-span-2 md:row-span-2', bg: '#241a0c url(/images/space-salon.svg) center/cover no-repeat' },
-  { title: 'Terraza', sub: 'Vistas al jardín', span: '', bg: '#7d4b46 url(/images/space-terraza.svg) center/cover no-repeat' },
-  { title: 'Sala VIP', sub: 'Eventos exclusivos', span: '', bg: '#4e1d28 url(/images/space-vip.svg) center/cover no-repeat' },
-  { title: 'Jardín', sub: 'Ceremonias al aire libre', span: '', bg: '#8fa173 url(/images/space-jardin.svg) center/cover no-repeat' },
-  { title: 'Sala Íntima', sub: 'Celebraciones pequeñas', span: '', bg: '#4a3318 url(/images/space-intima.svg) center/cover no-repeat' },
+  { title: 'Salón Principal', sub: 'Hasta 300 comensales', span: 'md:col-span-2 md:row-span-2', bg: '#241a0c url(/images/space-salon.jpg) center/cover no-repeat' },
+  { title: 'Terraza y Jardín', sub: 'Ceremonias al aire libre', span: '', bg: '#7d8a5a url(/images/space-jardin.jpg) center/cover no-repeat' },
+  { title: 'Gastronomía', sub: 'Cocina de autor', span: '', bg: '#6b4a2a url(/images/space-gastronomia.jpg) center/cover no-repeat' },
+  { title: 'Decoración', sub: 'Cada detalle, cuidado', span: '', bg: '#4a3318 url(/images/space-decoracion.jpg) center/cover no-repeat' },
+  { title: 'Montaje de Mesa', sub: 'Elegancia en cada mesa', span: '', bg: '#4e1d28 url(/images/space-mesa.jpg) center/cover no-repeat' },
 ];
 
 const SERVICES = [
@@ -206,7 +205,7 @@ export default function HomePage() {
         {/* Background layers — cinematic, self-contained, always visible.
             Sits behind the optional video so the hero is never blank. */}
         <div className="absolute inset-0 z-0 hero-kenburns" style={{
-          background: 'linear-gradient(160deg, #0A0806 0%, #1A1208 30%, #2D2416 60%, #1A1208 80%, #0A0806 100%), url(/images/hero-poster.svg) center/cover no-repeat',
+          background: 'linear-gradient(160deg, rgba(10,8,6,0.55) 0%, rgba(26,18,8,0.35) 40%, rgba(45,36,22,0.35) 60%, rgba(10,8,6,0.6) 100%), url(/images/hero-poster.jpg) center/cover no-repeat',
         }} />
 
         {/* Impactful video — autoplays the venue footage when present.
@@ -219,7 +218,7 @@ export default function HomePage() {
           loop
           playsInline
           preload="auto"
-          poster="/images/hero-poster.svg"
+          poster="/images/hero-poster.jpg"
           onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }}
         >
           <source src="/video/hero.mp4" type="video/mp4" />
