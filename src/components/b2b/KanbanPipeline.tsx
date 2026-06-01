@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import BudgetEditor from './BudgetEditor';
 
 type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled';
 
@@ -79,29 +80,39 @@ export default function KanbanPipeline() {
   const [events, setEvents] = useState<KanbanEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const loadEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/events?limit=200');
+      const data = await res.json();
+      if (res.ok && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        setEvents(data.data.map((e: any) => ({ ...e, selected_items: e.selected_items ?? [] })));
+        setIsDemo(false);
+      } else {
+        setEvents(DEMO_EVENTS);
+        setIsDemo(true);
+      }
+    } catch {
+      setEvents(DEMO_EVENTS);
+      setIsDemo(true);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const res = await fetch('/api/events?limit=200');
-        const data = await res.json();
-        if (cancelled) return;
-        if (res.ok && data.success && Array.isArray(data.data) && data.data.length > 0) {
-          setEvents(data.data.map((e: any) => ({ ...e, selected_items: e.selected_items ?? [] })));
-          setIsDemo(false);
-        } else {
-          setEvents(DEMO_EVENTS);
-          setIsDemo(true);
-        }
-      } catch {
-        if (!cancelled) { setEvents(DEMO_EVENTS); setIsDemo(true); }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      await loadEvents();
+      if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [loadEvents]);
+
+  const editingEvent = editingId ? events.find((e) => e.id === editingId) ?? null : null;
+
+  const handleSaved = () => {
+    loadEvents();
+  };
 
   const moveEvent = useCallback(async (eventId: string, toStatus: EventStatus) => {
     setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, status: toStatus } : e)));
@@ -178,6 +189,7 @@ export default function KanbanPipeline() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(i * 0.04, 0.3) }}
                     className="bg-white rounded-xl p-3.5 border border-[#ECECF1] shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all cursor-pointer group"
+                    onClick={() => setEditingId(event.id)}
                   >
                     {/* Client */}
                     <div className="flex items-start gap-2.5 mb-3">
@@ -243,13 +255,13 @@ export default function KanbanPipeline() {
                         </button>
                       )}
                       {col.status !== 'accepted' && col.status !== 'cancelled' && (
-                        <button onClick={() => moveEvent(event.id, statusOrder[statusOrder.indexOf(col.status) + 1])}
+                        <button onClick={(e) => { e.stopPropagation(); moveEvent(event.id, statusOrder[statusOrder.indexOf(col.status) + 1]); }}
                           className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors">
-                          Avanzar →
+                          {col.status === 'draft' ? 'Enviar →' : 'Avanzar →'}
                         </button>
                       )}
                       {col.status !== 'cancelled' && (
-                         <button onClick={() => moveEvent(event.id, 'cancelled')}
+                         <button onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled')}}
                           className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors">
                           ✕
                         </button>
@@ -262,6 +274,8 @@ export default function KanbanPipeline() {
           );
         })}
       </div>
+
+      <BudgetEditor event={editingEvent} onClose={() => setEditingId(null)} onSaved={handleSaved} />
     </div>
   );
 }
