@@ -48,6 +48,35 @@ export async function GET(request: NextRequest) {
 
     const events = await queryMany<any>(query, params);
 
+    // Calculate real prices from catalog for each event (fallback for events with 0 prices)
+    const catalogItems = await queryMany<any>(
+      `SELECT id, name, category, pvp, cost FROM catalog_items WHERE active = true`,
+      []
+    );
+
+    const enrichedEvents = events.map((event: any) => {
+      let pvp = Number(event.total_pvp) || 0;
+      let cost = Number(event.total_cost) || 0;
+      const items = event.selected_items || [];
+      if (items.length > 0 && pvp === 0) {
+        // Build a lookup by name (since B2C items store dish name as item_id)
+        const nameLookup = new Map<string, any>();
+        for (const ci of catalogItems) {
+          nameLookup.set(ci.name.toLowerCase().trim(), ci);
+        }
+        for (const item of items) {
+          const itemName = (item.name || '').toLowerCase().trim();
+          const catItem = nameLookup.get(itemName);
+          if (catItem) {
+            const qty = Number(item.quantity) || 1;
+            pvp += (Number(catItem.pvp) || 0) * qty;
+            cost += (Number(catItem.cost) || 0) * qty;
+          }
+        }
+      }
+      return { ...event, total_pvp: pvp.toFixed(2), total_cost: cost.toFixed(2) };
+    });
+
     // Get total count
     const countResult = await querySingle<any>(
       `SELECT COUNT(*) as count FROM events${conditions.length > 0 ? ' WHERE ' + conditions.map((c, i) => c.replace(`$${i + 1}`, `$${i + 1}`)) : ''}`,
@@ -56,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: events,
+      data: enrichedEvents,
       pagination: {
         total: parseInt(countResult?.count ?? '0'),
         limit,
