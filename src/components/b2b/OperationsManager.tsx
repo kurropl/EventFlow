@@ -310,7 +310,7 @@ export default function OperationsManager() {
           <TableMapEditor />
         </div>
       ) : (
-
+      <>
       {/* Stats */}
       {orders.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
@@ -386,6 +386,7 @@ export default function OperationsManager() {
           </table>
         </div>
       )}
+      </>
       )}
     </div>
   );

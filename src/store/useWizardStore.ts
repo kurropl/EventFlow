@@ -283,40 +283,41 @@ export const useWizardStore = create<WizardState>()(
                 category: item.category,
                 quantity: item.quantity,
                 // B2C: no prices in the payload
-          unit_price_pvp: 0,
-          unit_price_cost: 0,
-          subtotal_pvp: 0,
-          subtotal_cost: 0,
-        }))
+                unit_price_pvp: 0,
+                unit_price_cost: 0,
+                subtotal_pvp: 0,
+                subtotal_cost: 0,
+              }))
+            : rawSelectedItems;
 
-        // Calculate real prices from catalog for B2C
-        let totalPvp = 0;
-        let totalCost = 0;
-        if (state.mode === 'b2c' && catalogItems.length > 0) {
-          selectedItemsPayload.forEach((item: any) => {
-            const catItem = catalogItems.find((c: any) => c.id === item.item_id);
-            if (catItem) {
-              const pvp = Number(catItem.pvp) || 0;
-              const cost = Number(catItem.cost) || 0;
-              const qty = Number(item.quantity) || 1;
-              totalPvp += pvp * qty;
-              totalCost += cost * qty;
-            }
-          });
-        }
+          // Calculate real prices from catalog for B2C
+          let totalPvp = 0;
+          let totalCost = 0;
+          if (state.mode === 'b2c' && catalogItems.length > 0) {
+            selectedItemsPayload.forEach((item: any) => {
+              const catItem = catalogItems.find((c: any) => c.id === item.item_id);
+              if (catItem) {
+                const pvp = Number(catItem.pvp) || 0;
+                const cost = Number(catItem.cost) || 0;
+                const qty = Number(item.quantity) || 1;
+                totalPvp += pvp * qty;
+                totalCost += cost * qty;
+              }
+            });
+          }
 
-        const payload: EventSetupCreate = {
-          client_name: state.clientInfo.name,
-          client_email: state.clientInfo.email,
-          client_phone: state.clientInfo.phone || undefined,
-          event_type: state.step1.event_type,
-          guest_count: state.step1.guest_count,
-          kids_count: state.step1.kids_count,
-          event_date: state.step1.event_date,
-          status: 'draft',
-          selected_items: selectedItemsPayload,
-          total_pvp: state.mode === 'b2b' ? state.totalPvp : totalPvp,
-          total_cost: state.mode === 'b2b' ? state.totalCost : totalCost,
+          const payload: EventSetupCreate = {
+            client_name: state.clientInfo.name,
+            client_email: state.clientInfo.email,
+            client_phone: state.clientInfo.phone || undefined,
+            event_type: state.step1.event_type,
+            guest_count: state.step1.guest_count,
+            kids_count: state.step1.kids_count,
+            event_date: state.step1.event_date,
+            status: 'draft',
+            selected_items: selectedItemsPayload,
+            total_pvp: state.mode === 'b2b' ? state.totalPvp : totalPvp,
+            total_cost: state.mode === 'b2b' ? state.totalCost : totalCost,
           bar_hours: state.step4.bar_hours,
           bar_price: 0,
           iva_pct: 10,
