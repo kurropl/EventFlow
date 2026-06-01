@@ -78,7 +78,7 @@ export const EventTypeSchema = z.enum([
 ]);
 
 export const EventStatusSchema = z.enum([
-  'nuevo', 'propuesta_enviada', 'confirmado', 'cancelado', 'en_curso', 'completado',
+  'draft', 'sent', 'accepted', 'in_progress', 'completed', 'paid', 'cancelled',
 ]);
 
 export const SelectedItemSchema = z.object({
@@ -106,7 +106,7 @@ export const EventSetupSchema = z.object({
   guest_count: z.number().int().min(1).max(5000, 'Máximo 5000 comensales'),
   kids_count: z.number().int().min(0).max(1000).default(0),
   event_date: z.string().datetime().or(z.string().date()),
-  status: EventStatusSchema.default('nuevo'),
+  status: EventStatusSchema.default('draft'),
   selected_items: z.array(SelectedItemSchema).default([]),
   total_pvp: z.number().min(0).default(0),
   total_cost: z.number().min(0).default(0),
