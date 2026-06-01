@@ -298,12 +298,17 @@ export const useWizardStore = create<WizardState>()(
               const catRes = await fetch('/api/catalog');
               const catData = await catRes.json();
               if (catData.success && catData.data) {
-                const allItems = Object.values(catData.data).reduce((acc: any[], items: any[]) => {
-                  acc.push(...items);
-                  return acc;
-                }, []);
+                const allItems: any[] = [];
+                for (const key of Object.keys(catData.data)) {
+                  const items = catData.data[key];
+                  if (Array.isArray(items)) {
+                    for (let i = 0; i < items.length; i++) {
+                      allItems.push(items[i]);
+                    }
+                  }
+                }
                 for (const item of selectedItemsPayload) {
-                  const catItem = allItems.find((c: any) => c.id === item.item_id);
+                  const catItem = allItems.find(function(c) { return c.id === item.item_id; });
                   if (catItem) {
                     const pvp = Number(catItem.pvp) || 0;
                     const cost = Number(catItem.cost) || 0;
