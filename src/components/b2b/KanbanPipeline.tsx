@@ -117,8 +117,8 @@ export default function KanbanPipeline() {
 
   const STATS = [
     { label: 'Presupuestos activos', value: activeCount, accent: '#C9A84C' },
-    { label: 'Nuevos', value: getEventsByStatus('nuevo').length, accent: '#3B82F6' },
-    { label: 'Confirmados', value: confirmedCount, accent: '#16A34A' },
+    { label: 'Borradores', value: getEventsByStatus('draft').length, accent: '#3B82F6' },
+    { label: 'Aceptados', value: confirmedCount, accent: '#16A34A' },
     { label: 'Comensales (total)', value: totalGuests, accent: '#6B2737' },
   ];
 
