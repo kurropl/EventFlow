@@ -5,7 +5,62 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { querySingle } from '@/lib/db';
+import { querySingle, queryMany } from '@/lib/db';
+
+/**
+ * When a payment is marked as paid, check if this event has an associated lead
+ * that hasn't been converted yet. If so, convert the lead to a client automatically.
+ */
+async function autoConvertLeadToClient(payment: any) {
+  try {
+    // Get the event linked to this payment
+    const event = await querySingle<any>(
+      `SELECT id, client_name, client_email, client_phone, status FROM events WHERE id = $1`,
+      [payment.event_id]
+    );
+    if (!event) return;
+
+    // Find the lead linked to this event
+    const lead = await querySingle<any>(
+      `SELECT id, name, email, phone, status, converted_to_client_id FROM leads
+       WHERE email = $1 AND status = 'nuevo' AND converted_to_client_id IS NULL
+       LIMIT 1`,
+      [event.client_email || '']
+    );
+    if (!lead) return;
+
+    // Check if a client already exists for this lead
+    const existingClient = await querySingle<any>(
+      `SELECT id FROM clients WHERE lead_id = $1`,
+      [lead.id]
+    );
+    if (existingClient) return;
+
+    // Auto-convert: create a client record from the lead's data
+    const client = await querySingle<any>(
+      `INSERT INTO clients (name, email, phone, lead_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [lead.name, lead.email, event.client_phone || lead.phone, lead.id]
+    );
+
+    // Update lead status to converted
+    await querySingle(
+      `UPDATE leads SET status = 'convertido', converted_to_client_id = $1 WHERE id = $2`,
+      [client.id, lead.id]
+    );
+
+    // Link the event to the client
+    await querySingle(
+      `UPDATE events SET client_id = $1 WHERE id = $2`,
+      [client.id, event.id]
+    );
+
+    console.log(`[lead→client] Auto-converted lead ${lead.id} → client ${client.id} on payment for event ${event.id}`);
+  } catch (e) {
+    console.error('[lead→client] Auto-convert failed:', e);
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -50,6 +105,12 @@ export async function PATCH(
     if (!updated) {
       return NextResponse.json({ success: false, error: 'Pago no encontrado' }, { status: 404 });
     }
+
+    // AUTO-CONVERT lead to client on first payment
+    if (body.paid === true && updated.paid === true) {
+      await autoConvertLeadToClient(updated);
+    }
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

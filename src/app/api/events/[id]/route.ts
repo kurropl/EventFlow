@@ -12,6 +12,72 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle, transaction } from '@/lib/db';
 
+/**
+ * Generate an invoice immediately when a budget is accepted.
+ * Creates invoice_number, calculates IVA, and links to the event_order.
+ */
+async function generateInvoiceFromAccepted(client: any, eventId: string, event: any, quoteId: string) {
+  // Find the event_order that was just created for this quote
+  const order = (await client.query(
+    `SELECT id, confirmed_price, extra_consumptions FROM event_orders WHERE quote_id = $1 LIMIT 1`,
+    [quoteId]
+  )).rows[0];
+  if (!order) return;
+
+  // Check if invoice already exists
+  const existingInvoice = (await client.query(
+    `SELECT id FROM invoices WHERE event_order_id = $1 LIMIT 1`,
+    [order.id]
+  )).rows[0];
+  if (existingInvoice) return;
+
+  // Try to find a client with fiscal data linked to this event
+  let fiscalName = event.client_name;
+  let fiscalNif = 'PENDIENTE';
+  let clientId = null;
+  const clientRecord = (await client.query(
+    `SELECT id, fiscal_name, fiscal_nif, name FROM clients WHERE id IN (
+      SELECT client_id FROM event_orders WHERE event_id = $1 AND client_id IS NOT NULL LIMIT 1
+    ) OR id IN (
+      SELECT client_id FROM events e LEFT JOIN leads l ON l.converted_to_client_id = e.client_id WHERE e.id = $2 LIMIT 1
+    ) LIMIT 1`,
+    [eventId, eventId]
+  )).rows[0];
+  if (clientRecord) {
+    fiscalName = clientRecord.fiscal_name || clientRecord.name;
+    fiscalNif = clientRecord.fiscal_nif || 'PENDIENTE';
+    clientId = clientRecord.id;
+  }
+
+  // Generate invoice number
+  const year = new Date().getFullYear();
+  let invoiceNumber: string;
+  for (let attempts = 0; attempts < 5; attempts++) {
+    invoiceNumber = `FE-${year}-${Math.floor(Math.random() * 9000) + 1000}`;
+    const exists = (await client.query(
+      `SELECT id FROM invoices WHERE invoice_number = $1`, [invoiceNumber]
+    )).rows[0];
+    if (!exists) break;
+  }
+
+  const extrasTotal = (order.extra_consumptions || []).reduce((s: number, ex: any) => s + (ex.amount || 0), 0);
+  const subtotal = Number(order.confirmed_price) || 0;
+  const ivaPct = Number(event.iva_pct) || 10;
+  const ivaAmount = Math.round((subtotal + extrasTotal) * ivaPct / 100 * 100) / 100;
+  const total = subtotal + extrasTotal + ivaAmount;
+
+  await client.query(
+    `INSERT INTO invoices (event_order_id, event_id, client_id, invoice_number,
+      fiscal_name, fiscal_nif, subtotal, iva_pct, iva_amount, total,
+      extras_pvp, payments_total, balance_due, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0, $10, 'pending')`,
+    [order.id, eventId, clientId, invoiceNumber, fiscalName, fiscalNif,
+     subtotal, ivaPct, ivaAmount, total, extrasTotal]
+  );
+
+  console.log(`[invoice] Auto-generated ${invoiceNumber} for event ${eventId}`);
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -201,6 +267,9 @@ export async function PUT(
              VALUES ($1, 'Saldo final (60% del presupuesto)', $2, $3::date, false)`,
             [id, finalAmount, eventDateStr]
           );
+
+          // AUTO-GENERATE INVOICE immediately
+          await generateInvoiceFromAccepted(client, id, event, quote.id);
         }
       }
 
