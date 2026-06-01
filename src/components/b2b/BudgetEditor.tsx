@@ -56,12 +56,12 @@ interface BudgetEvent {
   selected_items: SelectedItem[];
   bar_hours: number;
   notes: string | null;
-  total_pvp: number | string;
-  total_cost: number | string;
+  total_pvp?: number | string;
+  total_cost?: number | string;
 }
 
 interface Props {
-  event: BudgetEvent | null;
+  event: any;
   onClose: () => void;
   onSaved: () => void;
 }
