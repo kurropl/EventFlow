@@ -2,10 +2,15 @@
  * EventFlow — Event by ID API Route
  * GET /api/events/[id] — Get single event
  * PUT /api/events/[id] — Update event (status, items, details)
+ *
+ * When status changes to 'accepted', auto-creates:
+ *   - Quote (accepted)
+ *   - Event order with table/staff calculation
+ *   - 2 payments: 40% deposit (due 7d), 60% final (due event_date)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle } from '@/lib/db';
+import { queryMany, querySingle, transaction } from '@/lib/db';
 
 export async function GET(
   _request: NextRequest,
@@ -69,9 +74,10 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, notes, total_pvp, total_cost, bar_hours, selected_items, client_name, client_email, event_type, guest_count, kids_count, event_date } = body;
+    const { status, notes, total_pvp, total_cost, bar_hours, selected_items,
+            client_name, client_email, event_type, guest_count, kids_count, event_date } = body;
 
-    // If selected_items is provided, recalculate totals from catalog
+    // If selected_items provided, recalculate totals from catalog
     let calculatedPvp = total_pvp;
     let calculatedCost = total_cost;
     if (selected_items && Array.isArray(selected_items)) {
@@ -98,56 +104,117 @@ export async function PUT(
       calculatedCost = costSum;
     }
 
-    // Build dynamic SET clause
-    const setFields: string[] = [];
-    const values: any[] = [];
-    let idx = 1;
+    const result = await transaction(async (client) => {
+      const fields: string[] = [];
+      const vals: any[] = [];
+      let p = 1;
 
-    const addField = (field: string, value: any) => {
-      if (value !== undefined) {
-        setFields.push(`${field} = $${idx++}`);
-        values.push(value);
+      const push = (f: string, v: any) => {
+        if (v !== undefined) {
+          fields.push(`${f} = $${p++}`);
+          vals.push(v);
+        }
+      };
+
+      push('status', status ?? null);
+      push('notes', notes ?? null);
+      push('bar_hours', bar_hours ?? null);
+      push('client_name', client_name ?? null);
+      push('client_email', client_email ?? null);
+      push('event_type', event_type ?? null);
+      push('guest_count', guest_count ?? null);
+      push('kids_count', kids_count ?? null);
+      push('event_date', event_date ?? null);
+
+      if (calculatedPvp !== undefined) {
+        fields.push(`total_pvp = $${p++}`);
+        vals.push(calculatedPvp);
       }
-    };
+      if (calculatedCost !== undefined) {
+        fields.push(`total_cost = $${p++}`);
+        vals.push(calculatedCost);
+      }
+      if (selected_items !== undefined) {
+        fields.push(`selected_items = $${p++}::jsonb`);
+        vals.push(JSON.stringify(selected_items));
+      }
 
-    addField('status', status ?? null);
-    addField('notes', notes ?? null);
-    addField('total_pvp', calculatedPvp ?? 0);
-    addField('total_cost', calculatedCost ?? 0);
-    addField('bar_hours', bar_hours ?? null);
-    addField('client_name', client_name ?? null);
-    addField('client_email', client_email ?? null);
-    addField('event_type', event_type ?? null);
-    addField('guest_count', guest_count ?? null);
-    addField('kids_count', kids_count ?? null);
-    addField('event_date', event_date ?? null);
+      if (fields.length === 0) {
+        return { event: null };
+      }
 
-    // selected_items is JSONB — stringify for DB
-    if (selected_items !== undefined) {
-      setFields.push(`selected_items = $${idx++}`);
-      values.push(JSON.stringify(selected_items));
-    }
+      vals.push(id);
+      const event = (await client.query(
+        `UPDATE events SET ${fields.join(', ')} WHERE id = $${p} RETURNING *`,
+        vals
+      )).rows[0];
 
-    if (setFields.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No fields to update' },
-        { status: 400 }
-      );
-    }
+      if (!event) return { event: null };
 
-    values.push(id);
-    const query = `UPDATE events SET ${setFields.join(', ')} WHERE id = $${idx} RETURNING *`;
+      // If status just changed to 'accepted', create quote + order + payments
+      if (status === 'accepted') {
+        const existing = (await client.query(
+          `SELECT id FROM quotes WHERE event_id = $1 AND status = 'accepted' LIMIT 1`,
+          [id]
+        )).rows[0];
 
-    const event = await querySingle<any>(query, values);
+        if (!existing) {
+          const guests = Number(event.guest_count) || 0;
+          const tablesSuggested = Math.max(1, Math.ceil(guests / 10));
+          const waitersSuggested = Math.max(1, Math.ceil(guests / 15));
+          const pvpTotal = Number(event.total_pvp) || 0;
+          const costTotal = Number(event.total_cost) || 0;
+          const marginPct = pvpTotal > 0 ? Math.round(((pvpTotal - costTotal) / pvpTotal) * 100 * 100) / 100 : 0;
 
-    if (!event) {
+          const quote = (await client.query(
+            `INSERT INTO quotes (event_id, status, base_pvp, base_cost, total_pvp, total_cost,
+              bar_price, iva_pct, margin_pct, accepted_at)
+             VALUES ($1, 'accepted', $2, $3, $2, $3, $4, $5, $6, now())
+             RETURNING id`,
+            [id, pvpTotal, costTotal, Number(event.bar_price) || 0, Number(event.iva_pct) || 10, marginPct]
+          )).rows[0];
+
+          await client.query(
+            `INSERT INTO event_orders (event_id, quote_id, confirmed_price, status,
+              tables_suggested, tables_confirmed, waiters_suggested, waiters_confirmed)
+             VALUES ($1, $2, $3, 'in_progress', $4, $4, $5, $5)`,
+            [id, quote.id, pvpTotal, tablesSuggested, waitersSuggested]
+          );
+
+          // 40% deposit (due 7 days from now)
+          const depositAmount = Math.round(pvpTotal * 0.4 * 100) / 100;
+          const depositDue = new Date();
+          depositDue.setDate(depositDue.getDate() + 7);
+          await client.query(
+            `INSERT INTO payments (event_id, concept, amount, due_date, paid)
+             VALUES ($1, 'Señal (40% del presupuesto)', $2, $3::date, false)`,
+            [id, depositAmount, depositDue.toISOString().split('T')[0]]
+          );
+
+          // 60% final (due on event date)
+          const finalAmount = Math.round(pvpTotal * 0.6 * 100) / 100;
+          const eventDateStr = event.event_date
+            ? new Date(event.event_date).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+          await client.query(
+            `INSERT INTO payments (event_id, concept, amount, due_date, paid)
+             VALUES ($1, 'Saldo final (60% del presupuesto)', $2, $3::date, false)`,
+            [id, finalAmount, eventDateStr]
+          );
+        }
+      }
+
+      return { event };
+    });
+
+    if (!result.event) {
       return NextResponse.json(
         { success: false, error: 'Event not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: event });
+    return NextResponse.json({ success: true, data: result.event });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
