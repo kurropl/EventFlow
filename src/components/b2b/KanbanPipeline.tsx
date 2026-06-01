@@ -18,6 +18,8 @@ interface KanbanEvent {
   bar_hours: number;
   notes: string | null;
   created_at: string;
+  total_pvp: number | string;
+  total_cost: number | string;
 }
 
 const COLUMNS: { status: EventStatus; label: string; dot: string; tint: string; soft: string }[] = [
@@ -67,6 +69,11 @@ function formatDate(d: string) {
 function initials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map((n) => n[0]?.toUpperCase()).join('');
 }
+
+const money = (n: number | string) => {
+  const num = Number(n) || 0;
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(num);
+};
 
 export default function KanbanPipeline() {
   const [events, setEvents] = useState<KanbanEvent[]>([]);
@@ -216,6 +223,14 @@ export default function KanbanPipeline() {
                         {(event.selected_items || []).length > 2 && (
                           <span className="text-[10px] text-[#B0B0B8] px-1">+{event.selected_items.length - 2}</span>
                         )}
+                      </div>
+                    )}
+
+                    {/* Total PVP */}
+                    {Number(event.total_pvp) > 0 && (
+                      <div className="flex items-center justify-between pt-2 border-t border-[#F2F2F5]">
+                        <span className="text-[10px] text-[#6B7280]">Total</span>
+                        <span className="text-[13px] font-bold text-[#1A1A1A]">{money(event.total_pvp)}</span>
                       </div>
                     )}
 

@@ -91,6 +91,14 @@ export default function GuestsManager() {
         <div>
           <h2 className="text-2xl font-serif text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Invitados</h2>
           <p className="text-[#6B7280] text-sm">Confirmaciones y restricciones dietéticas por evento.</p>
+          {ev && (
+            <div className="flex items-center gap-3 mt-2 text-xs text-[#9CA3AF]">
+              <span>📅 {fmtDate(ev.event_date)}</span>
+              <span>👥 {ev.guest_count} adultos</span>
+              {ev.kids_count > 0 && <span>👶 {ev.kids_count} niños</span>}
+              <span>🎉 {ev.event_type}</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 self-start">
           <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="crm-inp !w-auto !py-2 text-[13px]">

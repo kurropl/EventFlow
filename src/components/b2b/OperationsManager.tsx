@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import TableMapEditor from '@/components/b2b/TableMapEditor';
 
 interface EventOrder {
   id: string; event_id: string; client_name: string; client_email: string;
@@ -37,6 +38,7 @@ export default function OperationsManager() {
   const [waitersManual, setWaitersManual] = useState(0);
   const [extraItems, setExtraItems] = useState<{desc: string; amount: number}[]>([]);
   const [showComplete, setShowComplete] = useState(false);
+  const [viewTab, setViewTab] = useState<'list' | 'map'>('list');
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -286,11 +288,28 @@ export default function OperationsManager() {
           <h1 className="text-xl font-bold text-[#1A1A2E]">Operaciones</h1>
           <p className="text-xs text-[#6B7280]">Eventos activos, escandallos y logística</p>
         </div>
-        <button onClick={fetchOrders}
-          className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
-          ↻ Actualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setViewTab('list')}
+            className={`text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors ${viewTab === 'list' ? 'bg-[#1A1A2E] text-white' : 'border border-[#E5E7EB] hover:bg-[#F3F4F6]'}`}>
+            Lista
+          </button>
+          <button onClick={() => setViewTab('map')}
+            className={`text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors ${viewTab === 'map' ? 'bg-[#1A1A2E] text-white' : 'border border-[#E5E7EB] hover:bg-[#F3F4F6]'}`}>
+            Mapa de Mesas
+          </button>
+          <button onClick={fetchOrders}
+            className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+            ↻ Actualizar
+          </button>
+        </div>
       </div>
+
+      {viewTab === 'map' ? (
+        <div className="rounded-2xl border border-[#ECECF1] bg-white overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+          style={{ height: 'calc(100vh - 200px)', minHeight: 500 }}>
+          <TableMapEditor />
+        </div>
+      ) : (
 
       {/* Stats */}
       {orders.length > 0 && (
@@ -366,6 +385,7 @@ export default function OperationsManager() {
             </tbody>
           </table>
         </div>
+      )}
       )}
     </div>
   );
