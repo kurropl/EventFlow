@@ -111,9 +111,9 @@ export default function KanbanPipeline() {
 
   const getEventsByStatus = (status: EventStatus) => events.filter((e) => e.status === status);
 
-  const totalGuests = events.filter((e) => e.status !== 'cancelado').reduce((s, e) => s + (e.guest_count || 0), 0);
-  const confirmedCount = getEventsByStatus('confirmado').length;
-  const activeCount = events.filter((e) => e.status !== 'cancelado').length;
+  const totalGuests = events.filter((e) => e.status !== 'cancelled').reduce((s, e) => s + (e.guest_count || 0), 0);
+  const confirmedCount = getEventsByStatus('accepted').length;
+  const activeCount = events.filter((e) => e.status !== 'cancelled').length;
 
   const STATS = [
     { label: 'Presupuestos activos', value: activeCount, accent: '#C9A84C' },
