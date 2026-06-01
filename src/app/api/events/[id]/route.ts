@@ -51,7 +51,7 @@ async function generateInvoiceFromAccepted(client: any, eventId: string, event: 
 
   // Generate invoice number
   const year = new Date().getFullYear();
-  let invoiceNumber: string;
+  let invoiceNumber = `FE-${year}-${Math.floor(Math.random() * 9000) + 1000}`;
   for (let attempts = 0; attempts < 5; attempts++) {
     invoiceNumber = `FE-${year}-${Math.floor(Math.random() * 9000) + 1000}`;
     const exists = (await client.query(
