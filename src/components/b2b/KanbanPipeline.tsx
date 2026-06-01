@@ -233,8 +233,8 @@ export default function KanbanPipeline() {
                           Avanzar →
                         </button>
                       )}
-                      {col.status !== 'cancelado' && (
-                        <button onClick={() => moveEvent(event.id, 'cancelado')}
+                      {col.status !== 'cancelled' && (
+                         <button onClick={() => moveEvent(event.id, 'cancelled')}
                           className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors">
                           ✕
                         </button>
