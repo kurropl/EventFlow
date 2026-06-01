@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
-type EventStatus = 'nuevo' | 'propuesta_enviada' | 'confirmado' | 'cancelado';
+type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled';
 
 interface Evt {
   id: string;
@@ -24,16 +24,19 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_META: Record<EventStatus, { label: string; dot: string; chip: string }> = {
-  nuevo: { label: 'Nuevo', dot: '#3B82F6', chip: 'bg-[#EFF4FF] text-[#2563EB]' },
-  propuesta_enviada: { label: 'Propuesta', dot: '#D9920B', chip: 'bg-[#FFF8EC] text-[#B45309]' },
-  confirmado: { label: 'Confirmado', dot: '#16A34A', chip: 'bg-[#EFFAF2] text-[#15803D]' },
-  cancelado: { label: 'Cancelado', dot: '#DC2626', chip: 'bg-[#FEF3F3] text-[#DC2626]' },
+  draft: { label: 'Borrador', dot: '#3B82F6', chip: 'bg-[#EFF4FF] text-[#2563EB]' },
+  sent: { label: 'Enviado', dot: '#D9920B', chip: 'bg-[#FFF8EC] text-[#B45309]' },
+  accepted: { label: 'Aceptado', dot: '#16A34A', chip: 'bg-[#EFFAF2] text-[#15803D]' },
+  in_progress: { label: 'En Curso', dot: '#8B5CF6', chip: 'bg-[#F3EFFC] text-[#7C3AED]' },
+  completed: { label: 'Completado', dot: '#059669', chip: 'bg-[#ECFDF5] text-[#047857]' },
+  paid: { label: 'Pagado', dot: '#0284C7', chip: 'bg-[#EFF6FF] text-[#0369A1]' },
+  cancelled: { label: 'Cancelado', dot: '#DC2626', chip: 'bg-[#FEF3F3] text-[#DC2626]' },
 };
 
 const DEMO: Evt[] = [
-  { id: 'd1', client_name: 'María García', client_email: 'maria@email.com', event_type: 'boda', guest_count: 150, kids_count: 10, event_date: '2026-09-15', status: 'confirmado', created_at: '2026-05-18T10:00:00Z' },
-  { id: 'd2', client_name: 'Carlos López', client_email: 'carlos@empresa.com', event_type: 'corporativo', guest_count: 80, kids_count: 0, event_date: '2026-07-20', status: 'propuesta_enviada', created_at: '2026-05-15T14:30:00Z' },
-  { id: 'd3', client_name: 'Ana Martínez', client_email: 'ana@email.com', event_type: 'comunión', guest_count: 200, kids_count: 50, event_date: '2026-08-10', status: 'nuevo', created_at: '2026-05-10T09:00:00Z' },
+  { id: 'd1', client_name: 'María García', client_email: 'maria@email.com', event_type: 'boda', guest_count: 150, kids_count: 10, event_date: '2026-09-15', status: 'accepted', created_at: '2026-05-18T10:00:00Z' },
+  { id: 'd2', client_name: 'Carlos López', client_email: 'carlos@empresa.com', event_type: 'corporativo', guest_count: 80, kids_count: 0, event_date: '2026-07-20', status: 'sent', created_at: '2026-05-15T14:30:00Z' },
+  { id: 'd3', client_name: 'Ana Martínez', client_email: 'ana@email.com', event_type: 'comunión', guest_count: 200, kids_count: 50, event_date: '2026-08-10', status: 'draft', created_at: '2026-05-10T09:00:00Z' },
 ];
 
 function fmtDate(d: string) {
@@ -69,10 +72,10 @@ export default function DashboardOverview() {
     return () => { cancelled = true; };
   }, []);
 
-  const active = events.filter((e) => e.status !== 'cancelado');
+  const active = events.filter((e) => e.status !== 'cancelled');
   const countBy = (s: EventStatus) => events.filter((e) => e.status === s).length;
   const totalGuests = active.reduce((s, e) => s + (e.guest_count || 0) + (e.kids_count || 0), 0);
-  const confirmed = countBy('confirmado');
+  const confirmed = countBy('accepted');
   const conversion = events.length ? Math.round((confirmed / events.length) * 100) : 0;
 
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -81,7 +84,7 @@ export default function DashboardOverview() {
     .sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''))
     .slice(0, 6);
 
-  const pipeline: EventStatus[] = ['nuevo', 'propuesta_enviada', 'confirmado'];
+  const pipeline: EventStatus[] = ['draft', 'sent', 'accepted'];
   const pipelineMax = Math.max(1, ...pipeline.map(countBy));
 
   const KPIS = [

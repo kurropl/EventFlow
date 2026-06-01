@@ -17,7 +17,7 @@ export async function GET() {
       kids_count: 10,
       total_pvp: 8500.00,
       total_cost: 5500.00,
-      status: 'nuevo',
+      status: 'draft',
     };
 
     await emitWebhook('BUDGET_CREATED', sampleEvent, {

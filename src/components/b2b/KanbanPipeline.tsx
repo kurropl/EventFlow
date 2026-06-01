@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
-type EventStatus = 'nuevo' | 'propuesta_enviada' | 'confirmado' | 'cancelado';
+type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled';
 
 interface KanbanEvent {
   id: string;
@@ -21,10 +21,10 @@ interface KanbanEvent {
 }
 
 const COLUMNS: { status: EventStatus; label: string; dot: string; tint: string; soft: string }[] = [
-  { status: 'nuevo', label: 'Nuevo', dot: '#3B82F6', tint: '#EFF4FF', soft: '#DCE7FF' },
-  { status: 'propuesta_enviada', label: 'Propuesta enviada', dot: '#D9920B', tint: '#FFF8EC', soft: '#FBE8C4' },
-  { status: 'confirmado', label: 'Confirmado', dot: '#16A34A', tint: '#EFFAF2', soft: '#CDEBD6' },
-  { status: 'cancelado', label: 'Cancelado', dot: '#DC2626', tint: '#FEF3F3', soft: '#F6D6D6' },
+  { status: 'draft', label: 'Borrador', dot: '#3B82F6', tint: '#EFF4FF', soft: '#DCE7FF' },
+  { status: 'sent', label: 'Enviado', dot: '#D9920B', tint: '#FFF8EC', soft: '#FBE8C4' },
+  { status: 'accepted', label: 'Aceptado', dot: '#16A34A', tint: '#EFFAF2', soft: '#CDEBD6' },
+  { status: 'cancelled', label: 'Cancelado', dot: '#DC2626', tint: '#FEF3F3', soft: '#F6D6D6' },
 ];
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -32,25 +32,25 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   bautizo: 'Bautizo', 'comunión': 'Comunión', otro: 'Otro',
 };
 
-const statusOrder: EventStatus[] = ['nuevo', 'propuesta_enviada', 'confirmado', 'cancelado'];
+const statusOrder: EventStatus[] = ['draft', 'sent', 'accepted', 'cancelled'];
 
 const DEMO_EVENTS: KanbanEvent[] = [
   {
     id: 'demo-1', client_name: 'María García', client_email: 'maria@email.com',
     event_type: 'boda', guest_count: 150, kids_count: 10, event_date: '2025-09-15',
-    status: 'nuevo', selected_items: [{ name: 'Carrillera a baja temperatura', category: 'carne', quantity: 150 }],
+    status: 'draft', selected_items: [{ name: 'Carrillera a baja temperatura', category: 'carne', quantity: 150 }],
     bar_hours: 3, notes: null, created_at: '2025-05-18T10:00:00Z',
   },
   {
     id: 'demo-2', client_name: 'Carlos López', client_email: 'carlos@empresa.com',
     event_type: 'corporativo', guest_count: 80, kids_count: 0, event_date: '2025-07-20',
-    status: 'propuesta_enviada', selected_items: [{ name: 'Presa a la brasa', category: 'carne', quantity: 80 }],
+    status: 'sent', selected_items: [{ name: 'Presa a la brasa', category: 'carne', quantity: 80 }],
     bar_hours: 2, notes: 'Evento de empresa', created_at: '2025-05-15T14:30:00Z',
   },
   {
     id: 'demo-3', client_name: 'Ana Martínez', client_email: 'ana@email.com',
     event_type: 'comunión', guest_count: 200, kids_count: 50, event_date: '2025-08-10',
-    status: 'confirmado', selected_items: [{ name: 'Merluza gratinada', category: 'pescado', quantity: 200 }],
+    status: 'accepted', selected_items: [{ name: 'Merluza gratinada', category: 'pescado', quantity: 200 }],
     bar_hours: 3, notes: null, created_at: '2025-05-10T09:00:00Z',
   },
 ];
@@ -221,13 +221,13 @@ export default function KanbanPipeline() {
 
                     {/* Actions */}
                     <div className="flex gap-1.5 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {col.status !== 'nuevo' && col.status !== 'cancelado' && (
+                      {col.status !== 'draft' && col.status !== 'cancelled' && (
                         <button onClick={() => moveEvent(event.id, statusOrder[statusOrder.indexOf(col.status) - 1])}
                           className="flex-1 text-[11px] font-medium bg-[#F5F5F8] text-[#6B7280] hover:bg-[#ECECF1] py-1.5 rounded-lg transition-colors">
                           ← Atrás
                         </button>
                       )}
-                      {col.status !== 'confirmado' && col.status !== 'cancelado' && (
+                      {col.status !== 'accepted' && col.status !== 'cancelled' && (
                         <button onClick={() => moveEvent(event.id, statusOrder[statusOrder.indexOf(col.status) + 1])}
                           className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors">
                           Avanzar →

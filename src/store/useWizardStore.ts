@@ -298,7 +298,7 @@ export const useWizardStore = create<WizardState>()(
             guest_count: state.step1.guest_count,
             kids_count: state.step1.kids_count,
             event_date: state.step1.event_date,
-            status: 'nuevo',
+            status: 'draft',
             selected_items: selectedItemsPayload,
             total_pvp: state.mode === 'b2b' ? state.totalPvp : 0,
             total_cost: state.mode === 'b2b' ? state.totalCost : 0,
