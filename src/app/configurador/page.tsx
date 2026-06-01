@@ -1,20 +1,21 @@
 'use client';
 /**
  * J.Benitez — Configurador Page (B2C) Rediseñado
- * 
+ *
  * Header limpio crema/dorado sin negro agresivo
  * Paleta coherente: cream (#F8F3E6) / gold (#C9A84C) / ink (#1A1A1A)
  * Sin colores mezclados entre pasos
+ *
+ * Comportamiento de persistencia:
+ * - Al cargar la página, si hay datos persistidos del wizard, se pregunta si quiere
+ *   continuar con ellos o empezar de nuevo.
+ * - Si el usuario ya está en un paso avanzado (step > 1), NO se muestra el popup:
+ *   se continúa con la configuración existente.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
-import WizardStep1 from '@/components/b2c/WizardStep1';
-import WizardStep2 from '@/components/b2c/WizardStep2';
-import WizardStep3 from '@/components/b2c/WizardStep3';
-import WizardStep4 from '@/components/b2c/WizardStep4';
-import WizardStep5 from '@/components/b2c/WizardStep5';
 
 const STEP_LABELS = [
   'Detalles',
@@ -24,22 +25,49 @@ const STEP_LABELS = [
   'Resumen',
 ];
 
-const STEP_COMPONENTS: Record<number, React.ComponentType<{ onNext: () => void; onPrev: () => void }>> = {
-  1: WizardStep1,
-  2: WizardStep2,
-  3: WizardStep3,
-  4: WizardStep4,
-  5: WizardStep5,
-};
+function LazyStep({ step }: { step: number }) {
+  const { currentStep, nextStep, prevStep } = useWizardStore();
+  const [Comp, setComp] = useState<any>(null);
+
+  useEffect(() => {
+    const names = ['WizardStep1', 'WizardStep2', 'WizardStep3', 'WizardStep4', 'WizardStep5'];
+    import(`@/components/b2c/${names[step - 1]}`).then((m) => setComp(() => m.default));
+  }, [step]);
+
+  if (!Comp) return null;
+  return <Comp onNext={nextStep} onPrev={prevStep} />;
+}
 
 export default function ConfiguradorPage() {
-  const { currentStep, nextStep, prevStep, reset } = useWizardStore();
+  const { currentStep, nextStep, prevStep, reset, step1, step2, step3, step4 } = useWizardStore();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const StepComponent = STEP_COMPONENTS[currentStep] || WizardStep1;
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const hasCheckedPersistence = useRef(false);
+
+  // Al montar: si hay datos persistidos y estamos en step 1, mostrar popup de continuar
+  useEffect(() => {
+    if (hasCheckedPersistence.current) return;
+    hasCheckedPersistence.current = true;
+
+    const hasPersistedData = step1 !== null || step2 !== null || step3 !== null || step4 !== null;
+    if (hasPersistedData && currentStep === 1) {
+      setShowResumeDialog(true);
+    }
+  }, [step1, step2, step3, step4, currentStep]);
 
   const handleReset = () => {
     reset();
     setShowResetConfirm(false);
+  };
+
+  const handleResume = () => {
+    setShowResumeDialog(false);
+    // Los datos ya están en el store por persist, solo cerramos el popup
+  };
+
+  const handleStartFresh = () => {
+    setShowResumeDialog(false);
+    reset();
   };
 
   return (
@@ -163,10 +191,45 @@ export default function ConfiguradorPage() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.25 }}
           >
-            <StepComponent onNext={nextStep} onPrev={prevStep} />
+            <LazyStep step={currentStep} />
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Dialog: ¿Continuar configuración anterior o empezar de nuevo? */}
+      {showResumeDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl border border-stone-200 p-6 max-w-sm w-full mx-4"
+          >
+            <h3 className="text-lg font-semibold text-[#1A1A1A] mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              ¿Configuración anterior?
+            </h3>
+            <p className="text-sm text-stone-500 mb-6">
+              Detectamos una configuración guardada. ¿Quieres continuar con ella o empezar de nuevo?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleStartFresh}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 transition-colors"
+              >
+                Empezar de nuevo
+              </button>
+              <button
+                onClick={handleResume}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors"
+                style={{ background: '#C9A84C' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#B8953F')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#C9A84C')}
+              >
+                Continuar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
