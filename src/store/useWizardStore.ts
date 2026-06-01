@@ -293,17 +293,27 @@ export const useWizardStore = create<WizardState>()(
           // Calculate real prices from catalog for B2C
           let totalPvp = 0;
           let totalCost = 0;
-          if (state.mode === 'b2c' && catalogItems.length > 0) {
-            selectedItemsPayload.forEach((item: any) => {
-              const catItem = catalogItems.find((c: any) => c.id === item.item_id);
-              if (catItem) {
-                const pvp = Number(catItem.pvp) || 0;
-                const cost = Number(catItem.cost) || 0;
-                const qty = Number(item.quantity) || 1;
-                totalPvp += pvp * qty;
-                totalCost += cost * qty;
+          if (state.mode === 'b2c' && selectedItemsPayload.length > 0) {
+            try {
+              const catRes = await fetch('/api/catalog');
+              const catData = await catRes.json();
+              if (catData.success && catData.data) {
+                const allItems: any[] = [];
+                Object.values(catData.data).forEach((items: any[]) => allItems.push(...items));
+                selectedItemsPayload.forEach((item: any) => {
+                  const catItem = allItems.find((c: any) => c.id === item.item_id);
+                  if (catItem) {
+                    const pvp = Number(catItem.pvp) || 0;
+                    const cost = Number(catItem.cost) || 0;
+                    const qty = Number(item.quantity) || 1;
+                    totalPvp += pvp * qty;
+                    totalCost += cost * qty;
+                  }
+                });
               }
-            });
+            } catch (e) {
+              console.error('[Wizard] Failed to fetch catalog for price calc:', e);
+            }
           }
 
           const payload: EventSetupCreate = {
