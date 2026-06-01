@@ -201,7 +201,7 @@ export default function DashboardOverview() {
                 { label: 'Cobros', href: '/admin/cobros' },
                 { label: 'Invitados', href: '/admin/invitados' },
                 { label: 'Catálogo', href: '/admin/catalog' },
-                { label: 'Mapa de mesas', href: '/admin/mapa-mesas' },
+                { label: 'Mapa de mesas', href: '/admin/operations' },
               ].map((q) => (
                 <Link key={q.href} href={q.href}
                   className="text-[12px] font-medium text-[#374151] bg-[#FAFAFC] border border-[#ECECF1] rounded-xl px-3 py-2.5 hover:border-[#E0D3A8] hover:bg-[#FBF6E9] transition-all text-center">

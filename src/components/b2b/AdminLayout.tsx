@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
-type Tab = 'dashboard' | 'leads' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
+type Tab = 'dashboard' | 'leads' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'webhooks' | 'login';
 
 /* Inline icon set — clean line icons, no external dependency */
 const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; className?: string }) => {
@@ -19,7 +19,6 @@ const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; classNa
     invitados: <><path d="M16 11l2 2 4-4" /><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0" /></>,
     catalog: <><path d="M4 6h16M4 12h16M4 18h10" /></>,
     operations: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H0" /></>,
-    'mapa-mesas': <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
     webhooks: <><path d="M18 8a6 6 0 0 0-9.3-5M6 8a6 6 0 0 0 4 10.5M12 18a6 6 0 0 0 6-6" /><circle cx="12" cy="8" r="2" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="14" r="2" /></>,
     portal: <><path d="M3 12l9-9 9 9" /><path d="M5 10v10h14V10" /></>,
     logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5M21 12H9" /></>,
@@ -43,7 +42,6 @@ const TABS: { id: Tab; label: string; sub: string; href: string }[] = [
   { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
   { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
   { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
-  { id: 'mapa-mesas', label: 'Mapa de Mesas', sub: 'Distribución', href: '/admin/mapa-mesas' },
   { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones', href: '/admin/webhooks' },
 ];
 

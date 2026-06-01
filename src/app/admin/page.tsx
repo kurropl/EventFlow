@@ -26,7 +26,6 @@ import BillingPanel from '@/components/b2b/BillingPanel';
 import GuestsManager from '@/components/b2b/GuestsManager';
 import CatalogCRUD from '@/components/b2b/CatalogCRUD';
 import OperationsManager from '@/components/b2b/OperationsManager';
-import TableMapEditor from '@/components/b2b/TableMapEditor';
 import WebhooksPanel from '@/components/b2b/WebhooksPanel';
 
 export default function AdminDashboard() {
@@ -38,11 +37,10 @@ export default function AdminDashboard() {
   const isGuests = pathname?.includes('invitados');
   const isCatalog = pathname?.includes('catalog');
   const isOperations = pathname?.includes('operations');
-  const isTableMap = pathname?.includes('mapa-mesas');
   const isWebhooks = pathname?.includes('webhooks');
 
   const isLeads = pathname?.includes('leads');
-  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isTableMap || isWebhooks;
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks;
 
   return (
     <AdminLayout>
@@ -54,14 +52,6 @@ export default function AdminDashboard() {
       {isGuests && <GuestsManager />}
       {isCatalog && <CatalogCRUD />}
       {isOperations && <OperationsManager />}
-      {isTableMap && (
-        <div
-          className="rounded-2xl border border-[#ECECF1] bg-white overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
-          style={{ height: 'calc(100vh - 120px)', minHeight: 500 }}
-        >
-          <TableMapEditor />
-        </div>
-      )}
       {isWebhooks && <WebhooksPanel />}
       {!isOther && <DashboardOverview />}
     </AdminLayout>

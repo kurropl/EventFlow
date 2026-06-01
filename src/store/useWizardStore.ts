@@ -307,14 +307,49 @@ export const useWizardStore = create<WizardState>()(
                     }
                   }
                 }
+
+                // Helper: normalize name for fuzzy matching
+                // Strips filler words and punctuation so proposed-menu names
+                // like "puré trufado" match catalog names like "puré de patatas trufado"
+                const normalizeName = (s: string) =>
+                  s.toLowerCase()
+                    .replace(/[^a-záéíóúñü0-9\s]/g, ' ')
+                    .replace(/\b(con|de|la|los|las|del|el|en|y|a|e|o|u|por|para|sin|su)\b/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
                 for (const item of selectedItemsPayload) {
-                  const catItem = allItems.find(function(c) { return c.id === item.item_id; });
+                  // Strategy 1: match by UUID (item_id is a real UUID)
+                  let catItem = allItems.find(function(c) { return c.id === item.item_id; });
+                  // Strategy 2: match by exact name
+                  if (!catItem) {
+                    catItem = allItems.find(function(c) { return c.name === item.name; });
+                  }
+                  // Strategy 3: match by normalized name (handles common filler-word variations)
+                  if (!catItem && item.name) {
+                    const normalizedSelected = normalizeName(item.name);
+                    catItem = allItems.find(function(c) {
+                      return c.name && normalizeName(c.name) === normalizedSelected;
+                    });
+                  }
+                  // Strategy 4: match by name containment (handles proposed-menu shorthand
+                  // like "Choco frito" → "Choco frito de nuestras costas" or "Cava" → "Cava brindis")
+                  if (!catItem && item.name) {
+                    const nameLower = item.name.toLowerCase().replace(/[^a-záéíóúñü0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+                    catItem = allItems.find(function(c) {
+                      if (!c.name) return false;
+                      const catalogLower = c.name.toLowerCase().replace(/[^a-záéíóúñü0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+                      return catalogLower.includes(nameLower) || nameLower.includes(catalogLower);
+                    });
+                  }
                   if (catItem) {
                     const pvp = Number(catItem.pvp) || 0;
                     const cost = Number(catItem.cost) || 0;
                     const qty = Number(item.quantity) || 1;
                     totalPvp += pvp * qty;
                     totalCost += cost * qty;
+                  } else {
+                    console.warn('[Wizard] No catalog match for item:', item.name);
                   }
                 }
               }
