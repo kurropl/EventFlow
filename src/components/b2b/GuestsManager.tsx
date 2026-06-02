@@ -57,6 +57,7 @@ export default function GuestsManager() {
   };
 
   // Check if ops already generated
+  const ev = events.find((e) => e.id === eventId);
   useEffect(() => {
     if (ev && ev.status === 'accepted') {
       const hasGuests = guests.length > 0;
@@ -76,8 +77,6 @@ export default function GuestsManager() {
     } catch { /* empty */ }
   }, [eventId]);
   useEffect(() => { loadGuests(); }, [loadGuests]);
-
-  const ev = events.find((e) => e.id === eventId);
 
   const summary = useMemo(() => {
     const conf = guests.filter((g) => g.rsvp === 'confirmado');
