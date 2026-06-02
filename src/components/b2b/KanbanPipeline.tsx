@@ -93,14 +93,24 @@ function SendBudgetModal({
     setSending(true);
     setError('');
     try {
-      const res = await fetch(`/api/events/${event.id}`, {
+      // 1. Send email
+      const emailRes = await fetch(`/api/send-budget/${event.id}`, {
+        method: 'POST',
+      });
+      const emailData = await emailRes.json();
+      if (!emailData.success) {
+        setError(emailData.error || 'Error al enviar el email');
+        return;
+      }
+      // 2. Change status to sent
+      const statusRes = await fetch(`/api/events/${event.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'sent' }),
       });
-      const data = await res.json();
-      if (!data.success) {
-        setError(data.error || 'Error al enviar');
+      const statusData = await statusRes.json();
+      if (!statusData.success) {
+        setError(statusData.error || 'Error al actualizar estado');
         return;
       }
       setSent(true);
