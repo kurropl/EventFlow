@@ -27,6 +27,7 @@ import GuestsManager from '@/components/b2b/GuestsManager';
 import CatalogCRUD from '@/components/b2b/CatalogCRUD';
 import OperationsManager from '@/components/b2b/OperationsManager';
 import WebhooksPanel from '@/components/b2b/WebhooksPanel';
+import MapaMesas from '@/app/admin/mapa-mesas/page';
 
 export default function AdminDashboard() {
   const pathname = usePathname();
@@ -38,9 +39,9 @@ export default function AdminDashboard() {
   const isCatalog = pathname?.includes('catalog');
   const isOperations = pathname?.includes('operations');
   const isWebhooks = pathname?.includes('webhooks');
-
+  const isMapa = pathname?.includes('mapa-mesas');
   const isLeads = pathname?.includes('leads');
-  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks;
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa;
 
   return (
     <AdminLayout>
@@ -53,6 +54,7 @@ export default function AdminDashboard() {
       {isCatalog && <CatalogCRUD />}
       {isOperations && <OperationsManager />}
       {isWebhooks && <WebhooksPanel />}
+      {isMapa && <MapaMesas />}
       {!isOther && <DashboardOverview />}
     </AdminLayout>
   );

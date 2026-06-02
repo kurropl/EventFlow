@@ -195,13 +195,13 @@ export default function DashboardOverview() {
           <div className="bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3">Accesos rápidos</h3>
             <div className="grid grid-cols-2 gap-2">
-              {[
+              {
                 { label: 'Agenda', href: '/admin/agenda' },
                 { label: 'Clientes', href: '/admin/clientes' },
                 { label: 'Cobros', href: '/admin/cobros' },
                 { label: 'Invitados', href: '/admin/invitados' },
                 { label: 'Catálogo', href: '/admin/catalog' },
-                { label: 'Mapa de mesas', href: '/admin/operations' },
+                { label: 'Mapa de mesas', href: '/admin/mapa-mesas' },
               ].map((q) => (
                 <Link key={q.href} href={q.href}
                   className="text-[12px] font-medium text-[#374151] bg-[#FAFAFC] border border-[#ECECF1] rounded-xl px-3 py-2.5 hover:border-[#E0D3A8] hover:bg-[#FBF6E9] transition-all text-center">

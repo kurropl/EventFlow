@@ -825,3 +825,14 @@ SELECT
 FROM ingredient_breakdown ib
 GROUP BY ib.event_id, ib.order_id, ib.ingredient_name
 ORDER BY ib.ingredient_name;
+
+-- Floor plan / table map
+CREATE TABLE IF NOT EXISTS floor_plans (
+  layout_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  layout_data JSONB NOT NULL,
+  label       TEXT NOT NULL DEFAULT 'Default hall layout',
+  is_default  BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE floor_plans DISABLE ROW LEVEL SECURITY;
