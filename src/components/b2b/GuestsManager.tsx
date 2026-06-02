@@ -106,10 +106,9 @@ export default function GuestsManager() {
 
   const exportCsv = () => {
     const rows = [['Nombre', 'Grupo', 'RSVP', 'Menú', 'Restricciones', 'Notas']];
-    guests.forEach((g) => rows.push([g.name, g.group_name || '', g.rsvp, MENU_LABEL[g.menu_type] || g.menu_type, (g.dietary || []).map((d) => DIET_LABEL[d] || d).join(' / '), g.notes || '']));
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('
-');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+guests.forEach((g) => rows.push([g.name, g.group_name || '', g.rsvp, MENU_LABEL[g.menu_type] || g.menu_type, (g.dietary || []).map((d) => DIET_LABEL[d] || d).join(' / '), g.notes || '']));
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a');
     a.href = url; a.download = `invitados-${ev?.client_name || 'evento'}.csv`; a.click(); URL.revokeObjectURL(url);
   };
