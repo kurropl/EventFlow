@@ -21,6 +21,7 @@ interface KanbanEvent {
   created_at: string;
   total_pvp: number | string;
   total_cost: number | string;
+  total_display?: number | string;
 }
 
 const COLUMNS: { status: EventStatus; label: string; dot: string; tint: string; soft: string }[] = [
