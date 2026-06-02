@@ -73,7 +73,7 @@ export default function BillingPanel() {
     setPayingId(payment.id);
     try {
       await fetch(`/api/payments/${payment.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paid: true, paid_date: new Date().toISOString().split('T')[0], method: 'transferencia' }),
       });
@@ -264,7 +264,7 @@ export default function BillingPanel() {
                                         const data = await res.json();
                                         if (data.success && data.data?.url) {
                                           await fetch(`/api/payments/${p.id}`, {
-                                            method: 'PUT',
+                                            method: 'PATCH',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({ receipt_url: data.data.url }),
                                           });
