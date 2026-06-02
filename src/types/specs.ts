@@ -187,6 +187,7 @@ export type OperationalNeeds = z.infer<typeof OperationalNeedsSchema>;
 
 export const WebhookTopicSchema = z.enum([
   'BUDGET_CREATED',
+  'BUDGET_SENT',
   'STATUS_CHANGED',
   'BUDGET_CONFIRMED',
   'BUDGET_CANCELLED',

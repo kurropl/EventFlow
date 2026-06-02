@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import BudgetEditor from './BudgetEditor';
 
 type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled';
@@ -35,8 +35,6 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   boda: 'Boda', 'cumpleaños': 'Cumpleaños', corporativo: 'Corporativo',
   bautizo: 'Bautizo', 'comunión': 'Comunión', otro: 'Otro',
 };
-
-const statusOrder: EventStatus[] = ['draft', 'sent', 'accepted', 'cancelled'];
 
 const DEMO_EVENTS: KanbanEvent[] = [
   {
@@ -77,11 +75,366 @@ const money = (n: number | string) => {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(num);
 };
 
+/* ---------- SendBudgetModal ---------- */
+function SendBudgetModal({
+  event,
+  onClose,
+  onSent,
+}: {
+  event: KanbanEvent;
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSend = async () => {
+    setSending(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/events/${event.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'sent' }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || 'Error al enviar');
+        return;
+      }
+      setSent(true);
+      onSent();
+      setTimeout(() => onClose(), 1500);
+    } catch (e: any) {
+      setError(e.message || 'Error de red');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.92, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-2">
+          <h2 className="font-serif text-lg text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            Enviar presupuesto
+          </h2>
+          <p className="text-[12px] text-[#6B7280] mt-0.5">{event.client_name}</p>
+        </div>
+
+        {/* Email preview */}
+        <div className="px-6 py-4">
+          <div className="bg-[#FAFAFC] rounded-xl border border-[#ECECF1] p-4 text-[13px] space-y-2">
+            <p className="font-medium text-[#1A1A1A]">
+              Hola {event.client_name.split(' ')[0]},
+            </p>
+            <p className="text-[#6B7280] leading-relaxed">
+              Te adjuntamos el presupuesto para tu{' '}
+              <span className="font-medium text-[#1A1A1A]">{EVENT_TYPE_LABELS[event.event_type] || event.event_type}</span>{' '}
+              del <span className="font-medium text-[#1A1A1A]">{formatDate(event.event_date)}</span>.
+            </p>
+            <div className="bg-white rounded-lg border border-[#ECECF1] p-3 text-[12px] space-y-1">
+              <div className="flex justify-between">
+                <span className="text-[#9CA3AF]">Comensales</span>
+                <span className="font-medium text-[#1A1A1A]">{event.guest_count} adultos{event.kids_count > 0 ? ` + ${event.kids_count} niños` : ''}</span>
+              </div>
+              {event.bar_hours > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-[#9CA3AF]">Barra</span>
+                  <span className="font-medium text-[#1A1A1A]">{event.bar_hours}h</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-1 border-t border-[#ECECF1]">
+                <span className="text-[#9CA3AF]">Total estimado</span>
+                <span className="font-bold text-[#1A1A1A]">{money(event.total_display || event.total_pvp)}</span>
+              </div>
+            </div>
+            <p className="text-[#6B7280] text-[11px] italic">
+              * Este presupuesto se enviará por correo electrónico a{' '}
+              <span className="font-medium not-italic text-[#1A1A1A]">{event.client_email}</span>
+            </p>
+            {error && (
+              <div className="text-[12px] text-[#DC2626] bg-[#FEF3F3] rounded-lg px-3 py-2">{error}</div>
+            )}
+            {sent && (
+              <div className="text-[12px] text-[#16A34A] bg-[#EFFAF2] rounded-lg px-3 py-2 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+                Presupuesto enviado correctamente
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-6 pt-2 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={sending}
+            className="flex-1 text-[13px] font-medium border border-[#E5E7EB] text-[#6B7280] py-2.5 rounded-xl hover:bg-[#F5F5F8] disabled:opacity-40 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending || sent}
+            className="flex-1 text-[13px] font-medium text-white py-2.5 rounded-xl disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+            style={{ background: sending || sent ? '#9CA3AF' : 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+          >
+            {sending ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Enviando…
+              </>
+            ) : sent ? (
+              '✓ Enviado'
+            ) : (
+              'Enviar presupuesto'
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ---------- PaymentModal ---------- */
+function PaymentModal({
+  event,
+  type,
+  onClose,
+  onPaid,
+}: {
+  event: KanbanEvent;
+  type: 'parcial' | 'total';
+  onClose: () => void;
+  onPaid: () => void;
+}) {
+  const [amount, setAmount] = useState(type === 'total' ? String(Number(event.total_display || event.total_pvp)) : '');
+  const [method, setMethod] = useState('transferencia');
+  const [concept, setConcept] = useState(type === 'parcial' ? 'Señal' : 'Saldo');
+  const [processing, setProcessing] = useState(false);
+  const [done, setDone] = useState(false);
+  const [pError, setPError] = useState('');
+
+  const total = Number(event.total_display || event.total_pvp);
+
+  const handlePay = async () => {
+    if (!amount || Number(amount) <= 0) {
+      setPError('Introduce un importe válido');
+      return;
+    }
+    setProcessing(true);
+    setPError('');
+    try {
+      // Create a new payment record
+      const createRes = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: event.id,
+          concept,
+          amount: Number(amount),
+          method,
+          paid: true,
+          paid_date: new Date().toISOString().slice(0, 10),
+        }),
+      });
+      const createData = await createRes.json();
+      if (!createData.success) {
+        setPError(createData.error || 'Error al registrar pago');
+        return;
+      }
+      // Mark it paid via PATCH
+      await fetch(`/api/payments/${createData.data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paid: true, method, paid_date: new Date().toISOString().slice(0, 10) }),
+      });
+      setDone(true);
+      onPaid();
+      setTimeout(() => onClose(), 1500);
+    } catch (e: any) {
+      setPError(e.message || 'Error de red');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const suggestedAmounts = [25, 50, 75].map((pct) => Math.round(total * (pct / 100)));
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.92, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-6 pt-6 pb-2">
+          <h2 className="font-serif text-lg text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            {type === 'total' ? 'Cobro total' : 'Cobro parcial'}
+          </h2>
+          <p className="text-[12px] text-[#6B7280] mt-0.5">
+            {event.client_name} · Total: {money(total)}
+          </p>
+        </div>
+
+        <div className="px-6 py-4 space-y-4">
+          {/* Concept */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#6B7280] mb-1">Concepto</label>
+            <input
+              value={concept}
+              onChange={(e) => setConcept(e.target.value)}
+              className="w-full text-[13px] border border-[#E5E7EB] rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C]"
+              placeholder="Ej: Señal, Saldo..."
+              disabled={processing || done}
+            />
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#6B7280] mb-1">Importe</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#9CA3AF]">€</span>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full text-[13px] border border-[#E5E7EB] rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C]"
+                placeholder="0"
+                min={0}
+                step={0.01}
+                disabled={processing || done}
+              />
+            </div>
+            {type === 'parcial' && (
+              <div className="flex gap-1.5 mt-2">
+                {suggestedAmounts.map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => setAmount(String(amt))}
+                    className="flex-1 text-[10px] font-medium bg-[#F5F5F8] text-[#6B7280] hover:bg-[#ECECF1] py-1.5 rounded-lg transition-colors"
+                    disabled={processing || done}
+                  >
+                    {money(amt)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Method */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#6B7280] mb-1">Método de pago</label>
+            <div className="flex gap-2">
+              {[
+                { value: 'transferencia', label: 'Transferencia' },
+                { value: 'efectivo', label: 'Efectivo' },
+                { value: 'tarjeta', label: 'Tarjeta' },
+                { value: 'bizum', label: 'Bizum' },
+              ].map((m) => (
+                <button
+                  key={m.value}
+                  onClick={() => setMethod(m.value)}
+                  className={`flex-1 text-[11px] font-medium py-2 rounded-lg border transition-colors ${
+                    method === m.value
+                      ? 'bg-[#1A1A2E] text-white border-[#1A1A2E]'
+                      : 'bg-white text-[#6B7280] border-[#E5E7EB] hover:bg-[#F5F5F8]'
+                  }`}
+                  disabled={processing || done}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {pError && (
+            <div className="text-[12px] text-[#DC2626] bg-[#FEF3F3] rounded-lg px-3 py-2">{pError}</div>
+          )}
+          {done && (
+            <div className="text-[12px] text-[#16A34A] bg-[#EFFAF2] rounded-lg px-3 py-2 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+              Pago registrado correctamente
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 pb-6 pt-2 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={processing}
+            className="flex-1 text-[13px] font-medium border border-[#E5E7EB] text-[#6B7280] py-2.5 rounded-xl hover:bg-[#F5F5F8] disabled:opacity-40 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handlePay}
+            disabled={processing || done || !amount}
+            className="flex-1 text-[13px] font-medium text-white py-2.5 rounded-xl disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+            style={{ background: processing || done ? '#9CA3AF' : '#1A1A2E' }}
+          >
+            {processing ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Registrando…
+              </>
+            ) : done ? (
+              '✓ Cobrado'
+            ) : (
+              `Cobrar ${money(Number(amount) || 0)}`
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ---------- Main KanbanPipeline ---------- */
 export default function KanbanPipeline() {
   const [events, setEvents] = useState<KanbanEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Modal states
+  const [sendBudgetEventId, setSendBudgetEventId] = useState<string | null>(null);
+  const [paymentModal, setPaymentModal] = useState<{ eventId: string; type: 'parcial' | 'total' } | null>(null);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -140,6 +493,9 @@ export default function KanbanPipeline() {
     { label: 'Aceptados', value: confirmedCount, accent: '#16A34A' },
     { label: 'Comensales (total)', value: totalGuests, accent: '#6B2737' },
   ];
+
+  const sendBudgetEvent = sendBudgetEventId ? events.find((e) => e.id === sendBudgetEventId) ?? null : null;
+  const paymentEvent = paymentModal ? events.find((e) => e.id === paymentModal.eventId) ?? null : null;
 
   return (
     <div className="space-y-6">
@@ -247,31 +603,84 @@ export default function KanbanPipeline() {
                       </div>
                     )}
 
-                    {/* Actions */}
-                    <div className="flex gap-1.5 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {col.status !== 'draft' && col.status !== 'cancelled' && (
-                        <button onClick={() => moveEvent(event.id, statusOrder[statusOrder.indexOf(col.status) - 1])}
-                          className="flex-1 text-[11px] font-medium bg-[#F5F5F8] text-[#6B7280] hover:bg-[#ECECF1] py-1.5 rounded-lg transition-colors">
-                          ← Atrás
+                    {/* === Actions per column === */}
+                    <div className="flex flex-wrap gap-1.5 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* --- BORRADOR --- */}
+                      {col.status === 'draft' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSendBudgetEventId(event.id); }}
+                          className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors"
+                        >
+                          Enviar presupuesto
                         </button>
                       )}
-                      {col.status !== 'accepted' && col.status !== 'cancelled' && (
-                        <button onClick={(e) => { e.stopPropagation(); moveEvent(event.id, statusOrder[statusOrder.indexOf(col.status) + 1]); }}
-                          className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors">
-                          {col.status === 'draft' ? 'Enviar →' : 'Avanzar →'}
-                        </button>
+
+                      {/* --- ENVIADO --- */}
+                      {col.status === 'sent' && (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'accepted'); }}
+                            className="flex-1 text-[11px] font-medium bg-[#EFFAF2] text-[#15803D] hover:bg-[#D1FAE5] py-1.5 rounded-lg transition-colors"
+                          >
+                            Aceptar
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSendBudgetEventId(event.id); }}
+                            className="text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] px-2.5 py-1.5 rounded-lg transition-colors"
+                          >
+                            Reenviar
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled'); }}
+                            className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                        </>
                       )}
+
+                      {/* --- ACEPTADO --- */}
                       {col.status === 'accepted' && (
-                        <button onClick={(e) => { e.stopPropagation(); window.location.href = `/admin/cobros?event_id=${event.id}`; }}
-                          className="flex-1 text-[11px] font-medium bg-[#EFFAF2] text-[#15803D] hover:bg-[#D1FAE5] py-1.5 rounded-lg transition-colors">
-                          Cobrar →
-                        </button>
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPaymentModal({ eventId: event.id, type: 'parcial' }); }}
+                            className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors"
+                          >
+                            Cobro parcial
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPaymentModal({ eventId: event.id, type: 'total' }); }}
+                            className="flex-1 text-[11px] font-medium bg-[#EFFAF2] text-[#15803D] hover:bg-[#D1FAE5] py-1.5 rounded-lg transition-colors"
+                          >
+                            Cobro total
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled'); }}
+                            className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                        </>
                       )}
-                      {col.status !== 'cancelled' && (
-                         <button onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled')}}
-                          className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors">
-                          ✕
-                        </button>
+
+                      {/* --- Links for accepted events (always visible) --- */}
+                      {col.status === 'accepted' && (
+                        <div className="w-full flex gap-1.5 mt-1">
+                          <a
+                            href={`/admin/invitados?event_id=${event.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 text-center text-[10px] font-medium text-[#6B7280] bg-[#F5F5F8] hover:bg-[#ECECF1] py-1 rounded-lg transition-colors"
+                          >
+                            Invitados
+                          </a>
+                          <a
+                            href={`/admin/operations?event_id=${event.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 text-center text-[10px] font-medium text-[#6B7280] bg-[#F5F5F8] hover:bg-[#ECECF1] py-1 rounded-lg transition-colors"
+                          >
+                            Operaciones
+                          </a>
+                        </div>
                       )}
                     </div>
                   </motion.div>
@@ -283,6 +692,29 @@ export default function KanbanPipeline() {
       </div>
 
       <BudgetEditor event={editingEvent} onClose={() => setEditingId(null)} onSaved={handleSaved} />
+
+      {/* Send budget modal */}
+      <AnimatePresence>
+        {sendBudgetEvent && (
+          <SendBudgetModal
+            event={sendBudgetEvent}
+            onClose={() => setSendBudgetEventId(null)}
+            onSent={loadEvents}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Payment modal */}
+      <AnimatePresence>
+        {paymentEvent && paymentModal && (
+          <PaymentModal
+            event={paymentEvent}
+            type={paymentModal.type}
+            onClose={() => setPaymentModal(null)}
+            onPaid={loadEvents}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

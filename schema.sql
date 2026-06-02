@@ -533,6 +533,40 @@ DROP TRIGGER IF EXISTS trg_leads_updated ON leads;
 CREATE TRIGGER trg_leads_updated BEFORE UPDATE ON leads FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================================
+-- 16b. TABLES (mapa de mesas por evento)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tables (
+    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id     UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    table_number INT NOT NULL,
+    x           NUMERIC(10,2) DEFAULT 0,
+    y           NUMERIC(10,2) DEFAULT 0,
+    capacity    INT DEFAULT 10,
+    shape       TEXT DEFAULT 'circle' CHECK (shape IN ('circle','rectangle','square')),
+    rotation    INT DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_tables_event ON tables(event_id);
+ALTER TABLE tables DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 16c. EVENT MENU ITEMS (escandallo por evento)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_menu_items (
+    id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id       UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    name           TEXT NOT NULL,
+    category       TEXT NOT NULL,
+    quantity       INT DEFAULT 0,
+    unit_price_pvp NUMERIC(10,2) DEFAULT 0,
+    subtotal_pvp   NUMERIC(10,2) DEFAULT 0,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_event_menu_items_event ON event_menu_items(event_id);
+ALTER TABLE event_menu_items DISABLE ROW LEVEL SECURITY;
+
+-- Add operations_generated_at to events table
+ALTER TABLE events ADD COLUMN IF NOT EXISTS operations_generated_at TIMESTAMPTZ;-- ============================================================
 -- 17. QUOTES (Presupuestos) — ciclo de vida del precio
 -- ============================================================
 CREATE TABLE IF NOT EXISTS quotes (

@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
-interface EventLite { id: string; client_name: string; event_date: string; event_type: string; guest_count: number; kids_count: number; }
+interface EventLite { id: string; client_name: string; event_date: string; event_type: string; guest_count: number; kids_count: number; status: string; tables_suggested?: number; waiters_suggested?: number; selected_items?: any[]; total_pvp?: number | string; bar_hours?: number; }
 interface Guest { id: string; event_id: string; name: string; group_name: string | null; rsvp: string; menu_type: string; dietary: string[]; notes: string | null; }
 
 const DIET: { id: string; label: string; short: string }[] = [
@@ -30,6 +30,9 @@ export default function GuestsManager() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [generatingOps, setGeneratingOps] = useState(false);
+  const [opsGenerated, setOpsGenerated] = useState(false);
+  const [opsData, setOpsData] = useState<{ guests: number; tables: number; menuItems: number; tablesNeeded: number; waitersNeeded: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -39,6 +42,31 @@ export default function GuestsManager() {
       } catch { /* empty */ } finally { setLoading(false); }
     })();
   }, []);
+
+  const handleGenerateOps = async () => {
+    if (!eventId) return;
+    setGeneratingOps(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/generate-operations`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setOpsGenerated(true);
+        setOpsData(data.data);
+      }
+    } catch { /* empty */ } finally { setGeneratingOps(false); }
+  };
+
+  // Check if ops already generated
+  useEffect(() => {
+    if (ev && ev.status === 'accepted') {
+      const hasGuests = guests.length > 0;
+      setOpsGenerated(hasGuests);
+      setOpsData(null);
+    } else {
+      setOpsGenerated(false);
+      setOpsData(null);
+    }
+  }, [eventId, ev?.status]);
 
   const loadGuests = useCallback(async () => {
     if (!eventId) { setGuests([]); return; }
@@ -79,7 +107,8 @@ export default function GuestsManager() {
   const exportCsv = () => {
     const rows = [['Nombre', 'Grupo', 'RSVP', 'Menú', 'Restricciones', 'Notas']];
     guests.forEach((g) => rows.push([g.name, g.group_name || '', g.rsvp, MENU_LABEL[g.menu_type] || g.menu_type, (g.dietary || []).map((d) => DIET_LABEL[d] || d).join(' / '), g.notes || '']));
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('
+');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a');
     a.href = url; a.download = `invitados-${ev?.client_name || 'evento'}.csv`; a.click(); URL.revokeObjectURL(url);
@@ -109,6 +138,45 @@ export default function GuestsManager() {
             style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>+ Invitado</button>
         </div>
       </div>
+
+      {/* Operations summary for accepted events */}
+      {ev && ev.status === 'accepted' && (
+        <div className="bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm text-[#1A1A1A]">Operaciones del evento</h3>
+            {!opsGenerated && (
+              <button onClick={handleGenerateOps} disabled={generatingOps}
+                className="text-[13px] font-medium text-white px-4 py-2 rounded-xl shadow-sm disabled:opacity-50 flex items-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+                {generatingOps ? 'Generando…' : '⚡ Generar operaciones'}
+              </button>
+            )}
+          </div>
+          {opsGenerated && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-[#FBF6E9] rounded-xl">
+                <div className="text-2xl font-bold text-[#1A1A1A]">{ev.guest_count + (ev.kids_count || 0)}</div>
+                <div className="text-[11px] text-[#6B7280]">Comensales</div>
+              </div>
+              <div className="text-center p-3 bg-[#EFFAF2] rounded-xl">
+                <div className="text-2xl font-bold text-[#16A34A]">{opsData?.tables || ev.tables_suggested || '—'}</div>
+                <div className="text-[11px] text-[#6B7280]">Mesas</div>
+              </div>
+              <div className="text-center p-3 bg-[#EFFAF2] rounded-xl">
+                <div className="text-2xl font-bold text-[#16A34A]">{opsData?.waiters || ev.waiters_suggested || '—'}</div>
+                <div className="text-[11px] text-[#6B7280]">Camareros</div>
+              </div>
+              <div className="text-center p-3 bg-[#EFFAF2] rounded-xl">
+                <div className="text-2xl font-bold text-[#16A34A]">{opsData?.menuItems || (ev.selected_items || []).length}</div>
+                <div className="text-[11px] text-[#6B7280]">Platos</div>
+              </div>
+            </div>
+          )}
+          {!opsGenerated && (
+            <p className="text-[13px] text-[#9CA3AF]">Pulsa "Generar operaciones" para crear automáticamente las mesas, el escandallo y los invitados placeholder.</p>
+          )}
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
