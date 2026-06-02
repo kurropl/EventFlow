@@ -35,6 +35,8 @@ const STATUS_LABELS: Record<string, string> = {
 const money = (n: number | string) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(n) || 0);
 
+const BAR_PRICE_PER_HOUR = 15; // € per person per hour
+
 interface SelectedItem {
   item_id: string;
   name: string;
@@ -160,6 +162,7 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
       const body: any = {
         selected_items: items,
         bar_hours: barHours,
+        bar_price: barHours * (event?.guest_count || 0) * BAR_PRICE_PER_HOUR,
         notes: notes || null,
       };
       if (newStatus) body.status = newStatus;
@@ -338,8 +341,21 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
             {/* Total */}
             <div className="bg-[#FBF6E9] rounded-xl p-4 border border-[#EFE3BE]">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-[13px] text-[#6B7280]">Total PVP calculado</span>
-                <span className="text-xl font-bold text-[#1A1A1A]">{money(totals.pvp)}</span>
+                <span className="text-[13px] text-[#6B7280]">Comida (PVP)</span>
+                <span className="text-base font-bold text-[#1A1A1A]">{money(totals.pvp)}</span>
+              </div>
+              {barHours > 0 && (
+                <div className="flex justify-between items-center mb-1 text-[12px]">
+                  <span className="text-[#9CA3AF]">Barra ({barHours}h × {event?.guest_count || 0} pax × {BAR_PRICE_PER_HOUR}€)</span>
+                  <span className="font-semibold text-[#1A1A1A]">{money(barHours * (event?.guest_count || 0) * BAR_PRICE_PER_HOUR)}</span>
+                </div>
+              )}
+              <hr className="my-2 border-[#E5D9A8]" />
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[13px] font-semibold text-[#1A1A1A]">Total PVP</span>
+                <span className="text-xl font-bold text-[#1A1A1A]">
+                  {money(totals.pvp + (barHours * (event?.guest_count || 0) * BAR_PRICE_PER_HOUR))}
+                </span>
               </div>
               <div className="flex justify-between items-center text-[12px]">
                 <span className="text-[#9CA3AF]">Coste estimado</span>
@@ -349,7 +365,7 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
                 <div className="flex justify-between items-center text-[12px] mt-0.5">
                   <span className="text-[#9CA3AF]">Margen</span>
                   <span className="text-[#16A34A] font-medium">
-                    {money(totals.pvp - totals.cost)} ({Math.round(((totals.pvp - totals.cost) / totals.pvp) * 100)}%)
+                    {money(totals.pvp - totals.cost)} ({Math.round(((totals.pvp - totals.cost) / (totals.pvp + (barHours * (event?.guest_count || 0) * BAR_PRICE_PER_HOUR))) * 100)}%)
                   </span>
                 </div>
               )}

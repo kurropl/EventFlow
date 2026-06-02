@@ -79,6 +79,7 @@ export async function PATCH(
       paid_date: (v) => v || null,
       method: (v) => v || null,
       notes: (v) => v ?? null,
+      receipt_url: (v) => String(v),
     };
     for (const [key, transform] of Object.entries(allowed)) {
       if (key in body) {

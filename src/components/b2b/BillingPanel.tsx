@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 interface Payment {
   id: string; event_id: string; concept: string;
   amount: number; due_date: string; paid: boolean; paid_date: string | null;
-  method: string | null; notes: string | null;
+  method: string | null; notes: string | null; receipt_url: string | null;
   client_name: string; event_type: string; event_date: string;
 }
 
@@ -240,6 +240,41 @@ export default function BillingPanel() {
                               className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-[#15803D] text-white hover:bg-[#166534] disabled:opacity-50 transition-colors">
                               {payingId === p.id ? '...' : 'Cobrar'}
                             </button>
+                          )}
+                          {p.paid && (
+                            <div className="flex gap-1 justify-end">
+                              {p.receipt_url ? (
+                                <a href={p.receipt_url} target="_blank"
+                                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors inline-flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+                                  Justificante
+                                </a>
+                              ) : (
+                                <label className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] cursor-pointer transition-colors inline-flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 4v8m0 0l-3-3m3 3l3-3M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                                  Subir justificante
+                                  <input type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const fd = new FormData();
+                                      fd.append('file', file);
+                                      try {
+                                        const res = await fetch('/api/upload/receipt', { method: 'POST', body: fd });
+                                        const data = await res.json();
+                                        if (data.success && data.data?.url) {
+                                          await fetch(`/api/payments/${p.id}`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ receipt_url: data.data.url }),
+                                          });
+                                          fetchData();
+                                        }
+                                      } catch {}
+                                    }} />
+                                </label>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>

@@ -469,6 +469,9 @@ ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
 DROP TRIGGER IF EXISTS trg_payments_updated ON payments;
 CREATE TRIGGER trg_payments_updated BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- Add receipt_url column for payment receipts/vouchers
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_url TEXT;
+
 CREATE TABLE IF NOT EXISTS guests (
     id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id     UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,

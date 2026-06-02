@@ -260,6 +260,12 @@ export default function KanbanPipeline() {
                           {col.status === 'draft' ? 'Enviar →' : 'Avanzar →'}
                         </button>
                       )}
+                      {col.status === 'accepted' && (
+                        <button onClick={(e) => { e.stopPropagation(); window.location.href = `/admin/cobros?event_id=${event.id}`; }}
+                          className="flex-1 text-[11px] font-medium bg-[#EFFAF2] text-[#15803D] hover:bg-[#D1FAE5] py-1.5 rounded-lg transition-colors">
+                          Cobrar →
+                        </button>
+                      )}
                       {col.status !== 'cancelled' && (
                          <button onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled')}}
                           className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors">
