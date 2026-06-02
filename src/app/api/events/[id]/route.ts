@@ -110,7 +110,8 @@ export async function GET(
       for (const ci of catalogItems) {
         nameLookup.set(ci.name.toLowerCase().trim(), ci);
         if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
-        catLookup.get(ci.category).push(ci);
+        const catArr = catLookup.get(ci.category)!;
+        catArr.push(ci);
       }
       for (const item of items) {
         const itemName = (item.name || '').toLowerCase().trim();
@@ -168,7 +169,8 @@ export async function PUT(
       for (const ci of catalogItems) {
         nameLookup.set(ci.name.toLowerCase().trim(), ci);
         if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
-        catLookup.get(ci.category).push(ci);
+        const catArr = catLookup.get(ci.category)!;
+        catArr.push(ci);
       }
       let pvpSum = 0;
       let costSum = 0;
