@@ -181,16 +181,21 @@ export async function PUT(
           vals.push(v);
         }
       };
+      const pushIfInBody = (f: string, key: string) => {
+        if (key in body) {
+          push(f, body[key] ?? null);
+        }
+      };
 
       push('status', status ?? null);
-      push('notes', notes ?? null);
-      push('bar_hours', bar_hours ?? null);
-      push('client_name', client_name ?? null);
-      push('client_email', client_email ?? null);
-      push('event_type', event_type ?? null);
-      push('guest_count', guest_count ?? null);
-      push('kids_count', kids_count ?? null);
-      push('event_date', event_date ?? null);
+      pushIfInBody('notes', 'notes');
+      pushIfInBody('bar_hours', 'bar_hours');
+      pushIfInBody('client_name', 'client_name');
+      pushIfInBody('client_email', 'client_email');
+      pushIfInBody('event_type', 'event_type');
+      pushIfInBody('guest_count', 'guest_count');
+      pushIfInBody('kids_count', 'kids_count');
+      pushIfInBody('event_date', 'event_date');
 
       if (calculatedPvp !== undefined) {
         fields.push(`total_pvp = $${p++}`);
