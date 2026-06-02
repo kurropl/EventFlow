@@ -157,11 +157,11 @@ guests.forEach((g) => rows.push([g.name, g.group_name || '', g.rsvp, MENU_LABEL[
                 <div className="text-[11px] text-[#6B7280]">Comensales</div>
               </div>
               <div className="text-center p-3 bg-[#EFFAF2] rounded-xl">
-                <div className="text-2xl font-bold text-[#16A34A]">{opsData?.tables || ev.tables_suggested || '—'}</div>
+                <div className="text-2xl font-bold text-[#16A34A]">{opsData?.tables || '—'}</div>
                 <div className="text-[11px] text-[#6B7280]">Mesas</div>
               </div>
               <div className="text-center p-3 bg-[#EFFAF2] rounded-xl">
-                <div className="text-2xl font-bold text-[#16A34A]">{opsData?.waitersNeeded || ev.waiters_suggested || '—'}</div>
+                <div className="text-2xl font-bold text-[#16A34A]">{opsData?.waitersNeeded || '—'}</div>
                 <div className="text-[11px] text-[#6B7280]">Camareros</div>
               </div>
               <div className="text-center p-3 bg-[#EFFAF2] rounded-xl">

@@ -142,11 +142,9 @@ export async function POST(
     // Update event with operations data
     await querySingle(
       `UPDATE events SET 
-         tables_suggested = $1,
-         waiters_suggested = $2,
          operations_generated_at = now()
-       WHERE id = $3`,
-      [tablesNeeded, waitersNeeded, id]
+       WHERE id = $1`,
+      [id]
     );
 
     return NextResponse.json({
