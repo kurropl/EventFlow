@@ -836,3 +836,21 @@ CREATE TABLE IF NOT EXISTS floor_plans (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE floor_plans DISABLE ROW LEVEL SECURITY;
+
+
+-- Event planning / Día D checklist
+CREATE TABLE IF NOT EXISTS event_plans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT NOT NULL DEFAULT 'general',
+    planned_time TEXT,
+    completed BOOLEAN NOT NULL DEFAULT false,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_event_plans_event ON event_plans(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_plans_category ON event_plans(event_id, category);
+ALTER TABLE event_plans DISABLE ROW LEVEL SECURITY;
