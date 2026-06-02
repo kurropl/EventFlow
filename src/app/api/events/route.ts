@@ -64,7 +64,8 @@ export async function GET(request: NextRequest) {
         for (const ci of catalogItems) {
           nameLookup.set(ci.name.toLowerCase().trim(), ci);
           if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
-          catLookup.get(ci.category).push(ci);
+          const catArr = catLookup.get(ci.category)!;
+          catArr.push(ci);
         }
         for (const item of items) {
           const itemName = (item.name || '').toLowerCase().trim();
