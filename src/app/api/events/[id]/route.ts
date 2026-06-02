@@ -7,10 +7,12 @@
  *   - Quote (accepted)
  *   - Event order with table/staff calculation
  *   - 2 payments: 40% deposit (due 7d), 60% final (due event_date)
+ * DELETE /api/events/[id] — Delete event
  */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle, transaction } from '@/lib/db';
+import { querySingle, queryMany, transaction } from '@/lib/db';
+
+const BAR_PRICE_PER_HOUR = 15; // € per person per hour
 
 /**
  * Generate an invoice immediately when a budget is accepted.
@@ -135,7 +137,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: { ...event, total_pvp: pvp, total_cost: cost },
+      data: { ...event, total_pvp: pvp, total_cost: cost, total_display: pvp + (Number(event.bar_price) || 0) },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

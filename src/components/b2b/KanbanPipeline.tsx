@@ -242,7 +242,7 @@ export default function KanbanPipeline() {
                     {Number(event.total_pvp) > 0 && (
                       <div className="flex items-center justify-between pt-2 border-t border-[#F2F2F5]">
                         <span className="text-[10px] text-[#6B7280]">Total</span>
-                        <span className="text-[13px] font-bold text-[#1A1A1A]">{money(event.total_pvp)}</span>
+                        <span className="text-[13px] font-bold text-[#1A1A1A]">{money(event.total_display || event.total_pvp)}</span>
                       </div>
                     )}
 

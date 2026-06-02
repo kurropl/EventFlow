@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-      return { ...event, total_pvp: pvp.toFixed(2), total_cost: cost.toFixed(2) };
+      return { ...event, total_pvp: pvp.toFixed(2), total_cost: cost.toFixed(2), total_display: ((pvp + (Number(event.bar_price) || 0)).toFixed(2)) };
     });
 
     // Get total count
