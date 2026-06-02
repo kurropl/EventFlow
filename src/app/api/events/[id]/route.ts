@@ -217,6 +217,7 @@ export async function PUT(
       pushIfInBody('status', 'status');
       pushIfInBody('notes', 'notes');
       pushIfInBody('bar_hours', 'bar_hours');
+      pushIfInBody('bar_price', 'bar_price');
       pushIfInBody('client_name', 'client_name');
       pushIfInBody('client_email', 'client_email');
       pushIfInBody('event_type', 'event_type');
