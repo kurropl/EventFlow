@@ -47,7 +47,7 @@ export default function GuestsManager() {
     if (!eventId) return;
     setGeneratingOps(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/generate-operations`, { method: 'POST' });
+      const res = await fetch(`/api/generate-operations/${eventId}`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         setOpsGenerated(true);
