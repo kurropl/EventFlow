@@ -90,14 +90,16 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
     })();
   }, []);
 
-  // Init from event
+  // Init from event — full event in dependency so re-init on any event change
   useEffect(() => {
     if (event) {
-      setItems(event.selected_items || []);
+      const itemsData = event.selected_items || [];
+      console.log('[BudgetEditor] Init items:', itemsData.length, 'for', event.client_name);
+      setItems(itemsData);
       setBarHours(event.bar_hours || 0);
       setNotes(event.notes || '');
     }
-  }, [event?.id]);
+  }, [event?.id, event]);
 
   // Calculate totals
   const calcTotals = () => {
@@ -159,12 +161,14 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
     setSaving(true);
     setMsg('');
     try {
-      const body: any = {
-        selected_items: items,
-        bar_hours: barHours,
-        bar_price: barHours * (event?.guest_count || 0) * BAR_PRICE_PER_HOUR,
-        notes: notes || null,
-      };
+      const body: any = {};
+      // Only send selected_items if we have them (avoid wiping with empty)
+      if (items.length > 0) {
+        body.selected_items = items;
+      }
+      body.bar_hours = barHours;
+      body.bar_price = barHours * (event?.guest_count || 0) * BAR_PRICE_PER_HOUR;
+      body.notes = notes || null;
       if (newStatus) body.status = newStatus;
       const res = await fetch(`/api/events/${event.id}`, {
         method: 'PUT',
