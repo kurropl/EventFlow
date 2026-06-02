@@ -59,14 +59,25 @@ export async function GET(request: NextRequest) {
       let cost = Number(event.total_cost) || 0;
       const items = event.selected_items || [];
       if (items.length > 0 && pvp === 0) {
-        // Build a lookup by name (since B2C items store dish name as item_id)
         const nameLookup = new Map<string, any>();
+        const catLookup = new Map<string, any[]>();
         for (const ci of catalogItems) {
           nameLookup.set(ci.name.toLowerCase().trim(), ci);
+          if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
+          catLookup.get(ci.category).push(ci);
         }
         for (const item of items) {
           const itemName = (item.name || '').toLowerCase().trim();
-          const catItem = nameLookup.get(itemName);
+          const itemCat = (item.category || '').toLowerCase().trim();
+          let catItem = nameLookup.get(itemName);
+          if (!catItem && itemCat) {
+            const catItems = catLookup.get(itemCat);
+            if (catItems && catItems.length > 0) {
+              catItem = catItems.reduce((min: any, ci: any) =>
+                (Number(ci.pvp) || 0) < (Number(min?.pvp) || Infinity) ? ci : min
+              );
+            }
+          }
           if (catItem) {
             const qty = Number(item.quantity) || 1;
             pvp += (Number(catItem.pvp) || 0) * qty;

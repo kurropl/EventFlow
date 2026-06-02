@@ -102,16 +102,28 @@ export async function GET(
     let cost = Number(event.total_cost) || 0;
     if (items.length > 0 && pvp === 0) {
       const catalogItems = await queryMany<any>(
-        `SELECT id, name, pvp, cost FROM catalog_items WHERE active = true`,
+        `SELECT id, name, pvp, cost, category FROM catalog_items WHERE active = true`,
         []
       );
       const nameLookup = new Map<string, any>();
+      const catLookup = new Map<string, any[]>();
       for (const ci of catalogItems) {
         nameLookup.set(ci.name.toLowerCase().trim(), ci);
+        if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
+        catLookup.get(ci.category).push(ci);
       }
       for (const item of items) {
         const itemName = (item.name || '').toLowerCase().trim();
-        const catItem = nameLookup.get(itemName);
+        const itemCat = (item.category || '').toLowerCase().trim();
+        let catItem = nameLookup.get(itemName);
+        if (!catItem && itemCat) {
+          const catItems = catLookup.get(itemCat);
+          if (catItems && catItems.length > 0) {
+            catItem = catItems.reduce((min: any, ci: any) =>
+              (Number(ci.pvp) || 0) < (Number(min?.pvp) || Infinity) ? ci : min
+            );
+          }
+        }
         if (catItem) {
           const qty = Number(item.quantity) || 1;
           pvp += (Number(catItem.pvp) || 0) * qty;
@@ -148,18 +160,31 @@ export async function PUT(
     let calculatedCost = total_cost;
     if (selected_items && Array.isArray(selected_items)) {
       const catalogItems = await queryMany<any>(
-        `SELECT id, name, pvp, cost FROM catalog_items WHERE active = true`,
+        `SELECT id, name, pvp, cost, category FROM catalog_items WHERE active = true`,
         []
       );
       const nameLookup = new Map<string, any>();
+      const catLookup = new Map<string, any[]>();
       for (const ci of catalogItems) {
         nameLookup.set(ci.name.toLowerCase().trim(), ci);
+        if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
+        catLookup.get(ci.category).push(ci);
       }
       let pvpSum = 0;
       let costSum = 0;
       for (const item of selected_items) {
         const itemName = (item.name || '').toLowerCase().trim();
-        const catItem = nameLookup.get(itemName);
+        const itemCat = (item.category || '').toLowerCase().trim();
+        let catItem = nameLookup.get(itemName);
+        // Fallback: if name doesn't match, try category match (take cheapest in category)
+        if (!catItem && itemCat) {
+          const catItems = catLookup.get(itemCat);
+          if (catItems && catItems.length > 0) {
+            catItem = catItems.reduce((min: any, ci: any) =>
+              (Number(ci.pvp) || 0) < (Number(min?.pvp) || Infinity) ? ci : min
+            );
+          }
+        }
         if (catItem) {
           const qty = Number(item.quantity) || 1;
           pvpSum += (Number(catItem.pvp) || 0) * qty;
