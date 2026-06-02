@@ -69,8 +69,8 @@ export default function DashboardOverview() {
         const ld = await ldRes.json();
         const pm = await pmRes.json();
         if (evRes.ok && ev.success) setEvents(ev.data || []);
-        if (ldRes.ok && ld.success) setLeads(ld.data || []);
-        if (pmRes.ok && pm.success) setPayments(pm.data || []);
+        if (ldRes.ok) setLeads(ld.data || []);
+        if (pmRes.ok) setPayments(pm.data || []);
       } catch (e) { console.error(e); }
       if (!cancelled) setLoading(false);
     })();
