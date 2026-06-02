@@ -187,7 +187,7 @@ export async function PUT(
         }
       };
 
-      push('status', status ?? null);
+      pushIfInBody('status', 'status');
       pushIfInBody('notes', 'notes');
       pushIfInBody('bar_hours', 'bar_hours');
       pushIfInBody('client_name', 'client_name');
