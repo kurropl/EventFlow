@@ -1,6 +1,6 @@
 /**
  * EventFlow — Generate event operations from accepted budget
- * POST /api/events/[eventId]/generate-operations
+ * POST /api/events/[id]/generate-operations
  *
  * When a budget is accepted, auto-generate:
  * - Guests (guest_count + kids_count placeholder entries)
@@ -13,14 +13,14 @@ import { querySingle, queryMany } from '@/lib/db';
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { eventId } = await params;
+    const { id } = await params;
 
     const event = await querySingle<any>(
       `SELECT * FROM events WHERE id = $1`,
-      [eventId]
+      [id]
     );
 
     if (!event) {
@@ -49,7 +49,7 @@ export async function POST(
     // Generate placeholder guests
     for (let i = 0; i < guestCount; i++) {
       guests.push({
-        event_id: eventId,
+        event_id: id,
         name: `Invitado ${i + 1}`,
         group_name: null,
         rsvp: 'pendiente',
@@ -60,7 +60,7 @@ export async function POST(
     }
     for (let i = 0; i < kidsCount; i++) {
       guests.push({
-        event_id: eventId,
+        event_id: id,
         name: `Niño ${i + 1}`,
         group_name: null,
         rsvp: 'pendiente',
@@ -73,7 +73,7 @@ export async function POST(
     // Generate menu items for escandallo
     for (const item of selectedItems) {
       menuItems.push({
-        event_id: eventId,
+        event_id: id,
         name: item.name,
         category: item.category,
         quantity: Number(item.quantity) || 0,
@@ -92,7 +92,7 @@ export async function POST(
     for (let t = 0; t < tablesNeeded; t++) {
       const count = guestsPerTable + (t < remainder ? 1 : 0);
       tables.push({
-        event_id: eventId,
+        event_id: id,
         table_number: t + 1,
         capacity: count,
         guests: guests.slice(guestIdx, guestIdx + count).map((g) => g.id),
@@ -146,7 +146,7 @@ export async function POST(
          waiters_suggested = $2,
          operations_generated_at = now()
        WHERE id = $3`,
-      [tablesNeeded, waitersNeeded, eventId]
+      [tablesNeeded, waitersNeeded, id]
     );
 
     return NextResponse.json({
