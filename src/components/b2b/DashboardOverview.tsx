@@ -195,7 +195,7 @@ export default function DashboardOverview() {
           <div className="bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3">Accesos rápidos</h3>
             <div className="grid grid-cols-2 gap-2">
-              {
+              {[
                 { label: 'Agenda', href: '/admin/agenda' },
                 { label: 'Clientes', href: '/admin/clientes' },
                 { label: 'Cobros', href: '/admin/cobros' },
