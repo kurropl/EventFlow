@@ -357,7 +357,6 @@ export default function LeadsCRM() {
           </select>
           <div className="relative">
 <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
-            </svg>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Buscar..."
               className="text-sm border border-[#E5E7EB] rounded-xl pl-9 pr-4 py-2 w-56 focus:outline-none focus:ring-2 focus:ring-[#1A1A2E]/10" />

@@ -109,7 +109,7 @@ export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProp
       <path d="M6 2l3 9H3l3-9z M15 2v9c0 2.5 1.5 4 4 4V2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     ),
     star: (
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 2l3 6 6 1-4 4 1 6-6-3-6 3 1-6-4-4 6-1 3-6z" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     ),
     refresh: (
       <path d="M23 4v6h-6M1 20v-6h6" fill="none" strokeLinecap="round" strokeLinejoin="round" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" fill="none" strokeLinecap="round" strokeLinejoin="round" />
