@@ -45,6 +45,7 @@ const MAP: Record<string, LucideIcon> = {
   user: Lucide.User,
   userCheck: Lucide.UserCheck,
   clipboardList: Lucide.ClipboardList,
+  check: Lucide.Check,
 
   // KPI
   revenue: Lucide.CreditCard,

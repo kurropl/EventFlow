@@ -65,6 +65,10 @@ export default function OperationsManager() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [waiterColors, setWaiterColors] = useState<Record<string, string>>({});
+  const [showWaitersModal, setShowWaitersModal] = useState(false);
+  const [editingWaiter, setEditingWaiter] = useState<string | null>(null);
+  const [newWaiterName, setNewWaiterName] = useState('');
+  const [showWaitersSaved, setShowWaitersSaved] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const fetchOrders = useCallback(async () => {
@@ -101,22 +105,29 @@ export default function OperationsManager() {
     setViewMode('detail');
     loadTables(o);
   };
-
-  // ── Load / Save Tables ───────────────────────────────────────
+  // ── Load tables from API or generate ────────────────────────
   const loadTables = async (order: EventOrder) => {
     setLoadingDist(true);
     try {
+      // Load ALL waiters from API
       let wList: Waiter[] = [];
       try {
-        const wr = await fetch(`/api/event-orders/${order.id}/waiters`);
+        const wr = await fetch('/api/waiters');
         const wd = await wr.json();
         if (wd.success) wList = wd.waiters || [];
-      } catch { /* ok */ }
+      } catch { /* fallback to event-specific */
+        try {
+          const wr = await fetch(`/api/event-orders/${order.id}/waiters`);
+          const wd = await wr.json();
+          if (wd.success) wList = wd.waiters || [];
+        } catch { /* ok */ }
+      }
       setWaiters(wList);
       const colors: Record<string, string> = {};
       wList.forEach((w, i) => { colors[w.name] = WAITER_COLORS[i % WAITER_COLORS.length]; });
       setWaiterColors(colors);
 
+      // Load saved plan or generate
       const params = new URLSearchParams();
       if (order.event_id) params.set('event_id', order.event_id);
       const r = await fetch(`/api/floor-plan?${params}`);
@@ -215,6 +226,30 @@ export default function OperationsManager() {
   }, [tables, waiters]);
 
   const selectedTableData = useMemo(() => tables.find(t => t.id === selectedTable) || null, [tables, selectedTable]);
+
+  // ── Waiter management ────────────────────────────────────────
+  const renameWaiter = (oldName: string, newName: string) => {
+    if (!newName.trim()) return;
+    setWaiters(prev => prev.map(w => w.name === oldName ? { ...w, name: newName.trim() } : w));
+    // Also update tables
+    setTables(prev => prev.map(t => t.waiter === oldName ? { ...t, waiter: newName.trim() } : t));
+    setEditingWaiter(null);
+  };
+
+  const deleteWaiter = (name: string) => {
+    setWaiters(prev => prev.filter(w => w.name !== name));
+    setTables(prev => prev.map(t => t.waiter === name ? { ...t, waiter: '' } : t));
+    setWaiterColors(prev => { const c = { ...prev }; delete c[name]; return c; });
+  };
+
+  const addWaiter = () => {
+    if (!newWaiterName.trim()) return;
+    const id = `w${Date.now()}`;
+    const color = WAITER_COLORS[waiters.length % WAITER_COLORS.length];
+    setWaiters(prev => [...prev, { id, name: newWaiterName.trim(), role: 'camarero' }]);
+    setWaiterColors(prev => ({ ...prev, [newWaiterName.trim()]: color }));
+    setNewWaiterName('');
+  };
 
   // ── SVG: render a single table ───────────────────────────────
   const renderTableShape = (t: CanvasTable) => {
@@ -751,30 +786,85 @@ export default function OperationsManager() {
           </div>
 
           {/* Waiter legend */}
-          {waiters.length > 0 && (
-            <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow">
-              <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3 flex items-center gap-2">
-                <Icon name="userCheck" className="w-4 h-4"/> Camareros ({waiters.length})
-              </h3>
-              <div className="space-y-1.5">
-                {waiters.map(w => {
-                  const assigned = tables.filter(t => t.waiter === w.name);
-                  return (
-                    <div key={w.id} className="flex items-center justify-between text-sm">
+          <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow">
+            <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3 flex items-center gap-2">
+              <Icon name="userCheck" className="w-4 h-4"/> Camareros ({waiters.length})
+            </h3>
+            <div className="space-y-1.5">
+              {waiters.map(w => {
+                const assigned = tables.filter(t => t.waiter === w.name);
+                const isEditing = editingWaiter === w.name;
+                return (
+                  <div key={w.id} className="flex items-center justify-between text-sm group">
+                    {isEditing ? (
+                      <div className="flex items-center gap-1 flex-1">
+                        <input type="text" defaultValue={w.name}
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') renameWaiter(w.name, (e.target as HTMLInputElement).value);
+                            if (e.key === 'Escape') setEditingWaiter(null);
+                          }}
+                          onBlur={e => renameWaiter(w.name, e.target.value)}
+                          className="flex-1 text-sm border border-[#C9A84C] rounded-lg px-2 py-1"
+                        />
+                      </div>
+                    ) : (
                       <div className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: waiterColors[w.name] || '#C9A84C' }}/>
                         <span className="text-[#1A1A1A]">{w.name}</span>
                         <span className="text-[11px] text-[#9CA3AF]">({w.role})</span>
                       </div>
-                      <span className="text-[11px] font-medium text-[#6B7280]">
-                        {assigned.length > 0 ? `${assigned.length} mesa${assigned.length > 1 ? 's' : ''}` : '—'}
-                      </span>
+                    )}
+                    <div className="flex items-center gap-0.5">
+                      {isEditing ? (
+                        <button onClick={() => setEditingWaiter(null)}
+                          className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#F3F4F6] opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Icon name="check" className="w-3 h-3"/>
+                        </button>
+                      ) : (
+                        <>
+                          <button onClick={() => setEditingWaiter(w.name)}
+                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#F3F4F6] opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Icon name="edit" className="w-3 h-3 text-[#6B7280]"/>
+                          </button>
+                          <button onClick={() => deleteWaiter(w.name)}
+                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Icon name="x" className="w-3 h-3 text-red-400"/>
+                          </button>
+                        </>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+            {/* Add waiter */}
+            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-[#ECECF1]">
+              <input type="text" value={newWaiterName}
+                onChange={e => setNewWaiterName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addWaiter(); }}
+                placeholder="Añadir camarero..."
+                className="flex-1 text-[11px] border border-[#ECECF1] rounded-lg px-2 py-1.5"
+              />
+              <button onClick={addWaiter} disabled={!newWaiterName.trim()}
+                className="w-6 h-6 flex items-center justify-center rounded bg-[#C9A84C] text-white disabled:opacity-50">
+                <Icon name="plus" className="w-3 h-3"/>
+              </button>
+            </div>
+            <button onClick={async () => {
+              try {
+                await fetch('/api/waiters', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ waiters }),
+                });
+                setShowWaitersSaved(true);
+                setTimeout(() => setShowWaitersSaved(false), 2000);
+              } catch (e) { console.error(e); }
+            }} className="w-full mt-2 text-[11px] font-medium py-1.5 rounded-lg bg-[#C9A84C] text-white hover:bg-[#A88A3A] transition-colors">
+              {showWaitersSaved ? '✓ Guardado' : 'Guardar camareros'}
+            </button>
+          </div>
 
           {/* Help */}
           <div className="bg-[#FAF8F5] rounded-2xl border border-[#E0D3A8] p-4">
