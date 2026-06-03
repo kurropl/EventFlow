@@ -56,6 +56,7 @@ export default function AdminDashboard() {
       {isOperations && <OperationsManager />}
       {isWebhooks && <WebhooksPanel />}
       {isProveedores && <ProvidersManager />}
+      {isMapa && <OperationsManager />}
       {!isOther && <DashboardOverview />}
     </AdminLayout>
   );
