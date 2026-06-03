@@ -711,7 +711,7 @@ export default function OperationsManager() {
         <div className="flex items-center gap-2">
           <button onClick={() => setViewTab('list')}
             className={`text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors ${viewTab === 'list' ? 'bg-[#1A1A2E] text-white' : 'border border-[#E5E7EB] hover:bg-[#F3F4F6]'}`}>Lista</button>
-          <button onClick={() => setViewTab('map')}
+          <button onClick={() => setViewTab('map' as const)}
             className={`text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors ${viewTab === 'map' ? 'bg-[#1A1A2E] text-white' : 'border border-[#E5E7EB] hover:bg-[#F3F4F6]'}`}>Mapa</button>
           <button onClick={fetchOrders}
             className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">↻</button>
