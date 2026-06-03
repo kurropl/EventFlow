@@ -112,7 +112,7 @@ export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProp
       <path d="M12 2 L15 9 L22 9 L16 14 L18 21 L12 17 L6 21 L8 14 L2 9 L9 9 Z" />
     ),
     refresh: (
-      <path d="M23 4v6h-6M1 20v-6h6" fill="none" strokeLinecap="round" strokeLinejoin="round" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <><path d="M23 4v6h-6" fill="none" strokeLinecap="round" strokeLinejoin="round" /><path d="M1 20v-6h6" fill="none" strokeLinecap="round" strokeLinejoin="round" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" fill="none" strokeLinecap="round" strokeLinejoin="round" /></>
     ),
     email: (
       <><rect x="2" y="4" width="20" height="16" rx="2" fill="none" /><path d="M22 6l-10 7L2 6" strokeLinecap="round" strokeLinejoin="round" /></>
