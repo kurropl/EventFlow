@@ -704,7 +704,7 @@ export default function OperationsManager() {
                     <option value="">Sin asignar</option>
                     {waiters.map(w => (
                       <option key={w.id} value={w.name}>
-                        {w.waiterColor && <span style={{color: waiterColors[w.name]}}>● </span>}
+                        {waiterColors[w.name] && <span style={{color: waiterColors[w.name]}}>● </span>}
                         {w.name}
                       </option>
                     ))}
