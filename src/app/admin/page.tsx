@@ -27,6 +27,7 @@ import GuestsManager from '@/components/b2b/GuestsManager';
 import CatalogCRUD from '@/components/b2b/CatalogCRUD';
 import OperationsManager from '@/components/b2b/OperationsManager';
 import WebhooksPanel from '@/components/b2b/WebhooksPanel';
+import ProvidersManager from '@/components/b2b/ProvidersManager';
 import MapaMesas from '@/app/admin/mapa-mesas/page';
 
 export default function AdminDashboard() {
@@ -39,9 +40,10 @@ export default function AdminDashboard() {
   const isCatalog = pathname?.includes('catalog');
   const isOperations = pathname?.includes('operations');
   const isWebhooks = pathname?.includes('webhooks');
+  const isProveedores = pathname?.includes('proveedores');
   const isMapa = pathname?.includes('mapa-mesas');
   const isLeads = pathname?.includes('leads');
-  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa;
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores;
 
   return (
     <AdminLayout>
@@ -54,6 +56,7 @@ export default function AdminDashboard() {
       {isCatalog && <CatalogCRUD />}
       {isOperations && <OperationsManager />}
       {isWebhooks && <WebhooksPanel />}
+      {isProveedores && <ProvidersManager />}
       {isMapa && <MapaMesas />}
       {!isOther && <DashboardOverview />}
     </AdminLayout>

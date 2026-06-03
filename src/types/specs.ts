@@ -350,3 +350,48 @@ export const schemas = {
 
 export const ratios = OPERATIONAL_RATIOS;
 export const barPrices = BAR_PRICES;
+
+// ============================================================
+// PROVIDER
+// ============================================================
+
+export const ProviderCategorySchema = z.enum([
+  'catering', 'decoracion', 'flores', 'fotografia', 'video',
+  'musica', 'animacion', 'transporte', 'vestido', 'reposteria',
+  'extras', 'otro',
+]);
+
+export const ProviderSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(200),
+  category: ProviderCategorySchema,
+  contact_name: z.string().max(120).nullable().optional(),
+  phone: z.string().max(30).nullable().optional(),
+  email: z.string().email('Email inválido').nullable().optional().or(z.literal('')),
+  notes: z.string().max(2000).nullable().optional(),
+  active: z.boolean().default(true),
+  created_at: z.string().datetime().optional(),
+  updated_at: z.string().datetime().optional(),
+});
+export type Provider = z.infer<typeof ProviderSchema>;
+
+export const ProviderCreateSchema = ProviderSchema.omit({ id: true, created_at: true, updated_at: true });
+export type ProviderCreate = z.infer<typeof ProviderCreateSchema>;
+
+export const ProviderUpdateSchema = ProviderCreateSchema.partial();
+export type ProviderUpdate = z.infer<typeof ProviderUpdateSchema>;
+
+export const CATEGORY_LABELS: Record<string, string> = {
+  catering: 'Catering',
+  decoracion: 'Decoración',
+  flores: 'Flores',
+  fotografia: 'Fotografía',
+  video: 'Video',
+  musica: 'Música',
+  animacion: 'Animación',
+  transporte: 'Transporte',
+  vestido: 'Vestido',
+  reposteria: 'Repostería',
+  extras: 'Extras',
+  otro: 'Otro',
+};

@@ -691,7 +691,50 @@ CREATE INDEX IF NOT EXISTS idx_recipe_ingredient ON recipe_items(ingredient_id);
 ALTER TABLE recipe_items DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- 22. STAFF ASSIGNMENTS (Asignación de personal al evento)
+-- 22. AUTOMATION RULES (triggered by webhook events)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS automation_rules (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name            TEXT NOT NULL,
+    description     TEXT DEFAULT '',
+    enabled         BOOLEAN NOT NULL DEFAULT true,
+    trigger_topic   TEXT NOT NULL,
+    match_type      TEXT NOT NULL DEFAULT 'all' CHECK (match_type IN ('all','any')),
+    conditions      JSONB NOT NULL DEFAULT '[]'::jsonb,
+    actions         JSONB NOT NULL DEFAULT '[]'::jsonb,
+    cooldown_minutes INT NOT NULL DEFAULT 0,
+    last_triggered_at TIMESTAMPTZ,
+    trigger_count   INT NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_topic ON automation_rules(trigger_topic);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_enabled ON automation_rules(enabled);
+ALTER TABLE automation_rules DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_automation_rules_updated ON automation_rules;
+CREATE TRIGGER trg_automation_rules_updated BEFORE UPDATE ON automation_rules FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Automation rule execution logs
+CREATE TABLE IF NOT EXISTS automation_logs (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    rule_id         UUID NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
+    rule_name       TEXT NOT NULL,
+    event_id        UUID REFERENCES events(id),
+    topic           TEXT NOT NULL,
+    conditions_met  BOOLEAN NOT NULL DEFAULT false,
+    actions_taken   JSONB DEFAULT '[]'::jsonb,
+    success         BOOLEAN NOT NULL DEFAULT true,
+    error_message   TEXT,
+    execution_ms    INT NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_automation_logs_rule ON automation_logs(rule_id);
+CREATE INDEX IF NOT EXISTS idx_automation_logs_event ON automation_logs(event_id);
+CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC);
+ALTER TABLE automation_logs DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 23. STAFF ASSIGNMENTS (Asignación de personal al evento)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS staff_assignments (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -854,3 +897,29 @@ CREATE TABLE IF NOT EXISTS event_plans (
 CREATE INDEX IF NOT EXISTS idx_event_plans_event ON event_plans(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_plans_category ON event_plans(event_id, category);
 ALTER TABLE event_plans DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 28. PROVIDERS (Proveedores — CRM de suministros)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS providers (
+    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name          TEXT NOT NULL,
+    category      TEXT NOT NULL CHECK (category IN (
+        'catering', 'decoracion', 'flores', 'fotografia', 'video',
+        'musica', 'animacion', 'transporte', 'vestido', 'reposteria',
+        'extras', 'otro'
+    )),
+    contact_name  TEXT,
+    phone         TEXT,
+    email         TEXT,
+    notes         TEXT,
+    active        BOOLEAN NOT NULL DEFAULT true,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_providers_category ON providers(category);
+CREATE INDEX IF NOT EXISTS idx_providers_active ON providers(active);
+ALTER TABLE providers DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_providers_updated ON providers;
+CREATE TRIGGER trg_providers_updated BEFORE UPDATE ON providers
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();

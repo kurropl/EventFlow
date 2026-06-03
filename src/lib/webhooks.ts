@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import { querySingle } from '@/lib/db';
 import { WebhookPayloadSchema } from '@/types/specs';
+import { evaluateRules } from '@/lib/automation';
 
 // ============================================================
 // Types
@@ -163,4 +164,11 @@ export async function emitWebhook(
       deliveryStatus === 'sent' ? new Date().toISOString() : null,
     ]
   );
+
+  // Evaluate automation rules (fire-and-forget — errors are logged, never thrown)
+  try {
+    await evaluateRules(topic, ev, {});
+  } catch (autoError) {
+    console.error('[webhook] Automation rule evaluation error:', autoError);
+  }
 }

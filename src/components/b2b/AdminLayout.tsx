@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
-type Tab = 'dashboard' | 'leads' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'login';
+type Tab = 'dashboard' | 'leads' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'proveedores' | 'login';
 
 /* Inline icon set — clean line icons, no external dependency */
 const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; className?: string }) => {
@@ -22,6 +22,7 @@ const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; classNa
     mapa: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></>,
     webhooks: <><path d="M18 8a6 6 0 0 0-9.3-5M6 8a6 6 0 0 0 4 10.5M12 18a6 6 0 0 0 6-6" /><circle cx="12" cy="8" r="2" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="14" r="2" /></>,
     portal: <><path d="M3 12l9-9 9 9" /><path d="M5 10v10h14V10" /></>,
+    proveedores: <><path d="M4 6h16M4 12h10M4 18h14" /><circle cx="20" cy="8" r="2" /><circle cx="20" cy="16" r="2" /></>,
     logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5M21 12H9" /></>,
     menu: <><path d="M3 6h18M3 12h18M3 18h18" /></>,
     close: <><path d="M18 6 6 18M6 6l12 12" /></>,
@@ -45,6 +46,7 @@ const TABS: { id: Tab; label: string; sub: string; href: string }[] = [
   { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
   { id: 'mapa-mesas', label: 'Mapa de mesas', sub: 'Drag & drop', href: '/admin/mapa-mesas' },
   { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones', href: '/admin/webhooks' },
+  { id: 'proveedores', label: 'Proveedores', sub: 'Suministros y partners', href: '/admin/proveedores' },
 ];
 
 interface AdminLayoutProps {
