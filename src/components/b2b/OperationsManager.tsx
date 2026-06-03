@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import TableMapEditor from '@/components/b2b/TableMapEditor';
+import MapaMesas from '@/components/b2b/MapaMesas';
 
 interface EventOrder {
   id: string; event_id: string; client_name: string; client_email: string;
@@ -307,7 +307,17 @@ export default function OperationsManager() {
       {viewTab === 'map' ? (
         <div className="rounded-2xl border border-[#ECECF1] bg-white overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
           style={{ height: 'calc(100vh - 200px)', minHeight: 500 }}>
-          <TableMapEditor />
+          {selected ? (
+            <MapaMesas
+              operationId={selected.id}
+              eventId={selected.event_id}
+              operationName={`${selected.client_name} — ${selected.event_type}`}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-sm text-[#6B7280]">
+              Selecciona un evento para ver su mapa de mesas
+            </div>
+          )}
         </div>
       ) : (
       <>
