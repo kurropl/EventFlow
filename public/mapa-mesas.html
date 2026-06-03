@@ -1,0 +1,5280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Mesas · Salón de Celebraciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* EventFlow: hide customer view toggle */
+#view-btn-customer { display: none; }
+.view-customer { display: none; }
+  :root {
+    --cream: #f6f1e7;
+    --cream-2: #efe7d6;
+    --paper: #fbf8f1;
+    --ink: #2a2118;
+    --ink-soft: #5a4a38;
+    --gold: #b08a3e;
+    --gold-deep: #8a6a28;
+    --burgundy: #6b2737;
+    --burgundy-deep: #4a1a26;
+    --shadow: rgba(60, 40, 20, 0.12);
+    --shadow-strong: rgba(60, 40, 20, 0.25);
+    --table-fill: #fffdf8;
+    --table-border: #b08a3e;
+    --table-selected: #6b2737;
+    --grid: rgba(176, 138, 62, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--ink);
+    background: var(--cream);
+  }
+
+  body {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #0d0a06 0%, #1a1208 100%);
+    color: #d4a548;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    z-index: 10;
+    border-bottom: 2px solid #d4a548;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .brand-mark {
+    width: 42px;
+    height: 42px;
+    border: 1.5px solid #d4a548;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: #d4a548;
+    font-style: italic;
+    font-weight: 700;
+  }
+
+  .brand-text h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 20px;
+    letter-spacing: 0.5px;
+    color: #d4a548;
+    line-height: 1.1;
+  }
+
+  .brand-text .by-line {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 10px;
+    color: #d4a548;
+    opacity: 0.75;
+    letter-spacing: 2px;
+    margin-top: 2px;
+  }
+
+  .brand-text p {
+    font-size: 10px;
+    opacity: 0.6;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #d4a548;
+    margin-top: 1px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .event-name-input {
+    background: rgba(212, 165, 72, 0.08);
+    border: 1px solid rgba(212, 165, 72, 0.4);
+    color: #f5e0a8;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    font-style: italic;
+    width: 240px;
+    transition: all 0.2s;
+  }
+
+  .event-name-input::placeholder { color: rgba(212, 165, 72, 0.5); }
+
+  .event-name-input:focus {
+    outline: none;
+    background: rgba(212, 165, 72, 0.15);
+    border-color: #d4a548;
+    color: #f5e0a8;
+  }
+
+  .btn {
+    background: transparent;
+    color: #d4a548;
+    border: 1px solid rgba(212, 165, 72, 0.4);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn:hover {
+    background: rgba(212, 165, 72, 0.15);
+    border-color: #d4a548;
+    color: #f5e0a8;
+  }
+
+  .btn-primary {
+    background: #d4a548;
+    color: #1a1208;
+    border-color: #d4a548;
+    font-weight: 700;
+  }
+
+  .btn-primary:hover {
+    background: #f0c060;
+    color: #1a1208;
+  }
+
+  /* MAIN LAYOUT */
+  main {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR LEFT */
+  .sidebar-left {
+    background: var(--paper);
+    border-right: 1px solid rgba(176, 138, 62, 0.2);
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    color: var(--burgundy);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .panel-subtitle {
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(176, 138, 62, 0.3);
+    padding-bottom: 12px;
+  }
+
+  .table-templates {
+    display: grid;
+    gap: 10px;
+  }
+
+  .template-card {
+    background: var(--paper);
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+    cursor: grab;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    user-select: none;
+  }
+
+  .template-card:hover {
+    border-color: var(--gold);
+    background: var(--cream-2);
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+
+  .template-card:active {
+    cursor: grabbing;
+  }
+
+  .template-preview {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold-deep);
+  }
+
+  .template-info {
+    flex: 1;
+  }
+
+  .template-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink);
+  }
+
+  .template-detail {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  .section-divider {
+    margin: 24px 0 12px 0;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    background: var(--cream-2);
+    padding: 10px 12px;
+    border-radius: 4px;
+    border-left: 3px solid var(--gold);
+  }
+
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--burgundy);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* CANVAS AREA */
+  .canvas-area {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(176, 138, 62, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(107, 39, 55, 0.04) 0%, transparent 50%),
+      var(--cream);
+  }
+
+  .canvas-toolbar {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--paper);
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    border-radius: 6px;
+    padding: 6px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 4px 16px var(--shadow);
+    z-index: 5;
+  }
+
+  .tool-btn {
+    background: transparent;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .tool-btn:hover {
+    background: var(--cream-2);
+    color: var(--burgundy);
+  }
+
+  .tool-btn.active {
+    background: var(--burgundy);
+    color: var(--cream);
+  }
+
+  .tool-divider {
+    width: 1px;
+    background: rgba(176, 138, 62, 0.3);
+    margin: 4px 2px;
+  }
+
+  .tool-zoom-display {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-weight: 500;
+    min-width: 50px;
+    justify-content: center;
+  }
+
+  #canvas-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    cursor: default;
+  }
+
+  #canvas-wrapper.panning { cursor: grabbing; }
+  #canvas-wrapper.pan-mode { cursor: grab; }
+
+  #canvas {
+    transform-origin: 0 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2400px;
+    height: 1800px;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    box-shadow: 0 0 0 1px rgba(176, 138, 62, 0.2), 0 8px 40px var(--shadow);
+  }
+
+  /* HEAD TABLE indicator */
+  .canvas-head-marker {
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--gold-deep);
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .canvas-head-marker::before,
+  .canvas-head-marker::after {
+    content: '';
+    display: inline-block;
+    width: 30px;
+    height: 1px;
+    background: var(--gold-deep);
+    vertical-align: middle;
+    margin: 0 12px;
+  }
+
+  /* TABLES */
+  .table {
+    position: absolute;
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow 0.15s, transform 0.05s;
+  }
+
+  .table:active { cursor: grabbing; }
+
+  .table.selected .table-shape {
+    stroke: var(--burgundy) !important;
+    stroke-width: 3px !important;
+    filter: drop-shadow(0 0 0 4px rgba(107, 39, 55, 0.15));
+  }
+
+  .table-shape {
+    transition: fill 0.15s;
+  }
+
+  .table-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    color: var(--ink);
+  }
+
+  .table-name {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.1;
+    color: var(--burgundy);
+  }
+
+  .table-seats-count {
+    font-size: 10px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  /* SEATS (chairs) */
+  .seat {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: var(--cream-2);
+    border: 1.5px solid var(--gold-deep);
+    border-radius: 3px;
+    transform-origin: center;
+    pointer-events: none;
+  }
+
+  /* RESIZE/ROTATE handles */
+  .handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--burgundy);
+    border: 2px solid var(--paper);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  .handle.rotate-handle {
+    background: var(--gold);
+    cursor: alias;
+  }
+
+  /* SIDEBAR RIGHT - Properties */
+  .sidebar-right {
+    background: var(--paper);
+    border-left: 1px solid rgba(176, 138, 62, 0.2);
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-soft);
+  }
+
+  .empty-state-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 16px;
+    color: var(--gold);
+    opacity: 0.5;
+  }
+
+  .empty-state p {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .form-input, .form-select {
+    width: 100%;
+    background: var(--cream);
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    transition: all 0.15s;
+  }
+
+  .form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--gold);
+    background: var(--paper);
+  }
+
+  .seat-list {
+    margin-top: 8px;
+    background: var(--cream);
+    border-radius: 4px;
+    padding: 4px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .seat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 3px;
+  }
+
+  .seat-item:hover {
+    background: var(--cream-2);
+  }
+
+  .seat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 11px;
+    color: var(--gold-deep);
+    font-weight: 600;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .seat-name-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dotted rgba(176, 138, 62, 0.4);
+    padding: 4px 2px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--ink);
+  }
+
+  .seat-name-input:focus {
+    outline: none;
+    border-bottom-color: var(--gold);
+  }
+
+  .property-actions {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .btn-secondary {
+    background: var(--cream-2);
+    color: var(--ink);
+    border-color: rgba(176, 138, 62, 0.3);
+  }
+
+  .btn-secondary:hover {
+    background: var(--cream);
+    border-color: var(--gold);
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--burgundy);
+    border-color: rgba(107, 39, 55, 0.3);
+  }
+
+  .btn-danger:hover {
+    background: rgba(107, 39, 55, 0.08);
+    border-color: var(--burgundy);
+  }
+
+  /* FOOTER */
+  footer {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 8px 28px;
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    letter-spacing: 0.5px;
+  }
+
+  footer .footer-tip {
+    opacity: 0.7;
+    font-style: italic;
+  }
+
+  /* DROP HIGHLIGHT */
+  .canvas-area.dragover #canvas {
+    background-color: #fff9e6;
+  }
+
+  /* MODAL */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(42, 33, 24, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-backdrop.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 28px;
+    width: 90%;
+    max-width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    border-top: 4px solid var(--gold);
+  }
+
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    color: var(--burgundy);
+    margin-bottom: 8px;
+  }
+
+  .modal p { color: var(--ink-soft); font-size: 13px; margin-bottom: 16px; }
+
+  .modal-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* SCROLLBARS */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(176, 138, 62, 0.3); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(176, 138, 62, 0.5); }
+
+  /* Minimap */
+  .minimap {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 180px;
+    height: 135px;
+    background: var(--paper);
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    border-radius: 4px;
+    box-shadow: 0 2px 12px var(--shadow);
+    overflow: hidden;
+    z-index: 5;
+  }
+
+  .minimap-canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 6px 6px;
+  }
+
+  .minimap-table {
+    position: absolute;
+    background: var(--gold);
+    border-radius: 50%;
+  }
+
+  .minimap-table.rect {
+    border-radius: 1px;
+  }
+
+  .minimap-viewport {
+    position: absolute;
+    border: 1.5px solid var(--burgundy);
+    background: rgba(107, 39, 55, 0.08);
+    pointer-events: none;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--cream);
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 13px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    border-left: 3px solid var(--gold);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* BUDGET PANEL */
+  .budget-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .budget-input-group {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .budget-input {
+    background: var(--cream);
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    width: 100%;
+    transition: all 0.15s;
+  }
+
+  .budget-input:focus {
+    outline: none;
+    border-color: var(--gold);
+    background: var(--paper);
+  }
+
+  .budget-input-suffix {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+
+  .budget-summary {
+    margin-top: 12px;
+    background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-deep) 100%);
+    color: var(--cream);
+    padding: 14px 16px;
+    border-radius: 6px;
+    border-left: 3px solid var(--gold);
+  }
+
+  .budget-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 4px 0;
+    font-size: 12px;
+    opacity: 0.9;
+  }
+
+  .budget-summary-row.total {
+    border-top: 1px solid rgba(176, 138, 62, 0.4);
+    margin-top: 8px;
+    padding-top: 10px;
+    opacity: 1;
+  }
+
+  .budget-summary-row .value {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+  }
+
+  .budget-summary-row.total .value {
+    font-size: 22px;
+    color: var(--gold);
+  }
+
+  .capacity-warning {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    display: none;
+  }
+
+  .capacity-warning.show { display: block; }
+
+  .capacity-warning.ok {
+    background: rgba(176, 138, 62, 0.12);
+    color: var(--gold-deep);
+    border-left: 2px solid var(--gold);
+  }
+
+  .capacity-warning.short {
+    background: rgba(107, 39, 55, 0.1);
+    color: var(--burgundy);
+    border-left: 2px solid var(--burgundy);
+  }
+
+  .capacity-warning.over {
+    background: rgba(107, 39, 55, 0.1);
+    color: var(--burgundy);
+    border-left: 2px solid var(--burgundy);
+  }
+
+  /* MOBILE MENU TOGGLES */
+  .mobile-toggle {
+    display: none;
+    background: transparent;
+    color: #d4a548;
+    border: 1px solid rgba(212, 165, 72, 0.4);
+    width: 38px;
+    height: 38px;
+    border-radius: 4px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-toggle:hover {
+    background: rgba(212, 165, 72, 0.15);
+  }
+
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(42, 33, 24, 0.5);
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .sidebar-backdrop.show {
+    display: block;
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .sidebar-close {
+    display: none;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--cream-2);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--ink);
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* RESPONSIVE — TABLET */
+  @media (max-width: 1024px) {
+    main {
+      grid-template-columns: 240px 1fr 260px;
+    }
+    .event-name-input { width: 180px; }
+    .header-actions .btn span,
+    .header-actions .btn { font-size: 11px; }
+  }
+
+  /* RESPONSIVE — MOBILE */
+  @media (max-width: 768px) {
+    header {
+      padding: 10px 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .brand-text h1 { font-size: 16px; }
+    .brand-text p { font-size: 9px; }
+    .brand-mark { width: 32px; height: 32px; font-size: 16px; }
+
+    .header-actions {
+      gap: 6px;
+      flex-wrap: wrap;
+      width: 100%;
+      order: 3;
+    }
+
+    .event-name-input {
+      width: 100%;
+      order: 2;
+      flex: 1 1 100%;
+    }
+
+    .header-actions .btn {
+      padding: 7px 10px;
+      font-size: 10px;
+      flex: 1;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .header-actions .btn svg {
+      width: 12px; height: 12px;
+    }
+
+    .mobile-toggle {
+      display: flex;
+    }
+
+    main {
+      grid-template-columns: 1fr;
+      position: relative;
+    }
+
+    .sidebar-left, .sidebar-right {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: 85%;
+      max-width: 320px;
+      z-index: 30;
+      box-shadow: 0 0 30px rgba(0,0,0,0.3);
+      transition: transform 0.25s ease;
+      padding-top: 50px;
+    }
+
+    .sidebar-left {
+      left: 0;
+      transform: translateX(-100%);
+    }
+
+    .sidebar-left.open { transform: translateX(0); }
+
+    .sidebar-right {
+      right: 0;
+      transform: translateX(100%);
+    }
+
+    .sidebar-right.open { transform: translateX(0); }
+
+    .sidebar-close {
+      display: flex;
+    }
+
+    .canvas-toolbar {
+      top: auto;
+      bottom: 16px;
+      transform: translateX(-50%) scale(0.9);
+    }
+
+    .minimap {
+      width: 110px;
+      height: 80px;
+      bottom: 80px;
+    }
+
+    footer {
+      padding: 6px 14px;
+      font-size: 10px;
+    }
+
+    footer .footer-tip { display: none; }
+
+    .canvas-head-marker {
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+  }
+
+  /* RESPONSIVE — SMALL MOBILE */
+  @media (max-width: 480px) {
+    .header-actions .btn {
+      padding: 6px 8px;
+    }
+    .header-actions .btn .btn-label {
+      display: none;
+    }
+    .header-actions .btn svg {
+      margin: 0;
+    }
+    .brand-text p { display: none; }
+  }
+
+  /* PRINT */
+  @media print {
+    header, footer, .sidebar-left, .sidebar-right, .canvas-toolbar, .minimap, .mobile-toggle, .sidebar-backdrop, #view-customer { display: none !important; }
+    main { grid-template-columns: 1fr !important; }
+    body { background: white; overflow: visible; height: auto; }
+    .canvas-area { background: white; }
+    #canvas { box-shadow: none; }
+  }
+
+  /* ========== VIEW SYSTEM ========== */
+  body.view-customer #view-management-content,
+  body.view-customer .mgmt-only,
+  body.view-customer footer { display: none !important; }
+
+  body.view-management #view-customer { display: none; }
+
+  body.view-customer { grid-template-rows: auto 1fr; }
+  body.view-customer main { display: none; }
+
+  .view-toggle {
+    display: flex;
+    background: rgba(212, 165, 72, 0.08);
+    border: 1px solid rgba(212, 165, 72, 0.4);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-right: 8px;
+  }
+
+  .view-toggle button {
+    background: transparent;
+    color: #d4a548;
+    border: none;
+    padding: 7px 14px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+
+  .view-toggle button.active {
+    background: #d4a548;
+    color: #1a1208;
+    font-weight: 700;
+  }
+
+  /* ========== CUSTOMER VIEW ========== */
+  #view-customer {
+    background:
+      radial-gradient(circle at 10% 0%, rgba(176, 138, 62, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 90% 100%, rgba(107, 39, 55, 0.06) 0%, transparent 50%),
+      var(--cream);
+    overflow-y: auto;
+    height: calc(100vh - 60px);
+  }
+
+  .customer-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  .customer-hero {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 24px 16px;
+  }
+
+  .customer-hero .ornament {
+    font-family: 'Playfair Display', serif;
+    color: var(--gold);
+    letter-spacing: 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-style: italic;
+  }
+
+  .customer-hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(28px, 5vw, 44px);
+    color: var(--burgundy-deep);
+    font-weight: 600;
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+
+  .customer-hero p {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 15px;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .step-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 6px;
+    border: 1px solid rgba(176, 138, 62, 0.2);
+    box-shadow: 0 2px 8px var(--shadow);
+    flex-wrap: wrap;
+  }
+
+  .step-tab {
+    flex: 1;
+    min-width: 120px;
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--ink-soft);
+    border-radius: 5px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .step-tab.active {
+    background: var(--burgundy);
+    color: var(--cream);
+  }
+
+  .step-tab:hover:not(.active) {
+    background: var(--cream-2);
+    color: var(--ink);
+  }
+
+  .step-pane { display: none; }
+  .step-pane.active { display: block; }
+
+  /* Menu cards (proposed menus) */
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+  }
+
+  .menu-card {
+    background: var(--paper);
+    border: 1px solid rgba(176, 138, 62, 0.25);
+    border-radius: 8px;
+    padding: 22px 22px 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    box-shadow: 0 2px 8px var(--shadow);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .menu-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px var(--shadow);
+    border-color: var(--gold);
+  }
+
+  .menu-card.selected {
+    border: 2px solid var(--gold);
+    background: linear-gradient(180deg, var(--paper) 0%, #fbf3df 100%);
+  }
+
+  .menu-card.selected::before {
+    content: '✓';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    background: var(--gold);
+    color: var(--paper);
+    width: 28px;
+    height: 28px;
+    border-radius: 0 8px 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .menu-card-tag {
+    font-family: 'Playfair Display', serif;
+    color: var(--gold-deep);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .menu-card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    color: var(--burgundy-deep);
+    font-weight: 600;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(176, 138, 62, 0.25);
+    padding-bottom: 10px;
+  }
+
+  .menu-card-section {
+    margin-top: 10px;
+  }
+
+  .menu-card-section-title {
+    font-size: 10px;
+    color: var(--gold-deep);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .menu-card-items {
+    list-style: none;
+    padding: 0;
+    font-size: 12px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  .menu-card-items li {
+    padding: 1px 0;
+  }
+
+  .menu-card-items li::before {
+    content: '·';
+    color: var(--gold);
+    margin-right: 6px;
+    font-weight: 700;
+  }
+
+  .menu-card-price {
+    margin-top: auto;
+    padding-top: 14px;
+    text-align: right;
+    border-top: 1px dashed rgba(176, 138, 62, 0.3);
+  }
+
+  .menu-card-price .price-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    color: var(--burgundy);
+    font-weight: 700;
+  }
+
+  .menu-card-price .price-suffix {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-left: 4px;
+  }
+
+  /* Customizer */
+  .customizer-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .customizer-layout { grid-template-columns: 1fr; }
+  }
+
+  .category-section {
+    background: var(--paper);
+    border: 1px solid rgba(176, 138, 62, 0.2);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 4px var(--shadow);
+  }
+
+  .category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(176, 138, 62, 0.2);
+  }
+
+  .category-title {
+    font-family: 'Playfair Display', serif;
+    color: var(--burgundy-deep);
+    font-size: 19px;
+    font-weight: 600;
+  }
+
+  .category-meta {
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+
+  .item-list {
+    display: grid;
+    gap: 6px;
+  }
+
+  .item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border: 1px solid transparent;
+  }
+
+  .item-row:hover {
+    background: var(--cream-2);
+  }
+
+  .item-row.selected {
+    background: rgba(176, 138, 62, 0.1);
+    border-color: var(--gold);
+  }
+
+  .item-checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1.5px solid rgba(176, 138, 62, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--paper);
+    transition: all 0.12s;
+  }
+
+  .item-row.selected .item-checkbox {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--paper);
+  }
+
+  .item-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.35;
+  }
+
+  .item-row.selected .item-name {
+    font-weight: 500;
+  }
+
+  /* Cart sticky */
+  .customer-cart {
+    background: var(--paper);
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    border-radius: 8px;
+    padding: 20px;
+    position: sticky;
+    top: 16px;
+    box-shadow: 0 4px 16px var(--shadow);
+    height: fit-content;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .cart-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    color: var(--burgundy-deep);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .cart-subtitle {
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid rgba(176, 138, 62, 0.25);
+    padding-bottom: 10px;
+  }
+
+  .cart-items {
+    margin-bottom: 14px;
+  }
+
+  .cart-section {
+    margin-bottom: 10px;
+  }
+
+  .cart-section-title {
+    font-size: 10px;
+    color: var(--gold-deep);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .cart-section-list {
+    font-size: 12px;
+    color: var(--ink);
+    padding-left: 8px;
+    line-height: 1.5;
+  }
+
+  .cart-section-list .item {
+    padding: 1px 0;
+  }
+
+  .cart-empty {
+    color: var(--ink-soft);
+    font-style: italic;
+    font-size: 12px;
+    padding: 12px;
+    text-align: center;
+    background: var(--cream);
+    border-radius: 4px;
+  }
+
+  /* Customer info form */
+  .customer-form {
+    background: var(--paper);
+    border: 1px solid rgba(176, 138, 62, 0.2);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+  }
+
+  .submit-bar {
+    margin-top: 24px;
+    padding: 18px 22px;
+    background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-deep) 100%);
+    border-radius: 8px;
+    color: var(--cream);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-left: 4px solid var(--gold);
+  }
+
+  .submit-bar-info { font-size: 13px; }
+  .submit-bar-info .big {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    color: var(--gold);
+    font-weight: 700;
+    display: block;
+    line-height: 1;
+  }
+  .submit-bar-info small {
+    opacity: 0.8;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .btn-cta {
+    background: var(--gold);
+    color: var(--burgundy-deep);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    transition: all 0.15s;
+  }
+
+  .btn-cta:hover { background: #c89a4a; transform: translateY(-1px); }
+  .btn-cta:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* ========== PROPOSALS PANEL (Management) ========== */
+  .proposals-panel {
+    background: var(--cream-2);
+    border-bottom: 1px solid rgba(176, 138, 62, 0.3);
+    padding: 12px 20px;
+    overflow-x: auto;
+    max-height: 35vh;
+    overflow-y: auto;
+  }
+
+  .proposals-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .proposals-header .panel-title { margin: 0; }
+
+  .proposals-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+  }
+
+  .proposal-card {
+    background: var(--paper);
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .proposal-card:hover {
+    border-color: var(--gold);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px var(--shadow);
+  }
+
+  .proposal-card-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    color: var(--burgundy);
+    font-weight: 600;
+  }
+
+  .proposal-card-info {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .proposal-card-meta {
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+  }
+
+  .proposal-card-price {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    color: var(--gold-deep);
+    font-size: 14px;
+  }
+
+  .proposal-card-status {
+    background: var(--gold);
+    color: var(--burgundy-deep);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .proposals-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-family: 'Playfair Display', serif;
+    background: var(--paper);
+    border-radius: 6px;
+  }
+
+  /* Discount and IVA section in left sidebar */
+  .price-adjustments {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .adj-row {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .adj-label {
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+  }
+
+  .adj-input {
+    background: var(--cream);
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    text-align: right;
+    width: 100%;
+  }
+
+  .adj-input:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  /* PIN modal */
+  .pin-input {
+    width: 100%;
+    padding: 14px;
+    text-align: center;
+    font-size: 22px;
+    letter-spacing: 8px;
+    font-family: 'Playfair Display', serif;
+    border: 1px solid rgba(176, 138, 62, 0.3);
+    border-radius: 4px;
+    background: var(--cream);
+  }
+
+  .pin-input:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  .pin-hint {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 11px;
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  .proposal-detail-section {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(176, 138, 62, 0.25);
+  }
+
+  .proposal-detail-list {
+    margin-top: 8px;
+    background: var(--cream);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .proposal-detail-cat {
+    margin-top: 6px;
+  }
+
+  .proposal-detail-cat-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gold-deep);
+    font-weight: 600;
+  }
+
+  .proposal-detail-cat-items {
+    color: var(--ink);
+    padding-left: 6px;
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--gold);
+    color: var(--burgundy-deep);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 6px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  /* Header view toggle on mobile */
+  @media (max-width: 768px) {
+    .view-toggle button {
+      padding: 6px 10px;
+      font-size: 10px;
+    }
+    .customer-container { padding: 16px 14px 60px; }
+    .menu-card { padding: 18px; }
+    .menu-card-title { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <button class="mobile-toggle" id="mobile-left-toggle" title="Mesas">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <div class="brand-mark"><em style="font-style:italic">A</em></div>
+    <div class="brand-text">
+      <h1>Mapa de Mesas</h1>
+      <div class="by-line">by Alboroto</div>
+      <p>Salón de Celebraciones</p>
+    </div>
+  </div>
+
+  <div class="header-actions">
+    <div class="view-toggle">
+      <button id="view-btn-customer" class="active">Cliente</button>
+      <button id="view-btn-management">Gerencia</button>
+    </div>
+
+    <input type="text" class="event-name-input mgmt-only" id="event-name" placeholder="Nombre del evento..." value="Boda — Sin título">
+    <button class="btn mgmt-only" id="btn-new" title="Nuevo plano">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="btn-label">Nuevo</span>
+    </button>
+    <button class="btn mgmt-only" id="btn-import-txt" title="Importar comensales desde .txt">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span class="btn-label">Comensales</span>
+    </button>
+    <button class="btn mgmt-only" id="btn-export-json">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      <span class="btn-label">Guardar</span>
+    </button>
+    <button class="btn mgmt-only" id="btn-import-json">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+      <span class="btn-label">Cargar</span>
+    </button>
+    <button class="btn mgmt-only" id="btn-export-pdf">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg>
+      <span class="btn-label">PDF</span>
+    </button>
+    <button class="btn btn-primary mgmt-only" id="btn-print">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+      <span class="btn-label">Imprimir</span>
+    </button>
+    <button class="mobile-toggle mgmt-only" id="mobile-right-toggle" title="Detalles">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+<!-- ========== CUSTOMER VIEW ========== -->
+<div id="view-customer">
+  <div class="customer-container">
+    <div class="customer-hero">
+      <div class="ornament">— Personaliza tu evento —</div>
+      <h1>Diseña el menú de tu celebración</h1>
+      <p>Elige uno de nuestros menús propuestos o componlo a tu medida.<br>Al finalizar, enviaremos la propuesta al equipo de Alboroto.</p>
+    </div>
+
+    <div class="step-tabs" id="step-tabs">
+      <button class="step-tab active" data-step="proposed">1 · Menús propuestos</button>
+      <button class="step-tab" data-step="custom">2 · Personalizar</button>
+      <button class="step-tab" data-step="info">3 · Datos del evento</button>
+    </div>
+
+    <!-- Step: Proposed Menus -->
+    <div class="step-pane active" data-step-pane="proposed">
+      <div class="menu-grid" id="proposed-menus-grid"></div>
+    </div>
+
+    <!-- Step: Custom -->
+    <div class="step-pane" data-step-pane="custom">
+      <div class="customizer-layout">
+        <div id="customizer-categories"></div>
+        <div class="customer-cart" id="customer-cart">
+          <div class="cart-title">Tu menú</div>
+          <div class="cart-subtitle">Selección actual</div>
+          <div class="cart-items" id="cart-items"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step: Customer info -->
+    <div class="step-pane" data-step-pane="info">
+      <div class="customer-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre y apellidos *</label>
+            <input class="form-input" id="cust-name" placeholder="Ana García López">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo de evento</label>
+            <select class="form-select" id="cust-event-type">
+              <option>Boda</option>
+              <option>Comunión</option>
+              <option>Bautizo</option>
+              <option>Cumpleaños</option>
+              <option>Aniversario</option>
+              <option>Empresa</option>
+              <option>Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Teléfono *</label>
+            <input class="form-input" id="cust-phone" placeholder="600 000 000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" id="cust-email" type="email" placeholder="ana@ejemplo.com">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha estimada</label>
+            <input class="form-input" id="cust-date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Comensales adultos *</label>
+            <input class="form-input" id="cust-adults" type="number" min="1" value="50">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Comensales infantiles</label>
+            <input class="form-input" id="cust-kids" type="number" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Barra libre</label>
+            <select class="form-select" id="cust-bar">
+              <option value="0">Sin barra libre</option>
+              <option value="1">1 hora · 10 €/pax</option>
+              <option value="2">2 horas · 16 €/pax</option>
+              <option value="3">3 horas · 18 €/pax</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Observaciones, alergias o peticiones especiales</label>
+          <textarea class="form-input" id="cust-notes" rows="3" style="font-family:'Inter',sans-serif;resize:vertical" placeholder="Alergias, intolerancias, complementos especiales..."></textarea>
+        </div>
+      </div>
+
+      <div class="submit-bar">
+        <div class="submit-bar-info">
+          <small>Tu solicitud está lista</small>
+          <span class="big" style="font-size:18px;color:var(--cream)" id="customer-summary-line">Pulsa <em>Enviar propuesta</em> para que el equipo de Alboroto te haga llegar un presupuesto personalizado</span>
+        </div>
+        <button class="btn-cta" id="btn-submit-proposal">
+          Enviar propuesta
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <!-- LEFT SIDEBAR: Templates + Stats -->
+  <aside class="sidebar-left" id="sidebar-left">
+    <button class="sidebar-close" id="close-left">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+
+    <div class="panel-title">Presupuesto</div>
+    <div class="panel-subtitle">Datos del evento</div>
+
+    <div class="budget-grid">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Comensales totales (adultos)</label>
+        <div class="budget-input-group">
+          <input type="number" class="budget-input" id="budget-adults" min="0" value="0" placeholder="0">
+          <span class="budget-input-suffix">pax</span>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Niños / menú infantil</label>
+        <div class="budget-input-group">
+          <input type="number" class="budget-input" id="budget-kids" min="0" value="0" placeholder="0">
+          <span class="budget-input-suffix">pax</span>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Precio menú adulto</label>
+        <div class="budget-input-group">
+          <input type="number" class="budget-input" id="budget-price-adult" min="0" step="0.5" value="0" placeholder="0">
+          <span class="budget-input-suffix">€/pax</span>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Precio menú infantil</label>
+        <div class="budget-input-group">
+          <input type="number" class="budget-input" id="budget-price-kid" min="0" step="0.5" value="0" placeholder="0">
+          <span class="budget-input-suffix">€/pax</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="capacity-warning" id="capacity-warning"></div>
+
+    <div class="section-divider">
+      <div class="panel-title">Complementos</div>
+      <div class="panel-subtitle">Mesa chuches, animadores, castillo, etc.</div>
+    </div>
+    <div id="complements-list"></div>
+    <button class="btn btn-secondary" id="btn-add-complement" style="width:100%;font-size:11px;margin-top:6px">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Añadir complemento
+    </button>
+
+    <div class="section-divider">
+      <div class="panel-title">Ajustes</div>
+      <div class="panel-subtitle">Barra, descuento, IVA</div>
+    </div>
+
+    <div class="price-adjustments">
+      <div class="adj-row">
+        <span class="adj-label">Barra libre · adulto</span>
+        <input type="number" class="adj-input" id="bar-price" min="0" step="0.5" value="0" placeholder="0">
+      </div>
+      <div class="adj-row">
+        <span class="adj-label">Descuento %</span>
+        <input type="number" class="adj-input" id="discount-pct" min="0" max="100" step="0.5" value="0" placeholder="0">
+      </div>
+      <div class="adj-row">
+        <span class="adj-label">IVA %</span>
+        <input type="number" class="adj-input" id="iva-pct" min="0" max="100" step="0.5" value="10" placeholder="10">
+      </div>
+    </div>
+
+    <div class="budget-summary" id="budget-summary">
+      <div class="budget-summary-row">
+        <span>Adultos</span>
+        <span class="value" id="sum-adults">0 × 0 €</span>
+      </div>
+      <div class="budget-summary-row">
+        <span>Infantil</span>
+        <span class="value" id="sum-kids">0 × 0 €</span>
+      </div>
+      <div class="budget-summary-row" id="row-bar" style="display:none">
+        <span>Barra libre</span>
+        <span class="value" id="sum-bar">0 €</span>
+      </div>
+      <div class="budget-summary-row" id="row-complements" style="display:none">
+        <span>Complementos</span>
+        <span class="value" id="sum-complements">0 €</span>
+      </div>
+      <div class="budget-summary-row" id="row-subtotal">
+        <span>Subtotal</span>
+        <span class="value" id="sum-subtotal">0 €</span>
+      </div>
+      <div class="budget-summary-row" id="row-discount" style="display:none">
+        <span>Descuento</span>
+        <span class="value" id="sum-discount">0 €</span>
+      </div>
+      <div class="budget-summary-row" id="row-iva">
+        <span>IVA</span>
+        <span class="value" id="sum-iva">0 €</span>
+      </div>
+      <div class="budget-summary-row total">
+        <span>Total final</span>
+        <span class="value" id="sum-total">0 €</span>
+      </div>
+      <div class="budget-summary-row" style="font-size:10px;opacity:0.7;margin-top:4px">
+        <span>Coste por comensal</span>
+        <span class="value" id="sum-per-pax">0 €</span>
+      </div>
+    </div>
+
+    <div class="section-divider">
+      <div class="panel-title">Aforo Plano</div>
+      <div class="panel-subtitle">Distribución actual</div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-tables">0</div>
+        <div class="stat-label">Mesas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-seats">0</div>
+        <div class="stat-label">Plazas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-assigned">0</div>
+        <div class="stat-label">Asignadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-free">0</div>
+        <div class="stat-label">Libres</div>
+      </div>
+    </div>
+
+    <div class="section-divider">
+      <div class="panel-title">Propuestas Recibidas <span class="badge" id="proposals-badge" style="display:none">0</span></div>
+      <div class="panel-subtitle">Solicitudes de clientes</div>
+    </div>
+    <div id="proposals-list-container">
+      <div class="proposals-empty" style="font-size:11px;padding:14px">
+        Aún no hay propuestas recibidas
+      </div>
+    </div>
+
+    <div class="section-divider">
+      <div class="panel-title">Mesas Disponibles</div>
+      <div class="panel-subtitle">Arrastra al plano</div>
+    </div>
+
+    <div class="table-templates" id="templates"></div>
+
+    <div class="section-divider">
+      <div class="panel-title">Elementos</div>
+      <div class="panel-subtitle">Estructura del salón</div>
+    </div>
+    <div class="table-templates" id="elements-templates"></div>
+  </aside>
+
+  <!-- CANVAS -->
+  <section class="canvas-area" id="canvas-area">
+    <div class="canvas-toolbar">
+      <button class="tool-btn" id="tool-pan" title="Mover plano (Espacio)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+      </button>
+      <div class="tool-divider"></div>
+      <button class="tool-btn" id="tool-zoom-out" title="Alejar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M8 11h6"/></svg>
+      </button>
+      <div class="tool-zoom-display" id="zoom-display">100%</div>
+      <button class="tool-btn" id="tool-zoom-in" title="Acercar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-zoom-fit" title="Ajustar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4"/></svg>
+      </button>
+      <div class="tool-divider"></div>
+      <button class="tool-btn" id="tool-undo" title="Deshacer (Ctrl+Z)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>
+      </button>
+      <button class="tool-btn" id="tool-redo" title="Rehacer (Ctrl+Y)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6M3 17a9 9 0 0 1 15-6.7L21 13"/></svg>
+      </button>
+    </div>
+
+    <div id="canvas-wrapper">
+      <div id="canvas">
+        <div class="canvas-head-marker">Mesa Presidencial · Entrada</div>
+      </div>
+    </div>
+
+    <div class="minimap">
+      <div class="minimap-canvas" id="minimap-canvas">
+        <div class="minimap-viewport" id="minimap-viewport"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT SIDEBAR: Properties -->
+  <aside class="sidebar-right" id="sidebar-right">
+    <button class="sidebar-close" id="close-right">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div id="properties">
+      <div class="empty-state">
+        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+        <p>Selecciona una mesa<br>para editar sus detalles<br>y comensales</p>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <div>
+    <span id="event-summary">Sin mesas en el plano</span>
+  </div>
+  <div class="footer-tip">
+    Arrastra • Doble clic para girar • Supr para eliminar • Ctrl+S para guardar
+  </div>
+</footer>
+
+<input type="file" id="file-input" accept=".json" style="display:none">
+<input type="file" id="txt-input" accept=".txt,.csv" style="display:none">
+
+<div class="modal-backdrop" id="modal-confirm">
+  <div class="modal">
+    <h2 id="modal-title">¿Confirmar?</h2>
+    <p id="modal-message"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+      <button class="btn btn-primary" id="modal-confirm-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   MAPA DE MESAS - Salón de Celebraciones
+   App offline. Persistencia en localStorage. Sin backend.
+   ============================================================ */
+
+// -------- TEMPLATE DEFINITIONS --------
+const TABLE_TEMPLATES = [
+  { id: 'r8',  shape: 'round', seats: 8,  label: 'Redonda 8',  detail: 'Ø 150 cm', diameter: 130 },
+  { id: 'r10', shape: 'round', seats: 10, label: 'Redonda 10', detail: 'Ø 165 cm', diameter: 150 },
+  { id: 'r11', shape: 'round', seats: 11, label: 'Redonda 11', detail: 'Ø 175 cm', diameter: 160 },
+  { id: 'r12', shape: 'round', seats: 12, label: 'Redonda 12', detail: 'Ø 180 cm', diameter: 170 },
+  { id: 'r13', shape: 'round', seats: 13, label: 'Redonda 13', detail: 'Ø 190 cm', diameter: 180 },
+  { id: 're8', shape: 'rect',  seats: 8,  label: 'Rectangular 8',  detail: '200 × 90 cm', width: 180, height: 80 },
+  { id: 're10',shape: 'rect',  seats: 10, label: 'Rectangular 10', detail: '240 × 90 cm', width: 220, height: 80 },
+  { id: 're12',shape: 'rect',  seats: 12, label: 'Rectangular 12', detail: '280 × 90 cm', width: 260, height: 80 },
+  { id: 'pres',shape: 'rect',  seats: 10, label: 'Presidencial',   detail: 'Mesa de honor', width: 280, height: 80, isHead: true },
+];
+
+const ELEMENTS = [
+  { id: 'dance',  type: 'dancefloor', label: 'Pista de baile',  detail: '5 × 5 m',  width: 200, height: 200 },
+  { id: 'dj',     type: 'dj',         label: 'DJ / Música',     detail: '2 × 1 m',  width: 100, height: 50 },
+  { id: 'bar',    type: 'bar',        label: 'Barra',           detail: '3 × 1 m',  width: 150, height: 50 },
+  { id: 'cake',   type: 'cake',       label: 'Mesa tarta',      detail: '1.2 × 1.2 m', width: 70, height: 70 },
+  { id: 'gift',   type: 'gift',       label: 'Mesa regalos',    detail: '1.5 × 0.8 m', width: 80, height: 50 },
+  { id: 'candy',  type: 'candy',      label: 'Mesa de chuches', detail: '2 × 1 m', width: 100, height: 50 },
+  { id: 'aux',    type: 'aux',        label: 'Mesa auxiliar',   detail: '1.5 × 0.8 m', width: 80, height: 50 },
+];
+
+// -------- STATE --------
+const state = {
+  tables: [],     // {id, x, y, rotation, shape, seats, name, diameter|width,height, isHead, guests:[]}
+  elements: [],   // furniture / static
+  zoom: 1,
+  pan: { x: 100, y: 100 },
+  selected: null, // table/element id
+  isPanning: false,
+  panMode: false,
+  draggingNew: null,
+  history: [],
+  historyIdx: -1,
+  eventName: 'Boda — Sin título',
+  budget: {
+    adults: 0,
+    kids: 0,
+    priceAdult: 0,
+    priceKid: 0,
+    barPrice: 0,
+    extras: 0,
+    discountPct: 0,
+    ivaPct: 10,
+    complements: [], // [{ id, label, price }]
+  },
+};
+
+const CANVAS_W = 2400;
+const CANVAS_H = 1800;
+const STORAGE_KEY = 'mapa-mesas-salon-v1';
+const API_BASE = '';
+let currentEventId = null;
+
+// Override save/load to use event_id
+function getStorageKey() {
+  return currentEventId ? `mapa-mesas-${currentEventId}` : STORAGE_KEY;
+}
+
+// -------- DOM --------
+const canvas = document.getElementById('canvas');
+const canvasWrapper = document.getElementById('canvas-wrapper');
+const canvasArea = document.getElementById('canvas-area');
+const propertiesEl = document.getElementById('properties');
+const templatesEl = document.getElementById('templates');
+const elementsTemplatesEl = document.getElementById('elements-templates');
+const zoomDisplay = document.getElementById('zoom-display');
+const minimapCanvas = document.getElementById('minimap-canvas');
+const minimapViewport = document.getElementById('minimap-viewport');
+const toast = document.getElementById('toast');
+
+// -------- INIT TEMPLATES UI --------
+function renderTemplates() {
+  templatesEl.innerHTML = TABLE_TEMPLATES.map(t => `
+    <div class="template-card" draggable="true" data-template="${t.id}">
+      <div class="template-preview">${tablePreviewSvg(t)}</div>
+      <div class="template-info">
+        <div class="template-name">${t.label}</div>
+        <div class="template-detail">${t.detail} · ${t.seats} pax</div>
+      </div>
+    </div>
+  `).join('');
+  templatesEl.querySelectorAll('.template-card').forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      state.draggingNew = card.dataset.template;
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', card.dataset.template);
+    });
+    bindTemplateTouch(card, () => card.dataset.template, false);
+  });
+
+  elementsTemplatesEl.innerHTML = ELEMENTS.map(e => `
+    <div class="template-card" draggable="true" data-element="${e.id}">
+      <div class="template-preview">${elementPreviewSvg(e)}</div>
+      <div class="template-info">
+        <div class="template-name">${e.label}</div>
+        <div class="template-detail">${e.detail}</div>
+      </div>
+    </div>
+  `).join('');
+  elementsTemplatesEl.querySelectorAll('.template-card').forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      state.draggingNew = 'el:' + card.dataset.element;
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', 'el:' + card.dataset.element);
+    });
+    bindTemplateTouch(card, () => 'el:' + card.dataset.element, true);
+  });
+}
+
+// Touch drag for templates: shows a ghost image following finger,
+// drops onto canvas to create. Works on phones where HTML5 dragstart doesn't fire.
+function bindTemplateTouch(card, getId, isElement) {
+  let ghost = null;
+  let startedDrag = false;
+  let startX = 0, startY = 0;
+  const THRESHOLD = 8;
+
+  card.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    startedDrag = false;
+  }, { passive: true });
+
+  card.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+
+    if (!startedDrag) {
+      if (Math.hypot(dx, dy) < THRESHOLD) return;
+      // Begin drag: create ghost and CLOSE the sidebar so user can drop on canvas
+      startedDrag = true;
+      ghost = card.cloneNode(true);
+      ghost.style.position = 'fixed';
+      ghost.style.zIndex = '9999';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.opacity = '0.85';
+      ghost.style.width = card.offsetWidth + 'px';
+      ghost.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)';
+      ghost.style.transform = 'rotate(-2deg) scale(1.02)';
+      ghost.style.transition = 'none';
+      document.body.appendChild(ghost);
+      closeMobileSidebars(); // hide drawer so canvas is reachable
+      // Highlight canvas as drop target
+      canvasArea.classList.add('dragover');
+    }
+    if (ghost) {
+      ghost.style.left = (t.clientX - 60) + 'px';
+      ghost.style.top = (t.clientY - 30) + 'px';
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  card.addEventListener('touchend', (e) => {
+    if (!startedDrag) return;
+    const t = (e.changedTouches && e.changedTouches[0]) || null;
+    if (ghost) { ghost.remove(); ghost = null; }
+    canvasArea.classList.remove('dragover');
+    if (!t) { startedDrag = false; return; }
+
+    // Check if dropped on canvas area
+    const elBelow = document.elementFromPoint(t.clientX, t.clientY);
+    if (elBelow && (elBelow.closest('#canvas-wrapper') || elBelow.closest('.canvas-area'))) {
+      const pt = screenToCanvas(t.clientX, t.clientY);
+      const id = getId();
+      if (isElement || id.startsWith('el:')) {
+        addElementFromTemplate(id.replace(/^el:/, ''), pt.x, pt.y);
+      } else {
+        addTableFromTemplate(id, pt.x, pt.y);
+      }
+    } else {
+      // Dropped outside: add at visible center as fallback
+      const center = visibleCanvasCenter();
+      const id = getId();
+      if (isElement || id.startsWith('el:')) {
+        addElementFromTemplate(id.replace(/^el:/, ''), center.x, center.y);
+      } else {
+        addTableFromTemplate(id, center.x, center.y);
+      }
+    }
+    startedDrag = false;
+  });
+
+  card.addEventListener('touchcancel', () => {
+    if (ghost) { ghost.remove(); ghost = null; }
+    canvasArea.classList.remove('dragover');
+    startedDrag = false;
+  });
+}
+
+function visibleCanvasCenter() {
+  const cx = (canvasWrapper.clientWidth / 2 - state.pan.x) / state.zoom;
+  const cy = (canvasWrapper.clientHeight / 2 - state.pan.y) / state.zoom;
+  return { x: Math.max(100, Math.min(CANVAS_W - 100, cx)), y: Math.max(100, Math.min(CANVAS_H - 100, cy)) };
+}
+
+function closeMobileSidebars() {
+  document.getElementById('sidebar-left').classList.remove('open');
+  document.getElementById('sidebar-right').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('show');
+}
+
+function tablePreviewSvg(t) {
+  if (t.shape === 'round') {
+    return `<svg width="44" height="44" viewBox="0 0 44 44">
+      <circle cx="22" cy="22" r="13" fill="#fffdf8" stroke="#b08a3e" stroke-width="1.5"/>
+      ${seatsCircleSvg(t.seats, 22, 22, 13, 3)}
+    </svg>`;
+  } else {
+    const isLong = t.width > t.height;
+    return `<svg width="44" height="44" viewBox="0 0 44 44">
+      <rect x="6" y="16" width="32" height="12" rx="2" fill="${t.isHead ? '#f5e8d0' : '#fffdf8'}" stroke="#b08a3e" stroke-width="1.5"/>
+      ${seatsRectSvg(t.seats, 6, 16, 32, 12, 2.5)}
+    </svg>`;
+  }
+}
+
+function seatsCircleSvg(n, cx, cy, r, sr) {
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 - Math.PI/2;
+    const x = cx + Math.cos(a) * (r + sr + 1);
+    const y = cy + Math.sin(a) * (r + sr + 1);
+    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${sr}" fill="#efe7d6" stroke="#8a6a28" stroke-width="0.7"/>`;
+  }
+  return s;
+}
+
+function seatsRectSvg(n, x, y, w, h, sr) {
+  // distribute seats: divide between long sides equally, plus heads
+  const long = Math.max(w, h) >= Math.min(w, h);
+  const heads = n >= 8 ? 2 : 0;
+  const sides = n - heads;
+  const perSide = Math.floor(sides / 2);
+  const extra = sides % 2;
+  let s = '';
+  // top
+  for (let i = 0; i < perSide; i++) {
+    const px = x + (w * (i + 1)) / (perSide + 1);
+    s += `<circle cx="${px.toFixed(1)}" cy="${(y - sr - 0.5).toFixed(1)}" r="${sr}" fill="#efe7d6" stroke="#8a6a28" stroke-width="0.7"/>`;
+  }
+  // bottom
+  for (let i = 0; i < perSide + extra; i++) {
+    const px = x + (w * (i + 1)) / (perSide + extra + 1);
+    s += `<circle cx="${px.toFixed(1)}" cy="${(y + h + sr + 0.5).toFixed(1)}" r="${sr}" fill="#efe7d6" stroke="#8a6a28" stroke-width="0.7"/>`;
+  }
+  // heads
+  if (heads >= 1) s += `<circle cx="${(x - sr - 0.5).toFixed(1)}" cy="${(y + h/2).toFixed(1)}" r="${sr}" fill="#efe7d6" stroke="#8a6a28" stroke-width="0.7"/>`;
+  if (heads >= 2) s += `<circle cx="${(x + w + sr + 0.5).toFixed(1)}" cy="${(y + h/2).toFixed(1)}" r="${sr}" fill="#efe7d6" stroke="#8a6a28" stroke-width="0.7"/>`;
+  return s;
+}
+
+function elementPreviewSvg(e) {
+  const colors = {
+    dancefloor: { fill: '#f5e8d0', stroke: '#b08a3e' },
+    dj:         { fill: '#efe0e3', stroke: '#6b2737' },
+    bar:        { fill: '#efe0e3', stroke: '#6b2737' },
+    cake:       { fill: '#fff5e6', stroke: '#b08a3e' },
+    gift:       { fill: '#fff5e6', stroke: '#b08a3e' },
+    candy:      { fill: '#ffe5f1', stroke: '#c34a78' },
+    aux:        { fill: '#f0e8d8', stroke: '#8a6a28' },
+  };
+  const c = colors[e.type] || colors.bar;
+  return `<svg width="44" height="44" viewBox="0 0 44 44">
+    <rect x="8" y="14" width="28" height="16" rx="2" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5" stroke-dasharray="${e.type === 'dancefloor' ? '3,2' : '0'}"/>
+  </svg>`;
+}
+
+// -------- ID GEN --------
+function uid() {
+  return 'id_' + Math.random().toString(36).slice(2, 9);
+}
+
+// -------- TABLE NUMBERING --------
+function nextTableNumber() {
+  const used = new Set(state.tables.filter(t => !t.isHead).map(t => parseInt(t.name)).filter(n => !isNaN(n)));
+  let n = 1;
+  while (used.has(n)) n++;
+  return n;
+}
+
+// -------- ADD TABLE FROM TEMPLATE --------
+function addTableFromTemplate(templateId, x, y) {
+  const tpl = TABLE_TEMPLATES.find(t => t.id === templateId);
+  if (!tpl) return;
+  const table = {
+    id: uid(),
+    kind: 'table',
+    shape: tpl.shape,
+    seats: tpl.seats,
+    rotation: 0,
+    isHead: !!tpl.isHead,
+    name: tpl.isHead ? 'Presidencial' : String(nextTableNumber()),
+    guests: Array(tpl.seats).fill(''),
+    x, y,
+  };
+  if (tpl.shape === 'round') {
+    table.diameter = tpl.diameter;
+  } else {
+    table.width = tpl.width;
+    table.height = tpl.height;
+  }
+  state.tables.push(table);
+  // Add the new table's seats to budget adults (so the headcount grows automatically)
+  adjustBudgetAdults(tpl.seats);
+  pushHistory();
+  renderAll();
+  selectItem(table.id);
+}
+
+function addElementFromTemplate(elId, x, y) {
+  const tpl = ELEMENTS.find(e => e.id === elId);
+  if (!tpl) return;
+  const el = {
+    id: uid(),
+    kind: 'element',
+    type: tpl.type,
+    label: tpl.label,
+    rotation: 0,
+    width: tpl.width,
+    height: tpl.height,
+    x, y,
+  };
+  state.elements.push(el);
+  pushHistory();
+  renderAll();
+  selectItem(el.id);
+}
+
+// -------- CANVAS DROP --------
+canvasArea.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  canvasArea.classList.add('dragover');
+});
+canvasArea.addEventListener('dragleave', (e) => {
+  if (e.target === canvasArea) canvasArea.classList.remove('dragover');
+});
+canvasArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  canvasArea.classList.remove('dragover');
+  const id = state.draggingNew || e.dataTransfer.getData('text/plain');
+  if (!id) return;
+  const pt = screenToCanvas(e.clientX, e.clientY);
+  if (id.startsWith('el:')) {
+    addElementFromTemplate(id.slice(3), pt.x, pt.y);
+  } else {
+    addTableFromTemplate(id, pt.x, pt.y);
+  }
+  state.draggingNew = null;
+});
+
+// Convert screen coords (mouse event) to canvas coords (after transform)
+function screenToCanvas(sx, sy) {
+  const rect = canvasWrapper.getBoundingClientRect();
+  return {
+    x: (sx - rect.left - state.pan.x) / state.zoom,
+    y: (sy - rect.top - state.pan.y) / state.zoom,
+  };
+}
+
+// -------- ZOOM / PAN --------
+function applyTransform() {
+  canvas.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
+  zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
+  updateMinimap();
+}
+
+function setZoom(z, cx, cy) {
+  z = Math.max(0.2, Math.min(3, z));
+  if (cx !== undefined) {
+    const rect = canvasWrapper.getBoundingClientRect();
+    const px = cx - rect.left;
+    const py = cy - rect.top;
+    const wx = (px - state.pan.x) / state.zoom;
+    const wy = (py - state.pan.y) / state.zoom;
+    state.zoom = z;
+    state.pan.x = px - wx * z;
+    state.pan.y = py - wy * z;
+  } else {
+    state.zoom = z;
+  }
+  applyTransform();
+}
+
+canvasWrapper.addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    setZoom(state.zoom * factor, e.clientX, e.clientY);
+  } else {
+    e.preventDefault();
+    state.pan.x -= e.deltaX;
+    state.pan.y -= e.deltaY;
+    applyTransform();
+  }
+}, { passive: false });
+
+document.getElementById('tool-zoom-in').onclick = () => setZoom(state.zoom * 1.2, canvasWrapper.clientWidth/2 + canvasWrapper.getBoundingClientRect().left, canvasWrapper.clientHeight/2 + canvasWrapper.getBoundingClientRect().top);
+document.getElementById('tool-zoom-out').onclick = () => setZoom(state.zoom / 1.2, canvasWrapper.clientWidth/2 + canvasWrapper.getBoundingClientRect().left, canvasWrapper.clientHeight/2 + canvasWrapper.getBoundingClientRect().top);
+document.getElementById('tool-zoom-fit').onclick = () => fitToView();
+
+function fitToView() {
+  const items = [...state.tables, ...state.elements];
+  if (items.length === 0) {
+    state.zoom = 1;
+    state.pan.x = 100;
+    state.pan.y = 100;
+    applyTransform();
+    return;
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  items.forEach(t => {
+    const b = getBounds(t);
+    minX = Math.min(minX, b.x);
+    minY = Math.min(minY, b.y);
+    maxX = Math.max(maxX, b.x + b.w);
+    maxY = Math.max(maxY, b.y + b.h);
+  });
+  const pad = 80;
+  const w = maxX - minX + pad * 2;
+  const h = maxY - minY + pad * 2;
+  const z = Math.min(canvasWrapper.clientWidth / w, canvasWrapper.clientHeight / h, 1.5);
+  state.zoom = z;
+  state.pan.x = -(minX - pad) * z + (canvasWrapper.clientWidth - w * z)/2;
+  state.pan.y = -(minY - pad) * z + (canvasWrapper.clientHeight - h * z)/2;
+  applyTransform();
+}
+
+function getBounds(t) {
+  if (t.kind === 'table' && t.shape === 'round') {
+    return { x: t.x - t.diameter/2, y: t.y - t.diameter/2, w: t.diameter, h: t.diameter };
+  }
+  return { x: t.x - t.width/2, y: t.y - t.height/2, w: t.width, h: t.height };
+}
+
+// PAN tool
+const toolPanBtn = document.getElementById('tool-pan');
+toolPanBtn.onclick = () => {
+  state.panMode = !state.panMode;
+  toolPanBtn.classList.toggle('active', state.panMode);
+  canvasWrapper.classList.toggle('pan-mode', state.panMode);
+};
+
+// SPACE to pan
+let spaceDown = false;
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+    spaceDown = true;
+    canvasWrapper.classList.add('pan-mode');
+    e.preventDefault();
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') {
+    spaceDown = false;
+    if (!state.panMode) canvasWrapper.classList.remove('pan-mode');
+  }
+});
+
+canvasWrapper.addEventListener('mousedown', (e) => {
+  // pan if space, middle-click, or pan-mode active and clicked outside any item
+  const onTable = e.target.closest('.table') || e.target.closest('.element-item');
+  if (e.button === 1 || ((spaceDown || state.panMode) && !onTable) || (!onTable && e.button === 0 && e.target === canvasWrapper) || (!onTable && e.button === 0 && e.target === canvas)) {
+    if (!onTable && (spaceDown || state.panMode || e.button === 1)) {
+      startPan(e);
+    } else if (!onTable) {
+      // click on empty canvas: deselect
+      selectItem(null);
+    }
+  }
+});
+
+function startPan(e) {
+  state.isPanning = true;
+  canvasWrapper.classList.add('panning');
+  const startX = e.clientX, startY = e.clientY;
+  const startPan = { ...state.pan };
+  const move = (ev) => {
+    state.pan.x = startPan.x + (ev.clientX - startX);
+    state.pan.y = startPan.y + (ev.clientY - startY);
+    applyTransform();
+  };
+  const up = () => {
+    state.isPanning = false;
+    canvasWrapper.classList.remove('panning');
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+}
+
+// -------- RENDER ALL --------
+function renderAll() {
+  // Remove existing tables/elements but keep head marker
+  canvas.querySelectorAll('.table, .element-item').forEach(n => n.remove());
+  state.elements.forEach(renderElement);
+  state.tables.forEach(renderTable);
+  updateStats();
+  updateProperties();
+  updateMinimap();
+  saveAuto();
+}
+
+function renderTable(t) {
+  const el = document.createElement('div');
+  el.className = 'table' + (state.selected === t.id ? ' selected' : '');
+  if (t.isHead) el.classList.add('is-head');
+  el.dataset.id = t.id;
+  let size, svg, seatPositions;
+  if (t.shape === 'round') {
+    size = t.diameter;
+    seatPositions = roundSeatPositions(t.seats, size/2);
+    const fill = t.isHead ? '#f5e8d0' : '#fffdf8';
+    svg = `<svg class="table-shape-svg" width="${size + 30}" height="${size + 30}" viewBox="${-15} ${-15} ${size+30} ${size+30}" style="position:absolute; top:-15px; left:-15px; pointer-events:none;">
+      <circle class="table-shape" cx="${size/2}" cy="${size/2}" r="${size/2}" fill="${fill}" stroke="#b08a3e" stroke-width="2" style="pointer-events:auto"/>
+    </svg>`;
+  } else {
+    size = { w: t.width, h: t.height };
+    seatPositions = rectSeatPositions(t.seats, t.width, t.height);
+    const fill = t.isHead ? '#f5e8d0' : '#fffdf8';
+    svg = `<svg class="table-shape-svg" width="${t.width + 40}" height="${t.height + 40}" viewBox="${-20} ${-20} ${t.width+40} ${t.height+40}" style="position:absolute; top:-20px; left:-20px; pointer-events:none;">
+      <rect class="table-shape" x="0" y="0" width="${t.width}" height="${t.height}" rx="6" fill="${fill}" stroke="#b08a3e" stroke-width="2" style="pointer-events:auto"/>
+    </svg>`;
+  }
+
+  const w = t.shape === 'round' ? t.diameter : t.width;
+  const h = t.shape === 'round' ? t.diameter : t.height;
+
+  el.style.left = (t.x - w/2) + 'px';
+  el.style.top = (t.y - h/2) + 'px';
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  el.style.transform = `rotate(${t.rotation}deg)`;
+  el.style.transformOrigin = 'center';
+
+  const assignedCount = t.guests.filter(g => g && g.trim()).length;
+  const allergiesCount = (t.allergies || []).filter(a => a && a.trim()).length;
+
+  el.innerHTML = svg + `
+    <div class="table-label">
+      <div class="table-name">${t.isHead ? 'Presidencial' : 'Mesa ' + t.name}</div>
+      <div class="table-seats-count">${assignedCount}/${t.seats}${allergiesCount ? ` <span style="color:var(--burgundy);font-weight:700" title="${allergiesCount} comensales con alergias">⚠${allergiesCount}</span>` : ''}</div>
+    </div>
+  `;
+
+  // seats
+  seatPositions.forEach((sp, i) => {
+    const seat = document.createElement('div');
+    seat.className = 'seat';
+    const guestName = t.guests[i] || '';
+    const allergy = (t.allergies && t.allergies[i]) || '';
+    if (guestName) seat.style.background = '#b08a3e';
+    if (allergy) {
+      // Mark allergy seats with a red border
+      seat.style.borderColor = '#6b2737';
+      seat.style.borderWidth = '2px';
+    }
+    seat.style.left = (sp.x - 7) + 'px';
+    seat.style.top = (sp.y - 7) + 'px';
+    seat.style.transform = `rotate(${sp.angle || 0}deg)`;
+    const tip = guestName ? `${i+1}: ${guestName}` : `Asiento ${i+1}`;
+    seat.title = allergy ? `${tip} ⚠ ${allergy}` : tip;
+    el.appendChild(seat);
+  });
+
+  // selected handles
+  if (state.selected === t.id) {
+    const rotateHandle = document.createElement('div');
+    rotateHandle.className = 'handle rotate-handle';
+    rotateHandle.style.left = (w/2 - 6) + 'px';
+    rotateHandle.style.top = '-30px';
+    rotateHandle.title = 'Girar';
+    rotateHandle.addEventListener('mousedown', (e) => startRotate(e, t));
+    el.appendChild(rotateHandle);
+  }
+
+  canvas.appendChild(el);
+  attachItemEvents(el, t);
+}
+
+function renderElement(elData) {
+  const el = document.createElement('div');
+  el.className = 'element-item' + (state.selected === elData.id ? ' selected' : '');
+  el.dataset.id = elData.id;
+  const colors = {
+    dancefloor: { fill: '#f5e8d0', stroke: '#b08a3e', dashed: true,  icon: '♪', label: 'Pista de baile' },
+    dj:         { fill: '#efe0e3', stroke: '#6b2737', dashed: false, icon: '♫', label: 'DJ' },
+    bar:        { fill: '#efe0e3', stroke: '#6b2737', dashed: false, icon: '🍷', label: 'Barra' },
+    cake:       { fill: '#fff5e6', stroke: '#b08a3e', dashed: false, icon: '🎂', label: 'Tarta' },
+    gift:       { fill: '#fff5e6', stroke: '#b08a3e', dashed: false, icon: '🎁', label: 'Regalos' },
+    candy:      { fill: '#ffe5f1', stroke: '#c34a78', dashed: false, icon: '🍬', label: 'Chuches' },
+    aux:        { fill: '#f0e8d8', stroke: '#8a6a28', dashed: false, icon: '·',  label: 'Auxiliar' },
+  };
+  const c = colors[elData.type] || colors.bar;
+
+  el.style.position = 'absolute';
+  el.style.left = (elData.x - elData.width/2) + 'px';
+  el.style.top = (elData.y - elData.height/2) + 'px';
+  el.style.width = elData.width + 'px';
+  el.style.height = elData.height + 'px';
+  el.style.transform = `rotate(${elData.rotation}deg)`;
+  el.style.cursor = 'grab';
+  el.style.userSelect = 'none';
+
+  const dash = c.dashed ? 'stroke-dasharray="8,5"' : '';
+  el.innerHTML = `
+    <svg width="100%" height="100%" viewBox="0 0 ${elData.width} ${elData.height}" style="position:absolute;inset:0;pointer-events:none">
+      <rect x="2" y="2" width="${elData.width-4}" height="${elData.height-4}" rx="6" fill="${c.fill}" stroke="${c.stroke}" stroke-width="${state.selected === elData.id ? 3 : 2}" ${dash}/>
+    </svg>
+    <div class="table-label">
+      <div class="table-name" style="font-size:11px; color:${c.stroke}">${elData.label}</div>
+    </div>
+  `;
+
+  if (state.selected === elData.id) {
+    const rotateHandle = document.createElement('div');
+    rotateHandle.className = 'handle rotate-handle';
+    rotateHandle.style.left = (elData.width/2 - 6) + 'px';
+    rotateHandle.style.top = '-30px';
+    rotateHandle.addEventListener('mousedown', (e) => startRotate(e, elData));
+    el.appendChild(rotateHandle);
+  }
+
+  canvas.appendChild(el);
+  attachItemEvents(el, elData);
+}
+
+// Compute round seat positions (relative to top-left of table box)
+function roundSeatPositions(n, r) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 - Math.PI/2;
+    out.push({
+      x: r + Math.cos(a) * (r + 10),
+      y: r + Math.sin(a) * (r + 10),
+    });
+  }
+  return out;
+}
+
+// Rectangular seat positions
+function rectSeatPositions(n, w, h) {
+  const out = [];
+  const heads = n >= 8 ? 2 : 0;
+  const sides = n - heads;
+  const top = Math.floor(sides / 2);
+  const bottom = sides - top;
+  for (let i = 0; i < top; i++) {
+    out.push({ x: (w * (i + 1)) / (top + 1), y: -10 });
+  }
+  for (let i = 0; i < bottom; i++) {
+    out.push({ x: (w * (i + 1)) / (bottom + 1), y: h + 10 });
+  }
+  if (heads >= 1) out.push({ x: -10, y: h/2 });
+  if (heads >= 2) out.push({ x: w + 10, y: h/2 });
+  return out;
+}
+
+// -------- DRAG ITEM --------
+function attachItemEvents(el, t) {
+  el.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (spaceDown || state.panMode) return;
+    if (e.target.classList.contains('handle')) return;
+    e.stopPropagation();
+    selectItem(t.id);
+    startDragItem(e, t);
+  });
+
+  el.addEventListener('touchstart', (e) => {
+    if (e.target.classList.contains('handle')) return;
+    if (e.touches.length !== 1) return;
+    e.stopPropagation();
+    const touch = e.touches[0];
+    // Select WITHOUT auto-opening the right drawer (would block drag).
+    // We'll open it on touchend only if the touch was a tap (no real drag).
+    selectItemNoMobileOpen(t.id);
+    startDragItem({ clientX: touch.clientX, clientY: touch.clientY }, t, true);
+  }, { passive: true });
+
+  el.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    t.rotation = (t.rotation + 15) % 360;
+    pushHistory();
+    renderAll();
+  });
+}
+
+// Variant of selectItem that does NOT auto-open the mobile drawer.
+function selectItemNoMobileOpen(id) {
+  const wasOpen = window.__autoOpenRightOnMobile;
+  window.__autoOpenRightOnMobile = null;
+  selectItem(id);
+  window.__autoOpenRightOnMobile = wasOpen;
+}
+
+function startDragItem(e, t, isTouch) {
+  const startX = e.clientX, startY = e.clientY;
+  const startTX = t.x, startTY = t.y;
+  let moved = false;
+  const move = (ev) => {
+    const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    const dx = (cx - startX) / state.zoom;
+    const dy = (cy - startY) / state.zoom;
+    if (!moved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) moved = true;
+    let nx = startTX + dx;
+    let ny = startTY + dy;
+    if (ev.shiftKey) {
+      nx = Math.round(nx / 20) * 20;
+      ny = Math.round(ny / 20) * 20;
+    }
+    nx = Math.max(0, Math.min(CANVAS_W, nx));
+    ny = Math.max(0, Math.min(CANVAS_H, ny));
+    t.x = nx; t.y = ny;
+    // update only this element
+    const elNode = canvas.querySelector(`[data-id="${t.id}"]`);
+    if (elNode) {
+      const w = t.kind === 'table' && t.shape === 'round' ? t.diameter : t.width;
+      const h = t.kind === 'table' && t.shape === 'round' ? t.diameter : t.height;
+      elNode.style.left = (t.x - w/2) + 'px';
+      elNode.style.top = (t.y - h/2) + 'px';
+    }
+    updateMinimap();
+    if (ev.touches) ev.preventDefault();
+  };
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    document.removeEventListener('touchmove', move);
+    document.removeEventListener('touchend', up);
+    if (moved) {
+      pushHistory();
+      saveAuto();
+    } else if (isTouch) {
+      // Tap (no real drag) on mobile → open the right drawer with details
+      if (typeof window.__autoOpenRightOnMobile === 'function') {
+        window.__autoOpenRightOnMobile();
+      }
+    }
+  };
+  if (isTouch) {
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('touchend', up);
+  } else {
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }
+}
+
+function startRotate(e, t) {
+  e.stopPropagation();
+  e.preventDefault();
+  const elNode = canvas.querySelector(`[data-id="${t.id}"]`);
+  const rect = elNode.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
+  const startRotation = t.rotation;
+  const move = (ev) => {
+    const a = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI + 90;
+    let r = startRotation + (a - startAngle);
+    if (ev.shiftKey) r = Math.round(r / 15) * 15;
+    t.rotation = ((r % 360) + 360) % 360;
+    elNode.style.transform = `rotate(${t.rotation}deg)`;
+  };
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    pushHistory();
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+}
+
+// -------- SELECTION & PROPERTIES --------
+function selectItem(id) {
+  const prevId = state.selected;
+  state.selected = id;
+  // Update only CSS classes — do NOT re-render the canvas (it would break drag)
+  canvas.querySelectorAll('.table.selected, .element-item.selected').forEach(n => n.classList.remove('selected'));
+  // Remove existing rotate handles
+  canvas.querySelectorAll('.handle.rotate-handle').forEach(h => h.remove());
+
+  if (id) {
+    const node = canvas.querySelector(`[data-id="${id}"]`);
+    if (node) {
+      node.classList.add('selected');
+      // Add rotate handle
+      const item = findItem(id);
+      if (item) {
+        const w = (item.kind === 'table' && item.shape === 'round') ? item.diameter : item.width;
+        const rotateHandle = document.createElement('div');
+        rotateHandle.className = 'handle rotate-handle';
+        rotateHandle.style.left = (w/2 - 6) + 'px';
+        rotateHandle.style.top = '-30px';
+        rotateHandle.title = 'Girar';
+        rotateHandle.addEventListener('mousedown', (e) => startRotate(e, item));
+        rotateHandle.addEventListener('touchstart', (e) => {
+          e.stopPropagation();
+          if (e.touches.length !== 1) return;
+          const touch = e.touches[0];
+          startRotate({ clientX: touch.clientX, clientY: touch.clientY, stopPropagation: () => {}, preventDefault: () => {} }, item, true);
+        }, { passive: true });
+        node.appendChild(rotateHandle);
+      }
+    }
+  }
+  updateProperties();
+  updateMinimap();
+  saveAuto();
+  if (id && typeof window.__autoOpenRightOnMobile === 'function') {
+    window.__autoOpenRightOnMobile();
+  }
+}
+
+function findItem(id) {
+  return state.tables.find(t => t.id === id) || state.elements.find(e => e.id === id);
+}
+
+function updateProperties() {
+  const item = state.selected ? findItem(state.selected) : null;
+  if (!item) {
+    propertiesEl.innerHTML = `
+      <div class="empty-state">
+        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
+        </svg>
+        <p>Selecciona una mesa<br>para editar sus detalles<br>y comensales</p>
+      </div>`;
+    return;
+  }
+
+  if (item.kind === 'element') {
+    propertiesEl.innerHTML = `
+      <div class="panel-title">${item.label}</div>
+      <div class="panel-subtitle">Elemento del salón</div>
+      <div class="form-group">
+        <label class="form-label">Etiqueta</label>
+        <input class="form-input" id="prop-label" value="${escapeHtml(item.label)}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ancho (cm aprox.)</label>
+        <input type="number" class="form-input" id="prop-w" value="${Math.round(item.width)}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alto (cm aprox.)</label>
+        <input type="number" class="form-input" id="prop-h" value="${Math.round(item.height)}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rotación (°)</label>
+        <input type="number" class="form-input" id="prop-rot" value="${Math.round(item.rotation)}">
+      </div>
+      <div class="property-actions">
+        <button class="btn btn-secondary" id="btn-duplicate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Duplicar</button>
+        <button class="btn btn-danger" id="btn-delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Eliminar</button>
+      </div>
+    `;
+    document.getElementById('prop-label').addEventListener('input', e => { item.label = e.target.value; renderAll(); });
+    document.getElementById('prop-w').addEventListener('change', e => { item.width = parseInt(e.target.value)||100; renderAll(); });
+    document.getElementById('prop-h').addEventListener('change', e => { item.height = parseInt(e.target.value)||100; renderAll(); });
+    document.getElementById('prop-rot').addEventListener('change', e => { item.rotation = parseInt(e.target.value)||0; renderAll(); });
+    document.getElementById('btn-delete').onclick = () => deleteSelected();
+    document.getElementById('btn-duplicate').onclick = () => duplicateSelected();
+    return;
+  }
+
+  // table
+  const t = item;
+  propertiesEl.innerHTML = `
+    <div class="panel-title">${t.isHead ? 'Mesa Presidencial' : 'Mesa ' + t.name}</div>
+    <div class="panel-subtitle">${t.shape === 'round' ? 'Redonda' : 'Rectangular'} · ${t.seats} comensales</div>
+
+    <div class="form-group">
+      <label class="form-label">${t.isHead ? 'Etiqueta' : 'Número / Nombre'}</label>
+      <input class="form-input" id="prop-name" value="${escapeHtml(t.name)}">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Capacidad</label>
+      <select class="form-select" id="prop-seats">
+        ${[8,10,11,12,13].map(n => `<option value="${n}" ${t.seats===n?'selected':''}>${n} comensales</option>`).join('')}
+      </select>
+    </div>
+
+    ${t.shape === 'round' ? `
+      <div class="form-group">
+        <label class="form-label">Diámetro (px)</label>
+        <input type="number" class="form-input" id="prop-d" value="${Math.round(t.diameter)}" min="80" max="300">
+      </div>
+    ` : `
+      <div class="form-group">
+        <label class="form-label">Ancho (px)</label>
+        <input type="number" class="form-input" id="prop-w" value="${Math.round(t.width)}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alto (px)</label>
+        <input type="number" class="form-input" id="prop-h" value="${Math.round(t.height)}">
+      </div>
+    `}
+
+    <div class="form-group">
+      <label class="form-label">Rotación (°)</label>
+      <input type="number" class="form-input" id="prop-rot" value="${Math.round(t.rotation)}">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Comensales (${t.guests.filter(g => g && g.trim()).length}/${t.seats})</label>
+      <div class="seat-list" id="seat-list">
+        ${t.guests.map((g, i) => {
+          const allergy = (t.allergies && t.allergies[i]) || '';
+          return `
+          <div class="seat-item">
+            <span class="seat-num">${i+1}</span>
+            <div style="flex:1;display:grid;gap:3px">
+              <input class="seat-name-input" data-i="${i}" value="${escapeHtml(g)}" placeholder="Nombre del comensal">
+              <input class="seat-allergy-input" data-i="${i}" value="${escapeHtml(allergy)}" placeholder="Alergias / intolerancias" style="font-size:11px;color:var(--burgundy);font-style:italic;background:transparent;border:none;border-bottom:1px dotted rgba(107,39,55,0.3);padding:2px;font-family:'Inter',sans-serif">
+            </div>
+            ${allergy ? '<span title="Alergia" style="color:var(--burgundy);font-size:14px;flex-shrink:0">⚠</span>' : ''}
+          </div>
+        `;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="property-actions">
+      <button class="btn btn-secondary" id="btn-duplicate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Duplicar</button>
+      <button class="btn btn-danger" id="btn-delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Eliminar</button>
+    </div>
+  `;
+
+  document.getElementById('prop-name').addEventListener('input', e => { t.name = e.target.value; renderAll(); });
+  document.getElementById('prop-seats').addEventListener('change', e => {
+    const newN = parseInt(e.target.value);
+    const delta = newN - t.seats; // can be positive or negative
+    if (delta > 0) {
+      t.guests = [...t.guests, ...Array(delta).fill('')];
+    } else if (delta < 0) {
+      // shrinking: keep filled seats first, then trim empties
+      const filled = t.guests.filter(g => g && g.trim());
+      const empties = t.guests.filter(g => !(g && g.trim()));
+      t.guests = filled.concat(empties).slice(0, newN);
+    }
+    t.seats = newN;
+    // Adjust adults in budget by the same delta (positive: more plazas, more adultos)
+    adjustBudgetAdults(delta);
+    pushHistory();
+    renderAll();
+  });
+  document.getElementById('prop-rot').addEventListener('change', e => { t.rotation = parseInt(e.target.value)||0; renderAll(); });
+  if (t.shape === 'round') {
+    document.getElementById('prop-d').addEventListener('change', e => { t.diameter = parseInt(e.target.value)||130; renderAll(); });
+  } else {
+    document.getElementById('prop-w').addEventListener('change', e => { t.width = parseInt(e.target.value)||180; renderAll(); });
+    document.getElementById('prop-h').addEventListener('change', e => { t.height = parseInt(e.target.value)||80; renderAll(); });
+  }
+  document.querySelectorAll('.seat-name-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = parseInt(e.target.dataset.i);
+      t.guests[i] = e.target.value;
+      // update only label & stats without full re-render
+      const tNode = canvas.querySelector(`[data-id="${t.id}"] .table-seats-count`);
+      if (tNode) tNode.textContent = `${t.guests.filter(g=>g&&g.trim()).length}/${t.seats}`;
+      // update seat color
+      const seatNodes = canvas.querySelectorAll(`[data-id="${t.id}"] .seat`);
+      if (seatNodes[i]) seatNodes[i].style.background = t.guests[i] ? '#b08a3e' : '';
+      updateStats();
+      saveAuto();
+    });
+    inp.addEventListener('blur', pushHistory);
+  });
+
+  // Allergy inputs
+  document.querySelectorAll('.seat-allergy-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = parseInt(e.target.dataset.i);
+      if (!t.allergies) t.allergies = [];
+      t.allergies[i] = e.target.value;
+      // Update seat tooltip
+      const seatNodes = canvas.querySelectorAll(`[data-id="${t.id}"] .seat`);
+      if (seatNodes[i]) {
+        const name = t.guests[i] || '';
+        const tip = name ? `${i+1}: ${name}` : `Asiento ${i+1}`;
+        seatNodes[i].title = e.target.value ? `${tip} ⚠ ${e.target.value}` : tip;
+      }
+      saveAuto();
+    });
+    inp.addEventListener('blur', pushHistory);
+  });
+
+  document.getElementById('btn-delete').onclick = () => deleteSelected();
+  document.getElementById('btn-duplicate').onclick = () => duplicateSelected();
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function deleteSelected() {
+  if (!state.selected) return;
+  // If deleting a table, subtract its seats from budget adults
+  const tableBeingRemoved = state.tables.find(t => t.id === state.selected);
+  if (tableBeingRemoved) {
+    adjustBudgetAdults(-tableBeingRemoved.seats);
+  }
+  state.tables = state.tables.filter(t => t.id !== state.selected);
+  state.elements = state.elements.filter(e => e.id !== state.selected);
+  state.selected = null;
+  pushHistory();
+  renderAll();
+  showToast('Elemento eliminado');
+}
+
+function duplicateSelected() {
+  if (!state.selected) return;
+  const item = findItem(state.selected);
+  if (!item) return;
+  const copy = JSON.parse(JSON.stringify(item));
+  copy.id = uid();
+  copy.x += 60;
+  copy.y += 60;
+  if (item.kind === 'table' && !item.isHead) {
+    copy.name = String(nextTableNumber());
+  }
+  if (item.kind === 'table') {
+    state.tables.push(copy);
+    // Duplicating a table also adds its seats to budget adults
+    // But we copy guests too; only count empties as new plazas (filled ones are duplicated names — that's odd, but consistent).
+    adjustBudgetAdults(copy.seats);
+  } else {
+    state.elements.push(copy);
+  }
+  pushHistory();
+  renderAll();
+  selectItem(copy.id);
+}
+
+// Adjust budget.adults by a delta (positive: more plazas, negative: less).
+// Floors to the count of seated guests so we never lose nameds, and never go below 0.
+function adjustBudgetAdults(delta) {
+  if (!delta) return;
+  const seatedTotal = state.tables.reduce((a, t) => a + t.guests.filter(g => g && g.trim()).length, 0);
+  const minAdults = Math.max(0, seatedTotal - (state.budget.kids || 0));
+  const newAdults = Math.max(minAdults, (state.budget.adults || 0) + delta);
+  state.budget.adults = newAdults;
+  const adultsInp = document.getElementById('budget-adults');
+  if (adultsInp) adultsInp.value = newAdults;
+}
+
+// -------- STATS --------
+function updateStats() {
+  document.getElementById('stat-tables').textContent = state.tables.length;
+  const seats = state.tables.reduce((a,t) => a + t.seats, 0);
+  const assigned = state.tables.reduce((a,t) => a + t.guests.filter(g => g && g.trim()).length, 0);
+  document.getElementById('stat-seats').textContent = seats;
+  document.getElementById('stat-assigned').textContent = assigned;
+  document.getElementById('stat-free').textContent = seats - assigned;
+  document.getElementById('event-summary').textContent =
+    state.tables.length === 0
+      ? 'Sin mesas en el plano'
+      : `${state.tables.length} mesa${state.tables.length===1?'':'s'} · ${seats} plazas · ${assigned} comensales asignados`;
+  updateBudget();
+}
+
+// -------- BUDGET --------
+function fmtEur(n) {
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
+}
+
+// =====================================================================
+// EXPORT BUDGET PDF — Plantilla Alboroto Eventos
+// =====================================================================
+function exportBudgetPdf() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showToast('Cargando librería PDF... inténtalo de nuevo en un instante');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+  const W = 210, H = 297;
+  const ML = 22, MR = W - 22, MT = 28, CNTW = W - 44;
+
+  // === COLORES ALBOROTO ===
+  const CREAM   = [248, 243, 236];
+  const SAGE    = [140, 165, 140];
+  const TXT     = [40,  40,  40];
+  const TXT_S   = [90,  90,  90];
+  const GOLD_A  = [176, 138, 62];
+
+  // === DECORACIÓN FLORAL (vectorial simple) ===
+  // Dibuja hojas y ramas con líneas curvadas — aproximación con jsPDF
+  function drawFloral(x, y, scale, flip) {
+    const s = scale;
+    const fx = flip ? -1 : 1;
+    const ox = x, oy = y;
+    doc.setDrawColor(...SAGE);
+    doc.setLineWidth(0.6);
+    // Rama principal
+    doc.line(ox, oy, ox + fx * 20 * s, oy - 12 * s);
+    // Sub-ramas
+    for (let i = 0; i < 3; i++) {
+      const bx = ox + fx * (6 + i * 5) * s;
+      const by = oy - (4 + i * 3.5) * s;
+      doc.line(bx, by, bx + fx * 6 * s, by - 4 * s);
+      doc.line(bx, by, bx + fx * 4 * s, by + 3 * s);
+    }
+    // Hojas (elipses pequeñas)
+    doc.setFillColor(...SAGE);
+    for (let i = 0; i < 4; i++) {
+      const lx = ox + fx * (4 + i * 5) * s;
+      const ly = oy - (3 + i * 3) * s;
+      doc.ellipse(lx + fx * 5 * s, ly - 2 * s, 3.5 * s, 1.5 * s, 'F');
+    }
+    // Flor (círculo blanco con borde)
+    doc.setFillColor(255, 252, 246);
+    doc.setDrawColor(...SAGE);
+    doc.setLineWidth(0.5);
+    doc.circle(ox + fx * 12 * s, oy - 10 * s, 4 * s, 'FD');
+    doc.setFillColor(...SAGE);
+    doc.circle(ox + fx * 12 * s, oy - 10 * s, 1.2 * s, 'F');
+    // Pétalos
+    for (let i = 0; i < 5; i++) {
+      const ang = (i / 5) * Math.PI * 2;
+      doc.setFillColor(255, 252, 246);
+      doc.ellipse(
+        ox + fx * 12 * s + Math.cos(ang) * 3.5 * s,
+        oy - 10 * s + Math.sin(ang) * 3.5 * s,
+        1.8 * s, 0.9 * s, 'F'
+      );
+    }
+    // Mancha acuarela (rect redondeado semi-transparente como sombra)
+    doc.setFillColor(180, 210, 195);
+    doc.setGState && doc.setGState(doc.GState({ opacity: 0.12 }));
+    doc.roundedRect(ox + fx * 2 * s, oy - 14 * s, 18 * s, 10 * s, 4, 4, 'F');
+    try { doc.setGState(doc.GState({ opacity: 1 })); } catch(e) {}
+  }
+
+  function pageDecor() {
+    // Fondo crema
+    doc.setFillColor(...CREAM);
+    doc.rect(0, 0, W, H, 'F');
+    // Esquina sup izq
+    drawFloral(8, 38, 1.0, false);
+    // Esquina sup der
+    drawFloral(W - 8, 32, 0.85, true);
+    // Esquina inf izq
+    drawFloral(10, H - 10, 0.75, false);
+    // Esquina inf der
+    drawFloral(W - 5, H - 18, 0.9, true);
+  }
+
+  let y = MT;
+  let pageNum = 0;
+
+  function newPage() {
+    if (pageNum > 0) doc.addPage();
+    pageNum++;
+    y = MT;
+    pageDecor();
+  }
+
+  function chk(need) {
+    if (y + need > H - 28) newPage();
+  }
+
+  function addFooter() {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...TXT_S);
+    const dateStr = new Date().toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' });
+    doc.text('Alboroto Eventos · Salones José Benítez · ' + dateStr, W/2, H - 12, { align:'center' });
+    doc.text(String(pageNum), MR, H - 12, { align:'right' });
+  }
+
+  // ----- HELPERS -----
+  function bigTitle(txt) {
+    chk(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(...TXT);
+    doc.text(txt, W/2, y, { align:'center' });
+    y += 5;
+    // Línea dorada fina
+    doc.setDrawColor(...GOLD_A);
+    doc.setLineWidth(0.5);
+    doc.line(ML + 20, y, MR - 20, y);
+    y += 6;
+  }
+
+  function sectionHdr(txt) {
+    chk(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...TXT);
+    doc.text(txt, W/2, y, { align:'center' });
+    y += 5;
+  }
+
+  function sectionSubHdr(txt) {
+    chk(10);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.setTextColor(...SAGE);
+    doc.text(txt, W/2, y, { align:'center' });
+    y += 5;
+  }
+
+  function item(txt, opts) {
+    chk(6);
+    const indent = (opts && opts.indent) || 0;
+    const size = (opts && opts.size) || 10;
+    const center = opts && opts.center;
+    const bold = opts && opts.bold;
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(size);
+    doc.setTextColor(...(opts && opts.color ? opts.color : TXT));
+    const x = center ? W/2 : ML + indent;
+    const align = center ? 'center' : 'left';
+    const lines = doc.splitTextToSize(txt, CNTW - indent);
+    lines.forEach(l => {
+      chk(5);
+      doc.text(l, x, y, { align });
+      y += size * 0.46;
+    });
+  }
+
+  function bullet(txt, opts) {
+    chk(5);
+    const indent = (opts && opts.indent) || 0;
+    const size = (opts && opts.size) || 10;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(size);
+    doc.setTextColor(...TXT);
+    doc.setFillColor(...SAGE);
+    doc.circle(ML + indent + 2, y - 1.2, 0.9, 'F');
+    const lines = doc.splitTextToSize(txt, CNTW - indent - 6);
+    lines.forEach((l, i) => {
+      chk(5);
+      doc.text(l, ML + indent + 6, y);
+      y += size * 0.45;
+    });
+  }
+
+  function priceRow(label, value, opts) {
+    chk(7);
+    const bold = opts && opts.bold;
+    const size = (opts && opts.size) || 10;
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(size);
+    doc.setTextColor(...(opts && opts.color || TXT));
+    doc.text(label, ML, y);
+    doc.text(value, MR, y, { align: 'right' });
+    y += size * 0.5;
+  }
+
+  function spacer(n) { y += (n || 4); }
+
+  // ===============================================================
+  // PÁG 1 — PORTADA
+  // ===============================================================
+  newPage();
+  y = 70;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...TXT);
+  const evType = (state.eventName || 'Evento').split('·')[0].trim().toUpperCase();
+  doc.text(evType, W/2, y, { align:'center' });
+  spacer(10);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.setTextColor(...TXT);
+  // Extract name from eventName (format "Tipo · Nombre")
+  const namePart = state.eventName.includes('·')
+    ? state.eventName.split('·').slice(1).join('·').trim()
+    : state.eventName;
+  const nameLines = doc.splitTextToSize('"' + namePart + '"', CNTW);
+  nameLines.forEach(l => { doc.text(l, W/2, y, { align:'center' }); y += 12; });
+  spacer(14);
+
+  // Date from customer proposal if available
+  let eventDate = '';
+  if (state.appliedMenu) {
+    try {
+      const all = JSON.parse(SAFE_LS.getItem(PROPOSALS_KEY) || '[]');
+      const p = all.find(x => x.menu === state.appliedMenu) || all[0];
+      if (p && p.customer && p.customer.date) eventDate = p.customer.date;
+    } catch (e) {}
+  }
+  if (eventDate) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(...TXT);
+    const d = new Date(eventDate + 'T00:00:00');
+    const fmt = isNaN(d) ? eventDate : d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+    doc.text(fmt, W/2, y, { align:'center' });
+    spacer(5);
+  }
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...TXT_S);
+  doc.text('LUGAR: SALONES JOSE BENITEZ', W/2, y, { align:'center' });
+
+  addFooter();
+
+  // ===============================================================
+  // PÁG 2 — MENÚ ADULTOS
+  // ===============================================================
+  newPage();
+  bigTitle('MENÚ');
+
+  let menuToShow = state.appliedMenu || null;
+  if (!menuToShow) {
+    try {
+      const all = JSON.parse(SAFE_LS.getItem(PROPOSALS_KEY) || '[]');
+      if (all.length) menuToShow = all[0].menu;
+    } catch (e) {}
+  }
+
+  if (menuToShow && menuToShow.mode === 'proposed' && menuToShow.selectedMenu) {
+    const m = PROPOSED_MENUS.find(x => x.id === menuToShow.selectedMenu);
+    if (m) {
+      Object.entries(m.sections).forEach(([sec, items]) => {
+        sectionSubHdr(sec.toUpperCase());
+        items.forEach(it => { item(it, { center: true }); });
+        spacer(3);
+      });
+    }
+  } else if (menuToShow && menuToShow.mode === 'custom' && menuToShow.customSelections) {
+    Object.entries(menuToShow.customSelections).forEach(([catId, items]) => {
+      if (!items || !items.length) return;
+      const cat = MENU_CATALOG[catId];
+      sectionSubHdr((cat ? cat.label : catId).toUpperCase());
+      items.forEach(it => { item(it, { center: true }); });
+      spacer(3);
+    });
+  } else {
+    item('Menú por definir', { center: true, color: TXT_S });
+  }
+  addFooter();
+
+  // ===============================================================
+  // PÁG 3 — MENÚ NIÑO (si hay niños)
+  // ===============================================================
+  const b = state.budget;
+  if ((b.kids || 0) > 0) {
+    newPage();
+    bigTitle('MENÚ NIÑO');
+
+    // Find kid menu from applied proposal if any
+    let kidMenuId = null;
+    if (menuToShow && menuToShow.selectedMenu) {
+      const m = PROPOSED_MENUS.find(x => x.id === menuToShow.selectedMenu);
+      if (m && m.kid) kidMenuId = m.id;
+    }
+    // Default kid menu sections
+    const kidMenu = PROPOSED_MENUS.find(m => m.kid) || PROPOSED_MENUS.find(m => m.id === 'kid1');
+    if (kidMenu) {
+      Object.entries(kidMenu.sections).forEach(([sec, items]) => {
+        sectionSubHdr(sec.toUpperCase());
+        items.forEach(it => { item(it, { center: true }); });
+        spacer(3);
+      });
+    }
+    addFooter();
+  }
+
+  // ===============================================================
+  // PÁG — ANOTACIONES CLIENTE (notas, extras)
+  // ===============================================================
+  // Get customer notes from applied proposal
+  let custNotes = '';
+  let custExtras = '';
+  try {
+    const all = JSON.parse(SAFE_LS.getItem(PROPOSALS_KEY) || '[]');
+    if (all.length && all[0].customer) {
+      custNotes = all[0].customer.notes || '';
+    }
+  } catch (e) {}
+
+  // ===============================================================
+  // PÁG — INTOLERANCIAS / ALERGIAS
+  // ===============================================================
+  const allergies = [];
+  state.tables.forEach(t => {
+    (t.guests || []).forEach((g, i) => {
+      const a = (t.allergies && t.allergies[i]) || '';
+      if (a && a.trim()) {
+        allergies.push({
+          table: t.isHead ? 'Presidencial' : 'Mesa ' + t.name,
+          seat: i + 1, name: g || '(sin nombre)', allergy: a,
+        });
+      }
+    });
+  });
+
+  if (allergies.length > 0 || custNotes) {
+    newPage();
+    if (allergies.length > 0) {
+      bigTitle('INTOLERANCIAS / ALÉRGIAS');
+      allergies.forEach(a => {
+        chk(7);
+        const line = `${a.allergy.toUpperCase()}: ${a.name.toUpperCase()} (${a.table}, asiento ${a.seat})`;
+        bullet(line, { size: 10 });
+        spacer(1);
+      });
+      spacer(6);
+    }
+    if (custNotes) {
+      bigTitle('ANOTACIONES DEL CLIENTE');
+      const noteLines = doc.splitTextToSize(custNotes, CNTW);
+      noteLines.forEach(l => { chk(5); item(l, { center: true }); });
+    }
+    addFooter();
+  }
+
+  // ===============================================================
+  // PÁG — COMPLEMENTOS / EXTRAS
+  // ===============================================================
+  const hasComplements = (b.complements || []).some(c => c.label && c.label.trim());
+  if (hasComplements) {
+    newPage();
+    bigTitle('EXTRAS PEDIDOS');
+    (b.complements || []).filter(c => c.label && c.label.trim()).forEach(c => {
+      chk(7);
+      bullet(c.label.toUpperCase() + (c.price ? ' : ' + fmtEur(c.price) : ''));
+      spacer(1);
+    });
+    addFooter();
+  }
+
+  // ===============================================================
+  // PÁG — MESAS
+  // ===============================================================
+  newPage();
+  bigTitle('MESAS');
+  state.tables.forEach(t => {
+    chk(10);
+    const tName = t.isHead ? 'Mesa Presidencial' : 'Mesa ' + t.name;
+    const namedGuests = (t.guests || []).filter(g => g && g.trim());
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...TXT);
+    doc.text(tName.toUpperCase(), ML, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...TXT_S);
+    doc.text(`${namedGuests.length}/${t.seats}`, MR, y, { align:'right' });
+    y += 5;
+    if (namedGuests.length) {
+      const gText = namedGuests.join(', ');
+      const gLines = doc.splitTextToSize(gText, CNTW);
+      doc.setFontSize(10);
+      doc.setTextColor(...TXT);
+      doc.setFont('helvetica', 'normal');
+      gLines.forEach(l => { chk(4); doc.text(l, ML + 4, y); y += 4.5; });
+    }
+    spacer(4);
+  });
+  addFooter();
+
+  // ===============================================================
+  // PÁG — DESCRIPCIÓN (precios)
+  // ===============================================================
+  newPage();
+  bigTitle('DESCRIPCIÓN');
+  spacer(2);
+
+  const totalGuests = (b.adults || 0) + (b.kids || 0);
+  const barTotal = b.adults * (b.barPrice || 0);
+  const complementsTotal = (b.complements || []).reduce((a, c) => a + (parseFloat(c.price) || 0), 0);
+  const subtotal = (b.adults * b.priceAdult) + (b.kids * b.priceKid) + barTotal + complementsTotal;
+  const discountAmt = subtotal * (b.discountPct || 0) / 100;
+  const afterDiscount = subtotal - discountAmt;
+  const ivaAmt = afterDiscount * (b.ivaPct || 0) / 100;
+  const finalTotal = afterDiscount + ivaAmt;
+
+  // Precio menú
+  if (b.priceAdult > 0) {
+    bullet(`PRECIO MENU: ${fmtEur(b.priceAdult)} / POR PERSONA + IVA`, { size: 10 });
+    if (b.barPrice > 0) {
+      const barEntry = Object.entries(BAR_PRICES).find(([h, p]) => Number(p) === Number(b.barPrice));
+      const hLabel = barEntry ? barEntry[0] + ' HORAS DE ' : '';
+      item(`PRECIO MENU ${hLabel}BARRA LIBRE: ${fmtEur(b.barPrice)} / POR PERSONA + IVA`, { indent: 8, size: 10 });
+    }
+  }
+  if (b.priceKid > 0) {
+    bullet(`PRECIO MENU NIÑO: ${fmtEur(b.priceKid)} / POR PERSONA + IVA`, { size: 10 });
+  }
+  spacer(6);
+
+  // Comensales
+  sectionHdr('COMENSALES CONFIRMADOS:');
+  spacer(2);
+  bullet(`ADULTOS: ${b.adults}`);
+  if (b.kids > 0) bullet(`NIÑOS: ${b.kids}`);
+  spacer(6);
+
+  // Complementos (precio individual)
+  if (hasComplements) {
+    (b.complements || []).filter(c => c.label).forEach(c => {
+      const txt = `${c.label.toUpperCase()}${c.price ? ' : ' + fmtEur(c.price) : ''}`;
+      bullet(txt);
+    });
+    spacer(6);
+  }
+
+  // Si hay notas de barra
+  if (b.barPrice > 0) {
+    sectionHdr('BARRA LIBRE INCLUYE:');
+    spacer(2);
+    item('FRUTOS SECOS / GOMINOLAS', { center: true });
+    item('CAFÉ / INFUSIONES', { center: true });
+    spacer(6);
+  }
+
+  // Línea divisoria
+  doc.setDrawColor(...GOLD_A);
+  doc.setLineWidth(0.4);
+  doc.line(ML, y, MR, y);
+  y += 6;
+
+  // Desglose precio
+  priceRow(`Menú adultos · ${b.adults} pax × ${fmtEur(b.priceAdult)}`, fmtEur(b.adults * b.priceAdult));
+  if (b.kids > 0) priceRow(`Menú infantil · ${b.kids} pax × ${fmtEur(b.priceKid)}`, fmtEur(b.kids * b.priceKid));
+  if (barTotal > 0) priceRow(`Barra libre · ${b.adults} adultos × ${fmtEur(b.barPrice)}`, fmtEur(barTotal));
+  (b.complements || []).filter(c => c.label && c.price).forEach(c => {
+    priceRow(`· ${c.label}`, fmtEur(c.price));
+  });
+  spacer(2);
+  doc.setDrawColor(...GOLD_A);
+  doc.setLineWidth(0.2);
+  doc.line(ML, y, MR, y);
+  y += 4;
+  priceRow('Subtotal sin IVA', fmtEur(subtotal));
+  if (discountAmt > 0) priceRow(`Descuento (${b.discountPct}%)`, '- ' + fmtEur(discountAmt), { color: [150,60,60] });
+  priceRow(`IVA (${b.ivaPct || 0}%)`, fmtEur(ivaAmt));
+  spacer(4);
+
+  // Caja total
+  chk(18);
+  doc.setFillColor(...TXT);
+  doc.roundedRect(ML, y, CNTW, 15, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text('TOTAL FINAL (IVA incluido)', ML + 6, y + 9);
+  doc.setFontSize(16);
+  doc.setTextColor(...GOLD_A);
+  doc.text(fmtEur(finalTotal), MR - 4, y + 9.5, { align:'right' });
+  y += 19;
+  if (totalGuests > 0) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(...TXT_S);
+    doc.text(`Coste por comensal: ${fmtEur(finalTotal / totalGuests)}`, MR, y, { align:'right' });
+    y += 5;
+  }
+
+  addFooter();
+
+  // Save
+  const safeName = (state.eventName || 'evento').replace(/[^a-z0-9áéíóúñü\s-]/gi, '').replace(/\s+/g, '_');
+  doc.save(`presupuesto-${safeName || 'evento'}.pdf`);
+  showToast('PDF generado');
+}
+
+
+function updateBudget() {
+  const b = state.budget;
+
+  // Auto-sync: if guests have been seated and exceed declared adults, raise adults to match.
+  // This way, naming people on seats automatically grows the budget headcount.
+  const seatedTotal = state.tables.reduce((a, t) => a + t.guests.filter(g => g && g.trim()).length, 0);
+  if (seatedTotal > (b.adults + b.kids)) {
+    // Add the extra to adults (kids are entered explicitly by gerente)
+    b.adults = seatedTotal - b.kids;
+    const adultsInp = document.getElementById('budget-adults');
+    if (adultsInp) adultsInp.value = b.adults;
+  }
+
+  const totalAdults = b.adults * b.priceAdult;
+  const totalKids = b.kids * b.priceKid;
+  const totalGuests = b.adults + b.kids;
+
+  // Barra libre (solo adultos)
+  const barTotal = b.adults * (b.barPrice || 0);
+  // Complementos: suma de todos los complementos configurados
+  const complementsTotal = (b.complements || []).reduce((a, c) => a + (parseFloat(c.price) || 0), 0);
+
+  const subtotal = totalAdults + totalKids + barTotal + complementsTotal;
+  const discount = subtotal * (b.discountPct || 0) / 100;
+  const subtotalAfterDiscount = subtotal - discount;
+  const iva = subtotalAfterDiscount * (b.ivaPct || 0) / 100;
+  const total = subtotalAfterDiscount + iva;
+  const perPax = totalGuests > 0 ? total / totalGuests : 0;
+
+  document.getElementById('sum-adults').textContent = `${b.adults} × ${fmtEur(b.priceAdult)}`;
+  document.getElementById('sum-kids').textContent = `${b.kids} × ${fmtEur(b.priceKid)}`;
+
+  const rowBar = document.getElementById('row-bar');
+  if (barTotal > 0) {
+    rowBar.style.display = '';
+    document.getElementById('sum-bar').textContent = fmtEur(barTotal) + ` (${b.adults}×${fmtEur(b.barPrice)})`;
+  } else { rowBar.style.display = 'none'; }
+
+  const rowComplements = document.getElementById('row-complements');
+  if (complementsTotal > 0) {
+    rowComplements.style.display = '';
+    document.getElementById('sum-complements').textContent = fmtEur(complementsTotal);
+  } else { rowComplements.style.display = 'none'; }
+
+  document.getElementById('sum-subtotal').textContent = fmtEur(subtotal);
+
+  const rowDiscount = document.getElementById('row-discount');
+  if (discount > 0) {
+    rowDiscount.style.display = '';
+    document.getElementById('sum-discount').textContent = `−${fmtEur(discount)} (${b.discountPct}%)`;
+  } else { rowDiscount.style.display = 'none'; }
+
+  document.getElementById('sum-iva').textContent = `${fmtEur(iva)} (${b.ivaPct||0}%)`;
+  document.getElementById('sum-total').textContent = fmtEur(total);
+  document.getElementById('sum-per-pax').textContent = fmtEur(perPax);
+
+  // Capacity + counter check (descontando asignados)
+  const seats = state.tables.reduce((a,t) => a + t.seats, 0);
+  const assigned = state.tables.reduce((a,t) => a + t.guests.filter(g => g && g.trim()).length, 0);
+  const remaining = Math.max(0, totalGuests - assigned);
+  const warn = document.getElementById('capacity-warning');
+  warn.classList.remove('show', 'ok', 'short', 'over');
+
+  if (totalGuests === 0 && seats > 0) {
+    warn.classList.add('show', 'short');
+    warn.innerHTML = `<strong>Indica los comensales.</strong> Hay ${seats} plazas en el plano pero el presupuesto está en 0.`;
+  } else if (totalGuests > 0) {
+    if (seats === 0) {
+      warn.classList.add('show', 'short');
+      warn.innerHTML = `<strong>Sin mesas.</strong> Distribuye ${totalGuests} comensales en el plano.`;
+    } else if (seats < totalGuests) {
+      warn.classList.add('show', 'short');
+      warn.innerHTML = `<strong>⚠ Faltan ${totalGuests - seats} plazas.</strong><br>Comensales: <strong>${totalGuests}</strong> · Plazas en plano: <strong>${seats}</strong><br><span style="opacity:0.85">Añade más mesas o aumenta capacidad de las existentes.</span>`;
+    } else if (seats > totalGuests) {
+      warn.classList.add('show', 'over');
+      warn.innerHTML = `<strong>⚠ Sobran ${seats - totalGuests} plazas.</strong><br>Comensales: <strong>${totalGuests}</strong> · Plazas en plano: <strong>${seats}</strong><br><span style="opacity:0.85">Reduce mesas, baja la capacidad de alguna o sube los comensales del presupuesto.</span>`;
+    } else if (assigned < totalGuests) {
+      warn.classList.add('show', 'ok');
+      warn.innerHTML = `<strong>✓ Aforo correcto.</strong> ${seats} plazas = ${totalGuests} comensales.<br><span style="opacity:0.85">Por nombrar: ${remaining} comensales.</span>`;
+    } else if (assigned === totalGuests) {
+      warn.classList.add('show', 'ok');
+      warn.innerHTML = `<strong>✓ Todos asignados.</strong> ${assigned} de ${totalGuests} comensales con asiento.`;
+    } else {
+      warn.classList.add('show', 'over');
+      warn.innerHTML = `<strong>Asignados ${assigned} > ${totalGuests} declarados.</strong> Sube el contador de comensales en el presupuesto.`;
+    }
+  }
+}
+
+function bindBudgetInputs() {
+  const fields = [
+    ['budget-adults', 'adults'],
+    ['budget-kids', 'kids'],
+    ['budget-price-adult', 'priceAdult'],
+    ['budget-price-kid', 'priceKid'],
+    ['bar-price', 'barPrice'],
+    ['discount-pct', 'discountPct'],
+    ['iva-pct', 'ivaPct'],
+  ];
+  fields.forEach(([id, key]) => {
+    const inp = document.getElementById(id);
+    if (!inp) return;
+    inp.value = state.budget[key] != null ? state.budget[key] : 0;
+    inp.addEventListener('input', () => {
+      const v = parseFloat(inp.value) || 0;
+      state.budget[key] = Math.max(0, v);
+      updateBudget();
+      saveAuto();
+    });
+    inp.addEventListener('blur', () => { pushHistory(); });
+  });
+}
+
+// -------- MINIMAP --------
+function updateMinimap() {
+  const minimap = document.getElementById('minimap-canvas');
+  minimap.querySelectorAll('.minimap-table').forEach(n => n.remove());
+  const sx = minimap.clientWidth / CANVAS_W;
+  const sy = minimap.clientHeight / CANVAS_H;
+  [...state.elements, ...state.tables].forEach(t => {
+    const m = document.createElement('div');
+    m.className = 'minimap-table' + (t.kind === 'element' || (t.kind === 'table' && t.shape === 'rect') ? ' rect' : '');
+    const w = (t.kind === 'table' && t.shape === 'round') ? t.diameter : t.width;
+    const h = (t.kind === 'table' && t.shape === 'round') ? t.diameter : t.height;
+    m.style.left = ((t.x - w/2) * sx) + 'px';
+    m.style.top = ((t.y - h/2) * sy) + 'px';
+    m.style.width = Math.max(2, w * sx) + 'px';
+    m.style.height = Math.max(2, h * sy) + 'px';
+    if (t.kind === 'element') m.style.background = '#6b2737';
+    minimap.appendChild(m);
+  });
+  // viewport
+  const vpW = canvasWrapper.clientWidth / state.zoom * sx;
+  const vpH = canvasWrapper.clientHeight / state.zoom * sy;
+  const vpX = -state.pan.x / state.zoom * sx;
+  const vpY = -state.pan.y / state.zoom * sy;
+  minimapViewport.style.left = vpX + 'px';
+  minimapViewport.style.top = vpY + 'px';
+  minimapViewport.style.width = vpW + 'px';
+  minimapViewport.style.height = vpH + 'px';
+}
+
+// click on minimap to jump
+minimapCanvas.addEventListener('click', (e) => {
+  const rect = minimapCanvas.getBoundingClientRect();
+  const fx = (e.clientX - rect.left) / rect.width;
+  const fy = (e.clientY - rect.top) / rect.height;
+  const tx = fx * CANVAS_W;
+  const ty = fy * CANVAS_H;
+  state.pan.x = -tx * state.zoom + canvasWrapper.clientWidth / 2;
+  state.pan.y = -ty * state.zoom + canvasWrapper.clientHeight / 2;
+  applyTransform();
+});
+
+// -------- HISTORY (UNDO/REDO) --------
+function snapshot() {
+  return JSON.stringify({ tables: state.tables, elements: state.elements, eventName: state.eventName, budget: state.budget, appliedMenu: state.appliedMenu });
+}
+function pushHistory() {
+  // drop forward history
+  state.history = state.history.slice(0, state.historyIdx + 1);
+  state.history.push(snapshot());
+  if (state.history.length > 50) state.history.shift();
+  state.historyIdx = state.history.length - 1;
+}
+function undo() {
+  if (state.historyIdx <= 0) return;
+  state.historyIdx--;
+  const s = JSON.parse(state.history[state.historyIdx]);
+  state.tables = s.tables;
+  state.elements = s.elements;
+  state.eventName = s.eventName;
+  if (s.budget) state.budget = s.budget;
+  state.appliedMenu = s.appliedMenu || null;
+  document.getElementById('event-name').value = state.eventName;
+  syncBudgetUI();
+  renderAll();
+}
+function redo() {
+  if (state.historyIdx >= state.history.length - 1) return;
+  state.historyIdx++;
+  const s = JSON.parse(state.history[state.historyIdx]);
+  state.tables = s.tables;
+  state.elements = s.elements;
+  state.eventName = s.eventName;
+  if (s.budget) state.budget = s.budget;
+  state.appliedMenu = s.appliedMenu || null;
+  document.getElementById('event-name').value = state.eventName;
+  syncBudgetUI();
+  renderAll();
+}
+
+function syncBudgetUI() {
+  const set = (id, val) => { const e = document.getElementById(id); if (e) e.value = val != null ? val : 0; };
+  set('budget-adults', state.budget.adults);
+  set('budget-kids', state.budget.kids);
+  set('budget-price-adult', state.budget.priceAdult);
+  set('budget-price-kid', state.budget.priceKid);
+  set('bar-price', state.budget.barPrice);
+  set('discount-pct', state.budget.discountPct);
+  set('iva-pct', state.budget.ivaPct != null ? state.budget.ivaPct : 10);
+  renderComplements();
+}
+
+function renderComplements() {
+  const wrap = document.getElementById('complements-list');
+  if (!wrap) return;
+  const list = state.budget.complements || [];
+  if (list.length === 0) {
+    wrap.innerHTML = '<div style="font-size:11px;color:var(--ink-soft);font-style:italic;padding:8px;text-align:center">Sin complementos. Añade el primero.</div>';
+    return;
+  }
+  wrap.innerHTML = list.map((c, i) => `
+    <div class="adj-row" data-idx="${i}" style="grid-template-columns:1fr 90px 28px;gap:6px;margin-bottom:6px">
+      <input type="text" class="adj-input compl-label" data-i="${i}" value="${escapeHtml(c.label || '')}" placeholder="Concepto" style="text-align:left;font-size:12px">
+      <input type="number" class="adj-input compl-price" data-i="${i}" value="${c.price != null ? c.price : 0}" min="0" step="1" placeholder="€">
+      <button class="btn btn-danger compl-del" data-i="${i}" style="padding:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center" title="Eliminar">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+      </button>
+    </div>
+  `).join('');
+
+  wrap.querySelectorAll('.compl-label').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = parseInt(e.target.dataset.i);
+      state.budget.complements[i].label = e.target.value;
+      updateBudget(); saveAuto();
+    });
+    inp.addEventListener('blur', () => pushHistory());
+  });
+  wrap.querySelectorAll('.compl-price').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = parseInt(e.target.dataset.i);
+      state.budget.complements[i].price = Math.max(0, parseFloat(e.target.value) || 0);
+      updateBudget(); saveAuto();
+    });
+    inp.addEventListener('blur', () => pushHistory());
+  });
+  wrap.querySelectorAll('.compl-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const i = parseInt(e.currentTarget.dataset.i);
+      state.budget.complements.splice(i, 1);
+      pushHistory();
+      renderComplements();
+      updateBudget();
+      saveAuto();
+    });
+  });
+}
+
+document.getElementById('tool-undo').onclick = undo;
+document.getElementById('tool-redo').onclick = redo;
+
+// -------- KEYBOARD --------
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input, textarea, select')) return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); exportJson(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { if (state.selected) { e.preventDefault(); deleteSelected(); } }
+  else if (e.ctrlKey && e.key === 'd' && state.selected) { e.preventDefault(); duplicateSelected(); }
+});
+
+// -------- SAVE / LOAD --------
+function saveAuto() {
+  try {
+    SAFE_LS.setItem(getStorageKey(), snapshot());
+  } catch (e) {}
+  // Also save via API if we have an event_id
+  if (currentEventId) {
+    try {
+      fetch(`/api/mapa-mesas/${currentEventId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          tables: state.tables,
+          elements: state.elements,
+          eventName: state.eventName,
+          budget: state.budget,
+        }),
+      }).catch(() => {});
+    } catch (e) {}
+  }
+}
+
+function loadAuto() {
+  try {
+    const raw = SAFE_LS.getItem(getStorageKey());
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state.tables = data.tables || [];
+    state.elements = data.elements || [];
+    state.eventName = data.eventName || 'Boda — Sin título';
+    state.budget = Object.assign({ adults: 0, kids: 0, priceAdult: 0, priceKid: 0, barPrice: 0, extras: 0, discountPct: 0, ivaPct: 10, complements: [] }, data.budget || {});
+    state.appliedMenu = data.appliedMenu || null;
+    // Migration: any table named "Presidencial" must have isHead=true
+    state.tables.forEach(t => {
+      if (t.name === 'Presidencial' || /presidencial/i.test(t.name || '')) {
+        t.isHead = true;
+      }
+    });
+    document.getElementById('event-name').value = state.eventName;
+    syncBudgetUI();
+    return true;
+  } catch (e) { return false; }
+}
+
+function exportJson() {
+  const data = {
+    eventName: state.eventName,
+    tables: state.tables,
+    elements: state.elements,
+    budget: state.budget,
+    appliedMenu: state.appliedMenu,
+    exportedAt: new Date().toISOString(),
+    version: '1.2',
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeName = state.eventName.replace(/[^a-z0-9áéíóúñü\s-]/gi, '').replace(/\s+/g, '_');
+  a.download = `mapa-mesas-${safeName || 'sin-titulo'}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Plano guardado');
+}
+
+// API sync handler
+document.getElementById('btn-sync-api').onclick = () => {
+  if (!currentEventId) { showToast('No hay evento seleccionado'); return; }
+  const label = document.getElementById('sync-label');
+  label.textContent = 'Guardando...';
+  fetch(`/api/mapa-mesas/${currentEventId}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      tables: state.tables,
+      elements: state.elements,
+      eventName: state.eventName,
+      budget: state.budget,
+    }),
+  }).then(r => r.json()).then(d => {
+    label.textContent = d.success ? '✓ Guardado' : 'Error';
+    setTimeout(() => label.textContent = 'Sync API', 2000);
+    showToast(d.success ? 'Mapa guardado en API' : 'Error al guardar');
+  }).catch(() => {
+    label.textContent = 'Error';
+    setTimeout(() => label.textContent = 'Sync API', 2000);
+    showToast('Error de conexión');
+  });
+};
+
+document.getElementById('btn-export-json').onclick = exportJson;
+
+document.getElementById('btn-import-json').onclick = () => {
+  document.getElementById('file-input').click();
+};
+
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      state.tables = data.tables || [];
+      state.elements = data.elements || [];
+      state.eventName = data.eventName || 'Sin título';
+      state.budget = Object.assign({ adults: 0, kids: 0, priceAdult: 0, priceKid: 0, barPrice: 0, extras: 0, discountPct: 0, ivaPct: 10, complements: [] }, data.budget || {});
+      state.appliedMenu = data.appliedMenu || null;
+      document.getElementById('event-name').value = state.eventName;
+      syncBudgetUI();
+      pushHistory();
+      renderAll();
+      fitToView();
+      showToast('Plano cargado');
+    } catch (err) {
+      showToast('Error al cargar archivo');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// -------- NEW --------
+document.getElementById('btn-new').onclick = () => {
+  showConfirm('Nuevo plano', 'Se perderán los cambios no guardados. ¿Continuar?', () => {
+    state.tables = [];
+    state.elements = [];
+    state.selected = null;
+    state.eventName = 'Boda — Sin título';
+    state.budget = { adults: 0, kids: 0, priceAdult: 0, priceKid: 0, barPrice: 0, extras: 0, discountPct: 0, ivaPct: 10, complements: [] };
+    state.appliedMenu = null;
+    document.getElementById('event-name').value = state.eventName;
+    syncBudgetUI();
+    pushHistory();
+    renderAll();
+    fitToView();
+  });
+};
+
+// -------- EVENT NAME --------
+document.getElementById('event-name').addEventListener('input', (e) => {
+  state.eventName = e.target.value;
+  saveAuto();
+});
+
+// -------- PRINT --------
+document.getElementById('btn-print').onclick = () => {
+  selectItem(null);
+  // best zoom-fit before print
+  setTimeout(() => {
+    const beforeZoom = state.zoom;
+    const beforePan = { ...state.pan };
+    fitToView();
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        state.zoom = beforeZoom;
+        state.pan = beforePan;
+        applyTransform();
+      }, 200);
+    }, 100);
+  }, 50);
+};
+
+// -------- MODAL --------
+function showConfirm(title, message, cb) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-message').textContent = message;
+  const m = document.getElementById('modal-confirm');
+  m.classList.add('show');
+  const confirm = () => { cb(); close(); };
+  const close = () => { m.classList.remove('show'); document.getElementById('modal-confirm-btn').onclick = null; document.getElementById('modal-cancel').onclick = null; };
+  document.getElementById('modal-confirm-btn').onclick = confirm;
+  document.getElementById('modal-cancel').onclick = close;
+}
+
+// -------- TOAST --------
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// -------- MOBILE MENU --------
+function setupMobileMenu() {
+  const sidebarLeft = document.getElementById('sidebar-left');
+  const sidebarRight = document.getElementById('sidebar-right');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const leftToggle = document.getElementById('mobile-left-toggle');
+  const rightToggle = document.getElementById('mobile-right-toggle');
+  const closeLeft = document.getElementById('close-left');
+  const closeRight = document.getElementById('close-right');
+
+  function openSidebar(which) {
+    if (which === 'left') {
+      sidebarLeft.classList.add('open');
+      sidebarRight.classList.remove('open');
+    } else {
+      sidebarRight.classList.add('open');
+      sidebarLeft.classList.remove('open');
+    }
+    backdrop.classList.add('show');
+  }
+  function closeAll() {
+    sidebarLeft.classList.remove('open');
+    sidebarRight.classList.remove('open');
+    backdrop.classList.remove('show');
+  }
+
+  leftToggle.addEventListener('click', () => openSidebar('left'));
+  rightToggle.addEventListener('click', () => openSidebar('right'));
+  closeLeft.addEventListener('click', closeAll);
+  closeRight.addEventListener('click', closeAll);
+  backdrop.addEventListener('click', closeAll);
+
+  // Auto-close on resize > 768px
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) closeAll();
+  });
+
+  // When user selects an item on mobile, open the right panel automatically
+  window.__autoOpenRightOnMobile = () => {
+    if (window.innerWidth <= 768 && state.selected) openSidebar('right');
+  };
+}
+
+// ============================================================
+// MENU CATALOG (Alboroto Eventos 2025)
+// ============================================================
+const MENU_CATALOG = {
+  'aperitivos-frios': {
+    label: 'Aperitivos fríos',
+    minSelect: 4,
+    items: [
+      'Ensaladilla cremosa, huevo frito y gamba cristal',
+      'Papas aliñás de Sanlúcar',
+      'Anchoa 00 y mantequilla trufada',
+      'Chacinas y quesos',
+      'Gazpacho de remolacha y queso feta',
+      'Tosta de queso payoyo, tomate seco y chicharrones',
+      'Brioche de steak tartar de salchichón',
+      'Brioche de tomate, ventresca de atún y eneldo',
+      'Steak tartar sobre croissant crujiente',
+      'Carpaccio de vaca vieja madurada, tomate y trufa',
+      'Tartaleta de manzana ácida y erizo',
+      'Tartar de calamar, carbonara de coliflor y caviar ahumado',
+      'Crujiente de salmón y aguacate',
+      'Tartar de atún rojo picante y huevo frito',
+      'Conito de atún rojo, soja blanca y guacamole',
+      'Cereza de foie',
+      'Foie, maíz y trufa',
+      'Milhojas de anguila ahumada',
+      'Mini ensalada César',
+      'Mini ensalada de gambones en tempura y salsa yogurt',
+      'Mini ensalada caprese',
+      'Salpicón de vieira y ají amarillo',
+      'Navaja de buzo, emulsión de hierbas y lima',
+      'Gilda de atún rojo y encurtidos',
+      'Gilda de salmón ahumado y encurtidos',
+      'Ostras al natural / toppings',
+    ],
+  },
+  'aperitivos-calientes': {
+    label: 'Aperitivos calientes',
+    minSelect: 4,
+    items: [
+      'Gyozas de pringá, crema de remolacha y hierbabuena',
+      'Empanadillas de boletus, carrillera y trufa',
+      'Empanadillas de ventresca de atún con tomate',
+      'Croquetas de jamón ibérico',
+      'Croquetas de queso de cabra, trufa y presa',
+      'Mini hot dog de chistorra criolla y mayo-japo',
+      'Mini pita de pringá y ali oli de hierbabuena',
+      'Bocadillo de cola de toro, yema de huevo y queso comté',
+      'Bao bun de costilla con salsa BBQ-miso',
+      'Bao bun de langostino en tempura y kimchi',
+      'Alita de pollo deshuesada y teriyaki de ajos',
+      'Atún encebollado a nuestra manera',
+      'Mini vieira rellena de mariscos y salsa coreana',
+      'Lubina / gallineta, frita entera en adobo',
+      'Choco frito de nuestras costas',
+      'Alcachofas fritas, queso trufado y jamón ibérico',
+      'Alcachofas y gambas al ajillo',
+      'Calamares a la riojana, hechos en casa',
+      'Marmitaco de cangrejo azul y rape',
+      'Brocheta de langostino y mango',
+      'Brocheta de solomillo y anticucho',
+    ],
+  },
+  'a-compartir': {
+    label: 'A compartir en mesa',
+    minSelect: 1,
+    items: [
+      'Canelón de carabinero relleno de marisco, mango y aguacate',
+      'Lingote de foie, queso de cabra y compota de pera asada',
+      'Carpaccio de vaca vieja madurada con trufa y colmenillas',
+      'Tartar de tomate y quisquilla, gazpacho de tomates amarillos',
+      'Canelón de calabacín y aguacate relleno de cangrejo al kimchi',
+      'Chacina variada (jamón, queso y lomito de presa)',
+      'Mariscada (langostinos, gambas, cigala)',
+      'Berenjena a la brasa, glaseada con teriyaki y celery',
+      'Espárrago blanco 00 relleno de langostinos al ajillo',
+      'Canelón de boletus con cola de toro y salsa de foie al PX',
+      'Huevos rotos estilo Alboroto (papada ibérica y gambones)',
+      'Pulpo a la brasa, parmentier de patata y mojo picón',
+    ],
+  },
+  'carnes': {
+    label: 'Plato principal · Carnes',
+    minSelect: 1,
+    items: [
+      'Carrillera a baja temperatura con puré de patatas trufado',
+      'Cordero a baja temperatura, patatas fritas al ajillo y su jugo',
+      'Lasaña de carrillera gratinada con queso pecorino',
+      'Presa a la brasa, salsa al whisky, patatas fritas, padrón y piquillos',
+      'Confit de pato, risotto de calabaza y salsa Pekín',
+      'Solomillo de vaca vieja, cremoso de patata y salsa a la pimienta negra',
+      'Ciervo a baja temperatura, cremoso de boniato y su salsa reducida',
+    ],
+  },
+  'pescados': {
+    label: 'Plato principal · Pescados',
+    minSelect: 1,
+    items: [
+      'Lubina, cremoso de coliflor y jugo del cocido',
+      'Rodaballo y verduritas de temporada a la bilbaína',
+      'Ventresca de atún rojo al horno con fritada de tomates',
+      'Lomo de bacalao confitado, espinacas ahumadas a la crema',
+      'Merluza gratinada con crema de ajo asado y salsa roteña',
+      'Merluza rellena de mariscos y almejas a la marinera',
+    ],
+  },
+  'arroces': {
+    label: 'Plato principal · Arroces',
+    minSelect: 0,
+    items: [
+      'Arroz meloso de mariscos y pescados de roca',
+      'Arroz meloso de carrillera, setas y foie',
+    ],
+  },
+  'sorbetes': {
+    label: 'Sorbetes',
+    minSelect: 1,
+    items: [
+      'Sorbete de limón',
+      'Sorbete de mandarina',
+      'Sorbete de piña asada, helado de coco y gelatina de ron',
+      'Sorbete de lima, helado de menta y hierbabuena escarchada',
+      'Sorbete de frutos rojos, helado de queso y coulis de fresa',
+    ],
+  },
+  'postres': {
+    label: 'Postres',
+    minSelect: 1,
+    items: [
+      'Tarta de celebración',
+      'Lemon pie',
+      'Torrija, helado de vainilla y toffee de coco',
+      'Mucho chocolate',
+      'Tarta de queso',
+      'Pantera rosa',
+      'Helado de yogurt con tocino y nueces caramelizadas',
+      'Surtido de minipasteles',
+    ],
+  },
+  'bodega': {
+    label: 'Bodega · Bebida',
+    minSelect: 0,
+    items: [
+      'Cerveza con y sin',
+      'Vino tinto Lomas del Marquez',
+      'Vino blanco Verdejo',
+      'Frizzante',
+      'Manzanilla',
+      'Refrescos',
+      'Agua',
+      'Cava brindis',
+    ],
+  },
+  'complementos': {
+    label: 'Complementos / Estaciones',
+    minSelect: 0,
+    items: [
+      'Estación de agua con sabores',
+      'Estación de vermut y encurtidos',
+      'Estación de salmorejos',
+      'Estación de ahumados',
+      'El rincón del vegano',
+      'Estación de cervezas',
+      'Estación de chacina',
+      'Estación raw bar',
+      'Estación de mariscos',
+      'Show cooking de ostras',
+      'Estación mexicana',
+      'Cortador de jamón en directo',
+      'Estación de cócteles',
+      'Estación de arroces',
+      'Estación de fritos en directo',
+      'Estación de sushi',
+      'Food truck',
+      'Barbacoa en directo',
+      'Mesa de chuches',
+      'Buffet de tartas',
+      'Estación de buñuelos de la abuela',
+      'Planeta helado (estación de helados)',
+      'Hora loca',
+    ],
+  },
+};
+
+// Pre-built proposed menus from PDF
+const PROPOSED_MENUS = [
+  {
+    id: 'menu1', name: 'Menú 1', tag: 'Esencial',
+    suggestedPrice: 75,
+    sections: {
+      'Aperitivos en mesa': ['Gorditas del sur', 'Pan individual', 'Jamón', 'Queso', 'Caña de lomo', 'Gambas cocidas', 'Frito variado (4 tipos)'],
+      'Plato principal': ['Sorbete de limón', 'Carrillera a baja temperatura con puré trufado'],
+      'Postre y bebida': ['Postre del día', 'Cava', 'Cerveza con/sin', 'Vino tinto', 'Verdejo y Frizzante', 'Manzanilla', 'Refrescos', 'Agua'],
+    },
+  },
+  {
+    id: 'menu2', name: 'Menú 2', tag: 'Recomendado',
+    suggestedPrice: 90,
+    sections: {
+      'Aperitivos fríos': ['Gorditas del sur', 'Jamón ibérico 75% bellota', 'Selección Apolonio', 'Chupito andaluz de la huerta', 'Patatas aliñadas con ventresca', 'Tosta de queso payoyo', 'Cazuelita de revuelto ibérico'],
+      'Aperitivos calientes': ['Choco frito', 'Adobo sevillano', 'Croquetas de cocido', 'Mini pita de pringá'],
+      'Plato principal': ['Sorbete de limón', 'Carrillera a baja temperatura con puré trufado'],
+      'Postre y bebida': ['Postre', 'Cava', 'Cerveza con/sin', 'Vino tinto', 'Verdejo y Frizzante', 'Manzanilla', 'Refrescos', 'Agua'],
+    },
+  },
+  {
+    id: 'menu3', name: 'Menú 3', tag: 'Completo',
+    suggestedPrice: 100,
+    sections: {
+      'Aperitivos fríos': ['Gorditas del sur', 'Jamón ibérico 75% bellota', 'Selección Apolonio', 'Chupito andaluz de la huerta', 'Patatas aliñadas con ventresca', 'Tosta de queso payoyo', 'Cazuelita de revuelto ibérico'],
+      'Aperitivos calientes': ['Choco frito', 'Adobo sevillano', 'Croquetas de cocido', 'Mini pita de pringá'],
+      'En mesa a compartir': ['Gambas cocidas'],
+      'Plato principal': ['Sorbete de limón', 'Carrillera a baja temperatura con puré trufado'],
+      'Postre y bebida': ['Postre', 'Cava', 'Cerveza con/sin', 'Vino tinto', 'Verdejo y Frizzante', 'Manzanilla', 'Refrescos', 'Agua'],
+    },
+  },
+  {
+    id: 'menu4', name: 'Menú 4', tag: 'Premium',
+    suggestedPrice: 110,
+    sections: {
+      'Aperitivos fríos': ['Gorditas del sur', 'Jamón ibérico 75% bellota', 'Selección Apolonio', 'Chupito andaluz', 'Patatas aliñadas con ventresca', 'Tosta queso payoyo', 'Cremoso de ensaladilla con huevo de codorniz', 'Tosta presa ibérica, queso de cabra y mermelada de pimiento'],
+      'Aperitivos calientes': ['Choco frito', 'Adobo sevillano', 'Croquetas de cocido', 'Delicias de pollo con miel y mostaza', 'Mini pita de pringá'],
+      'Plato principal': ['Carrillera a baja temperatura con puré trufado'],
+      'Postre y bebida': ['Surtido de mini pastelitos', 'Cava', 'Cerveza con/sin', 'Vino tinto Lomas del Marquez', 'Verdejo y Frizzante', 'Manzanilla', 'Refrescos', 'Agua'],
+    },
+  },
+  {
+    id: 'menu5', name: 'Menú 5', tag: 'Premium +',
+    suggestedPrice: 125,
+    sections: {
+      'Aperitivos fríos': ['Gorditas del sur', 'Jamón ibérico 75% bellota', 'Selección Apolonio', 'Chupito andaluz', 'Patatas aliñadas con ventresca', 'Tosta queso payoyo', 'Cremoso de ensaladilla', 'Tosta presa ibérica', 'Cazuelita de revuelto ibérico'],
+      'Aperitivos calientes': ['Choco frito', 'Adobo sevillano', 'Croquetas de cocido', 'Delicia de pollo con miel y mostaza', 'Mini pavías de bacalao', 'Mini pita de pringá'],
+      'Plato principal': ['Carrillera a baja temperatura con puré trufado'],
+      'Postre y bebida': ['Surtido de mini pastelitos', 'Cava', 'Cerveza con/sin', 'Vino tinto Lomas del Marquez', 'Verdejo y Frizzante', 'Manzanilla', 'Refrescos', 'Agua'],
+    },
+  },
+  {
+    id: 'menu6', name: 'Menú 6', tag: 'Gran Selección',
+    suggestedPrice: 140,
+    sections: {
+      'Aperitivos fríos': ['Gorditas del sur', 'Jamón ibérico 75% bellota', 'Selección Apolonio', 'Lomo mechado con AOVE', 'Pincho clásico de tortilla', 'Chupito andaluz', 'Patatas aliñadas con ventresca', 'Tosta queso payoyo', 'Tosta presa ibérica con mermelada de pimiento'],
+      'Aperitivos calientes': ['Choco frito', 'Adobo sevillano', 'Croquetas de cocido', 'Delicia de pollo con miel y mostaza', 'Mini pavías de bacalao', 'Mini pita de pringá', 'Mini de solomillo al whisky'],
+      'Postre y bebida': ['Surtido de mini pastelitos', 'Cava', 'Cerveza con/sin', 'Vino tinto Lomas del Marquez', 'Verdejo y Frizzante', 'Manzanilla', 'Refrescos', 'Agua'],
+    },
+  },
+  {
+    id: 'kid1', name: 'Menú Niño 1', tag: 'Infantil',
+    suggestedPrice: 30, kid: true,
+    sections: {
+      'Para cada 4 comensales': ['Olivas sabor anchoas sin hueso', 'Patatas chips', 'Pan individual', 'Croquetas de puchero', 'Pinchos de tortilla'],
+      'Plato individual': ['Media pechuga de pollo empanada, mini hamburguesa, patatas fritas y kétchup'],
+      'Postre y bebida': ['Helado de vainilla', 'Refrescos', 'Agua', 'Zumos'],
+    },
+  },
+  {
+    id: 'kid2', name: 'Menú Niño 2', tag: 'Infantil +',
+    suggestedPrice: 35, kid: true,
+    sections: {
+      'A compartir cada 4': ['Olivas sin hueso', 'Patatas chips', 'Pan individual', 'Jamón 75% ibérico de bellota', 'Choco', 'Croquetas de puchero'],
+      'Plato individual': ['Media pechuga de pollo, mini hamburguesa, patatas fritas y kétchup'],
+      'Postre y bebida': ['Helado de vainilla o chocolate', 'Zumos', 'Refrescos', 'Agua'],
+    },
+  },
+];
+
+// ============================================================
+// CUSTOMER VIEW STATE
+// ============================================================
+const customerState = {
+  mode: null, // 'proposed' | 'custom'
+  selectedMenu: null, // PROPOSED_MENUS id
+  customSelections: {}, // { categoryId: [item1, item2, ...] }
+  customerInfo: {
+    name: '', phone: '', email: '', date: '', notes: '',
+    eventType: 'Boda',
+    adults: 50, kids: 0, barHours: 0,
+  },
+};
+
+const PROPOSALS_KEY = 'mapa-mesas-proposals-v1';
+
+// Safe localStorage helpers (in case browser blocks it, e.g. file:// in some configs)
+const SAFE_LS = {
+  data: {},
+  getItem(k) {
+    try { return localStorage.getItem(k); }
+    catch (e) { return this.data[k] || null; }
+  },
+  setItem(k, v) {
+    try { localStorage.setItem(k, v); }
+    catch (e) { this.data[k] = v; }
+  },
+  removeItem(k) {
+    try { localStorage.removeItem(k); }
+    catch (e) { delete this.data[k]; }
+  },
+};
+
+// Render proposed menus grid
+function renderProposedMenus() {
+  const grid = document.getElementById('proposed-menus-grid');
+  grid.innerHTML = PROPOSED_MENUS.map(m => `
+    <div class="menu-card ${customerState.selectedMenu === m.id ? 'selected' : ''}" data-menu-id="${m.id}">
+      <div class="menu-card-tag">${m.tag}</div>
+      <div class="menu-card-title">${m.name}</div>
+      ${Object.entries(m.sections).map(([sec, items]) => `
+        <div class="menu-card-section">
+          <div class="menu-card-section-title">${sec}</div>
+          <ul class="menu-card-items">
+            ${items.slice(0, 6).map(i => `<li>${escapeHtml(i)}</li>`).join('')}
+            ${items.length > 6 ? `<li style="opacity:0.6">+${items.length - 6} más…</li>` : ''}
+          </ul>
+        </div>
+      `).join('')}
+      <div style="margin-top:auto;padding-top:14px;text-align:center;border-top:1px dashed rgba(176, 138, 62, 0.3);font-family:'Playfair Display',serif;font-style:italic;color:var(--gold-deep);font-size:12px">
+        Solicitar presupuesto
+      </div>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.menu-card').forEach(card => {
+    card.addEventListener('click', () => {
+      customerState.selectedMenu = card.dataset.menuId;
+      customerState.mode = 'proposed';
+      // clear custom selections to avoid mixing
+      customerState.customSelections = {};
+      renderProposedMenus();
+      renderCustomizer();
+      updateCustomerTotal();
+    });
+  });
+}
+
+// Render customizer with categories
+function renderCustomizer() {
+  const wrap = document.getElementById('customizer-categories');
+  wrap.innerHTML = Object.entries(MENU_CATALOG).map(([catId, cat]) => {
+    const sel = customerState.customSelections[catId] || [];
+    return `
+      <div class="category-section">
+        <div class="category-header">
+          <div class="category-title">${cat.label}</div>
+          <div class="category-meta">${sel.length} seleccionados${cat.minSelect ? ` · mín. ${cat.minSelect}` : ''}</div>
+        </div>
+        <div class="item-list">
+          ${cat.items.map(item => {
+            const isSelected = sel.includes(item);
+            return `
+              <div class="item-row ${isSelected ? 'selected' : ''}" data-cat="${catId}" data-item="${escapeHtml(item)}">
+                <div class="item-checkbox">${isSelected ? '✓' : ''}</div>
+                <div class="item-name">${escapeHtml(item)}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  wrap.querySelectorAll('.item-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const catId = row.dataset.cat;
+      const item = row.dataset.item;
+      if (!customerState.customSelections[catId]) customerState.customSelections[catId] = [];
+      const list = customerState.customSelections[catId];
+      const idx = list.indexOf(item);
+      if (idx >= 0) list.splice(idx, 1);
+      else list.push(item);
+      // selecting custom items implies custom mode
+      if (list.length > 0) {
+        customerState.mode = 'custom';
+        customerState.selectedMenu = null;
+        renderProposedMenus(); // unhighlight
+      } else if (Object.values(customerState.customSelections).every(l => l.length === 0)) {
+        customerState.mode = null;
+      }
+      renderCustomizer();
+      renderCart();
+      updateCustomerTotal();
+    });
+  });
+
+  renderCart();
+}
+
+// Render cart sidebar in custom step
+function renderCart() {
+  const cart = document.getElementById('cart-items');
+  const all = Object.entries(customerState.customSelections).filter(([, list]) => list && list.length);
+  if (all.length === 0) {
+    cart.innerHTML = '<div class="cart-empty">Aún no has seleccionado ningún plato</div>';
+    return;
+  }
+  cart.innerHTML = all.map(([catId, list]) => `
+    <div class="cart-section">
+      <div class="cart-section-title">${MENU_CATALOG[catId].label}</div>
+      <div class="cart-section-list">
+        ${list.map(i => `<div class="item">· ${escapeHtml(i)}</div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// Bind customer info form
+function bindCustomerForm() {
+  const fields = ['cust-name', 'cust-phone', 'cust-email', 'cust-date', 'cust-notes', 'cust-event-type'];
+  fields.forEach(id => {
+    const e = document.getElementById(id);
+    e.addEventListener('input', () => {
+      const key = id.replace('cust-', '').replace('event-type', 'eventType');
+      customerState.customerInfo[key] = e.value;
+    });
+  });
+  ['cust-adults', 'cust-kids', 'cust-bar'].forEach(id => {
+    const e = document.getElementById(id);
+    e.addEventListener('input', () => {
+      const key = id === 'cust-adults' ? 'adults' : (id === 'cust-kids' ? 'kids' : 'barHours');
+      customerState.customerInfo[key] = parseInt(e.value) || 0;
+      updateCustomerTotal();
+    });
+  });
+}
+
+function getCustomerMenuPrice() {
+  // proposed menu: use suggestedPrice; custom: rough estimate
+  if (customerState.mode === 'proposed' && customerState.selectedMenu) {
+    const m = PROPOSED_MENUS.find(x => x.id === customerState.selectedMenu);
+    return m ? m.suggestedPrice : 0;
+  }
+  if (customerState.mode === 'custom') {
+    // rough estimate: 6€ per cold appetizer/hot appetizer item, 8€ a-compartir, 22€ main, 6€ postre+sorbete, 12€ bodega
+    const sel = customerState.customSelections;
+    const count = (k) => (sel[k] || []).length;
+    return (
+      count('aperitivos-frios') * 4 +
+      count('aperitivos-calientes') * 5 +
+      count('a-compartir') * 8 +
+      count('carnes') * 22 +
+      count('pescados') * 22 +
+      count('sorbetes') * 4 +
+      count('postres') * 7 +
+      count('bodega') * 2 +
+      count('complementos') * 8 +
+      30 // base service
+    );
+  }
+  return 0;
+}
+
+function updateCustomerTotal() {
+  const c = customerState.customerInfo;
+  const totalGuests = (c.adults || 0) + (c.kids || 0);
+  const summaryEl = document.getElementById('customer-summary-line');
+  if (!summaryEl) return;
+  let parts = [];
+  if (customerState.mode === 'proposed' && customerState.selectedMenu) {
+    const m = PROPOSED_MENUS.find(x => x.id === customerState.selectedMenu);
+    parts.push(m ? m.name : 'Menú propuesto');
+  } else if (customerState.mode === 'custom') {
+    const totalItems = Object.values(customerState.customSelections).reduce((a,l) => a + (l?.length||0), 0);
+    parts.push(`Menú personalizado (${totalItems} platos)`);
+  }
+  if (totalGuests > 0) parts.push(`${totalGuests} comensales`);
+  if (c.barHours > 0) parts.push(`barra ${c.barHours}h`);
+  if (parts.length) {
+    summaryEl.innerHTML = parts.join(' · ') + '<br><small style="font-size:12px;opacity:0.85;font-style:italic">El equipo de Alboroto te enviará un presupuesto detallado</small>';
+  } else {
+    summaryEl.innerHTML = 'Pulsa <em>Enviar propuesta</em> para que el equipo de Alboroto te haga llegar un presupuesto personalizado';
+  }
+}
+
+// Step navigation
+function bindStepTabs() {
+  document.querySelectorAll('.step-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const step = tab.dataset.step;
+      document.querySelectorAll('.step-tab').forEach(t => t.classList.toggle('active', t.dataset.step === step));
+      document.querySelectorAll('.step-pane').forEach(p => p.classList.toggle('active', p.dataset.stepPane === step));
+    });
+  });
+}
+
+// Submit proposal
+function bindSubmitProposal() {
+  document.getElementById('btn-submit-proposal').addEventListener('click', () => {
+    const c = customerState.customerInfo;
+    if (!c.name || !c.name.trim()) {
+      showToast('Por favor introduce tu nombre');
+      document.querySelector('.step-tab[data-step="info"]').click();
+      document.getElementById('cust-name').focus();
+      return;
+    }
+    if (!c.phone || !c.phone.trim()) {
+      showToast('Por favor introduce un teléfono');
+      document.querySelector('.step-tab[data-step="info"]').click();
+      document.getElementById('cust-phone').focus();
+      return;
+    }
+    if (!customerState.mode) {
+      showToast('Selecciona un menú propuesto o personaliza el tuyo');
+      document.querySelector('.step-tab[data-step="proposed"]').click();
+      return;
+    }
+
+    const proposal = {
+      id: 'p_' + Date.now(),
+      createdAt: new Date().toISOString(),
+      status: 'nueva',
+      customer: { ...c },
+      menu: {
+        mode: customerState.mode,
+        selectedMenu: customerState.selectedMenu,
+        selectedMenuName: customerState.selectedMenu ? PROPOSED_MENUS.find(m => m.id === customerState.selectedMenu)?.name : null,
+        customSelections: customerState.customSelections,
+      },
+    };
+
+    // Save to localStorage proposals list
+    const all = JSON.parse(SAFE_LS.getItem(PROPOSALS_KEY) || '[]');
+    all.unshift(proposal);
+    SAFE_LS.setItem(PROPOSALS_KEY, JSON.stringify(all));
+
+    showToast('Propuesta enviada al equipo de Alboroto ✓');
+
+    // Offer download in case devices don't share localStorage
+    setTimeout(() => {
+      const dlBlob = new Blob([JSON.stringify(proposal, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(dlBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `propuesta-${(c.name || 'cliente').replace(/\s+/g,'_')}-${proposal.id}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 600);
+
+    // Reset
+    customerState.mode = null;
+    customerState.selectedMenu = null;
+    customerState.customSelections = {};
+    customerState.customerInfo = { name: '', phone: '', email: '', date: '', notes: '', eventType: 'Boda', adults: 50, kids: 0, barHours: 0 };
+    document.getElementById('cust-name').value = '';
+    document.getElementById('cust-phone').value = '';
+    document.getElementById('cust-email').value = '';
+    document.getElementById('cust-date').value = '';
+    document.getElementById('cust-notes').value = '';
+    document.getElementById('cust-adults').value = 50;
+    document.getElementById('cust-kids').value = 0;
+    document.getElementById('cust-bar').value = '0';
+    renderProposedMenus();
+    renderCustomizer();
+    updateCustomerTotal();
+    document.querySelector('.step-tab[data-step="proposed"]').click();
+    refreshProposalsList();
+  });
+}
+
+// ============================================================
+// PROPOSALS PANEL (Management view)
+// ============================================================
+function refreshProposalsList() {
+  const wrap = document.getElementById('proposals-list-container');
+  if (!wrap) return;
+  const all = JSON.parse(SAFE_LS.getItem(PROPOSALS_KEY) || '[]');
+  const badge = document.getElementById('proposals-badge');
+  let html = '';
+  if (all.length === 0) {
+    html = `<div class="proposals-empty" style="font-size:11px;padding:14px">Aún no hay propuestas recibidas</div>`;
+    badge.style.display = 'none';
+  } else {
+    badge.style.display = '';
+    badge.textContent = all.length;
+    html = `<div style="display:grid;gap:8px">${all.map(p => `
+      <div class="proposal-card" data-pid="${p.id}">
+        <div class="proposal-card-name">${escapeHtml(p.customer.name || 'Sin nombre')}</div>
+        <div class="proposal-card-info">
+          ${escapeHtml(p.customer.eventType || '')} · ${p.customer.adults || 0} adultos · ${p.customer.kids || 0} niños<br>
+          ${p.customer.phone ? '☎ ' + escapeHtml(p.customer.phone) : ''}
+          ${p.customer.date ? ' · ' + escapeHtml(p.customer.date) : ''}
+        </div>
+        <div class="proposal-card-meta">
+          <span class="proposal-card-price">${(p.customer.adults||0) + (p.customer.kids||0)} pax</span>
+          <span class="proposal-card-status">${p.status}</span>
+        </div>
+      </div>
+    `).join('')}</div>`;
+  }
+  // Always show import button
+  html += `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+      <button class="btn btn-secondary" id="btn-import-proposal" style="font-size:10px">Importar propuesta</button>
+      ${all.length ? `<button class="btn btn-secondary" id="btn-clear-proposals" style="font-size:10px">Vaciar bandeja</button>` : '<div></div>'}
+    </div>
+    <input type="file" id="proposal-file-input" accept=".json" style="display:none">
+  `;
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('.proposal-card').forEach(card => {
+    card.addEventListener('click', () => openProposal(card.dataset.pid));
+  });
+
+  const clearBtn = document.getElementById('btn-clear-proposals');
+  if (clearBtn) {
+    clearBtn.onclick = () => {
+      showConfirm('Vaciar bandeja', '¿Eliminar todas las propuestas recibidas?', () => {
+        SAFE_LS.removeItem(PROPOSALS_KEY);
+        refreshProposalsList();
+        showToast('Bandeja vaciada');
+      });
+    };
+  }
+
+  const importBtn = document.getElementById('btn-import-proposal');
+  if (importBtn) {
+    importBtn.onclick = () => document.getElementById('proposal-file-input').click();
+    document.getElementById('proposal-file-input').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (!data.customer || !data.menu) throw new Error('Formato inválido');
+          // ensure unique id
+          if (!data.id) data.id = 'p_' + Date.now();
+          const existing = JSON.parse(SAFE_LS.getItem(PROPOSALS_KEY) || '[]');
+          if (existing.find(p => p.id === data.id)) {
+            data.id = 'p_' + Date.now();
+          }
+          existing.unshift(data);
+          SAFE_LS.setItem(PROPOSALS_KEY, JSON.stringify(existing));
+          refreshProposalsList();
+          showToast('Propuesta importada');
+        } catch (err) {
+          showToast('Archivo inválido: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
+  }
+}
+
+function openProposal(pid) {
+  const all = JSON.parse(SAFE_LS.getItem(PROPOSALS_KEY) || '[]');
+  const p = all.find(x => x.id === pid);
+  if (!p) return;
+
+  // Show proposal in right panel
+  state.selected = null; // deselect any item
+  const propEl = document.getElementById('properties');
+  const customDetails = p.menu.mode === 'custom'
+    ? Object.entries(p.menu.customSelections).filter(([, l]) => l && l.length).map(([catId, items]) => `
+        <div class="proposal-detail-cat">
+          <div class="proposal-detail-cat-title">${MENU_CATALOG[catId]?.label || catId}</div>
+          <div class="proposal-detail-cat-items">${items.map(i => '· ' + escapeHtml(i)).join('<br>')}</div>
+        </div>
+      `).join('')
+    : '';
+
+  propEl.innerHTML = `
+    <div class="panel-title">${escapeHtml(p.customer.name)}</div>
+    <div class="panel-subtitle">${new Date(p.createdAt).toLocaleString('es-ES')}</div>
+
+    <div class="form-group">
+      <label class="form-label">Contacto</label>
+      <div style="font-size:13px;line-height:1.6">
+        ${p.customer.phone ? '☎ ' + escapeHtml(p.customer.phone) + '<br>' : ''}
+        ${p.customer.email ? '✉ ' + escapeHtml(p.customer.email) + '<br>' : ''}
+        ${p.customer.date ? '📅 ' + escapeHtml(p.customer.date) : ''}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Evento</label>
+      <div style="font-size:13px">${escapeHtml(p.customer.eventType || '—')} · <strong>${p.customer.adults}</strong> adultos · <strong>${p.customer.kids}</strong> niños${p.customer.barHours ? ' · barra ' + p.customer.barHours + 'h' : ''}</div>
+    </div>
+
+    <div class="proposal-detail-section">
+      <label class="form-label">Menú solicitado</label>
+      <div style="font-size:13px;margin-top:4px">
+        ${p.menu.mode === 'proposed'
+          ? `<strong>${escapeHtml(p.menu.selectedMenuName || '')}</strong>`
+          : `<strong>Menú personalizado</strong>`
+        }
+      </div>
+      <div class="proposal-detail-list">
+        ${customDetails || (p.menu.mode === 'proposed' ? renderProposedMenuDetail(p.menu.selectedMenu) : '')}
+      </div>
+    </div>
+
+    ${p.customer.notes ? `<div class="form-group" style="margin-top:14px">
+      <label class="form-label">Observaciones</label>
+      <div style="font-size:13px;background:var(--cream);padding:10px;border-radius:4px;line-height:1.5">${escapeHtml(p.customer.notes)}</div>
+    </div>` : ''}
+
+    <div class="form-group" style="background:var(--cream-2);padding:12px;border-radius:6px;border-left:3px solid var(--gold)">
+      <label class="form-label" style="margin-bottom:4px">Acción</label>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5">Al aplicar, se crea un presupuesto en el plano con los datos del cliente. El precio por menú se fija desde aquí (panel de ajustes).</div>
+    </div>
+
+    <div class="property-actions">
+      <button class="btn btn-primary" id="btn-apply-proposal">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+        Aplicar al plano
+      </button>
+      <button class="btn btn-danger" id="btn-delete-proposal">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        Eliminar
+      </button>
+    </div>
+  `;
+
+  document.getElementById('btn-apply-proposal').onclick = () => {
+    state.eventName = `${p.customer.eventType} · ${p.customer.name}`;
+    document.getElementById('event-name').value = state.eventName;
+    state.budget.adults = p.customer.adults || 0;
+    state.budget.kids = p.customer.kids || 0;
+    // Auto-fill barra libre desde lo que eligió el cliente
+    const barHours = p.customer.barHours || 0;
+    state.budget.barPrice = BAR_PRICES[barHours] || 0;
+    // Snapshot the menu into state so the PDF knows what to print
+    state.appliedMenu = p.menu;
+    syncBudgetUI();
+    pushHistory();
+    renderAll();
+    const barMsg = barHours > 0
+      ? ` · Barra libre ${barHours}h → ${BAR_PRICES[barHours]}€/adulto cargado`
+      : ' · Sin barra libre';
+    showToast('Propuesta aplicada — fija el precio del menú' + barMsg);
+  };
+
+  document.getElementById('btn-delete-proposal').onclick = () => {
+    showConfirm('Eliminar propuesta', `¿Eliminar la propuesta de ${p.customer.name}?`, () => {
+      const list = JSON.parse(SAFE_LS.getItem(PROPOSALS_KEY) || '[]');
+      const filtered = list.filter(x => x.id !== pid);
+      SAFE_LS.setItem(PROPOSALS_KEY, JSON.stringify(filtered));
+      refreshProposalsList();
+      updateProperties();
+      showToast('Propuesta eliminada');
+    });
+  };
+
+  // open right panel on mobile
+  if (typeof window.__autoOpenRightOnMobile === 'function') window.__autoOpenRightOnMobile();
+}
+
+function renderProposedMenuDetail(menuId) {
+  const m = PROPOSED_MENUS.find(x => x.id === menuId);
+  if (!m) return '';
+  return Object.entries(m.sections).map(([sec, items]) => `
+    <div class="proposal-detail-cat">
+      <div class="proposal-detail-cat-title">${escapeHtml(sec)}</div>
+      <div class="proposal-detail-cat-items">${items.map(i => '· ' + escapeHtml(i)).join('<br>')}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// VIEW SWITCHER
+// ============================================================
+const MGMT_PIN = '1234'; // simple PIN for management — change as desired
+
+function setView(v) {
+  document.body.classList.remove('view-customer', 'view-management');
+  document.body.classList.add('view-' + v);
+  document.getElementById('view-btn-customer').classList.toggle('active', v === 'customer');
+  document.getElementById('view-btn-management').classList.toggle('active', v === 'management');
+  if (v === 'management') {
+    refreshProposalsList();
+    fitToView();
+  }
+  try { SAFE_LS.setItem('mapa-mesas-last-view', v); } catch (e) {}
+}
+
+function bindViewToggle() {
+  document.getElementById('view-btn-customer').addEventListener('click', () => setView('customer'));
+  document.getElementById('view-btn-management').addEventListener('click', () => {
+    // PIN gate
+    showPinPrompt(() => setView('management'));
+  });
+}
+
+function showPinPrompt(onOk) {
+  const m = document.getElementById('modal-confirm');
+  document.getElementById('modal-title').textContent = 'Acceso a Gerencia';
+  document.getElementById('modal-message').innerHTML = 'Introduce el PIN del equipo para acceder al área de gestión.<br><br><input class="pin-input" id="pin-input" type="password" maxlength="6" autofocus><div class="pin-hint">PIN por defecto: 1234</div>';
+  m.classList.add('show');
+  setTimeout(() => { const i = document.getElementById('pin-input'); if (i) i.focus(); }, 100);
+  const close = () => {
+    m.classList.remove('show');
+    document.getElementById('modal-confirm-btn').onclick = null;
+    document.getElementById('modal-cancel').onclick = null;
+    // restore message styling
+    document.getElementById('modal-message').innerHTML = '';
+  };
+  document.getElementById('modal-confirm-btn').onclick = () => {
+    const v = (document.getElementById('pin-input') || {}).value;
+    if (v === MGMT_PIN) {
+      close();
+      onOk();
+    } else {
+      showToast('PIN incorrecto');
+    }
+  };
+  document.getElementById('modal-cancel').onclick = close;
+  // Enter key submits
+  setTimeout(() => {
+    const i = document.getElementById('pin-input');
+    if (i) i.onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('modal-confirm-btn').click(); };
+  }, 150);
+}
+
+
+// ============================================================
+// IMPORTAR COMENSALES DESDE TXT
+// ============================================================
+// Formato soportado — varias variantes:
+//   Mesa 1               Mesa Presidencial:        # Mesa 1
+//   Ana García           Juan García               Ana García
+//   Pedro López          María Sanz                Pedro López
+//   ---                  ---
+//   Mesa 2               Mesa 2
+//   ...
+//
+// Separadores de mesa: "---", "===", línea vacía tras bloque de nombres,
+// o encabezado "Mesa X", "# X", "Table X".
+//
+// Algoritmo: línea que coincide con patrón de cabecera → nueva mesa.
+// Resto de líneas con texto → nombre de comensal.
+// Líneas vacías, "---", "===" → separador (ignorado).
+// ============================================================
+function parseTxt(text) {
+  const TABLE_HEADER = /^(?:mesa|table|mesas|#)\s*(.+)|^-{2,}$|^={2,}$/i;
+  const SEPARATOR = /^[-=]{2,}$|^\s*$/;
+  const lines = text.split(/\r?\n/);
+  const result = []; // [{name, guests:[]}]
+  let current = null;
+
+  for (let raw of lines) {
+    const line = raw.trim();
+    if (!line || SEPARATOR.test(line)) continue;
+
+    // Check if it's a mesa header: "Mesa 1", "Mesa Familia García", "# Presidencial"
+    const hm = line.match(/^(?:mesa|table|mesas)\s+(.+)$/i) || line.match(/^#\s*(.+)$/);
+    if (hm) {
+      current = { name: hm[1].trim().replace(/:$/, ''), guests: [] };
+      result.push(current);
+    } else {
+      // It's a guest name — if no current mesa, create one
+      if (!current) {
+        current = { name: String(result.length + 1), guests: [] };
+        result.push(current);
+      }
+      // Support "Name - Allergy" or "Name // Allergy"
+      const parts = line.split(/\s+[-\/|]{1,2}\s+/);
+      const name = parts[0].trim();
+      if (name) current.guests.push(name);
+    }
+  }
+  return result.filter(m => m.guests.length > 0 || m.name);
+}
+
+function applyTxtImport(parsed) {
+  if (!parsed.length) { showToast('El archivo no contiene mesas o comensales reconocibles'); return; }
+
+  let applied = 0;
+  let created = 0;
+
+  parsed.forEach(imported => {
+    // Try to find matching table by name (case-insensitive, fuzzy)
+    const match = state.tables.find(t => {
+      const tn = (t.name || '').toLowerCase().trim();
+      const im = imported.name.toLowerCase().trim();
+      // "Mesa 1" vs "1", "presidencial" vs "presidencial", etc.
+      return tn === im || tn === im.replace(/^mesa\s+/i, '') || ('mesa ' + tn) === im;
+    });
+
+    if (match) {
+      // Fill guests into existing table
+      const needed = Math.max(match.seats, imported.guests.length);
+      if (imported.guests.length > match.seats) {
+        // Expand guests array
+        match.seats = imported.guests.length;
+        if (!match.allergies) match.allergies = [];
+      }
+      imported.guests.forEach((g, i) => {
+        while (match.guests.length <= i) match.guests.push('');
+        while ((match.allergies || (match.allergies = [])).length <= i) match.allergies.push('');
+        match.guests[i] = g;
+      });
+      applied++;
+    } else {
+      // No matching table — show warning (don't create silently)
+      console.warn('No se encontró mesa para:', imported.name);
+    }
+  });
+
+  pushHistory();
+  renderAll();
+  updateStats();
+
+  const msg = applied
+    ? `${applied} mesa${applied !== 1 ? 's' : ''} actualizadas con nombres del archivo`
+    : 'No se encontraron mesas coincidentes. Asegúrate de que los nombres del TXT coincidan con los del plano.';
+  showToast(msg);
+
+  // Show modal with details if some tables didn't match
+  const unmatched = parsed.filter(im => !state.tables.find(t => {
+    const tn = (t.name || '').toLowerCase().trim();
+    const iname = im.name.toLowerCase().trim();
+    return tn === iname || tn === iname.replace(/^mesa\s+/i, '') || ('mesa ' + tn) === iname;
+  }));
+
+  if (unmatched.length > 0) {
+    showConfirm(
+      'Algunas mesas no encontradas',
+      `No se pudo asignar: ${unmatched.map(u => '"' + u.name + '"').join(', ')}.\n\nVerifica que los nombres en el TXT coincidan con los del plano (ej. "Mesa 1" o simplemente "1").`,
+      () => {}
+    );
+  }
+}
+
+function bindTxtImport() {
+  const btn = document.getElementById('btn-import-txt');
+  const input = document.getElementById('txt-input');
+  if (!btn || !input) return;
+  btn.addEventListener('click', () => input.click());
+  input.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = parseTxt(ev.target.result);
+        applyTxtImport(parsed);
+      } catch (err) {
+        showToast('Error al leer el archivo');
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+    e.target.value = '';
+  });
+}
+
+// ============================================================
+// AUTO-FILL BARRA LIBRE al aplicar propuesta del cliente
+// ============================================================
+// El cliente elige horas de barra libre (0/1/2/3h) → price per pax por hora × h
+// Mapas usados en el cliente: { 0:0, 1:10, 2:16, 3:18 }
+// Pero el gerente necesita el precio SIN multiplicar (el campo es €/adulto total).
+// Ejemplo: 2h → 16€ total/pax, 3h → 18€ total/pax.
+const BAR_PRICES = { 0: 0, 1: 10, 2: 16, 3: 18 };
+
+function init() {
+  // Load event_id from URL params or injected script
+  const params = new URLSearchParams(window.location.search);
+  currentEventId = params.get('event_id') || (window.__EVENT_ID__ || null);
+  if (currentEventId) {
+    const name = params.get('event_name') || window.__EVENT_NAME__ || 'Evento ' + currentEventId.slice(0,8);
+    document.getElementById('event-name').value = name;
+  }
+  renderTemplates();
+  // Load from API if event_id exists
+  if (currentEventId) {
+    try {
+      fetch(`/api/mapa-mesas/${currentEventId}`).then(r => r.json()).then(d => {
+        if (d.success) {
+          state.tables = d.tables || [];
+          state.elements = d.elements || [];
+          state.eventName = d.eventName || state.eventName;
+          state.budget = Object.assign(state.budget, d.budget || {});
+          renderAll();
+          updateStats();
+          pushHistory();
+          showToast('Mapa cargado de la API');
+        }
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  if (!loadAuto()) {
+    // Create starter plan: presidential + a couple guest tables
+    addTableFromTemplate('pres', 1200, 250);
+    state.tables[0].guests = ['Novia', 'Novio', 'Madre Novia', 'Padre Novia', 'Madre Novio', 'Padre Novio', '', '', '', ''];
+    addTableFromTemplate('r10', 800, 600);
+    addTableFromTemplate('r10', 1200, 600);
+    addTableFromTemplate('r10', 1600, 600);
+    addElementFromTemplate('dance', 1200, 950);
+  }
+  bindBudgetInputs();
+  renderComplements();
+  bindTxtImport();
+  // Customer view removed - BudgetWizard handles this
+  // renderProposedMenus();
+  // renderCustomizer();
+  // bindCustomerForm();
+  // bindStepTabs();
+  // bindSubmitProposal();
+  // updateCustomerTotal();
+  // refreshProposalsList();
+
+  // Bind "Add complement" button
+  const addComplBtn = document.getElementById('btn-add-complement');
+  if (addComplBtn) {
+    addComplBtn.addEventListener('click', () => {
+      if (!state.budget.complements) state.budget.complements = [];
+      state.budget.complements.push({ id: 'c_' + Date.now(), label: '', price: 0 });
+      renderComplements();
+      // Focus the new label input
+      setTimeout(() => {
+        const inputs = document.querySelectorAll('#complements-list .compl-label');
+        const last = inputs[inputs.length - 1];
+        if (last) last.focus();
+      }, 50);
+      saveAuto();
+    });
+  }
+
+  // Bind PDF export button
+  const pdfBtn = document.getElementById('btn-export-pdf');
+  if (pdfBtn) pdfBtn.addEventListener('click', exportBudgetPdf);
+
+  setupMobileMenu();
+
+  // Customer view setup
+  renderProposedMenus();
+  renderCustomizer();
+  bindCustomerForm();
+  bindStepTabs();
+  bindSubmitProposal();
+  updateCustomerTotal();
+
+  // Management proposals
+  refreshProposalsList();
+
+  // View toggle (management only)
+  // bindViewToggle();
+
+  // Decide initial view: if there's data from before, go to last; otherwise default to customer
+  let initialView = 'customer';
+  try { initialView = SAFE_LS.getItem('mapa-mesas-last-view') || 'customer'; } catch (e) {}
+  document.body.classList.add('view-' + initialView);
+  // Customer view removed - using BudgetWizard instead
+// document.getElementById('view-btn-customer').classList.toggle('active', initialView === 'customer');
+  document.getElementById('view-btn-management').classList.toggle('active', initialView === 'management');
+
+  applyTransform();
+  renderAll();
+  pushHistory();
+  if (initialView === 'management') fitToView();
+}
+
+init();
+</script>
+
+</body>
+</html>

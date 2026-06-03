@@ -56,7 +56,13 @@ export default function AdminDashboard() {
       {isOperations && <OperationsManager />}
       {isWebhooks && <WebhooksPanel />}
       {isProveedores && <ProvidersManager />}
-      {isMapa && <OperationsManager />}
+      {isMapa && (
+        <iframe
+          src="/mapa-mesas.html"
+          className="w-full h-[calc(100vh-80px)] border-0 rounded-xl"
+          title="Mapa de Mesas"
+        />
+      )}
       {!isOther && <DashboardOverview />}
     </AdminLayout>
   );
