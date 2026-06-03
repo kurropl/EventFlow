@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     let html = await fs.readFile(join(process.cwd(), 'public', 'mapa-mesas.html'), 'utf-8');
     
     // Inject event_id as a script tag before </body>
-    const eventScript = `<script>window.__EVENT_ID__ = "${eventId || ''}";${eventName ? `window.__EVENT_NAME__ = "${eventName.replace(/"/g, '\\"')}"`; : ''}</script>`;
+    const eventScript = `<script>window.__EVENT_ID__ = "${eventId || ''}";${eventName ? `window.__EVENT_NAME__ = "${eventName.replace(/"/g, '\\"')}"` : ''}</script>`;
     html = html.replace('</body>', eventScript + '</body>');
     
     return new NextResponse(html, {
