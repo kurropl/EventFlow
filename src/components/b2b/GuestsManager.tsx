@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import Icon from '../shared/Icon';
 
 interface EventLite { id: string; client_name: string; event_date: string; event_type: string; guest_count: number; kids_count: number; status: string; tables_suggested?: number; waiters_suggested?: number; selected_items?: any[]; total_pvp?: number | string; bar_hours?: number; }
 interface Guest { id: string; event_id: string; name: string; group_name: string | null; rsvp: string; menu_type: string; dietary: string[]; notes: string | null; }
@@ -229,7 +230,7 @@ guests.forEach((g) => rows.push([g.name, g.group_name || '', g.rsvp, MENU_LABEL[
                 <option value="pendiente">Pendiente</option><option value="confirmado">Confirmado</option><option value="rechazado">Rechazado</option>
               </select>
               <button onClick={() => remove(g)} className="p-1.5 rounded-lg text-[#C7C7CF] hover:text-[#DC2626] hover:bg-[#FEF2F2]" title="Eliminar">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path d="M6 7h12M9 7V5h6v2M10 11v6M14 11v6M7 7l1 13h8l1-13" /></svg>
+                <Icon name="trash" className="w-4 h-4" />
               </button>
             </div>
           ))}

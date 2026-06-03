@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Icon from '../shared/Icon';
 
 interface Lead {
   id: string; name: string; email: string | null; phone: string | null;
@@ -183,8 +184,7 @@ export default function LeadsCRM() {
       <div className="flex items-center gap-3">
         <button onClick={() => setSelectedLead(null)}
           className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <Icon name="arrowLeft" className="w-4 h-4" />
         </button>
         <div>
           <h2 className="text-lg font-bold text-[#1A1A2E]">{selectedLead.name}</h2>
@@ -356,8 +356,7 @@ export default function LeadsCRM() {
             <option value="perdido">Perdido</option>
           </select>
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+<Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
             </svg>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Buscar..."

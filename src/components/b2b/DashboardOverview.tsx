@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import Icon from '../shared/Icon';
 
 type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled';
 
@@ -138,10 +139,10 @@ export default function DashboardOverview() {
 
   // ── Quick stats ──────────────────────────────────────────────
   const KPIS = [
-    { label: 'Ingresos totales', value: `${totalRevenue.toLocaleString('es-ES')}€`, accent: '#16A34A', subtitle: `${payments.length} cobros`, href: '/admin/cobros' },
-    { label: 'Pendiente de cobro', value: `${pendingRevenue.toLocaleString('es-ES')}€`, accent: '#D9920B', subtitle: 'presupuestos activos', href: '/admin/kanban' },
-    { label: 'Comensales previstos', value: totalGuests.toLocaleString('es-ES'), accent: '#6B2737', subtitle: `${active.length} eventos`, href: '/admin/operations' },
-    { label: 'Conversión', value: `${conversion}%`, accent: '#3B82F6', subtitle: `${confirmed} de ${events.length}`, href: '/admin/kanban' },
+    { label: 'Ingresos totales', value: `${totalRevenue.toLocaleString('es-ES')}€`, accent: '#16A34A', subtitle: `${payments.length} cobros`, href: '/admin/cobros', icon: 'revenue' },
+    { label: 'Pendiente de cobro', value: `${pendingRevenue.toLocaleString('es-ES')}€`, accent: '#D9920B', subtitle: 'presupuestos activos', href: '/admin/kanban', icon: 'pending' },
+    { label: 'Comensales previstos', value: `${totalGuests.toLocaleString('es-ES')}`, accent: '#6B2737', subtitle: `${active.length} eventos`, href: '/admin/operations', icon: 'guests' },
+    { label: 'Conversión', value: `${conversion}%`, accent: '#3B82F6', subtitle: `${confirmed} de ${events.length}`, href: '/admin/kanban', icon: 'conversion' },
   ];
 
   return (
@@ -149,10 +150,18 @@ export default function DashboardOverview() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-serif text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-            Hola de nuevo 👋
-          </h2>
-          <p className="text-[#6B7280] text-sm">Resumen de la actividad de tu salón de celebraciones.</p>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+              <Icon name="dashboard" className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-serif text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                Bienvenido
+              </h2>
+              <p className="text-[13px] text-[#6B7280] leading-tight">Panel de control · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link href="/admin/leads" className="text-sm font-medium px-4 py-2.5 rounded-xl border border-[#E5E7EB] hover:bg-[#F5F5F8] transition-colors">
@@ -191,9 +200,12 @@ export default function DashboardOverview() {
             {KPIS.map((k, i) => (
               <motion.div key={k.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Link href={k.href} className="block bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-2 h-2 rounded-full" style={{ background: k.accent }} />
-                    <span className="text-[12px] text-[#6B7280]">{k.label}</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full" style={{ background: k.accent }} />
+                      <span className="text-[12px] text-[#6B7280]">{k.label}</span>
+                    </span>
+                    <span className="text-[#9CA3AF]"><Icon name={k.icon} className="w-4 h-4" /></span>
                   </div>
                   <div className="text-3xl font-semibold text-[#1A1A1A] tabular-nums">{k.value}</div>
                   <div className="text-[11px] text-[#9CA3AF] mt-1">{k.subtitle}</div>
@@ -340,17 +352,18 @@ export default function DashboardOverview() {
                 <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3">Accesos rápidos</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { label: 'Agenda', href: '/admin/agenda' },
-                    { label: 'Leads', href: '/admin/leads' },
-                    { label: 'Clientes', href: '/admin/clientes' },
-                    { label: 'Cobros', href: '/admin/cobros' },
-                    { label: 'Invitados', href: '/admin/invitados' },
-                    { label: 'Catálogo', href: '/admin/catalog' },
-                    { label: 'Operaciones', href: '/admin/operations' },
-                    { label: 'Mapa de mesas', href: '/admin/mapa-mesas' },
+                    { label: 'Agenda', href: '/admin/agenda', icon: 'agenda' },
+                    { label: 'Leads', href: '/admin/leads', icon: 'leads' },
+                    { label: 'Clientes', href: '/admin/clientes', icon: 'clientes' },
+                    { label: 'Cobros', href: '/admin/cobros', icon: 'cobros' },
+                    { label: 'Invitados', href: '/admin/invitados', icon: 'invitados' },
+                    { label: 'Catálogo', href: '/admin/catalog', icon: 'catalog' },
+                    { label: 'Operaciones', href: '/admin/operations', icon: 'operations' },
+                    { label: 'Mapa de mesas', href: '/admin/mapa-mesas', icon: 'mapa' },
                   ].map((q) => (
                     <Link key={q.href} href={q.href}
-                      className="text-[12px] font-medium text-[#374151] bg-[#FAFAFC] border border-[#ECECF1] rounded-xl px-3 py-2.5 hover:border-[#E0D3A8] hover:bg-[#FBF6E9] transition-all text-center">
+                      className="flex items-center gap-2.5 text-[12px] font-medium text-[#374151] bg-[#FAFAFC] border border-[#ECECF1] rounded-xl px-3 py-2.5 hover:border-[#E0D3A8] hover:bg-[#FBF6E9] transition-all">
+                      <span className="text-[#9CA3AF]"><Icon name={q.icon} className="w-3.5 h-3.5" /></span>
                       {q.label}
                     </Link>
                   ))}

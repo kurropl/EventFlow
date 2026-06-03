@@ -4,70 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import Icon from '../shared/Icon';
 
 type Tab = 'dashboard' | 'leads' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'proveedores' | 'login';
-
-/* ✦ Premium icon set — J.Benitez brand ✦
- * Clean 24×24 viewBox, 1.5 stroke, round caps/joins.
- * Each icon uses negative space and refined geometry.
- */
-const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; className?: string }) => {
-  const p: Record<string, React.ReactNode> = {
-    dashboard: (
-      <><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" /><rect x="13" y="3" width="8" height="5" rx="1.5" fill="none" /><rect x="13" y="12" width="8" height="9" rx="1.5" fill="none" /><rect x="3" y="15" width="8" height="6" rx="1.5" fill="none" /><path d="M19 8v.01M7 18v.01" strokeWidth="2.5" strokeLinecap="round" /></>
-    ),
-    agenda: (
-      <><rect x="3" y="4" width="18" height="17" rx="2" fill="none" /><path d="M3 10h18" /><path d="M8 2v4M16 2v4" /><circle cx="17" cy="16" r="3" fill="none" /><path d="M17 14.5v1.5l1 .5" strokeLinecap="round" /></>
-    ),
-    leads: (
-      <><circle cx="12" cy="8" r="4.5" fill="none" /><path d="M3 21c0-4.97 4.03-9 9-9" fill="none" /><path d="M16 5l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" /><path d="M21 16h-6" strokeLinecap="round" /><path d="M18 13v6" strokeLinecap="round" /></>
-    ),
-    kanban: (
-      <><rect x="2.5" y="3" width="6" height="18" rx="1.5" fill="none" /><rect x="15.5" y="3" width="6" height="12" rx="1.5" fill="none" /><path d="M20.5 8v.01" strokeWidth="2.5" strokeLinecap="round" /><path d="M5.5 8v.01" strokeWidth="2.5" strokeLinecap="round" /></>
-    ),
-    clientes: (
-      <><circle cx="9" cy="8" r="3.5" fill="none" /><path d="M3 21c0-4.42 3.36-8 7-8h3c.43 0 .85.04 1.26.12" fill="none" /><circle cx="18.5" cy="16.5" r="3.5" fill="none" /><path d="M15 21c0-1.93 1.57-3.5 3.5-3.5s3.5 1.57 3.5 3.5" fill="none" /></>
-    ),
-    cobros: (
-      <><rect x="2" y="5" width="20" height="14" rx="2" fill="none" /><path d="M2 11h20" /><circle cx="12" cy="14" r="3" fill="none" /><path d="M12 12v4M10.5 13.5L12 12l1.5 1.5" strokeLinecap="round" strokeLinejoin="round" /></>
-    ),
-    invitados: (
-      <><circle cx="12" cy="8" r="4.5" fill="none" /><path d="M4 21c0-4.97 4.03-9 9-9" fill="none" /><path d="M18 17l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" /></>
-    ),
-    catalog: (
-      <><path d="M4 5h16M4 12h16" /><path d="M4 19h10" /><circle cx="20" cy="17" r="3" fill="none" /><path d="M20 15.5v3M18.5 17h3" strokeLinecap="round" /></>
-    ),
-    operations: (
-      <><circle cx="12" cy="12" r="2.5" fill="none" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" /><circle cx="5" cy="5" r="1.5" fill="none" /><circle cx="19" cy="5" r="1.5" fill="none" /><circle cx="5" cy="19" r="1.5" fill="none" /><circle cx="19" cy="19" r="1.5" fill="none" /></>
-    ),
-    mapa: (
-      <><rect x="3" y="3" width="18" height="18" rx="2" fill="none" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /><circle cx="12" cy="12" r="2" fill="none" /></>
-    ),
-    webhooks: (
-      <><path d="M12 2a6 6 0 0 0-4.24 10.24l-3.53 3.53M12 22a6 6 0 0 0 4.24-10.24l3.53-3.53" /><circle cx="5" cy="19" r="2.5" fill="none" /><circle cx="19" cy="5" r="2.5" fill="none" /></>
-    ),
-    proveedores: (
-      <><path d="M17 20v-3a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v3" fill="none" /><circle cx="10" cy="7" r="4" fill="none" /><path d="M21 15v2" strokeLinecap="round" /><path d="M20 16h2" strokeLinecap="round" /></>
-    ),
-    portal: (
-      <><path d="M3 12l9-9 9 9" /><path d="M5 10v10h14V10" /></>
-    ),
-    logout: (
-      <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" /><path d="M16 17l5-5-5-5" strokeLinecap="round" strokeLinejoin="round" /><path d="M21 12H9" strokeLinecap="round" /></>
-    ),
-    menu: (
-      <><path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" /></>
-    ),
-    close: (
-      <><path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" /></>
-    ),
-  };
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-      {p[name]}
-    </svg>
-  );
-};
 
 const TABS: { id: Tab; label: string; sub: string; href: string }[] = [
   { id: 'dashboard', label: 'Resumen', sub: 'Panel general', href: '/admin' },
