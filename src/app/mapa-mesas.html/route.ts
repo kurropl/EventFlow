@@ -1,9 +1,10 @@
 /**
  * GET /mapa-mesas.html
  * Serves the standalone mapa-mesas HTML page
+ * Event ID is passed via URL query params: ?event_id=xxx&event_name=xxx
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync } from 'fs';
+import { promises as fs } from 'fs';
 import { join } from 'path';
 
 export async function GET(req: NextRequest) {
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
     const eventId = searchParams.get('event_id');
     const eventName = searchParams.get('event_name');
     
-    let html = readFileSync(join(process.cwd(), 'public', 'mapa-mesas.html'), 'utf-8');
+    let html = await fs.readFile(join(process.cwd(), 'public', 'mapa-mesas.html'), 'utf-8');
     
     // Inject event_id as a script tag before </body>
     const eventScript = `<script>window.__EVENT_ID__ = "${eventId || ''}";${eventName ? `window.__EVENT_NAME__ = "${eventName.replace(/"/g, '\\"')}"`; : ''}</script>`;
