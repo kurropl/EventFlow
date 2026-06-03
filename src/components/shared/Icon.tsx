@@ -40,6 +40,10 @@ const MAP: Record<string, LucideIcon> = {
   download: Lucide.Download,
   info: Lucide.Info,
   spinner: Lucide.LoaderCircle,
+  layout: Lucide.LayoutGrid,
+  rotate: Lucide.RotateCw,
+  user: Lucide.User,
+  userCheck: Lucide.UserCheck,
 
   // KPI
   revenue: Lucide.CreditCard,

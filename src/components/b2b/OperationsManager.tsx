@@ -30,7 +30,7 @@ interface CanvasTable {
   color: string; waiter: string;
 }
 interface Waiter { id: string; name: string; role: string; }
-interface DragState { tableId: string; startX: number; startY: number; origX: number; origY: number; }
+interface DragState { tableId: string; clientX: number; clientY: number; origX: number; origY: number; }
 
 // ── Constants ──────────────────────────────────────────────────
 const CANVAS_W = 1200, CANVAS_H = 800, GRID = 20;
@@ -159,27 +159,30 @@ export default function OperationsManager() {
     setSaving(false);
   };
 
-  // ── Map interactions ─────────────────────────────────────────
-  const handleMouseDownTable = useCallback((e: React.MouseEvent, tid: string) => {
+  // ── Map interactions (pointer events for reliable drag) ──────
+  const handlePointerDownTable = useCallback((e: React.PointerEvent, tid: string) => {
     if (e.button !== 0) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     e.stopPropagation();
     const t = tables.find(x => x.id === tid);
     if (!t) return;
     setSelectedTable(tid);
-    setDrag({ tableId: tid, startX: e.clientX, startY: e.clientY, origX: t.x, origY: t.y });
+    setDrag({ tableId: tid, clientX: e.clientX, clientY: e.clientY, origX: t.x, origY: t.y });
   }, [tables]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!drag) return;
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    const dx = (e.clientX - drag.startX) / (rect.width / CANVAS_W);
-    const dy = (e.clientY - drag.startY) / (rect.height / CANVAS_H);
+    const dx = (e.clientX - drag.clientX) / (rect.width / CANVAS_W);
+    const dy = (e.clientY - drag.clientY) / (rect.height / CANVAS_H);
     setTables(prev => prev.map(t => t.id === drag.tableId ? { ...t, x: snap(drag.origX + dx), y: snap(drag.origY + dy) } : t));
   }, [drag]);
 
-  const handleMouseUp = useCallback(() => setDrag(null), []);
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    setDrag(null);
+  }, []);
 
   const updateTableField = useCallback((tid: string, field: string, value: any) => {
     setTables(prev => prev.map(t => t.id === tid ? { ...t, [field]: value } : t));
@@ -262,7 +265,9 @@ export default function OperationsManager() {
           <h1 className="text-xl font-bold text-[#1A1A2E]">Operaciones</h1>
           <p className="text-xs text-[#6B7280]">Eventos activos, escandallos y logística</p>
         </div>
-        <button onClick={fetchOrders} className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">↻</button>
+        <button onClick={fetchOrders} className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+          <Icon name="refresh-cw" className="w-3.5 h-3.5"/>
+        </button>
       </div>
       {orders.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
@@ -331,7 +336,7 @@ export default function OperationsManager() {
         {/* Header */}
         <div className="flex items-center gap-3">
           <button onClick={() => setSelected(null)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+            <Icon name="arrow-left" className="w-4 h-4"/>
           </button>
           <div>
             <h2 className="text-lg font-bold text-[#1A1A2E]">{selected.client_name}</h2>
@@ -341,8 +346,7 @@ export default function OperationsManager() {
             {viewMode === 'detail' && (
               <button onClick={() => setViewMode('map')}
                 className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#C9A84C] text-[#C9A84C] hover:bg-[#FBF6E9] transition-colors flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+                <Icon name="layout" className="w-3.5 h-3.5"/>
                 Mapa de mesas
               </button>
             )}
@@ -471,7 +475,9 @@ export default function OperationsManager() {
                 onChange={e => { const c = [...extraItems]; c[i] = { ...c[i], amount: +e.target.value }; setExtraItems(c); }}
                 className="w-28 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2" />
               <button onClick={() => { if (extraItems.length > 1) setExtraItems(extraItems.filter((_, idx) => idx !== i)); }}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50">×</button>
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50">
+                <Icon name="x" className="w-3.5 h-3.5"/>
+              </button>
             </div>
           ))}
           <button onClick={() => setExtraItems([...extraItems, { desc: '', amount: 0 }])}
@@ -516,8 +522,7 @@ export default function OperationsManager() {
             </div>
           ) : tables.length === 0 ? (
             <div className="flex items-center justify-center h-[500px] text-sm text-[#6B7280] flex-col gap-3">
-              <svg className="w-16 h-16 text-[#E0D3A8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+              <Icon name="layout" className="w-16 h-16 mx-auto text-[#E0D3A8]"/>
               <span>No hay distribución de mesas para este evento.</span>
               <button onClick={() => loadTables(selected!)}
                 className="text-[11px] font-medium px-4 py-2 rounded-lg bg-[#C9A84C] text-white hover:bg-[#A88A3A] transition-colors">
@@ -530,12 +535,12 @@ export default function OperationsManager() {
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-[#FAF8F5] border border-[#E0D3A8] rounded-lg px-2 py-1.5 shadow-sm">
                 <button onClick={addTable} title="Añadir mesa"
                   className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#E0D3A8] transition-colors text-[#5A4A38]">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+                  <Icon name="plus" className="w-4 h-4"/>
                 </button>
                 <div className="w-px h-5 bg-[#E0D3A8]"/>
                 <button onClick={() => setSelectedTable(null)} title="Deseleccionar"
                   className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#E0D3A8] transition-colors text-[#5A4A38]">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  <Icon name="x" className="w-4 h-4"/>
                 </button>
                 <div className="w-px h-5 bg-[#E0D3A8]"/>
                 <button onClick={saveLayout} disabled={saving}
@@ -549,9 +554,8 @@ export default function OperationsManager() {
                 viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
                 preserveAspectRatio="xMidYMid meet"
                 className="bg-[#FAF8F5] cursor-default"
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
                 onClick={() => setSelectedTable(null)}
                 style={{ minHeight: 500 }}>
                 {/* Grid */}
@@ -582,9 +586,9 @@ export default function OperationsManager() {
                   return (
                     <g key={t.id}
                       transform={`translate(${t.x}, ${t.y}) rotate(${t.rotation})`}
-                      onMouseDown={e => { e.stopPropagation(); handleMouseDownTable(e, t.id); }}
+                      onPointerDown={e => handlePointerDownTable(e, t.id)}
                       className="cursor-grab active:cursor-grabbing"
-                      style={{ cursor: drag?.tableId === t.id ? 'grabbing' : 'grab' }}
+                      style={{ cursor: drag?.tableId === t.id ? 'grabbing' : 'grab', touchAction: 'none' }}
                       onClick={e => e.stopPropagation()}>
                       {/* Shadow */}
                       {t.shape === 'round' ? (
@@ -634,11 +638,12 @@ export default function OperationsManager() {
                       {isSelected && (
                         <rect x={t.width - 10} y={t.height - 10} width={10} height={10}
                           fill="#6B2737" rx={2}
-                          onMouseDown={e => {
+                          onPointerDown={e => {
                             e.stopPropagation(); e.preventDefault();
+                            (e.target as HTMLElement).setPointerCapture(e.pointerId);
                             const startX = e.clientX, startY = e.clientY;
                             const ow = t.width, oh = t.height;
-                            const move = (me: MouseEvent) => {
+                            const move = (me: PointerEvent) => {
                               const rect = svgRef.current?.getBoundingClientRect();
                               if (!rect) return;
                               const dx = (me.clientX - startX) / (rect.width / CANVAS_W);
@@ -647,8 +652,8 @@ export default function OperationsManager() {
                                 ...x, width: Math.max(40, snap(ow + dx)), height: Math.max(40, snap(oh + dy))
                               } : x));
                             };
-                            const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
-                            document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+                            const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+                            document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
                           }}
                           style={{ cursor: 'nwse-resize' }}/>
                       )}
@@ -713,12 +718,12 @@ export default function OperationsManager() {
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <button onClick={() => rotateTable(selectedTableData.id)}
                     className="text-xs font-medium py-2 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F8] transition-colors flex items-center justify-center gap-1">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    <Icon name="rotate" className="w-3 h-3"/>
                     Rotar
                   </button>
                   <button onClick={() => deleteTable(selectedTableData.id)}
                     className="text-xs font-medium py-2 rounded-lg bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] transition-colors flex items-center justify-center gap-1">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    <Icon name="trash" className="w-3 h-3"/>
                     Eliminar
                   </button>
                 </div>
@@ -727,8 +732,7 @@ export default function OperationsManager() {
           ) : (
             <div className="bg-white rounded-2xl border border-[#ECECF1] p-6 shadow">
               <div className="text-center text-sm text-[#9CA3AF] space-y-2">
-                <svg className="w-12 h-12 mx-auto text-[#E0D3A8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+                <Icon name="layout" className="w-12 h-12 mx-auto text-[#E0D3A8]"/>
                 <p>Haz clic en una mesa para editarla</p>
                 <p className="text-[11px] text-[#C9A84C]">Arrástralas para distribuir</p>
               </div>
@@ -750,7 +754,7 @@ export default function OperationsManager() {
           {waiters.length > 0 && (
             <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow">
               <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3 flex items-center gap-2">
-                <Icon name="user" className="w-4 h-4"/> Camareros ({waiters.length})
+                <Icon name="userCheck" className="w-4 h-4"/> Camareros ({waiters.length})
               </h3>
               <div className="space-y-1.5">
                 {waiters.map(w => {
