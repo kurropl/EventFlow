@@ -7,28 +7,63 @@ import { motion } from 'framer-motion';
 
 type Tab = 'dashboard' | 'leads' | 'agenda' | 'kanban' | 'clientes' | 'cobros' | 'invitados' | 'catalog' | 'operations' | 'mapa-mesas' | 'webhooks' | 'proveedores' | 'login';
 
-/* Inline icon set — clean line icons, no external dependency */
+/* ✦ Premium icon set — J.Benitez brand ✦
+ * Clean 24×24 viewBox, 1.5 stroke, round caps/joins.
+ * Each icon uses negative space and refined geometry.
+ */
 const Icon = ({ name, className = 'w-[18px] h-[18px]' }: { name: string; className?: string }) => {
   const p: Record<string, React.ReactNode> = {
-    dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
-    agenda: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></>,
-  leads: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M17 8l2 2 4-4"/></>,
-    kanban: <><rect x="3" y="3" width="6" height="18" rx="1.5" /><rect x="15" y="3" width="6" height="11" rx="1.5" /></>,
-    clientes: <><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0-2-5.2M16 20a6 6 0 0 0-1.5-4" /></>,
-    cobros: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>,
-    invitados: <><path d="M16 11l2 2 4-4" /><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0" /></>,
-    catalog: <><path d="M4 6h16M4 12h16M4 18h10" /></>,
-    operations: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H0" /></>,
-    mapa: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></>,
-    webhooks: <><path d="M18 8a6 6 0 0 0-9.3-5M6 8a6 6 0 0 0 4 10.5M12 18a6 6 0 0 0 6-6" /><circle cx="12" cy="8" r="2" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="14" r="2" /></>,
-    portal: <><path d="M3 12l9-9 9 9" /><path d="M5 10v10h14V10" /></>,
-    proveedores: <><path d="M4 6h16M4 12h10M4 18h14" /><circle cx="20" cy="8" r="2" /><circle cx="20" cy="16" r="2" /></>,
-    logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5M21 12H9" /></>,
-    menu: <><path d="M3 6h18M3 12h18M3 18h18" /></>,
-    close: <><path d="M18 6 6 18M6 6l12 12" /></>,
+    dashboard: (
+      <><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" /><rect x="13" y="3" width="8" height="5" rx="1.5" fill="none" /><rect x="13" y="12" width="8" height="9" rx="1.5" fill="none" /><rect x="3" y="15" width="8" height="6" rx="1.5" fill="none" /><path d="M19 8v.01M7 18v.01" strokeWidth="2.5" strokeLinecap="round" /></>
+    ),
+    agenda: (
+      <><rect x="3" y="4" width="18" height="17" rx="2" fill="none" /><path d="M3 10h18" /><path d="M8 2v4M16 2v4" /><circle cx="17" cy="16" r="3" fill="none" /><path d="M17 14.5v1.5l1 .5" strokeLinecap="round" /></>
+    ),
+    leads: (
+      <><circle cx="12" cy="8" r="4.5" fill="none" /><path d="M3 21c0-4.97 4.03-9 9-9" fill="none" /><path d="M16 5l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" /><path d="M21 16h-6" strokeLinecap="round" /><path d="M18 13v6" strokeLinecap="round" /></>
+    ),
+    kanban: (
+      <><rect x="2.5" y="3" width="6" height="18" rx="1.5" fill="none" /><rect x="15.5" y="3" width="6" height="12" rx="1.5" fill="none" /><path d="M20.5 8v.01" strokeWidth="2.5" strokeLinecap="round" /><path d="M5.5 8v.01" strokeWidth="2.5" strokeLinecap="round" /></>
+    ),
+    clientes: (
+      <><circle cx="9" cy="8" r="3.5" fill="none" /><path d="M3 21c0-4.42 3.36-8 7-8h3c.43 0 .85.04 1.26.12" fill="none" /><circle cx="18.5" cy="16.5" r="3.5" fill="none" /><path d="M15 21c0-1.93 1.57-3.5 3.5-3.5s3.5 1.57 3.5 3.5" fill="none" /></>
+    ),
+    cobros: (
+      <><rect x="2" y="5" width="20" height="14" rx="2" fill="none" /><path d="M2 11h20" /><circle cx="12" cy="14" r="3" fill="none" /><path d="M12 12v4M10.5 13.5L12 12l1.5 1.5" strokeLinecap="round" strokeLinejoin="round" /></>
+    ),
+    invitados: (
+      <><circle cx="12" cy="8" r="4.5" fill="none" /><path d="M4 21c0-4.97 4.03-9 9-9" fill="none" /><path d="M18 17l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" /></>
+    ),
+    catalog: (
+      <><path d="M4 5h16M4 12h16" /><path d="M4 19h10" /><circle cx="20" cy="17" r="3" fill="none" /><path d="M20 15.5v3M18.5 17h3" strokeLinecap="round" /></>
+    ),
+    operations: (
+      <><circle cx="12" cy="12" r="2.5" fill="none" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" /><circle cx="5" cy="5" r="1.5" fill="none" /><circle cx="19" cy="5" r="1.5" fill="none" /><circle cx="5" cy="19" r="1.5" fill="none" /><circle cx="19" cy="19" r="1.5" fill="none" /></>
+    ),
+    mapa: (
+      <><rect x="3" y="3" width="18" height="18" rx="2" fill="none" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /><circle cx="12" cy="12" r="2" fill="none" /></>
+    ),
+    webhooks: (
+      <><path d="M12 2a6 6 0 0 0-4.24 10.24l-3.53 3.53M12 22a6 6 0 0 0 4.24-10.24l3.53-3.53" /><circle cx="5" cy="19" r="2.5" fill="none" /><circle cx="19" cy="5" r="2.5" fill="none" /></>
+    ),
+    proveedores: (
+      <><path d="M17 20v-3a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v3" fill="none" /><circle cx="10" cy="7" r="4" fill="none" /><path d="M21 15v2" strokeLinecap="round" /><path d="M20 16h2" strokeLinecap="round" /></>
+    ),
+    portal: (
+      <><path d="M3 12l9-9 9 9" /><path d="M5 10v10h14V10" /></>
+    ),
+    logout: (
+      <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" /><path d="M16 17l5-5-5-5" strokeLinecap="round" strokeLinejoin="round" /><path d="M21 12H9" strokeLinecap="round" /></>
+    ),
+    menu: (
+      <><path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" /></>
+    ),
+    close: (
+      <><path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" /></>
+    ),
   };
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
       {p[name]}
     </svg>
   );
