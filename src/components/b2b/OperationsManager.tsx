@@ -307,10 +307,13 @@ export default function OperationsManager() {
       {viewTab === 'map' ? (
         <div className="rounded-2xl border border-[#ECECF1] bg-white overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
           style={{ height: 'calc(100vh - 200px)', minHeight: 500 }}>
-          {(() => { const s = selected; return s && <MapaMesas
-            operationId={s.id}
-            eventId={s.event_id}
-            operationName={`${s.client_name} — ${s.event_type}`}
+          {(() => { 
+            if (!selected) return null;
+            const sel = selected;
+            return <MapaMesas
+            operationId={sel.id}
+            eventId={sel.event_id}
+            operationName={`${sel.client_name} — ${sel.event_type}`}
           />;})()}
           {!selected && (
             <div className="flex items-center justify-center h-full text-sm text-[#6B7280]">
