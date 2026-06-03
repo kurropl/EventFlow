@@ -6,8 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import dynamic from 'next/dynamic';
-const MapaMesas = dynamic(() => import('@/components/b2b/MapaMesas'));
+import MapaMesas from '@/components/b2b/MapaMesas';
 
 interface EventOrder {
   id: string; event_id: string; client_name: string; client_email: string;

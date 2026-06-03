@@ -28,8 +28,6 @@ import CatalogCRUD from '@/components/b2b/CatalogCRUD';
 import OperationsManager from '@/components/b2b/OperationsManager';
 import WebhooksPanel from '@/components/b2b/WebhooksPanel';
 import ProvidersManager from '@/components/b2b/ProvidersManager';
-import dynamic from 'next/dynamic';
-const MapaMesas = dynamic(() => import('@/components/b2b/MapaMesas'));
 
 export default function AdminDashboard() {
   const pathname = usePathname();
@@ -58,7 +56,6 @@ export default function AdminDashboard() {
       {isOperations && <OperationsManager />}
       {isWebhooks && <WebhooksPanel />}
       {isProveedores && <ProvidersManager />}
-      {isMapa && <MapaMesas />}
       {!isOther && <DashboardOverview />}
     </AdminLayout>
   );
