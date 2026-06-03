@@ -44,6 +44,7 @@ const MAP: Record<string, LucideIcon> = {
   rotate: Lucide.RotateCw,
   user: Lucide.User,
   userCheck: Lucide.UserCheck,
+  clipboardList: Lucide.ClipboardList,
 
   // KPI
   revenue: Lucide.CreditCard,

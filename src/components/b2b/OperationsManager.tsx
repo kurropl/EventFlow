@@ -368,11 +368,11 @@ export default function OperationsManager() {
         <div className="flex border-b border-[#E5E7EB]">
           <button onClick={() => setViewMode('detail')}
             className={`text-[12px] font-medium px-4 py-2.5 border-b-2 transition-colors ${viewMode === 'detail' ? 'border-[#C9A84C] text-[#1A1A2E]' : 'border-transparent text-[#6B7280] hover:text-[#1A1A2E]'}`}>
-            📋 Escandallo & datos
+            <Icon name="clipboardList" className="w-4 h-4 inline mr-1.5"/> Escandallo & datos
           </button>
           <button onClick={() => setViewMode('map')}
             className={`text-[12px] font-medium px-4 py-2.5 border-b-2 transition-colors ${viewMode === 'map' ? 'border-[#C9A84C] text-[#1A1A2E]' : 'border-transparent text-[#6B7280] hover:text-[#1A1A2E]'}`}>
-            🗺 Mapa de mesas
+            <Icon name="layout" className="w-4 h-4 inline mr-1.5"/> Mapa de mesas
           </button>
         </div>
 
