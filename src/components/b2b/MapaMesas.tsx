@@ -2,6 +2,7 @@
  * J.Benitez — Mapa de Mesas Interactivo (Drag & Drop)
  * 
  * - Cargar/guardar mapa por operación (evento)
+ * - Auto-generar distribución de mesas según presupuesto
  * - Drag & drop, resize, rotate mesas
  * - Asignar camarero a cada mesa
  * - Visualización de camareros en el mapa
@@ -46,6 +47,9 @@ interface MapaMesasProps {
   operationId?: string;
   eventId?: string;
   operationName?: string;
+  guestCount?: number;
+  tablesSuggested?: number;
+  kidsCount?: number;
 }
 
 // ── Constants ──────────────────────────────────────────────────
@@ -54,8 +58,9 @@ const HALL_HEIGHT = 600;
 const GRID_SIZE = 10;
 
 const TABLE_COLORS = [
-  '#C9A84C', '#A88A3A', '#8B7355', '#D4A574', '#B8860B',
-  '#6B8E23', '#4682B4', '#9370DB', '#CD5C5C', '#20B2AA',
+  '#C9A84C', '#4682B4', '#6B8E23', '#9370DB', '#CD5C5C',
+  '#20B2AA', '#A88A3A', '#D4A574', '#B8860B', '#D2691E',
+  '#8B7355', '#7B68EE', '#2E8B57', '#B22222', '#F4A460',
 ];
 
 const DEFAULT_TABLES: TablePos[] = [
@@ -96,8 +101,102 @@ function nextName(tables: TablePos[]): string {
   return `${INITIALS} ${max + 1}`;
 }
 
+/**
+ * Auto-generates table distribution based on budget data.
+ * 
+ * Layout strategy:
+ * - Mesa Principal (rect, 8-10 pax) at top-center, near stage
+ * - Round tables (8 pax each) distributed in a horseshoe/arc pattern
+ * - Long tables for kids (if any) placed to one side
+ * - Waiters distributed proportionally
+ */
+function generateDistribution(
+  guestCount: number,
+  tablesSuggested: number,
+  kidsCount: number,
+  waiters: Waiter[]
+): TablePos[] {
+  const tables: TablePos[] = [];
+  const adultGuests = guestCount - kidsCount;
+  const totalTables = Math.max(tablesSuggested, Math.ceil(guestCount / 8));
+  
+  // 1. Main table for the hosts (near stage area)
+  const mainCapacity = Math.min(12, Math.max(8, Math.ceil(adultGuests * 0.12)));
+  const mainType: 'rect' | 'long' = mainCapacity <= 10 ? 'rect' : 'long';
+  tables.push({
+    id: 't1',
+    name: 'Mesa Principal',
+    x: snap(350, GRID_SIZE),
+    y: snap(60, GRID_SIZE),
+    width: mainType === 'rect' ? 100 : 140,
+    height: 60,
+    rotation: 0,
+    capacity: mainCapacity,
+    shape: mainType,
+    color: '#C9A84C',
+    waiter: waiters.length > 0 ? waiters[0].name : '',
+  });
+
+  const remainingGuests = adultGuests - mainCapacity;
+  const roundTablesNeeded = Math.max(1, Math.ceil(remainingGuests / 8));
+  const kidsTableCount = kidsCount > 0 ? Math.max(1, Math.ceil(kidsCount / 8)) : 0;
+  const totalOtherTables = roundTablesNeeded + kidsTableCount;
+
+  // Distribute adult round tables in a horseshoe pattern
+  const radiusX = 260;
+  const radiusY = 180;
+  const centerX = 400;
+  const centerY = 330;
+  const gap = Math.PI / (Math.max(totalOtherTables, 3));
+
+  for (let i = 0; i < roundTablesNeeded; i++) {
+    const angle = gap * (i + 1) + Math.PI * 0.1;
+    const x = snap(centerX + radiusX * Math.cos(angle), GRID_SIZE);
+    const y = snap(centerY + radiusY * Math.sin(angle), GRID_SIZE);
+    const capacity = 8;
+
+    // Assign waiter in round-robin (skip main table's waiter)
+    const waiterIdx = ((i + 1) % Math.max(waiters.length, 1));
+    const waiter = waiters.length > 0 ? waiters[waiterIdx % waiters.length].name : '';
+
+    tables.push({
+      id: `t${i + 2}`,
+      name: `Mesa ${i + 1}`,
+      x,
+      y,
+      width: 60,
+      height: 60,
+      rotation: 0,
+      capacity,
+      shape: 'round',
+      color: TABLE_COLORS[(i + 1) % TABLE_COLORS.length],
+      waiter,
+    });
+  }
+
+  // Kids tables (long, right side)
+  for (let i = 0; i < kidsTableCount; i++) {
+    const idx = roundTablesNeeded + i;
+    tables.push({
+      id: `t${idx + 2}`,
+      name: `Mesa Infantil ${i + 1}`,
+      x: snap(620 + (i % 2) * 80, GRID_SIZE),
+      y: snap(200 + Math.floor(i / 2) * 100, GRID_SIZE),
+      width: 80,
+      height: 40,
+      rotation: 0,
+      capacity: 8,
+      shape: 'long',
+      color: '#D4A574',
+      waiter: waiters.length > 0 ? waiters[idx % waiters.length].name : '',
+    });
+  }
+
+  return tables;
+}
+
 // ── Component ──────────────────────────────────────────────────
-export default function MapaMesas({ operationId, eventId, operationName }: MapaMesasProps) {
+export default function MapaMesas({ operationId, eventId, operationName, guestCount, tablesSuggested, kidsCount }: MapaMesasProps) {
   const [tables, setTables] = useState<TablePos[]>(DEFAULT_TABLES);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -107,13 +206,16 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
   const [newShape, setNewShape] = useState<'round' | 'rect' | 'long'>('round');
   const [newCapacity, setNewCapacity] = useState(8);
   const [waiters, setWaiters] = useState<Waiter[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [scale, setScale] = useState(1);
   const hallRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selected = tables.find((t) => t.id === selectedId) || null;
   const isEventMode = !!(operationId || eventId);
-  const title = isEventMode ? `Mapa — ${operationName || 'Evento'}` : 'Mapa de Mesas';
+  const title = isEventMode
+    ? `Mapa — ${operationName || 'Evento'}`
+    : 'Mapa de Mesas';
 
   // ── Scale ────────────────────────────────────────────────────
   useEffect(() => {
@@ -129,7 +231,7 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
-  // ── Load layout + waiters ────────────────────────────────────
+  // ── Load layout from DB ──────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
@@ -138,17 +240,28 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
         const res = await fetch(`/api/floor-plan?${params}`);
         const data = await res.json();
         if (data.success && data.data) {
-          // Ensure waiter field exists on loaded tables
+          // Saved plan exists — load it
           const tablesWithWaiters = (data.data as TablePos[]).map(t => ({
             ...t,
             waiter: t.waiter || '',
           }));
           setTables(tablesWithWaiters);
+        } else if (guestCount && guestCount > 0) {
+          // No saved plan but we have budget data — auto-generate
+          const suggested = tablesSuggested || Math.ceil(guestCount / 8);
+          const generated = generateDistribution(guestCount, suggested, kidsCount || 0, waiters);
+          setTables(generated);
         }
-      } catch { /* use defaults */ }
+      } catch {
+        // Fallback to DEFAULT_TABLES if can't load
+      } finally {
+        setLoaded(true);
+      }
     };
     load();
-  }, [eventId]);
+    // Only run once when eventId/guestCount changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, guestCount, tablesSuggested]);
 
   // ── Load waiters from event orders ───────────────────────────
   useEffect(() => {
@@ -164,6 +277,20 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
     };
     loadWaiters();
   }, [operationId]);
+
+  // ⚡ When waiters load AFTER layout, reassign if tables have no waiters
+  useEffect(() => {
+    if (!loaded || waiters.length === 0) return;
+    // Check if any table has a waiter assigned
+    const hasAnyWaiter = tables.some(t => t.waiter?.trim());
+    if (hasAnyWaiter) return; // Already assigned, don't override
+
+    setTables(prev => prev.map((t, i) => ({
+      ...t,
+      waiter: waiters[i % waiters.length]?.name || t.waiter,
+    })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, waiters.length]);
 
   // ── Drag handlers ────────────────────────────────────────────
   const handleMouseDown = useCallback((e: React.MouseEvent, tableId: string) => {
@@ -294,9 +421,11 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
     }
   }, [tables, eventId]);
 
-  // ── Total capacity ───────────────────────────────────────────
+  // ── Totals ───────────────────────────────────────────────────
   const totalCapacity = useMemo(() => tables.reduce((s, t) => s + t.capacity, 0), [tables]);
   const tablesWithWaiters = tables.filter(t => t.waiter && t.waiter.trim()).length;
+  const loadingTable = guestCount !== undefined && !loaded;
+  const showBudgetInfo = isEventMode && guestCount !== undefined;
 
   // ── Render ───────────────────────────────────────────────────
   return (
@@ -307,9 +436,19 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
           <h1 className="text-2xl font-serif text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             {title}
           </h1>
-          <p className="text-sm text-[#6B7280]">
-            Arrastra las mesas para reorganizar el salón · {tables.length} mesas · {totalCapacity} comensales
-            {isEventMode && <span className="ml-2 text-[#C9A84C] font-medium">· Evento activo</span>}
+          <p className="text-sm text-[#6B7280] space-x-2">
+            {loadingTable ? (
+              <span>Cargando distribución de mesas…</span>
+            ) : (
+              <>
+                <span>{tables.length} mesas · {totalCapacity} comensales</span>
+                {showBudgetInfo && (
+                  <span className="text-[#C9A84C] font-medium">
+                    · {guestCount} invitados · {tablesSuggested || Math.ceil((guestCount || 1) / 8)} mesas sugeridas
+                  </span>
+                )}
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -335,7 +474,6 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
         {/* Floor plan */}
         <div className="flex-1">
           <div ref={containerRef} className="bg-white rounded-2xl border border-[#ECECF1] shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden">
-            {/* Hall border */}
             <div
               ref={hallRef}
               className="relative bg-[#FAFAFC] border-2 border-dashed border-[#E0D3A8] m-4"
@@ -354,7 +492,6 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
 
               {/* Tables */}
               {tables.map((table) => {
-                const waiterName = waiters.find(w => w.name === table.waiter)?.name || table.waiter;
                 const waiterObj = waiters.find(w => w.name === table.waiter);
                 return (
                   <div
@@ -371,7 +508,6 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
                       transform: `rotate(${table.rotation}deg)`,
                     }}
                   >
-                    {/* Table body */}
                     <div
                       className="w-full h-full flex items-center justify-center text-white text-[10px] font-semibold overflow-hidden"
                       style={{
@@ -390,36 +526,29 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
                       </div>
                     </div>
 
-                    {/* Resize handle */}
                     <div
                       className="absolute -bottom-1 -right-1 w-4 h-4 bg-white border-2 border-[#C9A84C] rounded-full cursor-se-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
                       onMouseDown={(e) => handleResizeStart(e, table.id)}
                     />
 
-                    {/* Delete button (on selected) */}
                     {selectedId === table.id && (
                       <>
                         <button
                           onClick={(e) => { e.stopPropagation(); rotateTable(table.id); }}
                           className="absolute -top-2 -left-2 w-5 h-5 bg-white border border-[#C9A84C] rounded-full text-[10px] flex items-center justify-center shadow-sm hover:bg-[#FBF6E9] z-20"
                           title="Rotar"
-                        >
-                          ↻
-                        </button>
+                        >↻</button>
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteTable(table.id); }}
                           className="absolute -top-2 -right-2 w-5 h-5 bg-[#FEF2F2] border border-[#DC2626] rounded-full text-[10px] flex items-center justify-center shadow-sm hover:bg-[#FCE3E3] z-20"
                           title="Eliminar"
-                        >
-                          ✕
-                        </button>
+                        >✕</button>
                       </>
                     )}
                   </div>
                 );
               })}
 
-              {/* Entrance marker */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-[#9CA3AF] bg-[#FAFAFC] px-2">
                 ← Entrada →
               </div>
@@ -432,7 +561,6 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
 
         {/* Sidebar */}
         <div className="w-full lg:w-72 space-y-4">
-          {/* Selected table */}
           {selected ? (
             <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
               <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3">Propiedades</h3>
@@ -440,8 +568,7 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
                 <div>
                   <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">Nombre</label>
                   <input
-                    type="text"
-                    value={selected.name}
+                    type="text" value={selected.name}
                     onChange={(e) => setTables((prev) => prev.map((t) => t.id === selected.id ? { ...t, name: e.target.value } : t))}
                     className="w-full text-sm border border-[#ECECF1] rounded-xl px-3 py-2 focus:outline-none focus:border-[#C9A84C]"
                   />
@@ -450,8 +577,7 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
                   <div>
                     <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">Capacidad</label>
                     <input
-                      type="number"
-                      value={selected.capacity}
+                      type="number" value={selected.capacity}
                       onChange={(e) => setTables((prev) => prev.map((t) => t.id === selected.id ? { ...t, capacity: parseInt(e.target.value) || 0 } : t))}
                       className="w-full text-sm border border-[#ECECF1] rounded-xl px-3 py-2 focus:outline-none focus:border-[#C9A84C]"
                     />
@@ -473,8 +599,7 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
                   <div>
                     <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">Ancho</label>
                     <input
-                      type="number"
-                      value={selected.width}
+                      type="number" value={selected.width}
                       onChange={(e) => setTables((prev) => prev.map((t) => t.id === selected.id ? { ...t, width: parseInt(e.target.value) || 40 } : t))}
                       className="w-full text-sm border border-[#ECECF1] rounded-xl px-3 py-2 focus:outline-none focus:border-[#C9A84C]"
                     />
@@ -482,18 +607,15 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
                   <div>
                     <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">Alto</label>
                     <input
-                      type="number"
-                      value={selected.height}
+                      type="number" value={selected.height}
                       onChange={(e) => setTables((prev) => prev.map((t) => t.id === selected.id ? { ...t, height: parseInt(e.target.value) || 30 } : t))}
                       className="w-full text-sm border border-[#ECECF1] rounded-xl px-3 py-2 focus:outline-none focus:border-[#C9A84C]"
                     />
                   </div>
                 </div>
-                {/* Waiter assignment */}
                 <div>
                   <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">
-                    <Icon name="user" className="w-3 h-3 inline mr-1" />
-                    Camarero asignado
+                    <Icon name="user" className="w-3 h-3 inline mr-1" /> Camarero asignado
                   </label>
                   <select
                     value={selected.waiter || ''}
@@ -507,16 +629,12 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
                   </select>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={() => rotateTable(selected.id)}
-                    className="flex-1 text-xs font-medium py-2 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F8] transition-colors flex items-center justify-center gap-1"
-                  >
+                  <button onClick={() => rotateTable(selected.id)}
+                    className="flex-1 text-xs font-medium py-2 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F8] transition-colors flex items-center justify-center gap-1">
                     <Icon name="rotateCw" className="w-3 h-3" /> Rotar
                   </button>
-                  <button
-                    onClick={() => deleteTable(selected.id)}
-                    className="flex-1 text-xs font-medium py-2 rounded-lg bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] transition-colors flex items-center justify-center gap-1"
-                  >
+                  <button onClick={() => deleteTable(selected.id)}
+                    className="flex-1 text-xs font-medium py-2 rounded-lg bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] transition-colors flex items-center justify-center gap-1">
                     <Icon name="trash" className="w-3 h-3" /> Eliminar
                   </button>
                 </div>
@@ -528,12 +646,26 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
             </div>
           )}
 
-          {/* Waiter legend */}
+          {showBudgetInfo && (
+            <div className="bg-[#FBF6E9] rounded-2xl border border-[#E0D3A8] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <h3 className="font-semibold text-sm text-[#1A1A1A] mb-2 flex items-center gap-2">
+                <Icon name="clipboard" className="w-4 h-4" />
+                Distribución sugerida
+              </h3>
+              <div className="text-xs text-[#6B7280] space-y-1">
+                <p className="font-medium text-[#1A1A1A]">{guestCount} invitados</p>
+                <p>Mesa principal: <strong>10 pax</strong></p>
+                <p>Mesas redondas: <strong>{Math.max(0, (tablesSuggested || Math.ceil((guestCount || 1) / 8)) - 1)} × 8 pax</strong></p>
+                {kidsCount && kidsCount > 0 && <p>Mesas infantiles: <strong>{Math.ceil(kidsCount / 8)} × 8 pax</strong></p>}
+                <p className="mt-1 text-[#C9A84C]">Arrastra las mesas para ajustar la disposición antes de guardar</p>
+              </div>
+            </div>
+          )}
+
           {waiters.length > 0 && (
             <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
               <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3 flex items-center gap-2">
-                <Icon name="user" className="w-4 h-4" />
-                Camareros ({waiters.length})
+                <Icon name="user" className="w-4 h-4" /> Camareros ({waiters.length})
               </h3>
               <div className="space-y-1.5">
                 {waiters.map(w => {
@@ -555,7 +687,6 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
             </div>
           )}
 
-          {/* Summary */}
           <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3">Resumen</h3>
             <div className="space-y-2 text-sm">
@@ -578,7 +709,6 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
             </div>
           </div>
 
-          {/* Instructions */}
           <div className="bg-[#FAF8F5] rounded-2xl border border-[#E0D3A8] p-4">
             <h3 className="font-semibold text-sm text-[#1A1A1A] mb-2">Cómo usar</h3>
             <ul className="text-xs text-[#6B7280] space-y-1">
@@ -614,9 +744,7 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
                 <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-2">Forma</label>
                 <div className="flex gap-2">
                   {(['round', 'rect', 'long'] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setNewShape(s)}
+                    <button key={s} onClick={() => setNewShape(s)}
                       className={`flex-1 text-[12px] py-2 rounded-xl border transition-all ${
                         newShape === s ? 'text-white border-transparent' : 'bg-white text-[#6B7280] border-[#ECECF1]'
                       }`}
@@ -630,25 +758,19 @@ export default function MapaMesas({ operationId, eventId, operationName }: MapaM
               <div>
                 <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">Capacidad</label>
                 <input
-                  type="number"
-                  value={newCapacity}
+                  type="number" value={newCapacity}
                   onChange={(e) => setNewCapacity(parseInt(e.target.value) || 8)}
-                  className="w-full text-sm border border-[#ECECF1] rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#C9A84C]"
-                  min="1"
+                  className="w-full text-sm border border-[#ECECF1] rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#C9A84C]" min="1"
                 />
               </div>
               <div className="flex gap-3 pt-1">
-                <button
-                  onClick={() => setShowAdd(false)}
-                  className="text-sm font-medium px-5 py-2.5 rounded-xl border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors"
-                >
+                <button onClick={() => setShowAdd(false)}
+                  className="text-sm font-medium px-5 py-2.5 rounded-xl border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
                   Cancelar
                 </button>
-                <button
-                  onClick={addTable}
+                <button onClick={addTable}
                   className="flex-1 text-sm font-medium text-white py-2.5 rounded-xl shadow-sm"
-                  style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-                >
+                  style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
                   Añadir
                 </button>
               </div>

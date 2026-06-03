@@ -309,10 +309,13 @@ export default function OperationsManager() {
           style={{ height: 'calc(100vh - 200px)', minHeight: 500 }}>
           {(selected ? (() => {
             const sel: EventOrder = selected as unknown as EventOrder;
-            return <MapaMesas
+            return            <MapaMesas
             operationId={sel.id}
             eventId={sel.event_id}
             operationName={`${sel.client_name} — ${sel.event_type}`}
+            guestCount={sel.guest_count}
+            tablesSuggested={sel.tables_suggested}
+            kidsCount={sel.kids_count}
           />;})() : null)}
           {!selected && (
             <div className="flex items-center justify-center h-full text-sm text-[#6B7280]">
