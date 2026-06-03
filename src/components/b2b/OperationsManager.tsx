@@ -132,11 +132,11 @@ export default function OperationsManager() {
       if (order.event_id) params.set('event_id', order.event_id);
       const r = await fetch(`/api/floor-plan?${params}`);
       const data = await r.json();
+
+      let finalTables: CanvasTable[] = [];
+
       if (data.success && data.data && data.data.length > 0) {
-        setTables(data.data.map((t: any) => ({ ...t, waiter: t.waiter || '' })));
-        if (!data.data.some((t: any) => t.waiter) && wList.length > 0) {
-          setTables(prev => prev.map((t, i) => ({ ...t, waiter: wList[i % wList.length].name })));
-        }
+        finalTables = data.data.map((t: any) => ({ ...t, waiter: t.waiter || '' }));
       } else if (order.guest_count > 0) {
         const gen = await fetch('/api/floor-plan/generate', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -144,13 +144,42 @@ export default function OperationsManager() {
         });
         const gd = await gen.json();
         if (gd.success) {
-          const newTables = gd.data.map((t: any) => ({ ...t, waiter: '' }));
-          if (wList.length > 0) {
-            newTables.forEach((t: any, i: number) => { t.waiter = wList[i % wList.length].name; });
-          }
-          setTables(newTables);
+          finalTables = gd.data.map((t: any) => ({ ...t, waiter: '' }));
         }
       }
+
+      // Auto-create waiters if needed: 1 per 3 tables
+      const tableCount = finalTables.length;
+      const waiterCount = wList.length;
+      const neededWaiters = Math.max(1, Math.ceil(tableCount / 3));
+
+      if (waiterCount < neededWaiters) {
+        // Create missing waiters
+        const missing = neededWaiters - waiterCount;
+        const newWaiters: Waiter[] = [];
+        for (let i = 0; i < missing; i++) {
+          const id = `w${Date.now() + i}`;
+          const name = `Camarero ${waiterCount + i + 1}`;
+          const color = WAITER_COLORS[(waiterCount + i) % WAITER_COLORS.length];
+          newWaiters.push({ id, name, role: 'camarero' });
+          colors[name] = color;
+        }
+        setWaiters(prev => [...prev, ...newWaiters]);
+        wList = [...wList, ...newWaiters];
+      }
+
+      // Round-robin assign: 1 waiter per 3 tables
+      if (finalTables.length > 0 && wList.length > 0) {
+        const tablesPerWaiter = Math.max(1, Math.ceil(finalTables.length / wList.length));
+        finalTables.forEach((t, i) => {
+          if (!t.waiter) {
+            t.waiter = wList[Math.floor(i / tablesPerWaiter) % wList.length].name;
+          }
+        });
+      }
+
+      setWaiterColors(colors);
+      setTables(finalTables);
     } catch { /* fallback */ }
     setLoadingDist(false);
   };
@@ -231,7 +260,6 @@ export default function OperationsManager() {
   const renameWaiter = (oldName: string, newName: string) => {
     if (!newName.trim()) return;
     setWaiters(prev => prev.map(w => w.name === oldName ? { ...w, name: newName.trim() } : w));
-    // Also update tables
     setTables(prev => prev.map(t => t.waiter === oldName ? { ...t, waiter: newName.trim() } : t));
     setEditingWaiter(null);
   };
@@ -249,6 +277,22 @@ export default function OperationsManager() {
     setWaiters(prev => [...prev, { id, name: newWaiterName.trim(), role: 'camarero' }]);
     setWaiterColors(prev => ({ ...prev, [newWaiterName.trim()]: color }));
     setNewWaiterName('');
+  };
+
+  // Auto-reparto: 1 camarero cada 3 mesas (round-robin)
+  const autoAssignWaiters = () => {
+    if (waiters.length === 0 || tables.length === 0) return;
+    setTables(prev => prev.map((t, i) => ({ ...t, waiter: waiters[i % waiters.length].name })));
+  };
+
+  // Reassign a single table's waiter
+  const assignTableWaiter = (tableId: string, waiterName: string) => {
+    setTables(prev => prev.map(t => t.id === tableId ? { ...t, waiter: waiterName } : t));
+  };
+
+  // Move table from one waiter to another (bulk)
+  const moveWaiterTables = (fromWaiter: string, toWaiter: string) => {
+    setTables(prev => prev.map(t => t.waiter === fromWaiter ? { ...t, waiter: toWaiter } : t));
   };
 
   // ── SVG: render a single table ───────────────────────────────
@@ -785,55 +829,85 @@ export default function OperationsManager() {
             </div>
           </div>
 
-          {/* Waiter legend */}
+          {/* Waiter management panel */}
           <div className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow">
-            <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3 flex items-center gap-2">
-              <Icon name="userCheck" className="w-4 h-4"/> Camareros ({waiters.length})
-            </h3>
-            <div className="space-y-1.5">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-sm text-[#1A1A1A] flex items-center gap-2">
+                <Icon name="userCheck" className="w-4 h-4"/> Camareros ({waiters.length})
+              </h3>
+              <button onClick={autoAssignWaiters} disabled={waiters.length === 0 || tables.length === 0}
+                className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#C9A84C] text-[#C9A84C] hover:bg-[#FBF6E9] disabled:opacity-40 transition-colors">
+                Repartir 1/3
+              </button>
+            </div>
+            <div className="text-[10px] text-[#9CA3AF] mb-2 text-center">
+              {tables.length} mesas · ~{Math.max(1, Math.round(tables.length / Math.max(1, waiters.length)))} mesas por camarero
+            </div>
+            <div className="space-y-2 max-h-[320px] overflow-y-auto">
               {waiters.map(w => {
                 const assigned = tables.filter(t => t.waiter === w.name);
+                const unassigned = tables.filter(t => !t.waiter);
                 const isEditing = editingWaiter === w.name;
                 return (
-                  <div key={w.id} className="flex items-center justify-between text-sm group">
-                    {isEditing ? (
-                      <div className="flex items-center gap-1 flex-1">
-                        <input type="text" defaultValue={w.name}
-                          autoFocus
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') renameWaiter(w.name, (e.target as HTMLInputElement).value);
-                            if (e.key === 'Escape') setEditingWaiter(null);
-                          }}
-                          onBlur={e => renameWaiter(w.name, e.target.value)}
-                          className="flex-1 text-sm border border-[#C9A84C] rounded-lg px-2 py-1"
-                        />
+                  <div key={w.id} className="border border-[#F3F4F6] rounded-xl p-2.5 hover:border-[#E0D3A8] transition-colors">
+                    {/* Waiter header */}
+                    <div className="flex items-center justify-between group mb-1.5">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1 flex-1">
+                          <input type="text" defaultValue={w.name}
+                            autoFocus
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') renameWaiter(w.name, (e.target as HTMLInputElement).value);
+                              if (e.key === 'Escape') setEditingWaiter(null);
+                            }}
+                            onBlur={e => renameWaiter(w.name, e.target.value)}
+                            className="flex-1 text-sm border border-[#C9A84C] rounded-lg px-2 py-0.5"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: waiterColors[w.name] || '#C9A84C' }}/>
+                          <span className="text-sm font-medium text-[#1A1A1A]">{w.name}</span>
+                          <span className="text-[10px] text-[#9CA3AF]">({assigned.length} mesa{assigned.length !== 1 ? 's' : ''})</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {isEditing ? (
+                          <button onClick={() => setEditingWaiter(null)}
+                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#F3F4F6]"><Icon name="check" className="w-3 h-3"/></button>
+                        ) : (
+                          <>
+                            <button onClick={() => setEditingWaiter(w.name)}
+                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#F3F4F6]"><Icon name="edit" className="w-3 h-3 text-[#6B7280]"/></button>
+                            <button onClick={() => {
+                              if (confirm(`¿Eliminar a ${w.name}? Sus mesas quedarán sin asignar.`)) deleteWaiter(w.name);
+                            }}
+                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-50"><Icon name="x" className="w-3 h-3 text-red-400"/></button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {/* Assigned tables list */}
+                    {assigned.length > 0 ? (
+                      <div className="space-y-1">
+                        {assigned.map(t => (
+                          <div key={t.id} className="flex items-center gap-1.5 text-[11px] pl-4">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#E0D3A8]"/>
+                            <span className="text-[#1A1A1A] flex-1 truncate">{t.name}</span>
+                            <select value={t.waiter}
+                              onChange={e => assignTableWaiter(t.id, e.target.value)}
+                              className="text-[10px] border border-[#ECECF1] rounded px-1 py-0.5 w-20 truncate">
+                              <option value="">Sin asignar</option>
+                              {waiters.map(w2 => (
+                                <option key={w2.id} value={w2.name}>{w2.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: waiterColors[w.name] || '#C9A84C' }}/>
-                        <span className="text-[#1A1A1A]">{w.name}</span>
-                        <span className="text-[11px] text-[#9CA3AF]">({w.role})</span>
-                      </div>
+                      <div className="text-[10px] text-[#9CA3AF] italic pl-4">Sin mesas asignadas</div>
                     )}
-                    <div className="flex items-center gap-0.5">
-                      {isEditing ? (
-                        <button onClick={() => setEditingWaiter(null)}
-                          className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#F3F4F6] opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Icon name="check" className="w-3 h-3"/>
-                        </button>
-                      ) : (
-                        <>
-                          <button onClick={() => setEditingWaiter(w.name)}
-                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#F3F4F6] opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Icon name="edit" className="w-3 h-3 text-[#6B7280]"/>
-                          </button>
-                          <button onClick={() => deleteWaiter(w.name)}
-                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Icon name="x" className="w-3 h-3 text-red-400"/>
-                          </button>
-                        </>
-                      )}
-                    </div>
                   </div>
                 );
               })}
@@ -847,17 +921,11 @@ export default function OperationsManager() {
                 className="flex-1 text-[11px] border border-[#ECECF1] rounded-lg px-2 py-1.5"
               />
               <button onClick={addWaiter} disabled={!newWaiterName.trim()}
-                className="w-6 h-6 flex items-center justify-center rounded bg-[#C9A84C] text-white disabled:opacity-50">
-                <Icon name="plus" className="w-3 h-3"/>
-              </button>
+                className="w-6 h-6 flex items-center justify-center rounded bg-[#C9A84C] text-white disabled:opacity-50"><Icon name="plus" className="w-3 h-3"/></button>
             </div>
             <button onClick={async () => {
               try {
-                await fetch('/api/waiters', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ waiters }),
-                });
+                await fetch('/api/waiters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ waiters }) });
                 setShowWaitersSaved(true);
                 setTimeout(() => setShowWaitersSaved(false), 2000);
               } catch (e) { console.error(e); }
