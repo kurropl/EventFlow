@@ -6,7 +6,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import MapaMesas from '@/components/b2b/MapaMesas';
 
 interface EventOrder {
   id: string; event_id: string; client_name: string; client_email: string;
@@ -309,7 +308,7 @@ export default function OperationsManager() {
           style={{ height: 'calc(100vh - 200px)', minHeight: 500 }}>
           {(selected ? (() => {
             const sel: EventOrder = selected as unknown as EventOrder;
-            return            <MapaMesas
+            return <MapaMesas
             operationId={sel.id}
             eventId={sel.event_id}
             operationName={`${sel.client_name} — ${sel.event_type}`}
