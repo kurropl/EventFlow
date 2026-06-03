@@ -307,14 +307,13 @@ export default function OperationsManager() {
       {viewTab === 'map' ? (
         <div className="rounded-2xl border border-[#ECECF1] bg-white overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
           style={{ height: 'calc(100vh - 200px)', minHeight: 500 }}>
-          {(() => { 
-            if (!selected) return null;
-            const sel = selected;
+          {(selected ? (() => {
+            const sel: EventOrder = selected as unknown as EventOrder;
             return <MapaMesas
             operationId={sel.id}
             eventId={sel.event_id}
             operationName={`${sel.client_name} — ${sel.event_type}`}
-          />;})()}
+          />;})() : null)}
           {!selected && (
             <div className="flex items-center justify-center h-full text-sm text-[#6B7280]">
               Selecciona un evento de la lista para ver su mapa de mesas
