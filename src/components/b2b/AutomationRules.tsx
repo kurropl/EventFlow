@@ -169,7 +169,7 @@ function RuleConditionEditor({
 
   const updateCondition = (idx: number, field: string, value: unknown) => {
     const next = [...conditions];
-    (next[idx] as Record<string, unknown>)[field] = value;
+    (next[idx] as unknown as Record<string, unknown>)[field] = value;
     onChange(next, matchType);
   };
 
