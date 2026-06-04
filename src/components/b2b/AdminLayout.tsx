@@ -99,27 +99,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // SSR: render a minimal skeleton to avoid hydration mismatch
-  if (!mounted) {
-    return (
-      <div className="min-h-screen flex flex-col md:flex-row bg-[#F5F5F8] text-[#1A1A1A]">
-        <div className="hidden md:block w-64 bg-white border-r border-[#ECECF1]" />
-        <div className="flex-1">
-          <div className="h-[72px] border-b border-[#ECECF1]" />
-          <main className="p-4 sm:p-5 md:p-7">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-[#ECECF1] rounded w-48" />
-              <div className="h-4 bg-[#ECECF1] rounded w-64" />
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[1,2,3,4].map(i => <div key={i} className="h-24 bg-[#ECECF1] rounded-2xl" />)}
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   const MotionDiv = motion.div;
   const MotionSpan = motion.span;
   const MotionAside = motion.aside;
