@@ -41,7 +41,7 @@ async function generateInvoiceFromAccepted(client: any, eventId: string, event: 
     `SELECT id, fiscal_name, fiscal_nif, name FROM clients WHERE id IN (
       SELECT client_id FROM event_orders WHERE event_id = $1 AND client_id IS NOT NULL LIMIT 1
     ) OR id IN (
-      SELECT client_id FROM events e LEFT JOIN leads l ON l.converted_to_client_id = e.client_id WHERE e.id = $2 LIMIT 1
+      SELECT e.client_id FROM events e LEFT JOIN leads l ON l.converted_to_client_id = e.client_id WHERE e.id = $2 LIMIT 1
     ) LIMIT 1`,
     [eventId, eventId]
   )).rows[0];
