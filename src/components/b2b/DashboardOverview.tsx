@@ -29,6 +29,8 @@ const STATUS_META: Record<string, { label: string; dot: string; chip: string }> 
   accepted: { label: 'Aceptado', dot: '#16A34A', chip: 'bg-[#EFFAF2] text-[#15803D]' },
   paid: { label: 'Pagado', dot: '#0284C7', chip: 'bg-[#EFF6FF] text-[#0369A1]' },
   cancelled: { label: 'Cancelado', dot: '#DC2626', chip: 'bg-[#FEF3F3] text-[#DC2626]' },
+  in_progress: { label: 'En curso', dot: '#7C3AED', chip: 'bg-[#F3E8FF] text-[#7C3AED]' },
+  completed: { label: 'Completado', dot: '#059669', chip: 'bg-[#D1FAE5] text-[#047857]' },
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
