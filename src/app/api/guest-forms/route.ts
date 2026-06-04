@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle, querySingleWithDefault } from '@/lib/db';
+import { queryMany, querySingle } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
