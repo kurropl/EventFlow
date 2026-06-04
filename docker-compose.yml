@@ -13,9 +13,9 @@ services:
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...n_I0
       - NEXT_PUBLIC_WEBHOOK_URL=
     working_dir: /app
-    command: node server.js
+    command: npx next start
     volumes:
-      - ./.next/standalone:/app:ro
+      - .:/app
     networks:
       - eventflow-net
     depends_on:
