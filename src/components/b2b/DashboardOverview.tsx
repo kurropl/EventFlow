@@ -223,7 +223,7 @@ export default function DashboardOverview() {
                   <div className="text-3xl font-semibold text-[#1A1A1A] tabular-nums">{k.value}</div>
                   <div className="text-[11px] text-[#9CA3AF] mt-1">{k.subtitle}</div>
                 </Link>
-              </motion.div>
+              </MotionDiv>
             ))}
           </div>
 
