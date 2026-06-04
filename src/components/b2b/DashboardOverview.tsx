@@ -57,6 +57,7 @@ export default function DashboardOverview() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,7 +75,12 @@ export default function DashboardOverview() {
         if (evRes.ok && ev.success) setEvents(ev.data || []);
         if (ldRes.ok) setLeads(ld.data || []);
         if (pmRes.ok) setPayments(pm.data || []);
-      } catch (e) { console.error(e); }
+        setError(null);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        setError(msg);
+        console.error('Dashboard error:', e);
+      }
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };

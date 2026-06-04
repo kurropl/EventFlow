@@ -17,4 +17,9 @@ if [ -d ".next/standalone" ]; then
     cp -r public .next/standalone/public
     echo "Copied public/ -> standalone"
   fi
+  # Copy missing node_modules (Next.js standalone sometimes drops them)
+  if [ -d "node_modules" ] && [ -d ".next/standalone/node_modules" ]; then
+    cp -r node_modules/* .next/standalone/node_modules/ 2>/dev/null
+    echo "Copied node_modules -> standalone"
+  fi
 fi
