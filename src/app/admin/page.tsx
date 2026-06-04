@@ -1,4 +1,4 @@
-use client;
+'use client';
 import AdminLayout from '@/components/b2b/AdminLayout';
 import DashboardOverview from '@/components/b2b/DashboardOverview';
 import CalendarView from '@/components/b2b/CalendarView';
