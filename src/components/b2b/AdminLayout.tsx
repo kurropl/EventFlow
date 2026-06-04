@@ -133,7 +133,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const MotionDiv = mounted ? motion.div : 'div';
     const SafeAnimatePresence = mounted ? AnimatePresence : (({ children }: any) => <>{children}</>);
 
-    return (
+    if (!mounted) return null;
+  return (
     <>
       {GROUPS.map(group => {
         const hasActiveDescendant = group.items.some(i => {
@@ -146,7 +147,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         if (collapsed && !hasActiveDescendant) return null;
 
-        return (
+        if (!mounted) return null;
+  return (
           <div key={group.id} className="mb-1">
             {/* Group header */}
             {!collapsed && (
@@ -182,7 +184,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     const hasActiveChild = item.children?.some(c => c.id === currentItem?.id);
                     const showChildren = item.children && (isActive || hasActiveChild);
 
-                    return (
+                    if (!mounted) return null;
+  return (
                       <div key={item.id}>
                         {/* Parent item */}
                         <Link
@@ -217,7 +220,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                           >
                             {item.children.map(child => {
                               const childActive = currentItem?.id === child.id;
-                              return (
+                              if (!mounted) return null;
+  return (
                                 <Link
                                   key={child.id}
                                   href={child.href}
@@ -263,6 +267,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     </div>
   );
 
+  if (!mounted) return null;
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#F5F5F8] text-[#1A1A1A]">
       {/* ===== MOBILE TOP BAR ===== */}
