@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '../shared/Icon';
 
 // ── Menu structure ──────────────────────────────────────────
@@ -50,12 +49,8 @@ const GROUPS: MenuGroup[] = [
     label: 'Evento',
     items: [
       { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
-      {
-        id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations',
-        children: [
-          { id: 'mapa-mesas', label: 'Mapa de mesas', sub: 'Disposición drag & drop', href: '/admin/mapa-mesas' },
-        ],
-      },
+      { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
+      { id: 'mapa-mesas', label: 'Mapa de mesas', sub: 'Disposición drag & drop', href: '/admin/mapa-mesas' },
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
     ],
   },
@@ -87,7 +82,6 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -96,13 +90,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     panel: true,
     evento: true,
   });
-
-  useEffect(() => { setMounted(true); }, []);
-
-  const MotionDiv = motion.div;
-  const MotionSpan = motion.span;
-  const MotionAside = motion.aside;
-  const SafeAnimatePresence = AnimatePresence;
 
   // Determine current item
   const currentItem = ALL_ITEMS.find(t => {
@@ -163,89 +150,83 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 }`}
               >
                 <span>{group.label}</span>
-                <MotionSpan
-                  animate={{ rotate: showExpanded ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="opacity-50"
-                >
+                <span className={`opacity-50 transition-transform duration-200 ${showExpanded ? 'rotate-180' : ''}`}>
                   <Icon name="chevronDown" className="w-3 h-3" />
-                </MotionSpan>
+                </span>
               </button>
             )}
 
-            <SafeAnimatePresence initial={false}>
-              {showExpanded && (
-                <MotionDiv
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  {group.items.map(item => {
-                    const isActive = currentItem?.id === item.id;
-                    const hasActiveChild = item.children?.some(c => c.id === currentItem?.id);
-                    const showChildren = item.children && (isActive || hasActiveChild);
+            <div
+              className="overflow-hidden transition-all duration-200 ease-in-out"
+              style={{
+                maxHeight: showExpanded ? '2000px' : '0px',
+                opacity: showExpanded ? 1 : 0,
+              }}
+            >
+              {group.items.map(item => {
+                const isActive = currentItem?.id === item.id;
+                const hasActiveChild = item.children?.some(c => c.id === currentItem?.id);
+                const showChildren = item.children && (isActive || hasActiveChild);
 
-                    return (
-                      <div key={item.id}>
-                        <Link
-                          href={item.href}
-                          onClick={onNavigate}
-                          title={item.label}
-                          className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${
-                            isActive || hasActiveChild
-                              ? 'bg-[#FBF6E9] text-[#1A1A1A]'
-                              : 'text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A]'
-                          }`}
-                        >
-                          <span className={isActive || hasActiveChild ? 'text-[#C9A84C]' : 'text-[#9CA3AF] group-hover:text-[#6B7280]'}>
-                            <Icon name={item.id} />
-                          </span>
-                          {!collapsed && (
-                            <span className="flex-1 min-w-0">
-                              <span className={`block leading-tight font-medium ${isActive || hasActiveChild ? 'text-[#1A1A1A]' : ''}`}>{item.label}</span>
-                              <span className="block text-[11px] text-[#A8A8B0] leading-tight">{item.sub}</span>
-                            </span>
-                          )}
-                          {(isActive || hasActiveChild) && !collapsed && <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />}
-                        </Link>
+                return (
+                  <div key={item.id}>
+                    <Link
+                      href={item.href}
+                      onClick={onNavigate}
+                      title={item.label}
+                      className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${
+                        isActive || hasActiveChild
+                          ? 'bg-[#FBF6E9] text-[#1A1A1A]'
+                          : 'text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A]'
+                      }`}
+                    >
+                      <span className={isActive || hasActiveChild ? 'text-[#C9A84C]' : 'text-[#9CA3AF] group-hover:text-[#6B7280]'}>
+                        <Icon name={item.id} />
+                      </span>
+                      {!collapsed && (
+                        <span className="flex-1 min-w-0">
+                          <span className={`block leading-tight font-medium ${isActive || hasActiveChild ? 'text-[#1A1A1A]' : ''}`}>{item.label}</span>
+                          <span className="block text-[11px] text-[#A8A8B0] leading-tight">{item.sub}</span>
+                        </span>
+                      )}
+                      {(isActive || hasActiveChild) && !collapsed && <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />}
+                    </Link>
 
-                        {item.children && showChildren && !collapsed && (
-                          <MotionDiv
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            transition={{ duration: 0.15 }}
-                            className="ml-9 mt-0.5 space-y-0.5 border-l-2 border-[#E8DCC8] pl-2"
-                          >
-                            {item.children.map(child => {
-                              const childActive = currentItem?.id === child.id;
-                              return (
-                                <Link
-                                  key={child.id}
-                                  href={child.href}
-                                  onClick={onNavigate}
-                                  title={child.label}
-                                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
-                                    childActive
-                                      ? 'bg-[#FBF6E9] text-[#1A1A1A] font-medium'
-                                      : 'text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A]'
-                                  }`}
-                                >
-                                  <span className={`w-1.5 h-1.5 rounded-full ${childActive ? 'bg-[#C9A84C]' : 'bg-[#D0D0D8]'}`} />
-                                  <span>{child.label}</span>
-                                  {childActive && <span className="w-1 h-1 rounded-full bg-[#C9A84C] ml-auto" />}
-                                </Link>
-                              );
-                            })}
-                          </MotionDiv>
-                        )}
+                    {item.children && showChildren && !collapsed && (
+                      <div
+                        className="ml-9 mt-0.5 space-y-0.5 border-l-2 border-[#E8DCC8] pl-2 transition-all duration-200"
+                        style={{
+                          maxHeight: showChildren ? '500px' : '0px',
+                          opacity: showChildren ? 1 : 0,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {item.children.map(child => {
+                          const childActive = currentItem?.id === child.id;
+                          return (
+                            <Link
+                              key={child.id}
+                              href={child.href}
+                              onClick={onNavigate}
+                              title={child.label}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                                childActive
+                                  ? 'bg-[#FBF6E9] text-[#1A1A1A] font-medium'
+                                  : 'text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A]'
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${childActive ? 'bg-[#C9A84C]' : 'bg-[#D0D0D8]'}`} />
+                              <span>{child.label}</span>
+                              {childActive && <span className="w-1 h-1 rounded-full bg-[#C9A84C] ml-auto" />}
+                            </Link>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </MotionDiv>
-              )}
-            </SafeAnimatePresence>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })}
@@ -288,9 +269,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
 
       {/* ===== DESKTOP SIDEBAR ===== */}
-      <MotionAside
-        initial={{ x: -240 }}
-        animate={{ x: 0 }}
+      <aside
         className={`hidden md:flex sticky top-0 h-screen flex-col bg-white border-r border-[#ECECF1] transition-all duration-300 overflow-hidden ${
           sidebarOpen ? 'w-64' : 'w-[72px]'
         }`}
@@ -311,7 +290,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {sidebarOpen && <span className="font-medium">Ver portal</span>}
           </Link>
         </div>
-      </MotionAside>
+      </aside>
 
       {/* ===== MAIN ===== */}
       <div className="flex-1 flex flex-col min-w-0">
