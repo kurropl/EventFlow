@@ -7,7 +7,6 @@
  */
 
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 import { PROPOSED_MENUS } from '@/data/menus';
 
@@ -68,6 +67,20 @@ export default function WizardStep2() {
     }
   };
 
+  const handleCustomFromScratch = () => {
+    try {
+      setStepData('step2', {
+        use_proposed: false,
+        menu_id: '',
+        kid_menu_id: '',
+      });
+      setStepData('step3', { selected_items: [] });
+      setStep(3);
+    } catch (err: any) {
+      setError(err?.message || 'Error al iniciar personalización');
+    }
+  };
+
   const handleCustomizeMenu = () => {
     if (!canUseMenu) return;
     const selectedMenu = PROPOSED_MENUS.find(m => m.id === selectedAdultId);
@@ -119,11 +132,7 @@ export default function WizardStep2() {
     }`;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
+    <div
       className="space-y-8"
     >
       <div className="text-center">
@@ -185,7 +194,7 @@ export default function WizardStep2() {
                       </svg>
                     </button>
                     {expandedMenu === `${menu.id}-${idx}` && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <div className="overflow-hidden">
                         <ul className="mt-1.5 space-y-0.5">
                           {section.items.map((item, i) => (
                             <li key={i} className="text-xs text-stone-400 pl-3 border-l border-[#C9A84C]/25">
@@ -193,7 +202,7 @@ export default function WizardStep2() {
                             </li>
                           ))}
                         </ul>
-                      </motion.div>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -250,7 +259,7 @@ export default function WizardStep2() {
                         </svg>
                       </button>
                       {expandedMenu === `${menu.id}-${idx}` && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                        <div className="overflow-hidden">
                           <ul className="mt-1.5 space-y-0.5">
                             {section.items.map((item, i) => (
                               <li key={i} className="text-xs text-stone-400 pl-3 border-l border-[#C9A84C]/25">
@@ -258,7 +267,7 @@ export default function WizardStep2() {
                               </li>
                             ))}
                           </ul>
-                        </motion.div>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -274,7 +283,13 @@ export default function WizardStep2() {
         <button onClick={prevStep} className="px-5 py-2.5 rounded-xl text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors">
           Anterior
         </button>
-        <div className="flex gap-2.5">
+        <div className="flex gap-2.5 flex-wrap justify-end">
+          <button
+            onClick={handleCustomFromScratch}
+            className="px-5 py-2.5 rounded-xl text-sm font-medium bg-white border border-stone-200 text-stone-600 hover:border-[#C9A84C]/40 hover:text-[#C9A84C] transition-all duration-300"
+          >
+            Personalizar desde cero
+          </button>
           <button
             onClick={handleCustomizeMenu}
             disabled={!canUseMenu}
@@ -299,6 +314,6 @@ export default function WizardStep2() {
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 
 const EVENT_TYPES = [
@@ -87,11 +86,7 @@ export default function WizardStep1() {
     }`;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
+    <div
       className="space-y-10"
     >
       <div className="text-center">
@@ -183,6 +178,6 @@ export default function WizardStep1() {
           {isLoading ? 'Procesando...' : 'Siguiente'}
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }

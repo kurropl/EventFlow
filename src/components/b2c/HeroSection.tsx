@@ -1,14 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 },
-  viewport: { once: true },
-};
 
 export default function HeroSection() {
   return (
@@ -18,60 +11,43 @@ export default function HeroSection() {
       
       {/* Decorative gold lines */}
       <div className="absolute inset-0 overflow-hidden">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.1 }}
-          transition={{ duration: 2 }}
+        <div
           className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-gold blur-3xl"
         />
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.08 }}
-          transition={{ duration: 2, delay: 0.5 }}
+        <div
           className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-burgundy blur-3xl"
         />
       </div>
 
       <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
-        <motion.div {...fadeInUp}>
+        <div>
           <span className="inline-block rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 text-xs font-medium tracking-widest text-gold-light uppercase">
             J. Benitez
           </span>
-        </motion.div>
+        </div>
 
-        <motion.h1
+        <h1
           className="mt-6 font-heading text-5xl font-bold leading-tight text-paper md:text-7xl lg:text-8xl"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
         >
           Diseña tu{' '}
           <span className="bg-gradient-to-r from-gold to-gold-light bg-clip-text text-transparent">
             Evento Perfecto
           </span>
-        </motion.h1>
+        </h1>
 
-        <motion.p
+        <p
           className="mx-auto mt-6 max-w-2xl text-lg text-cream/70 md:text-xl"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
         >
           Crea una experiencia gastronómica única y memorable.
           Elige tu menú, personaliza cada detalle y deja que nosotros nos encarguemos del resto.
-        </motion.p>
+        </p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
+        <div
           className="mt-10"
         >
           <Link href="/configurador">
-            <motion.button
+            <button
               className="group relative inline-flex items-center gap-2 rounded-full bg-burgundy px-8 py-4 text-lg font-semibold text-paper shadow-lg shadow-burgundy/30 transition-all duration-300 hover:bg-burgundy-dark hover:shadow-xl hover:shadow-burgundy/40"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
             >
               Diseña tu Evento
               <svg
@@ -82,15 +58,12 @@ export default function HeroSection() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-            </motion.button>
+            </button>
           </Link>
-        </motion.div>
+        </div>
 
-        <motion.div
+        <div
           className="mt-16 flex justify-center gap-12 text-cream/50"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1 }}
         >
           <div className="text-center">
             <div className="font-heading text-3xl font-bold text-gold">15+</div>
@@ -104,19 +77,17 @@ export default function HeroSection() {
             <div className="font-heading text-3xl font-bold text-gold">118</div>
             <div className="text-sm">Platos en catálogo</div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Scroll indicator */}
-      <motion.div
+      <div
         className="absolute bottom-8 left-1/2 -translate-x-1/2"
-        animate={{ y: [0, 8, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
       >
         <svg className="h-6 w-6 text-cream/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
         </svg>
-      </motion.div>
+      </div>
     </section>
   );
 }

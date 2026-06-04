@@ -6,7 +6,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 import { CATALOG_ITEMS } from '@/data/menus';
 
@@ -34,11 +33,7 @@ export default function WizardStep4() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
+    <div
       className="space-y-8"
     >
       <div className="text-center">
@@ -93,6 +88,6 @@ export default function WizardStep4() {
           Ver Resumen
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }

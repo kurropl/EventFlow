@@ -1,7 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
-
 export default function LandingFooter() {
   return (
     <footer className="border-t border-cream-dark bg-cream">

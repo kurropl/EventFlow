@@ -8,7 +8,6 @@
  */
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 import { PROPOSED_MENUS } from '@/data/menus';
 
@@ -63,10 +62,7 @@ export default function WizardStep5() {
   // Si se envió con éxito → mostrar mensaje
   if (submitSuccess) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
+      <div
         className="text-center py-16"
       >
         <div className="w-16 h-16 rounded-full bg-[#C9A84C]/20 flex items-center justify-center mx-auto mb-6">
@@ -86,16 +82,12 @@ export default function WizardStep5() {
         >
           Diseñar otra propuesta
         </button>
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
+    <div
       className="space-y-8"
     >
       <div className="text-center">
@@ -271,6 +263,6 @@ export default function WizardStep5() {
           {isSubmitting ? 'Enviando...' : 'Enviar Propuesta'}
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }

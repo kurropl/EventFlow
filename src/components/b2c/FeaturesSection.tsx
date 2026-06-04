@@ -1,15 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 },
-  viewport: { once: true },
-};
 
 const features = [
   {
@@ -45,9 +38,8 @@ export default function FeaturesSection() {
   return (
     <section className="bg-paper py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-6">
-        <motion.div
+        <div
           className="text-center"
-          {...fadeInUp}
         >
           <span className="text-sm font-medium tracking-widest text-gold uppercase">
             ¿Por Qué Elegirnos?
@@ -55,17 +47,13 @@ export default function FeaturesSection() {
           <h2 className="mt-3 font-heading text-4xl font-bold text-ink md:text-5xl">
             Una Experiencia a Tu Medida
           </h2>
-        </motion.div>
+        </div>
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {features.map((feature, index) => (
-            <motion.div
+            <div
               key={feature.title}
               className="group rounded-2xl border border-cream-dark bg-paper p-8 shadow-sm transition-all duration-300 hover:border-gold/30 hover:shadow-md"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.15 }}
-              viewport={{ once: true }}
             >
               <div className="mb-5 inline-flex rounded-xl bg-cream p-3 transition-transform duration-300 group-hover:scale-110">
                 {feature.icon}
@@ -76,23 +64,19 @@ export default function FeaturesSection() {
               <p className="mt-3 text-sm leading-relaxed text-ink/60">
                 {feature.description}
               </p>
-            </motion.div>
+            </div>
           ))}
         </div>
 
-        <motion.div
+        <div
           className="mt-14 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          viewport={{ once: true }}
         >
           <Link href="/configurador">
             <Button size="lg" className="rounded-full bg-burgundy px-10 text-base shadow-lg shadow-burgundy/20 hover:bg-burgundy-dark">
               Comienza a Diseñar
             </Button>
           </Link>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

@@ -6,8 +6,6 @@
  * Sin emojis. Texto oscuro sobre fondo blanco.
  */
 
-import { motion } from 'framer-motion';
-
 interface DishCardProps {
   name: string;
   selected: boolean;
@@ -17,9 +15,7 @@ interface DishCardProps {
 
 export default function DishCard({ name, selected, onClick, category }: DishCardProps) {
   return (
-    <motion.button
-      whileHover={{ y: -1 }}
-      whileTap={{ scale: 0.98 }}
+    <button
       onClick={onClick}
       className={`w-full text-left rounded-xl p-4 border-2 transition-all duration-200
         ${selected
@@ -47,6 +43,6 @@ export default function DishCard({ name, selected, onClick, category }: DishCard
           </p>
         </div>
       </div>
-    </motion.button>
+    </button>
   );
 }

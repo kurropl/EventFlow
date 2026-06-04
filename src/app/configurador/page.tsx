@@ -14,7 +14,6 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useWizardStore } from '@/store/useWizardStore';
 
 const STEP_LABELS = [
@@ -183,25 +182,19 @@ export default function ConfiguradorPage() {
 
       {/* Content — fondo crema uniforme */}
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <AnimatePresence mode="wait">
-          <motion.div
+        
+          <div
             key={currentStep}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.25 }}
           >
             <LazyStep step={currentStep} />
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        
       </main>
 
       {/* Dialog: ¿Continuar configuración anterior o empezar de nuevo? */}
       {showResumeDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+          <div
             className="bg-white rounded-2xl shadow-2xl border border-stone-200 p-6 max-w-sm w-full mx-4"
           >
             <h3 className="text-lg font-semibold text-[#1A1A1A] mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
@@ -227,7 +220,7 @@ export default function ConfiguradorPage() {
                 Continuar
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
     </div>

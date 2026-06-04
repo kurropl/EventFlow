@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 
 interface MenuCardProps {
@@ -25,15 +24,13 @@ export default function MenuCard({ name, tag, isKid, sections, isSelected, onSel
   };
 
   return (
-    <motion.button
+    <button
       type="button"
       className={`group relative flex flex-col rounded-2xl border-2 p-6 text-left transition-all duration-300 ${
         isSelected
           ? 'border-gold bg-gold/5 shadow-lg shadow-gold/10'
           : 'border-cream-dark bg-paper hover:border-gold/30 hover:shadow-md'
       }`}
-      whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.98 }}
       onClick={onSelect}
     >
       {/* Selection indicator */}
@@ -71,6 +68,6 @@ export default function MenuCard({ name, tag, isKid, sections, isSelected, onSel
           </div>
         ))}
       </div>
-    </motion.button>
+    </button>
   );
 }
