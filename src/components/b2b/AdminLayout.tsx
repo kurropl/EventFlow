@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '../shared/Icon';
 
-// ── Menu structure with groups and submenus ──────────────────
+// ── Menu structure ──────────────────────────────────────────
 type MenuItem = {
   id: string;
   label: string;
@@ -76,7 +76,6 @@ const GROUPS: MenuGroup[] = [
   },
 ];
 
-// Flatten for path matching
 const ALL_ITEMS = GROUPS.flatMap(g => [
   ...g.items,
   ...g.items.flatMap(i => i.children || []),
@@ -100,14 +99,37 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Determine current item and parent
+  // SSR: render a minimal skeleton to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex flex-col md:flex-row bg-[#F5F5F8] text-[#1A1A1A]">
+        <div className="hidden md:block w-64 bg-white border-r border-[#ECECF1]" />
+        <div className="flex-1">
+          <div className="h-[72px] border-b border-[#ECECF1]" />
+          <main className="p-4 sm:p-5 md:p-7">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 bg-[#ECECF1] rounded w-48" />
+              <div className="h-4 bg-[#ECECF1] rounded w-64" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[1,2,3,4].map(i => <div key={i} className="h-24 bg-[#ECECF1] rounded-2xl" />)}
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  const MotionDiv = motion.div;
+  const MotionSpan = motion.span;
+  const MotionAside = motion.aside;
+  const SafeAnimatePresence = AnimatePresence;
+
+  // Determine current item
   const currentItem = ALL_ITEMS.find(t => {
     if (pathname === '/admin' || pathname === '/admin/') return t.id === 'dashboard';
     return t.id !== 'dashboard' && pathname?.includes(t.id);
   });
-  const currentParent = currentItem
-    ? GROUPS.find(g => g.items.some(i => i.id === currentItem.id || (i.children && i.children.some(c => c.id === currentItem.id))))
-    : null;
   const currentLabel = currentItem?.label || 'Resumen';
   const currentSub = currentItem?.sub || 'Panel general';
 
@@ -125,16 +147,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setExpandedGroups(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const MotionAside = mounted ? motion.aside : 'aside';
+  const Brand = ({ subtitle = 'Panel de gestión' }: { subtitle?: string }) => (
+    <div className="flex items-center gap-3 min-w-0">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+        style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+        <span className="font-bold text-sm text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>JB</span>
+      </div>
+      <div className="min-w-0">
+        <div className="font-serif text-[15px] leading-tight text-[#1A1A1A] truncate" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>J. Benitez</div>
+        <div className="text-[11px] text-[#9CA3AF] tracking-wide">{subtitle}</div>
+      </div>
+    </div>
+  );
 
-  // ── NavList (shared by desktop sidebar & mobile drawer) ──
-  const NavList = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => {
-    const MotionSpan = mounted ? motion.span : 'span';
-    const MotionDiv = mounted ? motion.div : 'div';
-    const SafeAnimatePresence = mounted ? AnimatePresence : (({ children }: any) => <>{children}</>);
-
-    if (!mounted) return null;
-  return (
+  // ── NavList ──
+  const NavList = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => (
     <>
       {GROUPS.map(group => {
         const hasActiveDescendant = group.items.some(i => {
@@ -147,10 +174,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         if (collapsed && !hasActiveDescendant) return null;
 
-        if (!mounted) return null;
-  return (
+        return (
           <div key={group.id} className="mb-1">
-            {/* Group header */}
             {!collapsed && (
               <button
                 onClick={() => toggleGroup(group.id)}
@@ -169,7 +194,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </button>
             )}
 
-            {/* Group items */}
             <SafeAnimatePresence initial={false}>
               {showExpanded && (
                 <MotionDiv
@@ -184,10 +208,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     const hasActiveChild = item.children?.some(c => c.id === currentItem?.id);
                     const showChildren = item.children && (isActive || hasActiveChild);
 
-                    if (!mounted) return null;
-  return (
+                    return (
                       <div key={item.id}>
-                        {/* Parent item */}
                         <Link
                           href={item.href}
                           onClick={onNavigate}
@@ -210,7 +232,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                           {(isActive || hasActiveChild) && !collapsed && <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />}
                         </Link>
 
-                        {/* Children sub-items */}
                         {item.children && showChildren && !collapsed && (
                           <MotionDiv
                             initial={{ height: 0, opacity: 0 }}
@@ -220,8 +241,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                           >
                             {item.children.map(child => {
                               const childActive = currentItem?.id === child.id;
-                              if (!mounted) return null;
-  return (
+                              return (
                                 <Link
                                   key={child.id}
                                   href={child.href}
@@ -244,7 +264,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       </div>
                     );
                   })}
-                    </MotionDiv>
+                </MotionDiv>
               )}
             </SafeAnimatePresence>
           </div>
@@ -252,22 +272,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       })}
     </>
   );
-  }; // end NavList
 
-  const Brand = ({ subtitle = 'Panel de gestión' }: { subtitle?: string }) => (
-    <div className="flex items-center gap-3 min-w-0">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
-        style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
-        <span className="font-bold text-sm text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>JB</span>
-      </div>
-      <div className="min-w-0">
-        <div className="font-serif text-[15px] leading-tight text-[#1A1A1A] truncate" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>J. Benitez</div>
-        <div className="text-[11px] text-[#9CA3AF] tracking-wide">{subtitle}</div>
-      </div>
-    </div>
-  );
-
-  if (!mounted) return null;
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#F5F5F8] text-[#1A1A1A]">
       {/* ===== MOBILE TOP BAR ===== */}
@@ -331,7 +336,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* ===== MAIN ===== */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Desktop top bar */}
         <header className="hidden md:flex h-[72px] items-center px-5 gap-4 bg-white/80 backdrop-blur-xl border-b border-[#ECECF1] sticky top-0 z-20">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A] transition-all" aria-label="Alternar menú">
             <Icon name="menu" className="w-5 h-5" />

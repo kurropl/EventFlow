@@ -1,12 +1,5 @@
-'use client';
-/**
- * J.Benitez — Admin Dashboard (B2B)
- * 
- * Client component that renders the appropriate sub-page based on URL.
- * The layout.tsx handles the sidebar and chrome.
- */
-
-import { usePathname } from 'next/navigation';
+use client;
+import AdminLayout from '@/components/b2b/AdminLayout';
 import DashboardOverview from '@/components/b2b/DashboardOverview';
 import CalendarView from '@/components/b2b/CalendarView';
 import KanbanPipeline from '@/components/b2b/KanbanPipeline';
@@ -18,6 +11,7 @@ import CatalogCRUD from '@/components/b2b/CatalogCRUD';
 import OperationsManager from '@/components/b2b/OperationsManager';
 import WebhooksPanel from '@/components/b2b/WebhooksPanel';
 import ProvidersManager from '@/components/b2b/ProvidersManager';
+import { usePathname } from 'next/navigation';
 
 export default function AdminDashboard() {
   const pathname = usePathname();
@@ -35,7 +29,7 @@ export default function AdminDashboard() {
   const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores;
 
   return (
-    <>
+    <AdminLayout>
       {isLeads && <LeadsCRM />}
       {isAgenda && <CalendarView />}
       {isKanban && <KanbanPipeline />}
@@ -48,6 +42,6 @@ export default function AdminDashboard() {
       {isProveedores && <ProvidersManager />}
       {isMapa && <OperationsManager />}
       {!isOther && <DashboardOverview />}
-    </>
+    </AdminLayout>
   );
 }
