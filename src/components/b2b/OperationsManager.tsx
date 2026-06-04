@@ -22,6 +22,7 @@ interface EventOrder {
 }
 interface ShoppingItem {
   ingredient_name: string; total_grams: number; total_units: number; total_ml: number;
+  provider_name?: string;
 }
 interface CanvasTable {
   id: string; name: string; x: number; y: number;
@@ -345,7 +346,7 @@ export default function OperationsManager() {
           <p className="text-xs text-[#6B7280]">Eventos activos, escandallos y logística</p>
         </div>
         <button onClick={fetchOrders} className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
-          <Icon name="refresh-cw" className="w-3.5 h-3.5"/>
+          <Icon name="refresh" className="w-3.5 h-3.5"/>
         </button>
       </div>
       {orders.length > 0 && (
@@ -414,8 +415,9 @@ export default function OperationsManager() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button onClick={() => setSelected(null)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
-            <Icon name="arrow-left" className="w-4 h-4"/>
+          <button onClick={() => setSelected(null)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+            <Icon name="arrowLeft" className="w-4 h-4"/>
+            <span className="text-[12px] font-medium text-[#6B7280]">Volver</span>
           </button>
           <div>
             <h2 className="text-lg font-bold text-[#1A1A2E]">{selected.client_name}</h2>
@@ -488,24 +490,26 @@ export default function OperationsManager() {
     <div className="space-y-6">
       {/* Manual overrides */}
       {canComplete && (
-        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-white border border-[#E5E7EB]">
+        <div className="p-4 rounded-xl bg-white border border-[#E5E7EB] space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-[11px] text-[#6B7280] font-medium">Mesas confirmadas</label>
             <div className="flex items-center gap-2 mt-1">
               <input type="number" value={tablesManual} onChange={e => setTablesManual(+e.target.value)} className="w-20 text-sm border border-[#E5E7EB] rounded-lg px-3 py-1.5" min={0} />
-              <span className="text-xs text-[#9CA3AF]">sugerido: {selected.tables_suggested}</span>
+              <span className="text-[11px] text-[#9CA3AF] whitespace-nowrap">sug: {selected.tables_suggested}</span>
               <button onClick={() => updateOrder(selected.id, { tables_confirmed: tablesManual })}
-                className="ml-auto text-[11px] font-medium px-3 py-1.5 rounded-lg bg-[#1A1A2E] text-white hover:bg-[#2D2D44] transition-colors">Guardar</button>
+                className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-[#1A1A2E] text-white hover:bg-[#2D2D44] transition-colors">Guardar</button>
             </div>
           </div>
           <div>
             <label className="text-[11px] text-[#6B7280] font-medium">Camareros confirmados</label>
             <div className="flex items-center gap-2 mt-1">
               <input type="number" value={waitersManual} onChange={e => setWaitersManual(+e.target.value)} className="w-20 text-sm border border-[#E5E7EB] rounded-lg px-3 py-1.5" min={0} />
-              <span className="text-xs text-[#9CA3AF]">sugerido: {selected.waiters_suggested}</span>
+              <span className="text-[11px] text-[#9CA3AF] whitespace-nowrap">sug: {selected.waiters_suggested}</span>
               <button onClick={() => updateOrder(selected.id, { waiters_confirmed: waitersManual })}
-                className="ml-auto text-[11px] font-medium px-3 py-1.5 rounded-lg bg-[#1A1A2E] text-white hover:bg-[#2D2D44] transition-colors">Guardar</button>
+                className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-[#1A1A2E] text-white hover:bg-[#2D2D44] transition-colors">Guardar</button>
             </div>
+          </div>
           </div>
         </div>
       )}
@@ -521,6 +525,7 @@ export default function OperationsManager() {
               <thead>
                 <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
                   <th className="text-left text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">Ingrediente</th>
+                  <th className="text-left text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">Proveedor</th>
                   <th className="text-right text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">Gramos</th>
                   <th className="text-right text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">Unidades</th>
                   <th className="text-right text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">ML</th>
@@ -530,6 +535,7 @@ export default function OperationsManager() {
                 {selected.shopping_list.map((item: ShoppingItem, i: number) => (
                   <tr key={i} className="border-b border-[#F3F4F6]">
                     <td className="px-3 py-2.5 text-sm text-[#1A1A2E] font-medium">{item.ingredient_name}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#6B7280]">{item.provider_name || '—'}</td>
                     <td className="px-3 py-2.5 text-right text-sm text-[#6B7280]">{item.total_grams > 0 ? `${Math.round(item.total_grams)}g` : '—'}</td>
                     <td className="px-3 py-2.5 text-right text-sm text-[#6B7280]">{item.total_units > 0 ? `${Math.round(item.total_units)} ud` : '—'}</td>
                     <td className="px-3 py-2.5 text-right text-sm text-[#6B7280]">{item.total_ml > 0 ? `${Math.round(item.total_ml)}ml` : '—'}</td>
@@ -541,10 +547,12 @@ export default function OperationsManager() {
         )}
       </div>
 
-      {/* Extra + Complete */}
+      {/* Extra consumptions */}
       {canComplete && (
         <div className="p-4 rounded-xl bg-white border border-[#E5E7EB] space-y-4">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">➕ Consumos Extra</h3>
+          <h3 className="text-sm font-semibold text-[#1A1A2E] flex items-center gap-2">
+            <Icon name="plus" className="w-4 h-4 text-[#6B7280]"/> Consumos Extra
+          </h3>
           {extraItems.map((item, i) => (
             <div key={i} className="flex items-center gap-3">
               <input type="text" value={item.desc} placeholder="Descripción"
@@ -561,22 +569,41 @@ export default function OperationsManager() {
           ))}
           <button onClick={() => setExtraItems([...extraItems, { desc: '', amount: 0 }])}
             className="text-[11px] font-medium text-[#2563EB] hover:text-[#1D4ED8] transition-colors">+ Añadir extra</button>
-          <div className="pt-2">
-            <button onClick={() => setShowComplete(true)}
-              className="w-full text-sm font-medium py-2.5 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors">✅ Marcar Evento como Completado</button>
-          </div>
         </div>
       )}
 
-      {/* Menú */}
+      {/* Selected items (editable menu) */}
       {selected.selected_items && selected.selected_items.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-[#1A1A2E]">🍽 Menú seleccionado</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {selected.selected_items.map((item: any, i: number) => (
-              <div key={i} className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E5E7EB]">
-                <p className="text-xs text-[#1A1A2E] font-medium">{item.name || item.item_id}</p>
-                <p className="text-[10px] text-[#9CA3AF]">{item.category} · {item.quantity} ud</p>
+              <div key={i} className="flex items-center gap-2 p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E5E7EB]">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-[#1A1A2E] font-medium truncate">{item.name || item.item_id}</p>
+                  <p className="text-[10px] text-[#9CA3AF]">{item.category}</p>
+                </div>
+                {canComplete && (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={item.quantity || 1}
+                      min={1}
+                      onChange={e => {
+                        const newQty = parseInt(e.target.value) || 1;
+                        const newItems = [...selected.selected_items];
+                        newItems[i] = { ...newItems[i], quantity: newQty };
+                        setSelected({ ...selected, selected_items: newItems });
+                      }}
+                      onBlur={() => updateOrder(selected.id, { selected_items: selected.selected_items })}
+                      className="w-14 text-xs text-center border border-[#E5E7EB] rounded px-1 py-1"
+                    />
+                    <span className="text-[10px] text-[#9CA3AF]">ud</span>
+                  </div>
+                )}
+                {!canComplete && (
+                  <span className="text-xs text-[#6B7280]">{item.quantity} ud</span>
+                )}
               </div>
             ))}
           </div>

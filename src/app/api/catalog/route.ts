@@ -15,12 +15,16 @@ import { CatalogItemCreateSchema } from '@/types/specs';
 // GET — Return all active catalog items grouped by category
 // ============================================================
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const showAll = searchParams.get('all') === 'true';
+    const activeFilter = showAll ? '' : 'WHERE active = true';
+    // Return ALL items (active + inactive) for admin management
     const items = await queryMany<any>(
       `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, active, created_at, updated_at
        FROM catalog_items
-       WHERE active = true
+       ${activeFilter}
        ORDER BY category, name`
     );
 

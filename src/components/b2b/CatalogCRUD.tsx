@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import Icon from '../shared/Icon';
 
 interface CatalogItem {
   id: string;
@@ -12,6 +13,7 @@ interface CatalogItem {
   image_url: string | null;
   active: boolean;
   estimated?: boolean;
+  provider_name?: string;
 }
 
 const CATEGORIES = [
@@ -78,7 +80,7 @@ export default function CatalogCRUD() {
 
   const loadCatalog = useCallback(async () => {
     try {
-      const res = await fetch('/api/catalog');
+      const res = await fetch('/api/catalog?all=true');
       const data = await res.json();
       if (res.ok && data.success && data.data) {
         const flat: CatalogItem[] = [];
@@ -182,6 +184,17 @@ export default function CatalogCRUD() {
     setEditingId(item.id);
     setEditData({ name: item.name, category: item.category, pvp: String(item.pvp), cost: String(item.cost), active: item.active });
   };
+  const toggleActive = async (item: CatalogItem) => {
+    try {
+      const res = await fetch('/api/catalog', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, active: !item.active }),
+      });
+      if (res.ok) await loadCatalog();
+    } catch { /* ignore */ }
+  };
+
 
   const totalItems = items.length;
   const activeItems = items.filter((i) => i.active).length;
@@ -359,17 +372,21 @@ export default function CatalogCRUD() {
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-center">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${item.active ? 'bg-[#EFFAF2] text-[#16A34A]' : 'bg-[#FEF3F3] text-[#DC2626]'}`}>
-                      {item.active ? 'Activo' : 'Inactivo'}
-                    </span>
+                    <button
+                      onClick={() => toggleActive(item)}
+                      className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors cursor-pointer ${item.active ? 'bg-[#EFFAF2] text-[#16A34A] hover:bg-[#D1FAE5]' : 'bg-[#FEF3F3] text-[#DC2626] hover:bg-[#FEE2E2]'}`}
+                      title={item.active ? 'Desactivar' : 'Activar'}
+                    >
+                      {item.active ? '● Activo' : '○ Inactivo'}
+                    </button>
                   </td>
                   <td className="px-4 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => startEdit(item)} className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors" title="Editar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                        <Icon name="edit" className="w-3.5 h-3.5"/>
                       </button>
                       <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF2F2] hover:text-[#DC2626] transition-colors" title="Desactivar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        <Icon name="trash" className="w-3.5 h-3.5"/>
                       </button>
                     </div>
                   </td>

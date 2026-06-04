@@ -190,9 +190,21 @@ export default function LeadsCRM() {
           <h2 className="text-lg font-bold text-[#1A1A2E]">{selectedLead.name}</h2>
           <p className="text-xs text-[#6B7280]">{selectedLead.email} · {selectedLead.phone || '—'}</p>
         </div>
-        <span className={`ml-auto text-[11px] font-medium px-2.5 py-1 rounded-full border ${STATUS_COLORS[selectedLead.status] || ''}`}>
-          {STATUS_LABELS[selectedLead.status] || selectedLead.status}
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <select
+            value={selectedLead.status}
+            onChange={(e) => {
+              const newStatus = e.target.value;
+              setSelectedLead({ ...selectedLead, status: newStatus });
+              updateStatus(selectedLead.id, newStatus);
+            }}
+            className={`text-[11px] font-medium px-2.5 py-1.5 rounded-lg border ${STATUS_COLORS[selectedLead.status] || ''} focus:outline-none focus:ring-2 focus:ring-[#1A1A2E]/10 cursor-pointer`}
+          >
+            {Object.entries(STATUS_LABELS).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Datos del evento asociado */}

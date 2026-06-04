@@ -27,12 +27,31 @@ const MENU_TYPES = [
   { value: 'bebe', label: 'Bebé', icon: '🍼' },
 ];
 
+const LINEN_OPTIONS = [
+  { value: 'blanco', label: 'Blanco' },
+  { value: 'marfil', label: 'Marfil' },
+  { value: 'dorado', label: 'Dorado' },
+  { value: 'negro', label: 'Negro' },
+  { value: 'azul', label: 'Azul' },
+  { value: 'rojo', label: 'Rojo' },
+  { value: 'personalizado', label: 'Personalizado' },
+];
+const CENTERPIECE_OPTIONS = [
+  { value: 'flores_naturales', label: 'Flores naturales' },
+  { value: 'flores_sinteticas', label: 'Flores sintéticas' },
+  { value: 'velas', label: 'Velas' },
+  { value: 'arreglos_mezcla', label: 'Arreglos mixtos' },
+  { value: 'personalizado', label: 'Personalizado' },
+];
+
 interface GuestFormEntry {
   name: string;
   group_name: string;
   menu_type: string;
   dietary: string[];
   notes: string;
+  linen_type?: string;
+  centerpiece?: string;
 }
 
 interface EventInfo {
@@ -100,7 +119,7 @@ export default function PublicGuestForm() {
   }, [token]);
 
   const addGuest = () => {
-    setGuests(prev => [...prev, { name: '', group_name: '', menu_type: 'adulto', dietary: [], notes: '' }]);
+    setGuests(prev => [...prev, { name: '', group_name: '', menu_type: 'adulto', dietary: [], notes: '', linen_type: '', centerpiece: '' }]);
   };
 
   const removeGuest = (idx: number) => {
@@ -276,8 +295,8 @@ export default function PublicGuestForm() {
                   className="p-1.5 rounded-lg text-[#C7C7CF] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all"
                   title="Eliminar invitado"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
               </div>
@@ -348,6 +367,32 @@ export default function PublicGuestForm() {
                 </div>
               </div>
 
+              {/* Linen & Centerpiece */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-medium text-[#6B7280] mb-1">Mantelería</label>
+                  <select
+                    value={guest.linen_type || ''}
+                    onChange={(e) => updateGuest(idx, 'linen_type', e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-lg border border-[#ECECF1] text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C] transition-all"
+                  >
+                    <option value="">Sin asignar</option>
+                    {LINEN_OPTIONS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-[#6B7280] mb-1">Centro de mesa</label>
+                  <select
+                    value={guest.centerpiece || ''}
+                    onChange={(e) => updateGuest(idx, 'centerpiece', e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-lg border border-[#ECECF1] text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C] transition-all"
+                  >
+                    <option value="">Sin asignar</option>
+                    {CENTERPIECE_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
               {/* Notes */}
               <div>
                 <label className="block text-[11px] font-medium text-[#6B7280] mb-1">Notas</label>
@@ -377,8 +422,8 @@ export default function PublicGuestForm() {
               </>
             ) : (
               <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
                 Guardar lista de invitados
               </>

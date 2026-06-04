@@ -96,17 +96,23 @@ const pendingRevenue = events
 
 // ── Monthly revenue chart ────────────────────────────────────
 const monthlyRevenue = useMemo(() => {
-const months = Array.from({ length: 12 }, (_, i) => ({ month: i, revenue: 0, count: 0 }));
-payments.forEach((p) => {
-if (!p.paid) return;
-const d = new Date((p as any).paid_date || p.created_at);
-const m = d.getMonth();
-if (m >= 0 && m < 12) {
-months[m].revenue += Number(p.amount || 0);
-months[m].count++;
-}
-});
-return months;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const months = Array.from({ length: 12 }, (_, i) => ({ month: i, revenue: 0, count: 0 }));
+  payments.forEach((p) => {
+    if (!p.paid) return;
+    const dateStr = (p as any).paid_date || p.created_at;
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return;
+    if (d.getFullYear() !== currentYear) return;
+    const m = d.getMonth();
+    if (m >= 0 && m < 12) {
+      months[m].revenue += Number(p.amount || 0);
+      months[m].count++;
+    }
+  });
+  return months;
 }, [payments]);
 
 const maxRevenue = Math.max(...monthlyRevenue.map(m => m.revenue), 1);

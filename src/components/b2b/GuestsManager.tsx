@@ -37,6 +37,8 @@ interface GuestFormEntry {
   menu_type: string;
   dietary: string[];
   notes: string;
+  linen_type?: string;
+  centerpiece?: string;
 }
 
 interface GuestFormData {
@@ -63,6 +65,24 @@ const DIET_OPTIONS = [
 const DIET_LABEL = Object.fromEntries(DIET_OPTIONS.map(d => [d.id, d.short]));
 const MENU_LABEL: Record<string, string> = { adulto: 'Adulto', nino: 'Niño/a', bebe: 'Bebé' };
 const MENU_ICON: Record<string, string> = { adulto: '👤', nino: '👶', bebe: '🍼' };
+const LINEN_OPTIONS = [
+  { value: '', label: 'Sin asignar' },
+  { value: 'blanco', label: 'Blanco' },
+  { value: 'marfil', label: 'Marfil' },
+  { value: 'dorado', label: 'Dorado' },
+  { value: 'negro', label: 'Negro' },
+  { value: 'azul', label: 'Azul' },
+  { value: 'rojo', label: 'Rojo' },
+  { value: 'personalizado', label: 'Personalizado' },
+];
+const CENTERPIECE_OPTIONS = [
+  { value: '', label: 'Sin asignar' },
+  { value: 'flores_naturales', label: 'Flores naturales' },
+  { value: 'flores_sinteticas', label: 'Flores sintéticas' },
+  { value: 'velas', label: 'Velas' },
+  { value: 'arreglos_mezcla', label: 'Arreglos mixtos' },
+  { value: 'personalizado', label: 'Personalizado' },
+];
 
 function fmtDate(d: string) {
   const iso = (d || '').slice(0, 10);
@@ -150,7 +170,7 @@ export default function GuestsManager() {
 
   const addGuest = async () => {
     if (!guestFormData) return;
-    const newGuest: GuestFormEntry = { name: '', group_name: '', menu_type: 'adulto', dietary: [], notes: '' };
+    const newGuest: GuestFormEntry = { name: '', group_name: '', menu_type: 'adulto', dietary: [], notes: '', linen_type: '', centerpiece: '' };
     const updatedGuests = [...allGuests, newGuest];
     setGuestFormData({ ...guestFormData, guests: updatedGuests });
 
@@ -346,6 +366,14 @@ export default function GuestsManager() {
               </div>
               <select value={g.menu_type} onChange={(e) => updateGuest(idx, 'menu_type', e.target.value)} className="crm-inp !w-auto !py-1.5 text-[12px]">
                 <option value="adulto">👤 Adulto</option><option value="nino">👶 Niño/a</option><option value="bebe">🍼 Bebé</option>
+              </select>
+              <select value={g.linen_type || ''} onChange={(e) => updateGuest(idx, 'linen_type', e.target.value)} className="crm-inp !w-auto !py-1.5 text-[12px]" title="Mantelería">
+                <option value="">🧵 Mantelería</option>
+                {LINEN_OPTIONS.filter(l => l.value).map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </select>
+              <select value={g.centerpiece || ''} onChange={(e) => updateGuest(idx, 'centerpiece', e.target.value)} className="crm-inp !w-auto !py-1.5 text-[12px]" title="Centro de mesa">
+                <option value="">💐 Centro</option>
+                {CENTERPIECE_OPTIONS.filter(c => c.value).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
               <button onClick={() => removeGuest(idx)} className="p-1.5 rounded-lg text-[#C7C7CF] hover:text-[#DC2626] hover:bg-[#FEF2F2]" title="Eliminar">
                 <Icon name="trash" className="w-4 h-4" />

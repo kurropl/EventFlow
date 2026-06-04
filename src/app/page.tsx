@@ -347,7 +347,7 @@ export default function HomePage() {
       {/* ============================================================
           ESPACIOS — Bento grid
           ============================================================ */}
-      <section id="espacios" className="py-16 md:py-24 px-6" style={{ background: '#FAF8F5' }}>
+      <section id="espacios" className="py-10 md:py-14 px-6" style={{ background: '#FAF8F5' }}>
         <div className="max-w-7xl mx-auto">
           <div id="espacios-header" data-reveal
             className="text-center mb-10"
@@ -396,7 +396,7 @@ export default function HomePage() {
       {/* ============================================================
           SERVICIOS — Split editorial layout
           ============================================================ */}
-      <section id="servicios" className="py-16 md:py-24 px-6" style={{ background: '#FFFFFF' }}>
+      <section id="servicios" className="py-16 md:py-24 px-6" style={{ background: '#F5F0E8' }}>
         <div className="max-w-6xl mx-auto">
           <div id="servicios-header" data-reveal
             className="text-center mb-10 md:mb-14"
@@ -415,7 +415,7 @@ export default function HomePage() {
               <div key={i} id={`serv-${i}`} data-reveal
                 className="group rounded-2xl overflow-hidden transition-all duration-500 hover:shadow-xl border border-[#1A1A1A]/5"
                 style={{
-                  background: '#FFFFFF',
+                  background: '#FAF8F5',
                   opacity: reveal(`serv-${i}`) ? 1 : 0,
                   transform: reveal(`serv-${i}`) ? 'translateY(0)' : 'translateY(30px)',
                   transition: `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.12}s`,
@@ -485,7 +485,7 @@ export default function HomePage() {
       {/* ============================================================
           TESTIMONIOS — Editorial quotes
           ============================================================ */}
-      <section id="testimonios" className="py-16 md:py-24 px-6" style={{ background: '#FFFFFF' }}>
+      <section id="testimonios" className="py-16 md:py-24 px-6" style={{ background: '#F0EBE3' }}>
         <div className="max-w-5xl mx-auto">
           <div id="test-header" data-reveal
             className="text-center mb-10"
@@ -607,15 +607,16 @@ export default function HomePage() {
             <div className="space-y-3 text-sm font-light" style={{ color: 'rgba(255,255,255,0.4)' }}>
               <div className="flex items-center gap-2">
                 <span style={{ color: '#C9A84C' }}>&rarr;</span>
-                <span>info@jbenitez.com</span>
+                <span>info@salonesjosebenitez.com</span>
               </div>
               <div className="flex items-center gap-2">
                 <span style={{ color: '#C9A84C' }}>&rarr;</span>
-                <span>+34 954 000 000</span>
+                <span>615 60 08 63</span>
               </div>
               <div className="flex items-center gap-2">
                 <span style={{ color: '#C9A84C' }}>&rarr;</span>
-                <span>Sevilla, España</span>
+                <span>C. Villanueva del Ariscal, 1
+                41806 Umbrete, Sevilla</span>
               </div>
             </div>
           </div>
