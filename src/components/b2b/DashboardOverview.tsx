@@ -234,21 +234,21 @@ Crear primer presupuesto
 <h3 className="font-semibold text-sm text-[#1A1A1A]">Ingresos mensuales</h3>
 <span className="text-[11px] text-[#9CA3AF]">{totalRevenue.toLocaleString('es-ES')}€ total</span>
 </div>
-<div className="flex items-end gap-1.5 h-32">
-{monthlyRevenue.map((m) => (
-<div className="flex-1 flex flex-col items-center gap-1">
-<div className="w-full rounded-t-md relative group cursor-pointer"
-style={{ height: `${Math.max(4, (m.revenue / maxRevenue) * 100)}%`, background: m.revenue > 0 ? 'linear-gradient(180deg, #C9A84C, #A88A3A)' : '#F0F0F4' }}>
-{m.revenue > 0 && (
-<div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-[#6B7280] opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">
-{m.revenue.toLocaleString('es-ES')}€
-</div>
-)}
-</div>
-<span className={`text-[9px] ${m.revenue > 0 ? 'text-[#6B7280]' : 'text-[#D1D5DB]'}`}>{monthName(m.month)}</span>
-</div>
-))}
-</div>
+        <div className="flex items-end gap-1.5 h-32">
+          {monthlyRevenue.map((m) => (
+            <div key={m.month} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+              <div className="w-full rounded-t-md relative group cursor-pointer transition-all duration-300"
+                style={{ height: `${Math.max(4, (m.revenue / maxRevenue) * 100)}%`, minHeight: m.revenue > 0 ? '4px' : '2px', background: m.revenue > 0 ? 'linear-gradient(180deg, #C9A84C, #A88A3A)' : '#F0F0F4' }}>
+                {m.revenue > 0 && (
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-[#6B7280] opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">
+                    {m.revenue.toLocaleString('es-ES')}€
+                  </div>
+                )}
+              </div>
+              <span className={`text-[9px] ${m.revenue > 0 ? 'text-[#6B7280]' : 'text-[#D1D5DB]'}`}>{monthName(m.month)}</span>
+            </div>
+          ))}
+        </div>
 </div>
 
 {/* Upcoming events */}
