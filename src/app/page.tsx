@@ -336,7 +336,7 @@ export default function HomePage() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+        <div className="mt-12 flex flex-col items-center gap-2">
           <span className="text-[10px] tracking-[0.2em] uppercase" style={{ color: 'rgba(255,255,255,0.3)' }}>Descubre</span>
           <div className="w-[1px] h-10" style={{ background: 'linear-gradient(to bottom, rgba(201,168,76,0.5), transparent)' }}>
             <div className="w-[1px] h-3 bg-[#C9A84C] animate-[scroll_2s_ease-in-out_infinite]" />
