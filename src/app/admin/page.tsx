@@ -1,23 +1,12 @@
 'use client';
 /**
  * J.Benitez — Admin Dashboard (B2B)
- *
- * Mini ERP de gestión del salon de celebraciones con:
- * - Resumen general (dashboard)
- * - Agenda / calendario (eventos, citas, bloqueos)
- * - Pipeline de presupuestos Kanban
- * - Clientes (CRM)
- * - Facturación y cobros
- * - Invitados (RSVP y dietas)
- * - CRUD de catálogo
- * - Gestión de operaciones
- * - Editor de mapa de mesas drag & drop
- * - Webhooks
+ * 
+ * Client component that renders the appropriate sub-page based on URL.
+ * The layout.tsx handles the sidebar and chrome.
  */
 
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import AdminLayout from '@/components/b2b/AdminLayout';
 import DashboardOverview from '@/components/b2b/DashboardOverview';
 import CalendarView from '@/components/b2b/CalendarView';
 import KanbanPipeline from '@/components/b2b/KanbanPipeline';
@@ -32,19 +21,6 @@ import ProvidersManager from '@/components/b2b/ProvidersManager';
 
 export default function AdminDashboard() {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
-
-  if (!mounted) {
-    // SSR: render dashboard only — matches server output
-    return (
-      <AdminLayout>
-        <DashboardOverview />
-      </AdminLayout>
-    );
-  }
-
   const isAgenda = pathname?.includes('agenda');
   const isKanban = pathname?.includes('kanban');
   const isClients = pathname?.includes('clientes');
@@ -59,7 +35,7 @@ export default function AdminDashboard() {
   const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores;
 
   return (
-    <AdminLayout>
+    <>
       {isLeads && <LeadsCRM />}
       {isAgenda && <CalendarView />}
       {isKanban && <KanbanPipeline />}
@@ -72,6 +48,6 @@ export default function AdminDashboard() {
       {isProveedores && <ProvidersManager />}
       {isMapa && <OperationsManager />}
       {!isOther && <DashboardOverview />}
-    </AdminLayout>
+    </>
   );
 }
