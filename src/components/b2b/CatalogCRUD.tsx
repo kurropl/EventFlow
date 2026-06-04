@@ -72,6 +72,8 @@ export default function CatalogCRUD() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState({ name: '', category: '', pvp: '', cost: '', active: true });
   const [newItem, setNewItem] = useState({ name: '', category: CATEGORIES[0], pvp: '', cost: '' });
 
   const loadCatalog = useCallback(async () => {
@@ -144,6 +146,41 @@ export default function CatalogCRUD() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEditItem = async () => {
+    if (!editingId || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/catalog', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editData),
+      });
+      if (res.ok) {
+        setEditingId(null);
+        await loadCatalog();
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (!confirm('¿Desactivar este artículo?')) return;
+    try {
+      const res = await fetch(`/api/catalog?id=${id}`, { method: 'DELETE' });
+      if (res.ok) await loadCatalog();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const startEdit = (item: CatalogItem) => {
+    setEditingId(item.id);
+    setEditData({ name: item.name, category: item.category, pvp: String(item.pvp), cost: String(item.cost), active: item.active });
   };
 
   const totalItems = items.length;
@@ -235,6 +272,38 @@ export default function CatalogCRUD() {
         </motion.div>
       )}
 
+      {/* Edit Item Form */}
+      {editingId && (
+        <div className="bg-white rounded-2xl border-2 border-[#C9A84C] p-4 space-y-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <h3 className="text-[#1A1A1A] font-semibold text-sm">Editar artículo</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <input type="text" placeholder="Nombre del plato" value={editData.name}
+              onChange={(e) => setEditData((d) => ({ ...d, name: e.target.value }))}
+              className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:outline-none" />
+            <select value={editData.category} onChange={(e) => setEditData((d) => ({ ...d, category: e.target.value }))}
+              className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:outline-none">
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+              ))}
+            </select>
+            <input type="number" placeholder="PVP (€)" step="0.01" value={editData.pvp}
+              onChange={(e) => setEditData((d) => ({ ...d, pvp: e.target.value }))}
+              className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:outline-none" />
+            <input type="number" placeholder="Coste (€)" step="0.01" value={editData.cost}
+              onChange={(e) => setEditData((d) => ({ ...d, cost: e.target.value }))}
+              className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:outline-none" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleEditItem} disabled={saving} className="text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+            <button onClick={() => setEditingId(null)} className="text-[#6B7280] text-sm px-3 hover:text-[#1A1A1A]">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Category chips */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
         {CATEGORIES.map((cat) => {
@@ -293,6 +362,16 @@ export default function CatalogCRUD() {
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${item.active ? 'bg-[#EFFAF2] text-[#16A34A]' : 'bg-[#FEF3F3] text-[#DC2626]'}`}>
                       {item.active ? 'Activo' : 'Inactivo'}
                     </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => startEdit(item)} className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors" title="Editar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                      </button>
+                      <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF2F2] hover:text-[#DC2626] transition-colors" title="Desactivar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
+                    </div>
                   </td>
                 </motion.tr>
               ))}

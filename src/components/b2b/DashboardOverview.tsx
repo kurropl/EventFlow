@@ -99,7 +99,7 @@ const monthlyRevenue = useMemo(() => {
 const months = Array.from({ length: 12 }, (_, i) => ({ month: i, revenue: 0, count: 0 }));
 payments.forEach((p) => {
 if (!p.paid) return;
-const d = new Date(p.created_at);
+const d = new Date((p as any).paid_date || p.created_at);
 const m = d.getMonth();
 if (m >= 0 && m < 12) {
 months[m].revenue += Number(p.amount || 0);
