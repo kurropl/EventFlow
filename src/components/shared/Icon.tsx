@@ -63,6 +63,7 @@ const MAP: Record<string, LucideIcon> = {
 
   // Status
   check: Lucide.Check,
+  copy: Lucide.Copy,
   x: Lucide.X,
   arrowLeft: Lucide.ArrowLeft,
   arrowRight: Lucide.ArrowRight,

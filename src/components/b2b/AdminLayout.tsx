@@ -88,6 +88,7 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -96,6 +97,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     panel: true,
     evento: true,
   });
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Determine current item and parent
   const currentItem = ALL_ITEMS.find(t => {
@@ -122,8 +125,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setExpandedGroups(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const MotionAside = mounted ? motion.aside : 'aside';
+
   // ── NavList (shared by desktop sidebar & mobile drawer) ──
-  const NavList = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => (
+  const NavList = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => {
+    const MotionSpan = mounted ? motion.span : 'span';
+    const MotionDiv = mounted ? motion.div : 'div';
+    const SafeAnimatePresence = mounted ? AnimatePresence : (({ children }: any) => <>{children}</>);
+
+    return (
     <>
       {GROUPS.map(group => {
         const hasActiveDescendant = group.items.some(i => {
@@ -147,20 +157,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 }`}
               >
                 <span>{group.label}</span>
-                <motion.span
+                <MotionSpan
                   animate={{ rotate: showExpanded ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
                   className="opacity-50"
                 >
                   <Icon name="chevronDown" className="w-3 h-3" />
-                </motion.span>
+                </MotionSpan>
               </button>
             )}
 
             {/* Group items */}
-            <AnimatePresence initial={false}>
+            <SafeAnimatePresence initial={false}>
               {showExpanded && (
-                <motion.div
+                <MotionDiv
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -199,7 +209,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
                         {/* Children sub-items */}
                         {item.children && showChildren && !collapsed && (
-                          <motion.div
+                          <MotionDiv
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             transition={{ duration: 0.15 }}
@@ -225,19 +235,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                 </Link>
                               );
                             })}
-                          </motion.div>
+                          </MotionDiv>
                         )}
                       </div>
                     );
                   })}
-                </motion.div>
+                    </MotionDiv>
               )}
-            </AnimatePresence>
+            </SafeAnimatePresence>
           </div>
         );
       })}
     </>
   );
+  }; // end NavList
 
   const Brand = ({ subtitle = 'Panel de gestión' }: { subtitle?: string }) => (
     <div className="flex items-center gap-3 min-w-0">
@@ -288,7 +299,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
 
       {/* ===== DESKTOP SIDEBAR ===== */}
-      <motion.aside
+      <MotionAside
         initial={{ x: -240 }}
         animate={{ x: 0 }}
         className={`hidden md:flex sticky top-0 h-screen flex-col bg-white border-r border-[#ECECF1] transition-all duration-300 overflow-hidden ${
@@ -311,7 +322,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {sidebarOpen && <span className="font-medium">Ver portal</span>}
           </Link>
         </div>
-      </motion.aside>
+      </MotionAside>
 
       {/* ===== MAIN ===== */}
       <div className="flex-1 flex flex-col min-w-0">
