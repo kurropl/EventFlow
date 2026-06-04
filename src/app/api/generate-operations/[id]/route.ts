@@ -197,7 +197,6 @@ export async function POST(
         guests: insertedGuests.length,
         tables: insertedTables.length,
         menuItems: insertedMenuItems.length,
-        shoppingItems: insertedShopping.length,
         tablesNeeded,
         waitersNeeded,
       },
