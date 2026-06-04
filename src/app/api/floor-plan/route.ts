@@ -9,10 +9,10 @@ export async function GET(request: NextRequest) {
     if (eventId) {
       // Load per-event table plan
       const rows = await queryMany<any>(
-        `SELECT id, name, tables_data, events.name AS event_name
-         FROM table_plans
-         JOIN events ON events.id = table_plans.event_id
-         WHERE event_id = $1
+        `SELECT tp.id, tp.name, tp.tables_data, events.name AS event_name
+         FROM table_plans tp
+         JOIN events ON events.id = tp.event_id
+         WHERE tp.event_id = $1
          ORDER BY updated_at DESC LIMIT 1`,
         [eventId]
       );
