@@ -54,7 +54,7 @@ function getDishCategory(dish: string): string {
  */
 function classifyMenuItems(step3Items: any[]): {
   catalogNames: Record<string, Set<string>>;
-  extrasByCategory: Record<string, { name: string; isMain: boolean }[]>;
+  extrasByCategory: Record<string, { name: string; isMain: boolean; enabled: boolean }[]>;
 } {
   if (!step3Items || step3Items.length === 0) {
     return { catalogNames: {}, extrasByCategory: {} };
@@ -64,7 +64,7 @@ function classifyMenuItems(step3Items: any[]): {
   Object.values(CATALOG_ITEMS).forEach(items => items.forEach(name => allCatalogNames.add(name)));
 
   const catalogNames: Record<string, Set<string>> = {};
-  const extrasByCategory: Record<string, { name: string; isMain: boolean }[]> = {};
+  const extrasByCategory: Record<string, { name: string; isMain: boolean; enabled: boolean }[]> = {};
 
   step3Items.forEach((item: any) => {
     const cat = item.category || getDishCategory(item.name);
@@ -77,7 +77,7 @@ function classifyMenuItems(step3Items: any[]): {
     } else {
       // Not in catalog → show as extra within the category accordion
       if (!extrasByCategory[cat]) extrasByCategory[cat] = [];
-      extrasByCategory[cat].push({ name: item.name, isMain });
+      extrasByCategory[cat].push({ name: item.name, isMain, enabled: true });
     }
   });
 
@@ -102,7 +102,7 @@ export default function WizardStep3() {
   });
 
   // Extra items (from proposed menu, not in catalog) — grouped by category
-  const [extrasByCategory, setExtrasByCategory] = useState<Record<string, { name: string; isMain: boolean }[]>>(() => {
+  const [extrasByCategory, setExtrasByCategory] = useState<Record<string, { name: string; isMain: boolean; enabled: boolean }[]>>(() => {
     return initial.extrasByCategory;
   });
 
@@ -130,7 +130,7 @@ export default function WizardStep3() {
   // Extras that are main courses (from proposed menu)
   const extraMainCount = MAIN_COURSES.reduce((sum, cat) => {
     const extras = extrasByCategory[cat] || [];
-    return sum + extras.filter(e => e.isMain).length;
+    return sum + extras.filter(e => e.isMain && e.enabled).length;
   }, 0);
 
   // Total main courses for proceed check (catalog + extras)
@@ -154,22 +154,18 @@ export default function WizardStep3() {
     });
   };
 
-  const removeExtraItem = (category: string, index: number) => {
+  const toggleExtraItem = (category: string, index: number) => {
     setExtrasByCategory(prev => {
       const next = { ...prev };
       const items = [...(next[category] || [])];
-      items.splice(index, 1);
-      if (items.length === 0) {
-        delete next[category];
-      } else {
-        next[category] = items;
-      }
+      items[index] = { ...items[index], enabled: !items[index].enabled };
+      next[category] = items;
       return next;
     });
   };
 
   const totalCatalogItems = Object.values(selectedCatalog).reduce((sum, set) => sum + set.size, 0);
-  const totalExtras = Object.values(extrasByCategory).reduce((sum, items) => sum + items.length, 0);
+  const totalExtras = Object.values(extrasByCategory).reduce((sum, items) => sum + items.filter(e => e.enabled).length, 0);
   const totalItems = totalCatalogItems + totalExtras;
   const canProceed = mainCount > 0;
 
@@ -196,9 +192,9 @@ export default function WizardStep3() {
       });
     });
 
-    // Extra items (from proposed menu, not in catalog)
+    // Extra items (from proposed menu, not in catalog) — only enabled ones
     Object.entries(extrasByCategory).forEach(([cat, items]) => {
-      items.forEach(item => {
+      items.filter(item => item.enabled).forEach(item => {
         allItems.push({
           item_id: item.name,
           name: item.name,
@@ -282,31 +278,41 @@ export default function WizardStep3() {
               {isExpanded && (
                 <div className="overflow-hidden">
                   <div className="px-4 pb-4 space-y-1">
-                    {/* Extra items from menu base (already checked, cannot be unchecked, can be removed) */}
-                    {extras.map((extra, idx) => (
-                      <div key={`extra-${cat}-${idx}`} className="flex items-center gap-3 p-2.5 rounded-lg bg-[#C9A84C]/5 border border-[#C9A84C]/15">
-                        <div className="w-4 h-4 rounded bg-[#C9A84C] flex-shrink-0 flex items-center justify-center">
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
+                    {/* Extra items from menu base (toggleable checkboxes) */}
+                    {extras.map((extra, idx) => {
+                      const isExtraMain = MAIN_COURSES.includes(cat);
+                      return (
+                        <div key={`extra-${cat}-${idx}`}>
+                          <button
+                            onClick={() => toggleExtraItem(cat, idx)}
+                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-sm transition-all duration-200 text-left ${
+                              extra.enabled
+                                ? 'bg-[#C9A84C]/5 border border-[#C9A84C]/15 text-[#1A1A1A] font-medium'
+                                : 'text-stone-400 border border-stone-100'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all ${
+                              extra.enabled ? 'bg-[#C9A84C] border-[#C9A84C]' : 'border-stone-300'
+                            }`}>
+                              {extra.enabled && (
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="flex-1">{extra.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                              extra.enabled ? 'bg-[#C9A84C]/15 text-[#C9A84C]' : 'bg-stone-100 text-stone-400'
+                            }`}>
+                              menú base
+                            </span>
+                            {isExtraMain && extra.enabled && (
+                              <span className="text-xs text-stone-400 flex-shrink-0">{adults} raciones</span>
+                            )}
+                          </button>
                         </div>
-                        <span className="flex-1 text-sm text-[#1A1A1A] font-medium">{extra.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#C9A84C]/15 text-[#C9A84C] font-medium flex-shrink-0">
-                          menú base
-                        </span>
-                        {isMain && (
-                          <span className="text-xs text-stone-400 flex-shrink-0">{adults} raciones</span>
-                        )}
-                        <button
-                          onClick={() => removeExtraItem(cat, idx)}
-                          className="text-stone-300 hover:text-red-400 transition-colors p-0.5 flex-shrink-0"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {/* Catalog items */}
                     {items.map((item) => {
@@ -371,7 +377,7 @@ export default function WizardStep3() {
             )}
             {/* Extra items from menu base */}
             {Object.entries(extrasByCategory).map(([cat, items]) =>
-              items.map((item, idx) => (
+              items.filter(item => item.enabled).map((item, idx) => (
                 <div key={`extra-summary-${cat}-${idx}`} className="flex items-center justify-between text-sm">
                   <span className="text-stone-700">{item.name}</span>
                   <span className="text-stone-400 text-xs ml-2 flex-shrink-0">
