@@ -4,7 +4,7 @@
  *
  * Dos modos de entrada:
  * 1. Sin menú seleccionado → catálogo vacío, usuario elige desde cero
- * 2. Con menú seleccionado → catálogo con los platos del menú pre-marcados + extras no encontrados
+ * 2. Con menú seleccionado → platos del menú pre-marcados dentro de cada categoría
  *
  * - Aperitivos y complementos: solo ON/OFF (sin cantidad individual)
  * - Plato principal (carne/pescado/arroz): máximo 2 TOTAL entre los tres
@@ -36,64 +36,79 @@ const CAT_LABELS: Record<string, string> = {
   'complemento': 'Complementos',
 };
 
-function initSelectedItems(step3Items: any[], adults: number): any[] {
-  if (!step3Items || step3Items.length === 0) return [];
+function getDishCategory(dish: string): string {
+  const d = dish.toLowerCase();
+  if (d.includes('arroz') || d.includes('paella') || d.includes('fideua')) return 'arroz';
+  if (d.includes('carne') || d.includes('pollo') || d.includes('ternera') || d.includes('cordero') || d.includes('cerdo') || d.includes('carrill') || d.includes('solomillo') || d.includes('hamburguesa') || d.includes('pechuga') || d.includes('mini hamburguesa')) return 'carne';
+  if (d.includes('pescado') || d.includes('lenguado') || d.includes('merluza') || d.includes('bacalao') || d.includes('gamb') || d.includes('langostino') || d.includes('pulpo') || d.includes('merluz') || d.includes('rap') || d.includes('lubina') || d.includes('rodaballo')) return 'pescado';
+  if (d.includes('sorbete') || d.includes('helado') || d.includes('granizado')) return 'sorbete';
+  if (d.includes('postre') || d.includes('pastelito') || d.includes('tarta') || d.includes('brownie') || d.includes('crema') || d.includes('flan') || d.includes('mousse') || d.includes('lemon pie') || d.includes('torrija') || d.includes('pantera') || d.includes('surtido')) return 'postre';
+  if (d.includes('bebida') || d.includes('vino') || d.includes('cerveza') || d.includes('cava') || d.includes('refresc') || d.includes('zum') || d.includes('agua') || d.includes('manzanilla') || d.includes('verdejo') || d.includes('frizzant')) return 'bebida';
+  if (d.includes('canape') || d.includes('tosta') || d.includes('mini toast') || d.includes('croqueta') || d.includes('empanadilla') || d.includes('pincho') || d.includes('volovane') || d.includes('quiche') || d.includes('chupito') || d.includes('oliva') || d.includes('ensaladilla') || d.includes('hummu') || d.includes('aguacate') || d.includes('atun')) return 'aperitivo-caliente';
+  return 'aperitivo-frio';
+}
 
-  // Build a set of catalog item names for fast lookup
+/**
+ * Split proposed menu items into catalog matches (by exact name) and extras (by category).
+ * Returns extras grouped by category for display inside each accordion.
+ */
+function classifyMenuItems(step3Items: any[]): {
+  catalogNames: Record<string, Set<string>>;
+  extrasByCategory: Record<string, { name: string; isMain: boolean }[]>;
+} {
+  if (!step3Items || step3Items.length === 0) {
+    return { catalogNames: {}, extrasByCategory: {} };
+  }
+
   const allCatalogNames = new Set<string>();
   Object.values(CATALOG_ITEMS).forEach(items => items.forEach(name => allCatalogNames.add(name)));
 
-  // Separate: items found in catalog vs extras from menu
-  const catalogMatches: any[] = [];
-  const extras: any[] = [];
+  const catalogNames: Record<string, Set<string>> = {};
+  const extrasByCategory: Record<string, { name: string; isMain: boolean }[]> = {};
 
   step3Items.forEach((item: any) => {
+    const cat = item.category || getDishCategory(item.name);
+    const isMain = MAIN_COURSES.includes(cat);
+
     if (allCatalogNames.has(item.name)) {
-      // This item exists in the catalog — will be shown as checked in the catalog section
-      catalogMatches.push(item);
+      // Exact match in catalog → will be checked in the accordion
+      if (!catalogNames[cat]) catalogNames[cat] = new Set();
+      catalogNames[cat].add(item.name);
     } else {
-      // This item is from the proposed menu but not in the catalog — show as extra
-      extras.push({
-        ...item,
-        quantity: item.quantity || adults,
-      });
+      // Not in catalog → show as extra within the category accordion
+      if (!extrasByCategory[cat]) extrasByCategory[cat] = [];
+      extrasByCategory[cat].push({ name: item.name, isMain });
     }
   });
 
-  return catalogMatches;
+  return { catalogNames, extrasByCategory };
 }
 
 export default function WizardStep3() {
   const { step1, step2, step3, setStepData, nextStep, prevStep } = useWizardStore();
   const adults = step1?.guest_count || 0;
 
-  // Items from the proposed menu that aren't in the catalog
-  const [extraItems, setExtraItems] = useState<any[]>(() => {
-    if (!step3?.selected_items || step3.selected_items.length === 0) return [];
-    const allCatalogNames = new Set<string>();
-    Object.values(CATALOG_ITEMS).forEach(items => items.forEach(name => allCatalogNames.add(name)));
-    return step3.selected_items.filter((item: any) => !allCatalogNames.has(item.name));
+  // Classify initial items from the store
+  const initial = useMemo(() => classifyMenuItems(step3?.selected_items || []), []);
+
+  // Catalog selections: category → Set of checked item names
+  const [selectedCatalog, setSelectedCatalog] = useState<Record<string, Set<string>>>(() => {
+    const result: Record<string, Set<string>> = {};
+    Object.keys(CATALOG_ITEMS).forEach(cat => { result[cat] = new Set(); });
+    Object.entries(initial.catalogNames).forEach(([cat, names]) => {
+      result[cat] = new Set(names);
+    });
+    return result;
   });
 
-  // Initialize selected items from catalog
-  const [selectedCatalog, setSelectedCatalog] = useState<Record<string, Set<string>>>(() => {
-    const initial: Record<string, Set<string>> = {};
-    Object.keys(CATALOG_ITEMS).forEach(cat => { initial[cat] = new Set(); });
-
-    if (step3?.selected_items && step3.selected_items.length > 0) {
-      step3.selected_items.forEach((item: any) => {
-        if (CATALOG_ITEMS[item.category]?.includes(item.name)) {
-          if (!initial[item.category]) initial[item.category] = new Set();
-          initial[item.category].add(item.name);
-        }
-      });
-    }
-    return initial;
+  // Extra items (from proposed menu, not in catalog) — grouped by category
+  const [extrasByCategory, setExtrasByCategory] = useState<Record<string, { name: string; isMain: boolean }[]>>(() => {
+    return initial.extrasByCategory;
   });
 
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
 
-  // Nombres seleccionados por categoría (from catalog)
+  // Count selected per category (catalog checks + extras)
   const catalogSelectionsMap = useMemo(() => {
     const map: Record<string, string[]> = {};
     Object.entries(selectedCatalog).forEach(([cat, set]) => {
@@ -102,12 +117,17 @@ export default function WizardStep3() {
     return map;
   }, [selectedCatalog]);
 
-  // Total de platos principales seleccionados
+  const countSelected = (cat: string) => {
+    const catalogCount = (catalogSelectionsMap[cat] || []).length;
+    const extrasCount = (extrasByCategory[cat] || []).length;
+    return catalogCount + extrasCount;
+  };
+
+  // Total main courses selected (only catalog, extras don't count toward limit)
   const mainCount = MAIN_COURSES.reduce((sum, cat) => sum + ((catalogSelectionsMap[cat] || []).length), 0);
   const mainsAtMax = mainCount >= MAIN_MAX;
 
-  // Has any pre-selected items from a proposed menu?
-  const hasMenuBase = extraItems.length > 0 || Object.values(selectedCatalog).some(s => s.size > 0);
+  const hasMenuBase = Object.keys(extrasByCategory).length > 0 || Object.values(initial.catalogNames).some(s => s.size > 0);
 
   const toggleCatalogItem = (category: string, item: string) => {
     setSelectedCatalog(prev => {
@@ -125,38 +145,28 @@ export default function WizardStep3() {
     });
   };
 
-  const toggleExtraItem = (index: number) => {
-    setExtraItems(prev => prev.filter((_, i) => i !== index));
+  const removeExtraItem = (category: string, index: number) => {
+    setExtrasByCategory(prev => {
+      const next = { ...prev };
+      const items = [...(next[category] || [])];
+      items.splice(index, 1);
+      if (items.length === 0) {
+        delete next[category];
+      } else {
+        next[category] = items;
+      }
+      return next;
+    });
   };
 
-  const addExtraItem = (category: string, itemName: string) => {
-    if (!itemName.trim()) return;
-    const isMain = MAIN_COURSES.includes(category);
-    const onePerGuest = isMain || category === 'compartir-mesa';
-    setExtraItems(prev => [
-      ...prev,
-      {
-        item_id: itemName,
-        name: itemName,
-        category,
-        quantity: onePerGuest ? adults : 1,
-        unit_price_pvp: 0,
-        unit_price_cost: 0,
-        subtotal_pvp: 0,
-        subtotal_cost: 0,
-      },
-    ]);
-  };
-
-  const countSelected = (cat: string) => (catalogSelectionsMap[cat] || []).length;
   const totalCatalogItems = Object.values(selectedCatalog).reduce((sum, set) => sum + set.size, 0);
-  const totalItems = totalCatalogItems + extraItems.length;
+  const totalExtras = Object.values(extrasByCategory).reduce((sum, items) => sum + items.length, 0);
+  const totalItems = totalCatalogItems + totalExtras;
   const canProceed = mainCount > 0;
 
   const handleNext = () => {
     if (!canProceed) return;
 
-    // Merge catalog selections + extras into a single array
     const allItems: any[] = [];
 
     // Catalog items
@@ -177,8 +187,21 @@ export default function WizardStep3() {
       });
     });
 
-    // Extra items (from proposed menu not in catalog)
-    allItems.push(...extraItems);
+    // Extra items (from proposed menu, not in catalog)
+    Object.entries(extrasByCategory).forEach(([cat, items]) => {
+      items.forEach(item => {
+        allItems.push({
+          item_id: item.name,
+          name: item.name,
+          category: cat,
+          quantity: item.isMain ? adults : 1,
+          unit_price_pvp: 0,
+          unit_price_cost: 0,
+          subtotal_pvp: 0,
+          subtotal_cost: 0,
+        });
+      });
+    });
 
     setStepData('step3', { selected_items: allItems });
     nextStep();
@@ -219,45 +242,13 @@ export default function WizardStep3() {
         </div>
       )}
 
-      {/* Extra items from proposed menu (not in catalog) */}
-      {extraItems.length > 0 && (
-        <div className="rounded-xl border border-[#C9A84C]/30 bg-[#C9A84C]/5 p-4">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-[#C9A84C] mb-3">
-            Platos del menú base ({extraItems.length})
-          </h4>
-          <p className="text-xs text-stone-400 mb-3">
-            Estos platos del menú seleccionado no están en el catálogo estándar
-          </p>
-          <div className="space-y-1.5">
-            {extraItems.map((item, i) => (
-              <div key={i} className="flex items-center justify-between text-sm py-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-[#C9A84C]" />
-                  <span className="text-stone-700">{item.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-stone-400 text-xs">{CAT_LABELS[item.category] || item.category}</span>
-                  <button
-                    onClick={() => toggleExtraItem(i)}
-                    className="text-stone-300 hover:text-red-400 transition-colors p-0.5"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Catalog categories */}
+      {/* Categories */}
       <div className="space-y-2">
         {Object.entries(CATALOG_ITEMS).map(([cat, items]) => {
           const count = countSelected(cat);
           const isExpanded = expandedCat === cat;
           const isMain = MAIN_COURSES.includes(cat);
+          const extras = extrasByCategory[cat] || [];
 
           return (
             <div key={cat} className="rounded-xl border border-stone-200 bg-white overflow-hidden transition-all">
@@ -282,6 +273,33 @@ export default function WizardStep3() {
               {isExpanded && (
                 <div className="overflow-hidden">
                   <div className="px-4 pb-4 space-y-1">
+                    {/* Extra items from menu base (already checked, cannot be unchecked, can be removed) */}
+                    {extras.map((extra, idx) => (
+                      <div key={`extra-${cat}-${idx}`} className="flex items-center gap-3 p-2.5 rounded-lg bg-[#C9A84C]/5 border border-[#C9A84C]/15">
+                        <div className="w-4 h-4 rounded bg-[#C9A84C] flex-shrink-0 flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <span className="flex-1 text-sm text-[#1A1A1A] font-medium">{extra.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#C9A84C]/15 text-[#C9A84C] font-medium flex-shrink-0">
+                          menú base
+                        </span>
+                        {isMain && (
+                          <span className="text-xs text-stone-400 flex-shrink-0">{adults} raciones</span>
+                        )}
+                        <button
+                          onClick={() => removeExtraItem(cat, idx)}
+                          className="text-stone-300 hover:text-red-400 transition-colors p-0.5 flex-shrink-0"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Catalog items */}
                     {items.map((item) => {
                       const isSelected = selectedCatalog[cat]?.has(item) || false;
                       const atLimit = !isSelected && isMain && mainsAtMax;
@@ -311,9 +329,6 @@ export default function WizardStep3() {
                             {isSelected && isMain && (
                               <span className="text-xs text-stone-400 flex-shrink-0 ml-2">{adults} raciones</span>
                             )}
-                            {isSelected && !isMain && !NO_QTY.includes(cat) && (
-                              <span className="text-xs text-stone-400 flex-shrink-0 ml-2">1 ración</span>
-                            )}
                           </button>
                         </div>
                       );
@@ -326,13 +341,14 @@ export default function WizardStep3() {
         })}
       </div>
 
-      {/* Selected items summary */}
+      {/* Single summary at the bottom */}
       {totalItems > 0 && (
         <div className="rounded-xl border border-stone-200 p-4 bg-[#FAF8F5]">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-3">
             Resumen ({totalItems} platos)
           </h4>
           <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {/* Catalog selections */}
             {Object.entries(selectedCatalog).map(([cat, set]) =>
               Array.from(set).map(item => (
                 <div key={`${cat}-${item}`} className="flex items-center justify-between text-sm">
@@ -344,14 +360,17 @@ export default function WizardStep3() {
                 </div>
               ))
             )}
-            {extraItems.map((item, i) => (
-              <div key={`extra-${i}`} className="flex items-center justify-between text-sm">
-                <span className="text-stone-700">{item.name}</span>
-                <span className="text-stone-400 text-xs ml-2 flex-shrink-0">
-                  {CAT_LABELS[item.category] || item.category} · menú base
-                </span>
-              </div>
-            ))}
+            {/* Extra items from menu base */}
+            {Object.entries(extrasByCategory).map(([cat, items]) =>
+              items.map((item, idx) => (
+                <div key={`extra-summary-${cat}-${idx}`} className="flex items-center justify-between text-sm">
+                  <span className="text-stone-700">{item.name}</span>
+                  <span className="text-stone-400 text-xs ml-2 flex-shrink-0">
+                    {CAT_LABELS[cat] || cat} · menú base
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
