@@ -8,7 +8,7 @@
  * - Pipeline de presupuestos Kanban
  * - Clientes (CRM)
  * - Facturación y cobros
- * - Invitados (RSVP + dietas)
+ * - Invitados (RSVP y dietas)
  * - CRUD de catálogo
  * - Gestión de operaciones
  * - Editor de mapa de mesas drag & drop
@@ -16,6 +16,7 @@
  */
 
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/b2b/AdminLayout';
 import DashboardOverview from '@/components/b2b/DashboardOverview';
 import CalendarView from '@/components/b2b/CalendarView';
@@ -31,6 +32,19 @@ import ProvidersManager from '@/components/b2b/ProvidersManager';
 
 export default function AdminDashboard() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted) {
+    // SSR: render dashboard only — matches server output
+    return (
+      <AdminLayout>
+        <DashboardOverview />
+      </AdminLayout>
+    );
+  }
+
   const isAgenda = pathname?.includes('agenda');
   const isKanban = pathname?.includes('kanban');
   const isClients = pathname?.includes('clientes');
