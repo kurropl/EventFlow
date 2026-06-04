@@ -64,7 +64,7 @@ const DIET_OPTIONS = [
 ];
 const DIET_LABEL = Object.fromEntries(DIET_OPTIONS.map(d => [d.id, d.short]));
 const MENU_LABEL: Record<string, string> = { adulto: 'Adulto', nino: 'Niño/a', bebe: 'Bebé' };
-const MENU_ICON: Record<string, string> = { adulto: '👤', nino: '👶', bebe: '🍼' };
+const MENU_ICON: Record<string, string> = { adulto: '', nino: '', bebe: '' };
 const LINEN_OPTIONS = [
   { value: '', label: 'Sin asignar' },
   { value: 'blanco', label: 'Blanco' },
@@ -251,9 +251,9 @@ export default function GuestsManager() {
 
       {ev && (
         <div className="flex items-center gap-3 text-xs text-[#9CA3AF]">
-          <span>📅 {fmtDate(ev.event_date)}</span>
-          <span>🎉 {ev.event_type}</span>
-          <span>👥 {ev.guest_count} adultos{ev.kids_count > 0 ? ` + ${ev.kids_count} niños` : ''}</span>
+          <span><Icon name="calendar" className="w-4 h-4 inline-block" /> {fmtDate(ev.event_date)}</span>
+          <span><Icon name="star" className="w-4 h-4 inline-block" /> {ev.event_type}</span>
+          <span><Icon name="userCheck" className="w-4 h-4 inline-block" /> {ev.guest_count} adultos{ev.kids_count > 0 ? ` + ${ev.kids_count} niños` : ''}</span>
         </div>
       )}
 
@@ -326,7 +326,7 @@ export default function GuestsManager() {
         <div className="flex flex-wrap gap-2">
           {Object.entries(summary.byMenu).filter(([, n]) => n > 0).map(([k, n]) => (
             <span key={k} className="text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#FBF6E9] text-[#8A6D1F] border border-[#EFE3BE]">
-              {MENU_ICON[k]} {MENU_LABEL[k]}: {n}
+              {MENU_LABEL[k]}: {n}
             </span>
           ))}
           {DIET_OPTIONS.filter((d) => summary.byDiet[d.id]).map((d) => (
@@ -365,14 +365,14 @@ export default function GuestsManager() {
                 })}
               </div>
               <select value={g.menu_type} onChange={(e) => updateGuest(idx, 'menu_type', e.target.value)} className="crm-inp !w-auto !py-1.5 text-[12px]">
-                <option value="adulto">👤 Adulto</option><option value="nino">👶 Niño/a</option><option value="bebe">🍼 Bebé</option>
+                <option value="adulto">Adulto</option><option value="nino">Niño/a</option><option value="bebe">Bebé</option>
               </select>
               <select value={g.linen_type || ''} onChange={(e) => updateGuest(idx, 'linen_type', e.target.value)} className="crm-inp !w-auto !py-1.5 text-[12px]" title="Mantelería">
-                <option value="">🧵 Mantelería</option>
+                <option value="">Mantelería</option>
                 {LINEN_OPTIONS.filter(l => l.value).map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
               <select value={g.centerpiece || ''} onChange={(e) => updateGuest(idx, 'centerpiece', e.target.value)} className="crm-inp !w-auto !py-1.5 text-[12px]" title="Centro de mesa">
-                <option value="">💐 Centro</option>
+                <option value="">Centro</option>
                 {CENTERPIECE_OPTIONS.filter(c => c.value).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
               <button onClick={() => removeGuest(idx)} className="p-1.5 rounded-lg text-[#C7C7CF] hover:text-[#DC2626] hover:bg-[#FEF2F2]" title="Eliminar">

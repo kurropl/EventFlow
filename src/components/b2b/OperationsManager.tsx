@@ -516,7 +516,7 @@ export default function OperationsManager() {
 
       {/* Escandallo */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-[#1A1A2E]">📋 Lista de Necesidades (Escandallo)</h3>
+        <h3 className="text-sm font-semibold text-[#1A1A2E]"><Icon name="clipboardList" className="w-4 h-4 inline mr-1.5"/> Lista de Necesidades (Escandallo)</h3>
         {(!selected.shopping_list || selected.shopping_list.length === 0) ? (
           <div className="text-center py-8 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-xl border border-dashed border-[#E5E7EB]">No hay datos de escandallo disponibles.</div>
         ) : (
@@ -575,7 +575,7 @@ export default function OperationsManager() {
       {/* Selected items (editable menu) */}
       {selected.selected_items && selected.selected_items.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">🍽 Menú seleccionado</h3>
+          <h3 className="text-sm font-semibold text-[#1A1A2E]"><Icon name="food" className="w-4 h-4 inline mr-1.5"/> Menú seleccionado</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {selected.selected_items.map((item: any, i: number) => (
               <div key={i} className="flex items-center gap-2 p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E5E7EB]">

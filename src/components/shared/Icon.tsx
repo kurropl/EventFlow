@@ -70,6 +70,14 @@ const MAP: Record<string, LucideIcon> = {
   chevronDown: Lucide.ChevronDown,
   chevronUp: Lucide.ChevronUp,
   external: Lucide.ExternalLink,
+  // Dietary / Guest form
+  wheat: Lucide.Wheat,
+  leaf: Lucide.Leaf,
+  droplet: Lucide.Droplets,
+  fish: Lucide.Fish,
+  alertCircle: Lucide.AlertCircle,
+  baby: Lucide.Baby,
+  heart: Lucide.Heart,
 };
 
 export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProps) {

@@ -1,4 +1,5 @@
 'use client';
+import Icon from '../../../components/shared/Icon';
 /**
  * J.Benitez — Public Guest Form
  * 
@@ -12,19 +13,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
 const DIET_OPTIONS = [
-  { id: 'celiaco', label: 'Celíaco', icon: '🌾' },
-  { id: 'vegetariano', label: 'Vegetariano', icon: '🥬' },
-  { id: 'vegano', label: 'Vegano', icon: '🌱' },
-  { id: 'sin_lactosa', label: 'Sin lactosa', icon: '🥛' },
-  { id: 'alergico_frutos_secos', label: 'Alergia frutos secos', icon: '🥜' },
-  { id: 'alergico_marisco', label: 'Alergia marisco', icon: '🦐' },
-  { id: 'otros', label: 'Otra restricción', icon: '⚠️' },
+  { id: 'celiaco', label: 'Celíaco', icon: 'wheat' },
+  { id: 'vegetariano', label: 'Vegetariano', icon: 'leaf' },
+  { id: 'vegano', label: 'Vegano', icon: 'leaf' },
+  { id: 'sin_lactosa', label: 'Sin lactosa', icon: 'droplet' },
+  { id: 'alergico_frutos_secos', label: 'Alergia frutos secos', icon: 'alertCircle' },
+  { id: 'alergico_marisco', label: 'Alergia marisco', icon: 'fish' },
+  { id: 'otros', label: 'Otra restricción', icon: 'alertCircle' },
 ];
 
 const MENU_TYPES = [
-  { value: 'adulto', label: 'Adulto', icon: '👤' },
-  { value: 'nino', label: 'Niño/a', icon: '👶' },
-  { value: 'bebe', label: 'Bebé', icon: '🍼' },
+  { value: 'adulto', label: 'Adulto', icon: 'user' },
+  { value: 'nino', label: 'Niño/a', icon: 'baby' },
+  { value: 'bebe', label: 'Bebé', icon: 'heart' },
 ];
 
 const LINEN_OPTIONS = [
@@ -337,7 +338,7 @@ export default function PublicGuestForm() {
                           : 'bg-white text-[#9CA3AF] border-[#ECECF1] hover:bg-[#F9F9FB]'
                       }`}
                     >
-                      <span>{mt.icon}</span>
+                      <Icon name={mt.icon} className="w-3.5 h-3.5" />
                       <span>{mt.label}</span>
                     </button>
                   ))}
@@ -360,7 +361,7 @@ export default function PublicGuestForm() {
                             : 'bg-white text-[#9CA3AF] border-[#ECECF1] hover:bg-[#F9F9FB]'
                         }`}
                       >
-                        {d.icon} {d.label}
+                        <Icon name={d.icon} className="w-3 h-3" /> {d.label}
                       </button>
                     );
                   })}
