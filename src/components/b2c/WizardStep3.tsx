@@ -123,9 +123,18 @@ export default function WizardStep3() {
     return catalogCount + extrasCount;
   };
 
-  // Total main courses selected (only catalog, extras don't count toward limit)
-  const mainCount = MAIN_COURSES.reduce((sum, cat) => sum + ((catalogSelectionsMap[cat] || []).length), 0);
-  const mainsAtMax = mainCount >= MAIN_MAX;
+  // Catalog main courses (for the limit check)
+  const catalogMainCount = MAIN_COURSES.reduce((sum, cat) => sum + ((catalogSelectionsMap[cat] || []).length), 0);
+  const mainsAtMax = catalogMainCount >= MAIN_MAX;
+
+  // Extras that are main courses (from proposed menu)
+  const extraMainCount = MAIN_COURSES.reduce((sum, cat) => {
+    const extras = extrasByCategory[cat] || [];
+    return sum + extras.filter(e => e.isMain).length;
+  }, 0);
+
+  // Total main courses for proceed check (catalog + extras)
+  const mainCount = catalogMainCount + extraMainCount;
 
   const hasMenuBase = Object.keys(extrasByCategory).length > 0 || Object.values(initial.catalogNames).some(s => s.size > 0);
 
