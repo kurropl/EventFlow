@@ -65,7 +65,8 @@ const GROUPS: MenuGroup[] = [
     label: 'Configuración',
     items: [
       { id: 'proveedores', label: 'Proveedores', sub: 'Suministros y partners', href: '/admin/proveedores' },
-      { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones y reglas', href: '/admin/webhooks' },
+      // Webhooks oculto — solo técnico, no visible en sidebar
+      // { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones y reglas', href: '/admin/webhooks' },
     ],
   },
 ];
