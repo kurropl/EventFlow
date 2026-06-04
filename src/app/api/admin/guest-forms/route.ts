@@ -76,7 +76,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: true, data: created }, { status: 201 });
     }
   } catch (error) {
-    const message = error instanceof Error ? message : 'Unknown error';
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
