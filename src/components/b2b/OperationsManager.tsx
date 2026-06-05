@@ -72,6 +72,12 @@ export default function OperationsManager() {
   const [showWaitersSaved, setShowWaitersSaved] = useState(false);
   const [decorLinen, setDecorLinen] = useState('blanco');
   const [decorCenterpiece, setDecorCenterpiece] = useState('floral');
+  const [shoppingItems, setShoppingItems] = useState<any[]>([]);
+  const [newIngName, setNewIngName] = useState('');
+  const [newIngProvider, setNewIngProvider] = useState('');
+  const [newIngGrams, setNewIngGrams] = useState(0);
+  const [newIngUnits, setNewIngUnits] = useState(0);
+  const [newIngMl, setNewIngMl] = useState(0);
   const [decorSaving, setDecorSaving] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -116,6 +122,7 @@ export default function OperationsManager() {
           setDecorCenterpiece(d.data.centerpiece || 'floral');
         }
       }).catch(() => {});
+      fetchShopping(o.event_id);
     }
   };
   // ── Load tables from API or generate ────────────────────────
@@ -513,6 +520,57 @@ export default function OperationsManager() {
     );
   };
 
+  // ── Shopping items (Escandallo) ──
+  const fetchShopping = async (eventId: string) => {
+    try {
+      const res = await fetch(`/api/shopping?event_id=${eventId}`);
+      const data = await res.json();
+      if (data.success) setShoppingItems(data.data || []);
+    } catch {}
+  };
+
+  const updateShoppingItem = async (id: string, fields: any) => {
+    try {
+      await fetch('/api/shopping', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...fields }) });
+      setShoppingItems(prev => prev.map(item => item.id === id ? { ...item, ...fields } : item));
+    } catch {}
+  };
+
+  const deleteShoppingItem = async (id: string) => {
+    try {
+      await fetch(`/api/shopping?id=${id}`, { method: 'DELETE' });
+      setShoppingItems(prev => prev.filter(item => item.id !== id));
+    } catch {}
+  };
+
+  const regenerateShopping = async (eventId: string) => {
+    try {
+      const res = await fetch('/api/shopping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'regenerate', event_id: eventId })
+      });
+      const data = await res.json();
+      if (data.success) setShoppingItems(data.data || []);
+    } catch {}
+  };
+
+  const addShoppingItem = async (eventId: string) => {
+    if (!newIngName.trim()) return;
+    try {
+      const res = await fetch('/api/shopping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: eventId, ingredient_name: newIngName.trim(), provider_name: newIngProvider || '—', total_grams: newIngGrams, total_units: newIngUnits, total_ml: newIngMl })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShoppingItems(prev => [...prev, data.data]);
+        setNewIngName(''); setNewIngProvider(''); setNewIngGrams(0); setNewIngUnits(0); setNewIngMl(0);
+      }
+    } catch {}
+  };
+
   // ── Data View (escandallo, extras, menu) ─────────────────────
   const renderDataView = (selected: EventOrder, canComplete: boolean) => (
     <div className="space-y-6">
@@ -542,35 +600,121 @@ export default function OperationsManager() {
         </div>
       )}
 
-      {/* Escandallo */}
+      {/* Escandallo editable */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-[#1A1A2E]"><Icon name="clipboardList" className="w-4 h-4 inline mr-1.5"/> Lista de Necesidades (Escandallo)</h3>
-        {(!selected.shopping_list || selected.shopping_list.length === 0) ? (
-          <div className="text-center py-8 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-xl border border-dashed border-[#E5E7EB]">No hay datos de escandallo disponibles.</div>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[#1A1A2E]"><Icon name="clipboardList" className="w-4 h-4 inline mr-1.5"/> Lista de Necesidades (Escandallo)</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-[#9CA3AF]">{shoppingItems.length} artículos</span>
+            {canComplete && (
+              <button onClick={() => regenerateShopping(selected!.event_id)}
+                className="px-3 py-1 text-[11px] font-medium text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#FAF8F5] hover:border-[#C9A84C] transition-colors">
+                <Icon name="refreshCw" className="w-3 h-3 inline mr-1" /> Regenerar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {shoppingItems.length === 0 ? (
+          <div className="text-center py-8 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-xl border border-dashed border-[#E5E7EB]">
+            No hay artículos en el escandallo. Pulsa "Regenerar" para calcular desde el catálogo.
+          </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
+                  <th className="text-left text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5 w-8">✓</th>
                   <th className="text-left text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">Ingrediente</th>
                   <th className="text-left text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">Proveedor</th>
                   <th className="text-right text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">Gramos</th>
                   <th className="text-right text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">Unidades</th>
                   <th className="text-right text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5">ML</th>
+                  <th className="text-center text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide px-3 py-2.5 w-8"></th>
                 </tr>
               </thead>
               <tbody>
-                {selected.shopping_list.map((item: ShoppingItem, i: number) => (
-                  <tr key={i} className="border-b border-[#F3F4F6]">
-                    <td className="px-3 py-2.5 text-sm text-[#1A1A2E] font-medium">{item.ingredient_name}</td>
-                    <td className="px-3 py-2.5 text-sm text-[#6B7280]">{item.provider_name || '—'}</td>
-                    <td className="px-3 py-2.5 text-right text-sm text-[#6B7280]">{item.total_grams > 0 ? `${Math.round(item.total_grams)}g` : '—'}</td>
-                    <td className="px-3 py-2.5 text-right text-sm text-[#6B7280]">{item.total_units > 0 ? `${Math.round(item.total_units)} ud` : '—'}</td>
-                    <td className="px-3 py-2.5 text-right text-sm text-[#6B7280]">{item.total_ml > 0 ? `${Math.round(item.total_ml)}ml` : '—'}</td>
+                {shoppingItems.map((item: any) => (
+                  <tr key={item.id} className={`border-b border-[#F3F4F6] transition-colors ${item.completed ? 'bg-[#F0FDF4] opacity-60' : 'hover:bg-[#FAFAFC]'}`}>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={!!item.completed}
+                        onChange={e => updateShoppingItem(item.id, { completed: e.target.checked })}
+                        className="w-4 h-4 rounded border-[#D1D5DB] text-[#C9A84C] focus:ring-[#C9A84C]" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="text" value={item.ingredient_name}
+                        onChange={e => updateShoppingItem(item.id, { ingredient_name: e.target.value })}
+                        className="w-full text-sm text-[#1A1A2E] font-medium bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="text" value={item.provider_name || ''}
+                        onChange={e => updateShoppingItem(item.id, { provider_name: e.target.value })}
+                        className="w-full text-sm text-[#6B7280] bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="number" value={item.total_grams || 0} min={0}
+                        onChange={e => updateShoppingItem(item.id, { total_grams: +e.target.value })}
+                        className="w-20 text-sm text-right text-[#6B7280] bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
+                      {item.total_grams > 0 && <span className="text-[10px] text-[#9CA3AF] ml-0.5">g</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="number" value={item.total_units || 0} min={0}
+                        onChange={e => updateShoppingItem(item.id, { total_units: +e.target.value })}
+                        className="w-20 text-sm text-right text-[#6B7280] bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
+                      {item.total_units > 0 && <span className="text-[10px] text-[#9CA3AF] ml-0.5">ud</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="number" value={item.total_ml || 0} min={0}
+                        onChange={e => updateShoppingItem(item.id, { total_ml: +e.target.value })}
+                        className="w-20 text-sm text-right text-[#6B7280] bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
+                      {item.total_ml > 0 && <span className="text-[10px] text-[#9CA3AF] ml-0.5">ml</span>}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <button onClick={() => deleteShoppingItem(item.id)}
+                        className="p-1 rounded text-[#C7C7CF] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors" title="Eliminar">
+                        <Icon name="trash" className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Add new item row */}
+        {canComplete && (
+          <div className="flex flex-wrap items-end gap-2 p-3 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
+            <div className="flex-1 min-w-[140px]">
+              <label className="text-[10px] text-[#6B7280] font-medium">Ingrediente</label>
+              <input type="text" value={newIngName} onChange={e => setNewIngName(e.target.value)} placeholder="Nombre..."
+                className="w-full text-sm border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mt-0.5 focus:outline-none focus:border-[#C9A84C]" />
+            </div>
+            <div className="w-32">
+              <label className="text-[10px] text-[#6B7280] font-medium">Proveedor</label>
+              <input type="text" value={newIngProvider} onChange={e => setNewIngProvider(e.target.value)} placeholder="—"
+                className="w-full text-sm border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mt-0.5 focus:outline-none focus:border-[#C9A84C]" />
+            </div>
+            <div className="w-20">
+              <label className="text-[10px] text-[#6B7280] font-medium">Gramos</label>
+              <input type="number" value={newIngGrams || ''} onChange={e => setNewIngGrams(+e.target.value)} min={0}
+                className="w-full text-sm border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mt-0.5 focus:outline-none focus:border-[#C9A84C]" />
+            </div>
+            <div className="w-20">
+              <label className="text-[10px] text-[#6B7280] font-medium">Unidades</label>
+              <input type="number" value={newIngUnits || ''} onChange={e => setNewIngUnits(+e.target.value)} min={0}
+                className="w-full text-sm border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mt-0.5 focus:outline-none focus:border-[#C9A84C]" />
+            </div>
+            <div className="w-20">
+              <label className="text-[10px] text-[#6B7280] font-medium">ML</label>
+              <input type="number" value={newIngMl || ''} onChange={e => setNewIngMl(+e.target.value)} min={0}
+                className="w-full text-sm border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mt-0.5 focus:outline-none focus:border-[#C9A84C]" />
+            </div>
+            <button onClick={() => addShoppingItem(selected.event_id)}
+              className="px-3 py-1.5 text-[11px] font-medium text-white rounded-lg shadow-sm hover:shadow transition-all"
+              style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+              <Icon name="plus" className="w-3.5 h-3.5 inline mr-1" /> Añadir
+            </button>
           </div>
         )}
       </div>
