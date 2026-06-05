@@ -78,6 +78,12 @@ const MAP: Record<string, LucideIcon> = {
   alertCircle: Lucide.AlertCircle,
   baby: Lucide.Baby,
   heart: Lucide.Heart,
+
+  // Decorative selection
+  flower: Lucide.Flower2,
+  candle: Lucide.CandlestickChart,
+  apple: Lucide.Apple,
+  minimize2: Lucide.Minimize2,
 };
 
 export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProps) {

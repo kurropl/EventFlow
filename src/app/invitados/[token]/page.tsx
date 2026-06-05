@@ -29,20 +29,17 @@ const MENU_TYPES = [
 ];
 
 const LINEN_OPTIONS = [
-  { value: 'blanco', label: 'Blanco' },
-  { value: 'marfil', label: 'Marfil' },
-  { value: 'dorado', label: 'Dorado' },
-  { value: 'negro', label: 'Negro' },
-  { value: 'azul', label: 'Azul' },
-  { value: 'rojo', label: 'Rojo' },
-  { value: 'personalizado', label: 'Personalizado' },
+  { value: 'blanco', label: 'Blanco', color: '#FFFFFF', border: '#E5E7EB' },
+  { value: 'crema', label: 'Crema', color: '#F5F0E8', border: '#E8DCC8' },
+  { value: 'dorado', label: 'Dorado', color: '#C9A84C', border: '#A88A3A' },
+  { value: 'negro', label: 'Negro', color: '#1A1A1A', border: '#374151' },
+  { value: 'rosa', label: 'Rosa', color: '#F9D5D3', border: '#E8A5A1' },
 ];
 const CENTERPIECE_OPTIONS = [
-  { value: 'flores_naturales', label: 'Flores naturales' },
-  { value: 'flores_sinteticas', label: 'Flores sintéticas' },
-  { value: 'velas', label: 'Velas' },
-  { value: 'arreglos_mezcla', label: 'Arreglos mixtos' },
-  { value: 'personalizado', label: 'Personalizado' },
+  { value: 'floral', label: 'Floral', icon: 'flower', bg: '#FFF5F5' },
+  { value: 'velas', label: 'Velas', icon: 'candle', bg: '#FFFBEB' },
+  { value: 'frutas', label: 'Frutas', icon: 'apple', bg: '#F0FDF4' },
+  { value: 'minimalista', label: 'Minimalista', icon: 'minimize2', bg: '#F8FAFC' },
 ];
 
 interface GuestFormEntry {
@@ -51,8 +48,6 @@ interface GuestFormEntry {
   menu_type: string;
   dietary: string[];
   notes: string;
-  linen_type?: string;
-  centerpiece?: string;
 }
 
 interface EventInfo {
@@ -63,6 +58,8 @@ interface EventInfo {
   guest_count: number;
   kids_count: number;
   status: string;
+  linen_type?: string;
+  centerpiece?: string;
 }
 
 interface FormResponse {
@@ -90,6 +87,9 @@ export default function PublicGuestForm() {
   const [guests, setGuests] = useState<GuestFormEntry[]>([]);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [decorLinen, setDecorLinen] = useState('blanco');
+  const [decorCenterpiece, setDecorCenterpiece] = useState('floral');
+  const [decorSaved, setDecorSaved] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -103,6 +103,8 @@ export default function PublicGuestForm() {
         }
         const ev = data.data.event;
         setEventInfo(ev);
+        setDecorLinen(ev.linen_type || 'blanco');
+        setDecorCenterpiece(ev.centerpiece || 'floral');
         if (data.data.form) {
           setClientName(data.data.form.client_name || '');
           setEmail(data.data.form.email || '');
@@ -120,7 +122,7 @@ export default function PublicGuestForm() {
   }, [token]);
 
   const addGuest = () => {
-    setGuests(prev => [...prev, { name: '', group_name: '', menu_type: 'adulto', dietary: [], notes: '', linen_type: '', centerpiece: '' }]);
+    setGuests(prev => [...prev, { name: '', group_name: '', menu_type: 'adulto', dietary: [], notes: '' }]);
   };
 
   const removeGuest = (idx: number) => {
@@ -137,6 +139,23 @@ export default function PublicGuestForm() {
       const current = g.dietary || [];
       return { ...g, dietary: current.includes(dietId) ? current.filter(d => d !== dietId) : [...current, dietId] };
     }));
+  };
+
+  const saveDecoration = async (field: 'linen_type' | 'centerpiece', value: string) => {
+    if (!eventInfo) return;
+    try {
+      await fetch(`/api/events/${eventInfo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (field === 'linen_type') setDecorLinen(value);
+      if (field === 'centerpiece') setDecorCenterpiece(value);
+      setDecorSaved(true);
+      setTimeout(() => setDecorSaved(false), 2000);
+    } catch {
+      setError('Error al guardar la decoración');
+    }
   };
 
   const saveForm = async () => {
@@ -264,6 +283,77 @@ export default function PublicGuestForm() {
           </div>
         </div>
 
+        {/* Selección de decoración */}
+        {eventInfo && (
+          <div className="bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-serif text-base text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  <Icon name="star" className="w-4 h-4 inline mr-1.5 text-[#C9A84C]"/> Elige la decoración de tu evento
+                </h3>
+                <p className="text-xs text-[#9CA3AF] mt-0.5">Selecciona el tipo de mantelería y el centro de mesa</p>
+              </div>
+              {decorSaved && (
+                <span className="text-xs font-medium text-[#15803D] bg-[#EFFAF2] px-2.5 py-1 rounded-full">✓ Guardado</span>
+              )}
+            </div>
+
+            {/* Linen carousel */}
+            <div>
+              <p className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-2">Mantelería</p>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: 'thin' }}>
+                {LINEN_OPTIONS.map(opt => (
+                  <button key={opt.value}
+                    onClick={() => saveDecoration('linen_type', opt.value)}
+                    className={`min-w-[120px] rounded-xl border-2 overflow-hidden transition-all flex-shrink-0 ${
+                      decorLinen === opt.value
+                        ? 'border-[#C9A84C] shadow-md ring-1 ring-[#C9A84C]/20'
+                        : 'border-[#ECECF1] hover:border-[#D1D5DB]'
+                    }`}>
+                    <div className="h-20" style={{ background: opt.color, borderBottom: `1px solid ${opt.border}` }} />
+                    <div className="p-2 text-xs text-center font-medium text-[#1A1A1A]">{opt.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Centerpiece carousel */}
+            <div>
+              <p className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-2">Centro de mesa</p>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: 'thin' }}>
+                {CENTERPIECE_OPTIONS.map(opt => (
+                  <button key={opt.value}
+                    onClick={() => saveDecoration('centerpiece', opt.value)}
+                    className={`min-w-[120px] rounded-xl border-2 overflow-hidden transition-all flex-shrink-0 ${
+                      decorCenterpiece === opt.value
+                        ? 'border-[#C9A84C] shadow-md ring-1 ring-[#C9A84C]/20'
+                        : 'border-[#ECECF1] hover:border-[#D1D5DB]'
+                    }`}>
+                    <div className="h-20 flex items-center justify-center" style={{ background: opt.bg }}>
+                      <Icon name={opt.icon} className="w-8 h-8 text-[#1A1A1A]" />
+                    </div>
+                    <div className="p-2 text-xs text-center font-medium text-[#1A1A1A]">{opt.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Admin badge */}
+            {eventInfo.linen_type && eventInfo.linen_type !== decorLinen && (
+              <div className="flex items-center gap-2 text-xs text-[#6B7280] bg-[#FAF8F5] rounded-lg px-3 py-2">
+                <Icon name="info" className="w-3.5 h-3.5 flex-shrink-0"/>
+                <span>Admin ha seleccionado: <strong>{LINEN_OPTIONS.find(l => l.value === eventInfo.linen_type)?.label || eventInfo.linen_type}</strong></span>
+              </div>
+            )}
+            {eventInfo.centerpiece && eventInfo.centerpiece !== decorCenterpiece && (
+              <div className="flex items-center gap-2 text-xs text-[#6B7280] bg-[#FAF8F5] rounded-lg px-3 py-2">
+                <Icon name="info" className="w-3.5 h-3.5 flex-shrink-0"/>
+                <span>Admin ha seleccionado: <strong>{CENTERPIECE_OPTIONS.find(c => c.value === eventInfo.centerpiece)?.label || eventInfo.centerpiece}</strong></span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Guests list */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -365,32 +455,6 @@ export default function PublicGuestForm() {
                       </button>
                     );
                   })}
-                </div>
-              </div>
-
-              {/* Linen & Centerpiece */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-medium text-[#6B7280] mb-1">Mantelería</label>
-                  <select
-                    value={guest.linen_type || ''}
-                    onChange={(e) => updateGuest(idx, 'linen_type', e.target.value)}
-                    className="w-full px-2.5 py-2 rounded-lg border border-[#ECECF1] text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C] transition-all"
-                  >
-                    <option value="">Sin asignar</option>
-                    {LINEN_OPTIONS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-[#6B7280] mb-1">Centro de mesa</label>
-                  <select
-                    value={guest.centerpiece || ''}
-                    onChange={(e) => updateGuest(idx, 'centerpiece', e.target.value)}
-                    className="w-full px-2.5 py-2 rounded-lg border border-[#ECECF1] text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C] transition-all"
-                  >
-                    <option value="">Sin asignar</option>
-                    {CENTERPIECE_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </select>
                 </div>
               </div>
 

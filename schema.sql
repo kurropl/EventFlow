@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS events (
     bar_price       NUMERIC(10,2) NOT NULL DEFAULT 0,
     iva_pct         NUMERIC(5,2) NOT NULL DEFAULT 10,
     notes           TEXT,
+    linen_type      TEXT DEFAULT 'blanco',
+    centerpiece     TEXT DEFAULT 'floral',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );

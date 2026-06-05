@@ -156,7 +156,8 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     const { status, notes, total_pvp, total_cost, bar_hours, selected_items,
-            client_name, client_email, event_type, guest_count, kids_count, event_date } = body;
+            client_name, client_email, event_type, guest_count, kids_count, event_date,
+            linen_type, centerpiece } = body;
 
     // If selected_items provided, recalculate totals from catalog
     let calculatedPvp = total_pvp;
@@ -226,6 +227,8 @@ export async function PUT(
       pushIfInBody('guest_count', 'guest_count');
       pushIfInBody('kids_count', 'kids_count');
       pushIfInBody('event_date', 'event_date');
+      pushIfInBody('linen_type', 'linen_type');
+      pushIfInBody('centerpiece', 'centerpiece');
 
       if (calculatedPvp !== undefined) {
         fields.push(`total_pvp = $${p++}`);

@@ -70,6 +70,9 @@ export default function OperationsManager() {
   const [editingWaiter, setEditingWaiter] = useState<string | null>(null);
   const [newWaiterName, setNewWaiterName] = useState('');
   const [showWaitersSaved, setShowWaitersSaved] = useState(false);
+  const [decorLinen, setDecorLinen] = useState('blanco');
+  const [decorCenterpiece, setDecorCenterpiece] = useState('floral');
+  const [decorSaving, setDecorSaving] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const fetchOrders = useCallback(async () => {
@@ -105,6 +108,15 @@ export default function OperationsManager() {
     setExtraItems(o.extra_consumptions?.length ? o.extra_consumptions : [{ desc: '', amount: 0 }]);
     setViewMode('detail');
     loadTables(o);
+    // Load decoration settings from events table
+    if (o.event_id) {
+      fetch(`/api/events/${o.event_id}`).then(r => r.json()).then(d => {
+        if (d.success && d.data) {
+          setDecorLinen(d.data.linen_type || 'blanco');
+          setDecorCenterpiece(d.data.centerpiece || 'floral');
+        }
+      }).catch(() => {});
+    }
   };
   // ── Load tables from API or generate ────────────────────────
   const loadTables = async (order: EventOrder) => {
@@ -284,6 +296,22 @@ export default function OperationsManager() {
   const autoAssignWaiters = () => {
     if (waiters.length === 0 || tables.length === 0) return;
     setTables(prev => prev.map((t, i) => ({ ...t, waiter: waiters[i % waiters.length].name })));
+  };
+
+  // Save decoration settings to events table
+  const saveDecoration = async (field: 'linen_type' | 'centerpiece', value: string) => {
+    if (!selected?.event_id) return;
+    setDecorSaving(true);
+    try {
+      await fetch(`/api/events/${selected.event_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (field === 'linen_type') setDecorLinen(value);
+      if (field === 'centerpiece') setDecorCenterpiece(value);
+    } catch (e) { console.error(e); }
+    setDecorSaving(false);
   };
 
   // Reassign a single table's waiter
@@ -545,6 +573,64 @@ export default function OperationsManager() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Selección decorativa */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-[#1A1A2E]"><Icon name="star" className="w-4 h-4 inline mr-1.5"/> Selección decorativa</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Linen type */}
+          <div className="p-4 rounded-xl bg-white border border-[#E5E7EB] space-y-3">
+            <p className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wide">Mantelería</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'blanco', label: 'Blanco', color: '#FFFFFF', border: '#E5E7EB' },
+                { value: 'crema', label: 'Crema', color: '#F5F0E8', border: '#E8DCC8' },
+                { value: 'dorado', label: 'Dorado', color: '#C9A84C', border: '#A88A3A' },
+                { value: 'negro', label: 'Negro', color: '#1A1A1A', border: '#374151' },
+                { value: 'rosa', label: 'Rosa', color: '#F9D5D3', border: '#E8A5A1' },
+              ].map(opt => (
+                <button key={opt.value}
+                  onClick={() => saveDecoration('linen_type', opt.value)}
+                  disabled={decorSaving}
+                  className={`flex flex-col items-center rounded-xl border-2 overflow-hidden transition-all disabled:opacity-60 ${
+                    decorLinen === opt.value
+                      ? 'border-[#C9A84C] bg-[#FBF6E9] shadow-sm'
+                      : 'border-[#E5E7EB] bg-white hover:border-[#D1D5DB]'
+                  }`}>
+                  <div className="w-12 h-8 rounded-t-[9px]" style={{ background: opt.color, borderBottom: `1px solid ${opt.border}` }} />
+                  <span className="text-[10px] font-medium px-2 py-1.5 text-[#1A1A2E]">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Centerpiece */}
+          <div className="p-4 rounded-xl bg-white border border-[#E5E7EB] space-y-3">
+            <p className="text-[11px] font-medium text-[#6B7280] uppercase tracking-wide">Centro de mesa</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'floral', label: 'Floral', icon: 'flower', bg: '#FFF5F5' },
+                { value: 'velas', label: 'Velas', icon: 'candle', bg: '#FFFBEB' },
+                { value: 'frutas', label: 'Frutas', icon: 'apple', bg: '#F0FDF4' },
+                { value: 'minimalista', label: 'Minimalista', icon: 'minimize2', bg: '#F8FAFC' },
+              ].map(opt => (
+                <button key={opt.value}
+                  onClick={() => saveDecoration('centerpiece', opt.value)}
+                  disabled={decorSaving}
+                  className={`flex flex-col items-center rounded-xl border-2 overflow-hidden transition-all disabled:opacity-60 ${
+                    decorCenterpiece === opt.value
+                      ? 'border-[#C9A84C] bg-[#FBF6E9] shadow-sm'
+                      : 'border-[#E5E7EB] bg-white hover:border-[#D1D5DB]'
+                  }`}>
+                  <div className="w-12 h-8 rounded-t-[9px] flex items-center justify-center" style={{ background: opt.bg }}>
+                    <Icon name={opt.icon} className="w-4 h-4 text-[#1A1A2E]" />
+                  </div>
+                  <span className="text-[10px] font-medium px-2 py-1.5 text-[#1A1A2E]">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Extra consumptions */}
