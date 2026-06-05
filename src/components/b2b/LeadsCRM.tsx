@@ -82,21 +82,59 @@ export default function LeadsCRM() {
     fetchLeads();
   };
 
-  // Crear presupuesto desde un lead
+  // Crear presupuesto desde un lead (crea evento si no existe)
   const createQuote = async (lead: Lead) => {
-    // Find event by email
-    const evRes = await fetch(`/api/events?email=${lead.email}`);
-    const evJson = await evRes.json();
-    const events = evJson.events || evJson.data || [];
-    if (events.length === 0) { alert('No se encontró ningún evento para este lead'); return; }
+    // 1. Try to find existing event by email
+    let eventId: string | null = null;
+    let eventPvp = 0;
+    let eventCost = 0;
+    let eventBarPrice = 0;
 
-    const event = events[0];
+    if (lead.email) {
+      const evRes = await fetch(`/api/events?email=${encodeURIComponent(lead.email)}`);
+      const evJson = await evRes.json();
+      const events = evJson.events || evJson.data || [];
+      if (events.length > 0) {
+        eventId = events[0].id;
+        eventPvp = events[0].total_pvp || 0;
+        eventCost = events[0].total_cost || 0;
+        eventBarPrice = events[0].bar_price || 0;
+      }
+    }
+
+    // 2. If no event found, create one from lead data
+    if (!eventId) {
+      const evRes = await fetch('/api/events', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_name: lead.name,
+          client_email: lead.email || '',
+          client_phone: lead.phone || '',
+          event_type: lead.event_type || 'boda',
+          guest_count: lead.guest_count || 50,
+          event_date: lead.event_date || new Date().toISOString().split('T')[0],
+          status: 'draft',
+          selected_items: [],
+          total_pvp: 0,
+          total_cost: 0,
+          bar_hours: 0,
+          bar_price: 0,
+          iva_pct: 10,
+          notes: `Auto-creado desde lead: ${lead.name}`,
+        }),
+      });
+      const evJson = await evRes.json();
+      if (!evJson.data?.id) { alert('Error creando evento para el lead'); return; }
+      eventId = evJson.data.id;
+    }
+
+    // 3. Create quote linked to lead
     const res = await fetch('/api/quotes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        event_id: event.id, lead_id: lead.id,
-        base_pvp: event.total_pvp || 0, base_cost: event.total_cost || 0,
-        bar_price: event.bar_price || 0, iva_pct: event.iva_pct || 10,
+        event_id: eventId, lead_id: lead.id,
+        base_pvp: eventPvp, base_cost: eventCost,
+        bar_price: eventBarPrice, iva_pct: 10,
       }),
     });
     if (res.ok) {
