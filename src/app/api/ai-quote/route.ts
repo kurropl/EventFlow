@@ -1,43 +1,50 @@
 /**
- * AI Quote API — EventFlow
+ * AI Quote API — EventFlow (SECURED)
  * POST /api/ai-quote
  * 
- * Accepts a user message + conversation history,
- * sends it to an OpenAI-compatible LLM with a comprehensive
- * system prompt about J.Benitez catalogs and pricing,
- * and returns the AI response with optional parsed data.
+ * Security measures:
+ * - Input sanitization (strip injection patterns, control chars)
+ * - Rate limiting (10 requests/minute per IP)
+ * - Message length limit (500 chars)
+ * - History sanitization (max 5 messages, 300 chars each)
+ * - Prompt injection detection
+ * - Response sanitization (no data leakage)
+ * - Guardrails in system prompt
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { CATALOG_ITEMS, PROPOSED_MENUS } from '@/data/menus';
+import {
+  sanitizeText,
+  sanitizeHistory,
+  hasPromptInjection,
+  wrapWithGuardrails,
+  sanitizeReply,
+  checkRateLimit,
+  securityHeaders,
+} from '@/lib/security';
 
 // ── Build catalog summary for the system prompt ──────────────────────
 function buildCatalogSummary(): string {
   const lines: string[] = [];
-
-  // Proposed menus
   for (const menu of PROPOSED_MENUS) {
     const sections = menu.sections.map(s => `  - ${s.section}: ${s.items.join(', ')}`).join('\n');
     lines.push(`• ${menu.name} (${menu.tag}${menu.is_kid ? ' - Infantil' : ''}):\n${sections}`);
   }
-
-  // Catalog items (just names grouped by category)
   for (const [cat, items] of Object.entries(CATALOG_ITEMS)) {
     lines.push(`• Catálogo ${cat}: ${items.slice(0, 8).join(', ')}${items.length > 8 ? `... y ${items.length - 8} más` : ''}`);
   }
-
   return lines.join('\n');
 }
 
 // ── System prompt ────────────────────────────────────────────────────
 function buildSystemPrompt(): string {
   const catalog = buildCatalogSummary();
-
   return `Eres el asistente virtual de **J. Benitez**, salón de celebraciones premium en Sevilla.
 
 ## Tu identidad
 - Nombre: Asistente de J. Benitez
-- Saludo inicial: "¡Hola! Soy el asistente de J. Benitez. Cuéntame sobre tu evento y te preparo un presupuesto al instante. 🎉"
+- Saludo inicial: "¡Hola! Soy el asistente de J. Benitez. Cuéntame sobre tu evento y te preparo un presupuesto al instante."
 - Tono: Cálido, profesional, cercano pero respetuoso. Siempre en español.
 - Objetivo: Ayudar al cliente a calcular un presupuesto preliminar para su celebración.
 
@@ -58,7 +65,6 @@ Estos rangos incluyen: aperitivo, platos principales, postre y bebidas (cava, vi
 
 ## Barra libre
 - Precio orientativo: ~15 €/hora/persona
-- Disponible como complemento para cualquier tipo de evento.
 
 ## Impuestos
 - IVA: 10% sobre el total.
@@ -67,52 +73,19 @@ Estos rangos incluyen: aperitivo, platos principales, postre y bebidas (cava, vi
 ${catalog}
 
 ## Reglas de comportamiento
-1. **Haz preguntas aclaratorias** si falta información clave: tipo de evento, número de invitados, fecha aproximada, si desean barra libre.
-2. **Genera un presupuesto preliminar** cuando tengas suficiente información (mínimo: tipo de evento + número de invitados).
-3. **Formato del presupuesto**: Usa una tabla o lista clara con desglose:
-   - Tipo de evento
-   - Número de comensales
-   - Menú orientativo (rango de precio)
-   - Barra libre (si aplica)
-   - Subtotal
-   - IVA (10%)
-   - **Total estimado**
-4. **NUNCA inventes platos o menús** que no estén en el catálogo. Solo menciona los que aparecen arriba.
-5. Si el cliente pregunta por un plato específico, confirma si lo tenemos o sugiere alternativas similares del catálogo.
-6. Cuando proporciones un presupuesto, invita al cliente a usar el configurador online para personalizar su menú: https://eventcater.duckdns.org/
-7. Si el cliente pide confirmar o reservar, indica que puede llamar al 615 60 08 63 o escribir a info@salonesjosebenitez.com.
-8. Mantén las respuestas concisas pero completas. Máximo 3-4 párrafos.
-9. Usa emojis con moderación para dar calidez.
-
-## Ejemplo de respuesta con presupuesto
-Cuando tengas suficiente info, responde algo como:
-
-"¡Perfecto! Veo que es una **boda** con **120 invitados**. Aquí tienes un presupuesto orientativo:
-
-📌 **Tipo de evento**: Boda
-👥 **Comensales**: 120
-🍽️ **Menú**: 45 – 65 €/pax (aperitivo, platos, postre y bebidas)
-🍺 **Barra libre**: ~15 €/hora/persona (opcional)
-
-**Desglose estimado:**
-- Comensales × menú: 120 × 55€ = 6.600 €
-- Barra libre (4h): 120 × 15€ × 4 = 7.200 €
-- **Subtotal**: 13.800 €
-- IVA (10%): 1.380 €
-- **Total estimado**: 15.180 €
-
-Este es un presupuesto orientativo. Para personalizar tu menú y ver opciones exactas, te invito a usar nuestro configurador: https://eventcater.duckdns.org/
-
-¿Quieres que te prepare algo más detallado o tienes alguna otra pregunta? 😊";
-
-Responde siempre de forma natural y conversacional, adaptándote al tono del cliente.`;
+1. Haz preguntas aclaratorias si falta información clave.
+2. Genera un presupuesto preliminar con suficiente información.
+3. Formato: desglose claro con menú, barra libre, subtotal, IVA, total.
+4. NUNCA inventes platos o menús que no estén en el catálogo.
+5. Invita al configurador online para personalizar.
+6. Para reservas, indica teléfono/email.
+7. Respuestas concisas: máximo 3-4 párrafos.
+8. Responde SOLO sobre eventos y celebraciones.`;
 }
 
 // ── Parse structured data from LLM reply ─────────────────────────────
 function parseStructuredData(reply: string) {
   const parsed: Record<string, string | number | undefined> = {};
-
-  // Event type
   const eventLower = reply.toLowerCase();
   const eventPatterns: [RegExp, string][] = [
     [/bodas?\b/i, 'boda'],
@@ -122,50 +95,45 @@ function parseStructuredData(reply: string) {
     [/cumplea[añ]o/i, 'cumpleaños'],
   ];
   for (const [re, type] of eventPatterns) {
-    if (re.test(eventLower)) {
-      parsed.eventType = type;
-      break;
-    }
+    if (re.test(eventLower)) { parsed.eventType = type; break; }
   }
-
-  // Guest count — look for numbers near "comensal", "invitado", "persona", "pax"
   const guestMatch = reply.match(/(\d{1,4})\s*(comensal|invitad|persona|pax|personas)/i);
-  if (guestMatch) {
-    parsed.guestCount = parseInt(guestMatch[1], 10);
-  }
-
-  // Date — look for patterns like "15 de junio", "junio 2025", "15/06/2025"
+  if (guestMatch) parsed.guestCount = parseInt(guestMatch[1], 10);
   const datePatterns = [
     /(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de?\s*(\d{4}))?/i,
-    /(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(\d{4})/i,
     /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/,
   ];
   for (const re of datePatterns) {
     const m = reply.match(re);
-    if (m) {
-      parsed.date = m[0];
-      break;
-    }
+    if (m) { parsed.date = m[0]; break; }
   }
-
-  // Budget — look for "total estimado" or "total" followed by a number with €
   const budgetMatch = reply.match(/(?:total\s+estimado|total)[:\s]*(\d[\d.,]*)\s*€/i)
     || reply.match(/(\d[\d.,]*)\s*€/g)?.pop();
   if (budgetMatch) {
     const numStr = typeof budgetMatch === 'string'
       ? budgetMatch.replace(/[^\d]/g, '')
       : budgetMatch[1]?.replace(/[^\d]/g, '');
-    if (numStr) {
-      parsed.estimatedBudget = parseInt(numStr, 10);
-    }
+    if (numStr) parsed.estimatedBudget = parseInt(numStr, 10);
   }
-
   return Object.keys(parsed).length > 0 ? parsed : undefined;
 }
 
 // ── POST handler ─────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
+    // ── Rate limiting ─────────────────────────────────────────────
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown';
+    const rl = checkRateLimit(`ai-quote:${clientIp}`, 10, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Demasiadas peticiones. Espera un momento.' },
+        { status: 429, headers: { ...securityHeaders(), 'Retry-After': '60' } }
+      );
+    }
+
+    // ── Parse & validate body ────────────────────────────────────
     const body = await request.json();
     const { message, history = [] } = body as {
       message: string;
@@ -175,29 +143,53 @@ export async function POST(request: NextRequest) {
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
         { success: false, error: 'El campo "message" es obligatorio.' },
-        { status: 400 }
+        { status: 400, headers: securityHeaders() }
       );
     }
 
+    // ── Sanitize message ─────────────────────────────────────────
+    const cleanMessage = sanitizeText(message, 500);
+
+    if (cleanMessage.length < 2) {
+      return NextResponse.json(
+        { success: false, error: 'El mensaje es demasiado corto.' },
+        { status: 400, headers: securityHeaders() }
+      );
+    }
+
+    // ── Prompt injection detection ───────────────────────────────
+    if (hasPromptInjection(cleanMessage)) {
+      // Log the attempt but don't reveal detection to user
+      console.warn(`[ai-quote] Prompt injection attempt from ${clientIp}: "${cleanMessage.slice(0, 100)}"`);
+      return NextResponse.json({
+        success: true,
+        reply: 'Solo puedo ayudarte con consultas sobre eventos y celebraciones en J. Benitez. Cuéntame sobre tu celebración y te preparo un presupuesto.',
+      }, { headers: securityHeaders() });
+    }
+
+    // ── Sanitize history ─────────────────────────────────────────
+    const cleanHistory = sanitizeHistory(history, 5, 300);
+
+    // ── API key check ────────────────────────────────────────────
     const apiKey = process.env.LLM_API_KEY;
     const baseUrl = process.env.LLM_BASE_URL || 'https://api.nan.builders/v1';
     const model = process.env.LLM_MODEL || 'deepseek-v4-flash';
 
     if (!apiKey) {
       return NextResponse.json(
-        { success: false, error: 'LLM API key no configurada.' },
-        { status: 500 }
+        { success: false, error: 'Servicio de IA no configurado.' },
+        { status: 500, headers: securityHeaders() }
       );
     }
 
-    // Build messages array
+    // ── Build messages with guardrails ───────────────────────────
     const messages = [
-      { role: 'system', content: buildSystemPrompt() },
-      ...history.map(h => ({ role: h.role, content: h.content })),
-      { role: 'user', content: message },
+      { role: 'system', content: wrapWithGuardrails(buildSystemPrompt()) },
+      ...cleanHistory.map(h => ({ role: h.role, content: h.content })),
+      { role: 'user', content: cleanMessage },
     ];
 
-    // Call the LLM
+    // ── Call LLM ─────────────────────────────────────────────────
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -216,31 +208,37 @@ export async function POST(request: NextRequest) {
       const errText = await res.text().catch(() => 'Unknown error');
       console.error('[ai-quote] LLM API error:', res.status, errText);
       return NextResponse.json(
-        { success: false, error: `Error del servicio de IA: ${res.status}` },
-        { status: 502 }
+        { success: false, error: 'El servicio de IA no está disponible temporalmente.' },
+        { status: 502, headers: securityHeaders() }
       );
     }
 
     const data = await res.json();
-    const reply = data.choices?.[0]?.message?.content || '';
+    const rawReply = data.choices?.[0]?.message?.content || '';
 
-    if (!reply) {
+    if (!rawReply) {
       return NextResponse.json(
         { success: false, error: 'El servicio de IA no devolvió respuesta.' },
-        { status: 502 }
+        { status: 502, headers: securityHeaders() }
       );
     }
 
-    // Try to parse structured data from the reply
+    // ── Sanitize reply ───────────────────────────────────────────
+    const reply = sanitizeReply(rawReply);
+
+    // ── Parse structured data ────────────────────────────────────
     const parsed = parseStructuredData(reply);
 
-    return NextResponse.json({ success: true, reply, parsed });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[ai-quote] Error:', message);
     return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
+      { success: true, reply, parsed },
+      { headers: securityHeaders() }
+    );
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[ai-quote] Error:', msg);
+    return NextResponse.json(
+      { success: false, error: 'Error interno del servidor.' },
+      { status: 500, headers: securityHeaders() }
     );
   }
 }
