@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /* ============================================================
    J.Benitez — Landing Page Rediseñada
@@ -545,7 +545,7 @@ export default function HomePage() {
       {/* ============================================================
           CTA FINAL
           ============================================================ */}
-      <section className="relative py-20 md:py-28 px-6 overflow-hidden" style={{ background: '#1A1A1A' }}>
+      <section className="relative py-20 md:py-28 px-6 overflow-hidden" id="ai-quote-cta" style={{ background: '#1A1A1A' }}>
         {/* Ambient glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[40vw] rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(ellipse, rgba(201,168,76,0.06) 0%, transparent 70%)' }} />
@@ -590,6 +590,25 @@ export default function HomePage() {
             </button>
           </Link>
         </div>
+      </section>
+
+      {/* ============================================================
+          ASISTENTE IA — CTA
+          ============================================================ */}
+      <section className="py-12 text-center" style={{ background: '#FAF8F5' }}>
+        <h2 className="text-2xl md:text-3xl font-serif mb-3" style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, color: '#1A1A1A' }}>
+          ¿Tienes un evento en mente?
+        </h2>
+        <p className="text-sm md:text-base mb-6 font-light" style={{ color: '#888' }}>
+          Nuestro asistente inteligente te prepara un presupuesto en segundos
+        </p>
+        <button
+          onClick={() => { (window as any).__openAIChat?.(); }}
+          className="px-8 py-3 rounded-xl text-sm font-medium tracking-wide transition-all duration-300 active:scale-[0.97]"
+          style={{ background: 'linear-gradient(135deg, #C9A84C, #D4B85C)', color: '#1A1A1A', boxShadow: '0 4px 16px rgba(201,168,76,0.3)' }}
+        >
+          💬 Habla con nuestro asistente
+        </button>
       </section>
 
       {/* ============================================================
@@ -649,7 +668,241 @@ export default function HomePage() {
           0%, 100% { transform: translateY(0); opacity: 0; }
           50% { transform: translateY(28px); opacity: 1; }
         }
+        @keyframes chatSlideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
+
+      {/* ============================================================
+          AI CHAT WIDGET
+          ============================================================ */}
+      <AIChatWidget />
     </div>
+  );
+}
+
+/* ================================================================
+   AI Chat Widget — Cotización instantánea
+   Floating widget that calls /api/ai-quote for real-time quotes.
+   Uses CSS transitions only (no framer-motion).
+   ================================================================ */
+function AIChatWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    parsed?: { eventType?: string; guestCount?: number; date?: string; estimatedBudget?: number };
+  }>>([
+    {
+      role: 'assistant',
+      content: '¡Hola! Soy el asistente de J. Benitez. Cuéntame sobre tu evento y te preparo un presupuesto al instante. 🎉',
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Expose open function for the CTA button
+  useEffect(() => {
+    (window as any).__openAIChat = () => setIsOpen(true);
+    return () => { delete (window as any).__openAIChat; };
+  }, []);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [isOpen]);
+
+  const sendMessage = useCallback(async (text?: string) => {
+    const msg = (text || input).trim();
+    if (!msg || isLoading) return;
+
+    const userMsg = { role: 'user' as const, content: msg };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const history = newMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+      const res = await fetch('/api/ai-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, history }),
+      });
+      const data = await res.json();
+
+      if (data.success && data.reply) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.reply,
+          parsed: data.parsed,
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Lo siento, ha ocurrido un error. Por favor, intenta de nuevo o llámanos al 615 60 08 63.',
+        }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'No pude conectar con el servicio. Por favor, intenta más tarde o llámanos al 615 60 08 63. 📞',
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [input, messages, isLoading]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const quickChips = ['Boda', 'Comunión', 'Corporativo', 'Cumpleaños'];
+
+  return (
+    <>
+      {/* Floating button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 z-[9999] w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
+        style={{
+          background: isOpen ? '#1A1A1A' : 'linear-gradient(135deg, #C9A84C, #D4B85C)',
+          color: isOpen ? '#C9A84C' : '#1A1A1A',
+          boxShadow: '0 4px 24px rgba(201,168,76,0.4)',
+        }}
+        aria-label="Abrir chat de cotización"
+      >
+        {isOpen ? (
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+          </svg>
+        )}
+      </button>
+
+      {/* Chat panel */}
+      <div
+        className="fixed bottom-24 right-4 sm:right-6 z-[9998] w-[calc(100vw-2rem)] sm:w-[400px] max-h-[70vh] rounded-2xl overflow-hidden flex flex-col"
+        style={{
+          background: '#FFFFFF',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(201,168,76,0.12)',
+          opacity: isOpen ? 1 : 0,
+          transform: isOpen ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.97)',
+          pointerEvents: isOpen ? 'auto' : 'none',
+          transition: 'opacity 0.3s ease, transform 0.3s ease',
+        }}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #1A1A1A, #2D2416)' }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)', color: '#1A1A1A', fontFamily: "'Playfair Display', Georgia, serif" }}>
+            J
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Cotización instantánea ✨</p>
+            <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>J.Benitez · Salón de Celebraciones</p>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" style={{ background: '#FAF8F5', minHeight: '280px', maxHeight: '400px' }}>
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className="max-w-[85%] px-4 py-3 text-sm leading-relaxed rounded-2xl"
+                style={{
+                  background: msg.role === 'user' ? '#1A1A1A' : '#FFFFFF',
+                  color: msg.role === 'user' ? '#FFFFFF' : '#1A1A1A',
+                  boxShadow: msg.role === 'assistant' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+                  whiteSpace: 'pre-line',
+                }}
+              >
+                {msg.content}
+                {/* Show "Ver configurador" button if parsed has budget */}
+                {msg.parsed?.estimatedBudget && (
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                    <a
+                      href="https://eventcater.duckdns.org/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md"
+                      style={{ background: 'linear-gradient(135deg, #C9A84C, #D4B85C)', color: '#1A1A1A' }}
+                    >
+                      🎨 Ver configurador
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <span className="inline-flex gap-1">
+                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C9A84C', animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C9A84C', animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C9A84C', animationDelay: '300ms' }} />
+                </span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Quick chips */}
+        <div className="px-4 py-2 flex gap-2 overflow-x-auto" style={{ background: '#FFFFFF', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+          {quickChips.map(chip => (
+            <button
+              key={chip}
+              onClick={() => sendMessage(`Quiero información sobre ${chip}`)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 hover:shadow-sm active:scale-95"
+              style={{ background: '#FAF8F5', color: '#1A1A1A', border: '1px solid rgba(201,168,76,0.3)' }}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+
+        {/* Input */}
+        <div className="px-4 py-3 flex items-center gap-2" style={{ background: '#FFFFFF', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Cuéntame sobre tu evento..."
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all duration-200"
+            style={{ background: '#FAF8F5', border: '1px solid rgba(0,0,0,0.06)' }}
+            disabled={isLoading}
+          />
+          <button
+            onClick={() => sendMessage()}
+            disabled={isLoading || !input.trim()}
+            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, #C9A84C, #D4B85C)', color: '#1A1A1A' }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
