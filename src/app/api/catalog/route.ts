@@ -143,14 +143,25 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing id' }, { status: 400 });
     }
 
+    // Build dynamic SET — only include fields that were actually sent
+    const sets: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+    if (name !== undefined && name !== null) { sets.push(`name = $${idx++}`); params.push(name); }
+    if (category !== undefined && category !== null) { sets.push(`category = $${idx++}`); params.push(category); }
+    // pvp and cost: explicitly allow 0 (use typeof check, not !pvp)
+    if (pvp !== undefined && pvp !== null) { sets.push(`pvp = $${idx++}`); params.push(Number(pvp)); }
+    if (cost !== undefined && cost !== null) { sets.push(`cost = $${idx++}`); params.push(Number(cost)); }
+    if (active !== undefined && active !== null) { sets.push(`active = $${idx++}`); params.push(Boolean(active)); }
+
+    if (sets.length === 0) {
+      return NextResponse.json({ success: false, error: 'Nothing to update' }, { status: 400 });
+    }
+
+    params.push(id);
     const item = await querySingle<any>(
-      `UPDATE catalog_items SET name = COALESCE(NULLIF($2, ''), name),
-        category = COALESCE(NULLIF($3, ''), category),
-        pvp = COALESCE(NULLIF($4, 0)::numeric, pvp),
-        cost = COALESCE(NULLIF($5, 0)::numeric, cost),
-        active = COALESCE($6, active)
-      WHERE id = $7 RETURNING *`,
-      [null, name ?? null, category ?? null, pvp ?? null, cost ?? null, active ?? null, id]
+      `UPDATE catalog_items SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+      params
     );
 
     return NextResponse.json({ success: true, data: item });

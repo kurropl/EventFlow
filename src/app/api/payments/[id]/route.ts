@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { z } from 'zod';
 
 /**
  * When a payment is marked as paid, check if this event has an associated lead
@@ -63,6 +64,17 @@ async function autoConvertLeadToClient(payment: any) {
   }
 }
 
+const PatchPaymentSchema = z.object({
+  concept: z.string().max(200).optional(),
+  amount: z.number().min(0).optional(),
+  due_date: z.string().nullable().optional(),
+  paid: z.boolean().optional(),
+  paid_date: z.string().nullable().optional(),
+  method: z.string().max(50).nullable().optional(),
+  notes: z.string().max(500).nullable().optional(),
+  receipt_url: z.string().max(500).optional(),
+});
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -70,6 +82,14 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
+    const parsed = PatchPaymentSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.issues[0]?.message || 'Datos inválidos' },
+        { status: 400 }
+      );
+    }
+    const validBody = parsed.data;
     const fields: string[] = [];
     const values: any[] = [];
     const allowed: Record<string, (v: any) => any> = {
@@ -83,17 +103,17 @@ export async function PATCH(
       receipt_url: (v) => String(v),
     };
     for (const [key, transform] of Object.entries(allowed)) {
-      if (key in body) {
+      if (key in validBody) {
         fields.push(`${key} = $${fields.length + 1}`);
-        values.push(transform(body[key]));
+        values.push(transform((validBody as any)[key]));
       }
     }
     // Auto-stamp paid_date when marking paid without an explicit date
-    if (body.paid === true && !('paid_date' in body)) {
+    if (validBody.paid === true && !('paid_date' in validBody)) {
       fields.push(`paid_date = $${fields.length + 1}`);
       values.push(new Date().toISOString().slice(0, 10));
     }
-    if (body.paid === false && !('paid_date' in body)) {
+    if (validBody.paid === false && !('paid_date' in validBody)) {
       fields.push(`paid_date = NULL`);
     }
     if (fields.length === 0) {
@@ -109,7 +129,7 @@ export async function PATCH(
     }
 
     // AUTO-CONVERT lead to client on first payment
-    if (body.paid === true && updated.paid === true) {
+    if (validBody.paid === true && updated.paid === true) {
       await autoConvertLeadToClient(updated);
     }
 

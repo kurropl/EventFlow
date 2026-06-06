@@ -57,13 +57,13 @@ export function generateToken(user: AdminUser): string {
   return jwt.sign(
     { id: user.id, email: user.email, name: user.name, role: user.role },
     JWT_SECRET,
-    { expiresIn: TOKEN_EXPIRY }
+    { expiresIn: TOKEN_EXPIRY, algorithm: 'HS256' }
   );
 }
 
 export function verifyToken(token: string): AdminUser | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AdminUser;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as AdminUser;
     return decoded;
   } catch {
     return null;

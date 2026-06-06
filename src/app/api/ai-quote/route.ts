@@ -21,6 +21,7 @@ import {
   wrapWithGuardrails,
   sanitizeReply,
   checkRateLimit,
+  getClientIp,
   securityHeaders,
   sanitizeError,
 } from '@/lib/security';
@@ -123,9 +124,7 @@ function parseStructuredData(reply: string) {
 export async function POST(request: NextRequest) {
   try {
     // ── Rate limiting ─────────────────────────────────────────────
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip')
-      || 'unknown';
+    const clientIp = getClientIp(request);
     const rl = checkRateLimit(`ai-quote:${clientIp}`, 10, 60_000);
     if (!rl.allowed) {
       return NextResponse.json(

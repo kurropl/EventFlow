@@ -40,8 +40,10 @@ export async function GET(request: NextRequest) {
       params.push(status);
     }
     if (email) {
+      // Escape % and _ to prevent ILIKE wildcard injection
+      const safeEmail = email.replace(/[%_]/g, (ch) => '\\' + ch);
       conditions.push(`client_email ILIKE $${params.length + 1}`);
-      params.push(`%${email}%`);
+      params.push(`%${safeEmail}%`);
     }
 
     if (conditions.length > 0) {
@@ -59,19 +61,20 @@ export async function GET(request: NextRequest) {
       []
     );
 
+    // Build catalog lookup Maps ONCE (not per event)
+    const nameLookup = new Map<string, any>();
+    const catLookup = new Map<string, any[]>();
+    for (const ci of catalogItems) {
+      nameLookup.set(ci.name.toLowerCase().trim(), ci);
+      if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
+      catLookup.get(ci.category)!.push(ci);
+    }
+
     const enrichedEvents = events.map((event: any) => {
       let pvp = Number(event.total_pvp) || 0;
       let cost = Number(event.total_cost) || 0;
       const items = event.selected_items || [];
       if (items.length > 0 && pvp === 0) {
-        const nameLookup = new Map<string, any>();
-        const catLookup = new Map<string, any[]>();
-        for (const ci of catalogItems) {
-          nameLookup.set(ci.name.toLowerCase().trim(), ci);
-          if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
-          const catArr = catLookup.get(ci.category)!;
-          catArr.push(ci);
-        }
         for (const item of items) {
           const itemName = (item.name || '').toLowerCase().trim();
           const itemCat = (item.category || '').toLowerCase().trim();

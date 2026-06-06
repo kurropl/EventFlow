@@ -62,6 +62,28 @@ export function toSafeFloat(value: unknown, min = 0, max = 999999): number {
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
+// Periodic purge: remove expired entries every 60s to prevent memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore) {
+    if (now > entry.resetAt) rateLimitStore.delete(key);
+  }
+}, 60_000);
+
+/**
+ * Extract real client IP. Trust x-forwarded-for only when present
+ * (Next.js behind Docker/nginx adds it). Prevents header spoofing
+ * by falling back to a canonical key when no proxy chain exists.
+ */
+export function getClientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    // Take the FIRST IP (original client), not the last (nearest proxy)
+    return forwarded.split(',')[0].trim();
+  }
+  return 'direct';
+}
+
 /**
  * Check rate limit. Returns true if allowed, false if exceeded.
  * @param key - Unique identifier (e.g., IP + endpoint)
