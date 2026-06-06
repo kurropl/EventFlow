@@ -78,7 +78,10 @@ export async function GET(request: NextRequest) {
       grouped[key].push(item);
     }
 
-    return NextResponse.json({ success: true, data: grouped });
+    return NextResponse.json(
+      { success: true, data: grouped },
+      { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } }
+    );
   } catch (error) {
     const message = sanitizeError(error);
     return NextResponse.json(

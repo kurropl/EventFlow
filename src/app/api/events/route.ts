@@ -28,10 +28,17 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') ?? '0', 10) || 0;
 
     let query = `SELECT e.*,
-      (SELECT COALESCE(SUM(amount), 0)::numeric FROM payments WHERE event_id = e.id AND paid = true) as total_paid,
-      (SELECT COUNT(*)::int FROM payments WHERE event_id = e.id AND paid = false) as pending_payments,
-      (SELECT COUNT(*)::int FROM payments WHERE event_id = e.id) as total_payments
-    FROM events e`
+      COALESCE(pay.total_paid, 0)::numeric AS total_paid,
+      COALESCE(pay.pending_payments, 0)::int AS pending_payments,
+      COALESCE(pay.total_payments, 0)::int AS total_payments
+    FROM events e
+    LEFT JOIN LATERAL (
+      SELECT
+        SUM(amount) FILTER (WHERE paid = true) AS total_paid,
+        COUNT(*) FILTER (WHERE paid = false) AS pending_payments,
+        COUNT(*) AS total_payments
+      FROM payments WHERE event_id = e.id
+    ) pay ON true`
     const params: any[] = [];
     const conditions: string[] = [];
 

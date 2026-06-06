@@ -1,17 +1,58 @@
 'use client';
 import AdminLayout from '@/components/b2b/AdminLayout';
-import DashboardOverview from '@/components/b2b/DashboardOverview';
-import CalendarView from '@/components/b2b/CalendarView';
-import KanbanPipeline from '@/components/b2b/KanbanPipeline';
-import ClientsCRM from '@/components/b2b/ClientsCRM';
-import LeadsCRM from '@/components/b2b/LeadsCRM';
-import BillingPanel from '@/components/b2b/BillingPanel';
-import GuestsManager from '@/components/b2b/GuestsManager';
-import CatalogCRUD from '@/components/b2b/CatalogCRUD';
-import OperationsManager from '@/components/b2b/OperationsManager';
-import WebhooksPanel from '@/components/b2b/WebhooksPanel';
-import ProvidersManager from '@/components/b2b/ProvidersManager';
+import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
+
+// ── Lazy-loaded panels (code-split per tab) ───────────────────
+// Only the active panel's JS is downloaded. Reduces initial bundle by ~70%.
+
+const DashboardOverview = dynamic(() => import('@/components/b2b/DashboardOverview'), {
+  loading: () => <PanelSkeleton />,
+});
+const CalendarView = dynamic(() => import('@/components/b2b/CalendarView'), {
+  loading: () => <PanelSkeleton />,
+});
+const KanbanPipeline = dynamic(() => import('@/components/b2b/KanbanPipeline'), {
+  loading: () => <PanelSkeleton />,
+});
+const ClientsCRM = dynamic(() => import('@/components/b2b/ClientsCRM'), {
+  loading: () => <PanelSkeleton />,
+});
+const LeadsCRM = dynamic(() => import('@/components/b2b/LeadsCRM'), {
+  loading: () => <PanelSkeleton />,
+});
+const BillingPanel = dynamic(() => import('@/components/b2b/BillingPanel'), {
+  loading: () => <PanelSkeleton />,
+});
+const GuestsManager = dynamic(() => import('@/components/b2b/GuestsManager'), {
+  loading: () => <PanelSkeleton />,
+});
+const CatalogCRUD = dynamic(() => import('@/components/b2b/CatalogCRUD'), {
+  loading: () => <PanelSkeleton />,
+});
+const OperationsManager = dynamic(() => import('@/components/b2b/OperationsManager'), {
+  loading: () => <PanelSkeleton />,
+});
+const WebhooksPanel = dynamic(() => import('@/components/b2b/WebhooksPanel'), {
+  loading: () => <PanelSkeleton />,
+});
+const ProvidersManager = dynamic(() => import('@/components/b2b/ProvidersManager'), {
+  loading: () => <PanelSkeleton />,
+});
+
+function PanelSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4 p-6">
+      <div className="h-8 w-48 bg-stone-200 rounded" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-24 bg-stone-100 rounded-xl" />
+        ))}
+      </div>
+      <div className="h-64 bg-stone-100 rounded-xl" />
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const pathname = usePathname();
