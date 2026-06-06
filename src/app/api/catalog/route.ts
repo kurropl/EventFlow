@@ -11,6 +11,32 @@ import { z } from 'zod';
 import { queryMany, querySingle } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { CatalogItemCreateSchema } from '@/types/specs';
+import { CATALOG_ITEMS, CATALOG_CATEGORIES } from '@/data/menus';
+
+
+// ============================================================
+// Auto-seed: populate catalog from menus.ts if empty
+// ============================================================
+
+async function autoSeedCatalog(): Promise<number> {
+  let inserted = 0;
+  for (const [category, items] of Object.entries(CATALOG_ITEMS)) {
+    for (const itemName of items) {
+      const name = itemName.trim();
+      if (!name) continue;
+      try {
+        await querySingle(
+          `INSERT INTO catalog_items (name, category, active, pvp_price, cost_price, unit)
+           SELECT $1, $2, true, 0, 0, 'portion'
+           WHERE NOT EXISTS (SELECT 1 FROM catalog_items WHERE name = $1 LIMIT 1)`,
+          [name, category]
+        );
+        inserted++;
+      } catch { /* skip duplicates */ }
+    }
+  }
+  return inserted;
+}
 
 // ============================================================
 // GET — Return all active catalog items grouped by category
@@ -22,12 +48,25 @@ export async function GET(request: NextRequest) {
     const showAll = searchParams.get('all') === 'true';
     const activeFilter = showAll ? '' : 'WHERE active = true';
     // Return ALL items (active + inactive) for admin management
-    const items = await queryMany<any>(
+    let items = await queryMany<any>(
       `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, active, created_at, updated_at
        FROM catalog_items
        ${activeFilter}
        ORDER BY category, name`
     );
+
+    // Auto-seed if catalog is empty
+    if (items.length === 0 && !showAll) {
+      const seeded = await autoSeedCatalog();
+      if (seeded > 0) {
+        items = await queryMany<any>(
+          `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, active, created_at, updated_at
+           FROM catalog_items
+           WHERE active = true
+           ORDER BY category, name`
+        );
+      }
+    }
 
     // Group by category
     const grouped: Record<string, typeof items> = {};
