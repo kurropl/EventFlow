@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
 
     let sql = `SELECT eo.*, e.client_name, e.client_email, e.event_type, 
-      e.guest_count, e.kids_count, e.event_date, e.selected_items,
+      e.guest_count, e.kids_count, e.event_date, e.selected_items, e.client_token,
       c.name as client_name_fiscal, c.fiscal_nif
       FROM event_orders eo 
       JOIN events e ON e.id = eo.event_id

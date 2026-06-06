@@ -72,9 +72,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         const tablesSuggested = Math.max(1, Math.ceil(guests / 10));
         const waitersSuggested = Math.max(1, Math.ceil(guests / 15));
 
-        // Get client_id from event
+        // Get client_id + selected_items from event
         const eventRow = (await client.query(
-          `SELECT client_id FROM events WHERE id = $1`, [quoteRow.event_id]
+          `SELECT client_id, selected_items FROM events WHERE id = $1`, [quoteRow.event_id]
         )).rows[0];
 
         // Create event_order
@@ -114,6 +114,53 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         )).rows[0];
         payments.push(finalPayment);
 
+        // Generate client_token for guest form access
+        const { v4: uuidv4 } = await import('uuid');
+        const clientToken = uuidv4();
+        await client.query(
+          `UPDATE events SET client_token = $1 WHERE id = $2`,
+          [clientToken, quoteRow.event_id]
+        );
+
+        // Generate escandallo (shopping items) from catalog ingredients
+        const selectedItems = eventRow?.selected_items || [];
+        for (const item of selectedItems) {
+          const qty = Number(item.quantity) || 1;
+          const itemName = (item.name || '').trim();
+
+          // Look up catalog ingredients
+          const catalog = await client.query(
+            `SELECT ingredients, provider_name FROM catalog_items WHERE name ILIKE $1 AND active = true`,
+            [itemName]
+          );
+          const catItem = catalog.rows[0];
+
+          if (catItem?.ingredients) {
+            let ingredients: any[] = [];
+            try {
+              ingredients = typeof catItem.ingredients === 'string'
+                ? JSON.parse(catItem.ingredients) : catItem.ingredients;
+            } catch { continue; }
+
+            for (const ing of ingredients) {
+              await client.query(
+                `INSERT INTO event_shopping_items
+                  (event_id, order_id, ingredient_name, provider_name, total_grams, total_units, total_ml, completed)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
+                [
+                  quoteRow.event_id,
+                  eventOrder.id,
+                  ing.name || 'Sin nombre',
+                  catItem.provider_name || null,
+                  (Number(ing.grams) || 0) * qty,
+                  (Number(ing.count) || 0) * qty,
+                  (Number(ing.ml) || 0) * qty,
+                ]
+              );
+            }
+          }
+        }
+
         // Update lead status
         const leadId = quoteRow.lead_id;
         if (leadId) {
@@ -123,7 +170,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           );
         }
 
-        return { quote: updatedQuote, eventOrder, payments };
+        return { quote: updatedQuote, eventOrder, payments, clientToken };
       });
 
       return NextResponse.json({ data: result.quote, eventOrder: result.eventOrder, payments: result.payments });

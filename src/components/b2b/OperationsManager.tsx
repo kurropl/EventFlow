@@ -19,6 +19,7 @@ interface EventOrder {
   waiters_suggested: number; waiters_confirmed: number;
   extra_consumptions: any[]; shopping_list: any[];
   selected_items: any[];
+  client_token?: string;
 }
 interface ShoppingItem {
   ingredient_name: string; total_grams: number; total_units: number; total_ml: number;
@@ -107,9 +108,19 @@ export default function OperationsManager() {
     setSelected(null);
   };
 
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const copyClientLink = () => {
+    if (!selected?.client_token) return;
+    const url = `${window.location.origin}/invitados/${selected.client_token}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   const handleSelectOrder = (o: EventOrder) => {
     setSelected(o);
-    setTablesManual(o.tables_confirmed || o.tables_suggested);
+    setViewMode('detail');
     setWaitersManual(o.waiters_confirmed || o.waiters_suggested);
     setExtraItems(o.extra_consumptions?.length ? o.extra_consumptions : [{ desc: '', amount: 0 }]);
     setViewMode('detail');
@@ -469,6 +480,13 @@ export default function OperationsManager() {
             <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border ${selected.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' : selected.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
               {selected.status === 'in_progress' ? 'En curso' : selected.status === 'completed' ? 'Completado' : selected.status}
             </span>
+            {selected.client_token && (
+              <button onClick={copyClientLink}
+                className={`text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${copiedLink ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] border border-[#E5D5A0]'}`}>
+                <Icon name="link" className="w-3.5 h-3.5"/>
+                {copiedLink ? 'Copiado' : 'Enlace cliente'}
+              </button>
+            )}
           </div>
         </div>
 
