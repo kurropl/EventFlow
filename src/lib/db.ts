@@ -60,8 +60,8 @@ export async function query<T extends QueryResultRow = Record<string, unknown>>(
     return result;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error('[db] Query error:', msg, { text: text.slice(0, 120) });
-    throw new Error('Error de base de datos');
+    console.error('[db] Query error:', msg, { text: text.slice(0, 200), params: params ? JSON.stringify(params).slice(0, 500) : 'none' });
+    throw error;  // Re-throw original error so caller can inspect
   }
 }
 

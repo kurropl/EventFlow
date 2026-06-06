@@ -188,6 +188,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: event }, { status: 201 });
   } catch (error) {
+    console.error('[events POST] RAW ERROR:', error);
+    console.error('[events POST] ERROR MESSAGE:', error instanceof Error ? error.message : String(error));
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: 'Validation error', details: error.errors },
