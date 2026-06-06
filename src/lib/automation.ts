@@ -281,7 +281,12 @@ async function executeAction(
       const field = String(action.config.field ?? '');
       const value = action.config.value;
       const eventId = context.event.id as string;
-      if (eventId && field && value !== undefined) {
+      // Allowlist of fields that can be updated by automation rules
+      const ALLOWED_FIELDS = new Set([
+        'status', 'notes', 'bar_hours', 'kids_count', 'guest_count',
+        'linen_type', 'centerpiece', 'client_phone',
+      ]);
+      if (eventId && field && value !== undefined && ALLOWED_FIELDS.has(field)) {
         await querySingle(
           `UPDATE events SET ${field} = $1, updated_at = now() WHERE id = $2`,
           [value, eventId]

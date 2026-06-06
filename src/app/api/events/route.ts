@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     // Get total count
     const countResult = await querySingle<any>(
-      `SELECT COUNT(*) as count FROM events${conditions.length > 0 ? ' WHERE ' + conditions.map((c, i) => c.replace(`$${i + 1}`, `$${i + 1}`)) : ''}`,
+      `SELECT COUNT(*) as count FROM events${conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : ''}`,
       params.slice(0, conditions.length)
     );
 

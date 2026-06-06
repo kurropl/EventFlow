@@ -26,8 +26,8 @@ async function autoSeedCatalog(): Promise<number> {
       if (!name) continue;
       try {
         await querySingle(
-          `INSERT INTO catalog_items (name, category, active, pvp_price, cost_price, unit)
-           SELECT $1, $2, true, 0, 0, 'portion'
+          `INSERT INTO catalog_items (name, category, active, pvp, cost)
+           SELECT $1, $2, true, 0, 0
            WHERE NOT EXISTS (SELECT 1 FROM catalog_items WHERE name = $1 LIMIT 1)`,
           [name, category]
         );

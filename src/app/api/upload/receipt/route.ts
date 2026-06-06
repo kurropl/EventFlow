@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 
 /**
  * POST /api/upload/receipt
- * Upload a payment receipt file
+ * Upload a payment receipt file.
+ * Security: extension derived from content-type (not filename), random name, allowlist.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -15,10 +17,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ success: false, error: 'Formato no válido. Usa JPG, PNG o PDF.' }, { status: 400 });
+    // Content-type → extension map (whitelist)
+    const TYPE_TO_EXT: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'application/pdf': 'pdf',
+    };
+
+    const ext = TYPE_TO_EXT[file.type];
+    if (!ext) {
+      return NextResponse.json({ success: false, error: 'Formato no válido. Usa JPG, PNG, WebP o PDF.' }, { status: 400 });
     }
 
     // Validate size (max 5MB)
@@ -26,14 +35,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'El archivo excede 5MB.' }, { status: 400 });
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
-    const fileName = `receipt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    // Random name — no user-controlled input in filename
+    const fileName = `receipt-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'receipts');
 
     await mkdir(uploadDir, { recursive: true });
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(path.join(uploadDir, fileName), buffer);
+
+    const filePath = path.join(uploadDir, fileName);
+    // Defense: ensure the resolved path is inside the upload directory
+    if (!filePath.startsWith(uploadDir)) {
+      return NextResponse.json({ success: false, error: 'Ruta no válida' }, { status: 400 });
+    }
+
+    await writeFile(filePath, buffer);
 
     const url = `/uploads/receipts/${fileName}`;
     return NextResponse.json({ success: true, data: { url } });

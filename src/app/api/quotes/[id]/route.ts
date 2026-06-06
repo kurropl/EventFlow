@@ -30,6 +30,21 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // When accepting, create event_order + payments in a transaction
     if (status === 'accepted') {
+      // Validate: can only accept quotes in 'sent' or 'draft' status
+      const quoteForCheck = await querySingle<any>(
+        `SELECT status, valid_until FROM quotes WHERE id = $1`, [params.id]
+      );
+      if (!quoteForCheck) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+      if (quoteForCheck.status === 'accepted') {
+        return NextResponse.json({ error: 'El presupuesto ya fue aceptado' }, { status: 400 });
+      }
+      if (quoteForCheck.status === 'rejected' || quoteForCheck.status === 'cancelled') {
+        return NextResponse.json({ error: `No se puede aceptar un presupuesto ${quoteForCheck.status}` }, { status: 400 });
+      }
+      if (quoteForCheck.valid_until && new Date(quoteForCheck.valid_until) < new Date()) {
+        return NextResponse.json({ error: 'El presupuesto ha expirado' }, { status: 400 });
+      }
+
       const result = await transaction(async (client) => {
         // Get the quote with event data
         const quoteRow = (await client.query(

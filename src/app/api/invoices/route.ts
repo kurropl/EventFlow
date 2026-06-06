@@ -13,6 +13,15 @@ function generateInvoiceNumber(): string {
   return `FE-${year}-${rand}`;
 }
 
+/** Atomic invoice number via DB sequence — no collisions */
+async function nextInvoiceNumber(): Promise<string> {
+  const year = new Date().getFullYear();
+  const row = await querySingle<{ seq: number }>(
+    `SELECT nextval('invoice_number_seq') as seq`
+  );
+  return `FE-${year}-${String(row?.seq ?? 0).padStart(4, '0')}`;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -62,6 +71,14 @@ export async function POST(request: NextRequest) {
     if (!order) return NextResponse.json({ error: 'Event order not found' }, { status: 404 });
     if (!order.fiscal_nif) return NextResponse.json({ error: 'Client fiscal data missing. Complete the client fiscal info first.' }, { status: 400 });
 
+    // Idempotency: return existing invoice if already generated
+    const existingInvoice = await querySingle<any>(
+      `SELECT * FROM invoices WHERE event_order_id = $1`, [event_order_id]
+    );
+    if (existingInvoice) {
+      return NextResponse.json({ data: existingInvoice, idempotent: true }, { status: 200 });
+    }
+
     // Calculate invoice amounts
     const extrasTotal = (order.extra_consumptions || []).reduce((s: number, ex: any) => s + (ex.amount || 0), 0);
     const subtotal = Number(order.confirmed_price) || 0;
@@ -76,15 +93,8 @@ export async function POST(request: NextRequest) {
     );
     const paidTotal = Number(paymentsRes[0]?.paid || 0);
 
-    // Generate invoice
-    let invoiceNumber;
-    let attempts = 0;
-    do {
-      invoiceNumber = generateInvoiceNumber();
-      const existing = await querySingle(`SELECT id FROM invoices WHERE invoice_number = $1`, [invoiceNumber]);
-      if (!existing) break;
-      attempts++;
-    } while (attempts < 5);
+    // Generate atomic invoice number
+    const invoiceNumber = await nextInvoiceNumber();
 
     const invoice = await querySingle<any>(
       `INSERT INTO invoices (event_order_id, event_id, client_id, invoice_number,

@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getJWTSecret } from '@/lib/config';
 
 // ============================================================
 // JWT verification (Edge Runtime compatible — uses Web Crypto)
@@ -92,7 +93,7 @@ const PUBLIC_ADMIN_ROUTES = ['/admin/login'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const JWT_SECRET = process.env.JWT_SECRET || '';
+  const JWT_SECRET = getJWTSecret();
 
   // ── Admin routes ──────────────────────────────────────────────
   if (pathname.startsWith('/admin')) {

@@ -14,7 +14,9 @@ import { querySingle } from '@/lib/db';
 // Config
 // ============================================================
 
-const JWT_SECRET = process.env.JWT_SECRET || 'eventflow-secret-key-change-in-production';
+import { getJWTSecret, getAdminCredentials } from '@/lib/config';
+
+const JWT_SECRET = getJWTSecret();
 const COOKIE_NAME = 'eventflow_token';
 const TOKEN_EXPIRY = '24h';
 

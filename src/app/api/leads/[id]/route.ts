@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { querySingle } from '@/lib/db';
+import { querySingle, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { z } from 'zod';
 
@@ -68,6 +68,43 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const { status, notes, fiscal_name, fiscal_nif, fiscal_address } = parsed.data;
 
+    // Validate conversion BEFORE any DB writes
+    if (status === 'convertido' && (!fiscal_name || !fiscal_nif)) {
+      return NextResponse.json({ error: 'fiscal_name and fiscal_nif required for conversion' }, { status: 400 });
+    }
+
+    if (status === 'convertido') {
+      // Transactional conversion: update lead + create client atomically
+      const result = await transaction(async (client) => {
+        const lead = (await client.query(
+          `UPDATE leads SET status = $1, notes = COALESCE($2, notes) WHERE id = $3 RETURNING *`,
+          [status, notes !== undefined ? notes : null, params.id]
+        )).rows[0];
+        if (!lead) throw new Error('Lead not found');
+
+        // Upsert client
+        const clientRow = (await client.query(
+          `INSERT INTO clients (name, email, phone, fiscal_name, fiscal_nif, fiscal_address, lead_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (fiscal_nif) DO UPDATE SET
+            name = EXCLUDED.name, email = EXCLUDED.email, phone = EXCLUDED.phone,
+            fiscal_name = EXCLUDED.fiscal_name, fiscal_address = EXCLUDED.fiscal_address
+           RETURNING *`,
+          [lead.name, lead.email, lead.phone, fiscal_name, fiscal_nif, fiscal_address || null, params.id]
+        )).rows[0];
+
+        // Link lead to client
+        await client.query(
+          `UPDATE leads SET converted_to_client_id = $1 WHERE id = $2`,
+          [clientRow.id, params.id]
+        );
+
+        return { lead, client: clientRow };
+      });
+      return NextResponse.json({ data: result });
+    }
+
+    // Non-conversion update
     const lead = await querySingle<Lead>(
       `UPDATE leads SET 
         status = COALESCE($1, status),
@@ -76,32 +113,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       [status || null, notes !== undefined ? notes : null, params.id]
     );
     if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
-
-    // If status = 'convertido', also create/update the client record
-    if (status === 'convertido') {
-      if (!fiscal_name || !fiscal_nif) {
-        return NextResponse.json({ error: 'fiscal_name and fiscal_nif required for conversion' }, { status: 400 });
-      }
-
-      // Upsert client
-      const client = await querySingle<{ id: string }>(
-        `INSERT INTO clients (name, email, phone, fiscal_name, fiscal_nif, fiscal_address, lead_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (fiscal_nif) DO UPDATE SET
-          name = EXCLUDED.name, email = EXCLUDED.email, phone = EXCLUDED.phone,
-          fiscal_name = EXCLUDED.fiscal_name, fiscal_address = EXCLUDED.fiscal_address
-         RETURNING *`,
-        [lead.name, lead.email, lead.phone, fiscal_name, fiscal_nif, fiscal_address || null, params.id]
-      );
-
-      // Link lead to client
-      await querySingle(
-        `UPDATE leads SET converted_to_client_id = $1 WHERE id = $2`,
-        [client!.id, params.id]
-      );
-
-      return NextResponse.json({ data: { lead, client } });
-    }
 
     return NextResponse.json({ data: lead });
   } catch (error) {

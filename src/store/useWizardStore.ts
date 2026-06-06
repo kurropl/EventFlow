@@ -358,6 +358,12 @@ export const useWizardStore = create<WizardState>()(
             }
           }
 
+          // Safety check: if B2C with items but totalPvp=0, catalog fetch failed
+          // Don't submit a free event silently
+          if (state.mode === 'b2c' && selectedItemsPayload.length > 0 && totalPvp === 0) {
+            throw new Error('No se pudieron calcular los precios. Compruebe la conexión y reintente.');
+          }
+
           const payload: EventSetupCreate = {
             client_name: state.clientInfo.name,
             client_email: state.clientInfo.email,
