@@ -124,6 +124,50 @@ export function wrapWithGuardrails(systemPrompt: string): string {
 - Los precios y datos que menciones deben ser SOLO los proporcionados en este prompt. No inventes datos.`;
 }
 
+// ── Error Sanitization ──────────────────────────────────────────
+
+/** Return a user-friendly error message, hiding internal details */
+export function sanitizeError(error: unknown): string {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    // Database errors — hide SQL details
+    if (
+      msg.includes('database') ||
+      msg.includes('query') ||
+      msg.includes('connection') ||
+      msg.includes('syntax') ||
+      msg.includes('constraint') ||
+      msg.includes('violates') ||
+      msg.includes('pg_') ||
+      msg.includes('relation') ||
+      msg.includes('column') ||
+      msg.includes('table')
+    ) {
+      return 'Error de base de datos';
+    }
+    // Validation errors — keep the message (it's already user-friendly)
+    if (
+      msg.includes('required') ||
+      msg.includes('invalid') ||
+      msg.includes('validation') ||
+      msg.includes('obligatorio') ||
+      msg.includes('inválido')
+    ) {
+      return error.message;
+    }
+    // Auth errors — keep the message
+    if (
+      msg.includes('unauthorized') ||
+      msg.includes('credenciales') ||
+      msg.includes('cadenas inválidas')
+    ) {
+      return error.message;
+    }
+  }
+  // Generic fallback — never leak internals
+  return 'Error interno del servidor';
+}
+
 // ── Response Sanitization ───────────────────────────────────────────
 
 /** Strip any internal data that might leak from LLM responses */

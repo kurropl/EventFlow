@@ -1,5 +1,5 @@
 /**
- * AI Quote API — EventFlow (SECURED)
+/** AI Quote API — EventFlow (SECURED)
  * POST /api/ai-quote
  * 
  * Security measures:
@@ -22,6 +22,7 @@ import {
   sanitizeReply,
   checkRateLimit,
   securityHeaders,
+  sanitizeError,
 } from '@/lib/security';
 
 // ── Build catalog summary for the system prompt ──────────────────────
@@ -234,8 +235,7 @@ export async function POST(request: NextRequest) {
       { headers: securityHeaders() }
     );
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[ai-quote] Error:', msg);
+    console.error('[ai-quote] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor.' },
       { status: 500, headers: securityHeaders() }

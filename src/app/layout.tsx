@@ -15,8 +15,26 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'J.Benitez — Salon de Celebraciones Premium',
-  description: 'J.Benitez. Salon de celebraciones premium en Sevilla. Configura tu evento perfecto con nuestro disenador interactivo. Mas de 100 platos, espacios unicos y una experiencia inolvidable.',
+  title: 'J. Benitez — Salón de Celebraciones Premium en Sevilla',
+  description: 'Celebra tu evento especial en J. Benitez. Bodas, comuniones, bautizos y eventos corporativos con servicio de catering premium.',
+  metadataBase: new URL('https://eventcater.duckdns.org'),
+  openGraph: {
+    title: 'J. Benitez — Salón de Celebraciones Premium en Sevilla',
+    description: 'Celebra tu evento especial en J. Benitez. Bodas, comuniones, bautizos y eventos corporativos con servicio de catering premium.',
+    url: 'https://eventcater.duckdns.org',
+    siteName: 'J. Benitez',
+    locale: 'es_ES',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'J. Benitez — Salón de Celebraciones Premium en Sevilla',
+    description: 'Celebra tu evento especial en J. Benitez. Bodas, comuniones, bautizos y eventos corporativos.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

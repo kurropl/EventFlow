@@ -11,6 +11,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
+import { sanitizeError } from '@/lib/security';
 
 const BAR_PRICE_PER_HOUR = 15; // € per person per hour
 
@@ -140,9 +141,8 @@ export async function GET(
       data: { ...event, total_pvp: pvp, total_cost: cost, total_display: pvp + (Number(event.bar_price) || 0) },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: sanitizeError(error) },
       { status: 500 }
     );
   }
@@ -323,9 +323,8 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: result.event });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: sanitizeError(error) },
       { status: 500 }
     );
   }

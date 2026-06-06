@@ -5,15 +5,15 @@
 
 import { NextResponse } from 'next/server';
 import { removeAuthCookie } from '@/lib/auth';
+import { sanitizeError } from '@/lib/security';
 
 export async function POST() {
   try {
     await removeAuthCookie();
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: sanitizeError(error) },
       { status: 500 }
     );
   }

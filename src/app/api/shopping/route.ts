@@ -17,6 +17,7 @@ import {
   toSafeInt,
   toSafeFloat,
   securityHeaders,
+  sanitizeError,
 } from '@/lib/security';
 
 // ── GET: List items for an event ─────────────────────────────────────
@@ -36,8 +37,7 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ success: true, data: rows }, { headers: securityHeaders() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: message }, { status: 500, headers: securityHeaders() });
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500, headers: securityHeaders() });
   }
 }
 
@@ -80,8 +80,7 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json({ success: true, data: created }, { status: 201, headers: securityHeaders() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: message }, { status: 500, headers: securityHeaders() });
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500, headers: securityHeaders() });
   }
 }
 
@@ -129,8 +128,7 @@ export async function PUT(request: NextRequest) {
     );
     return NextResponse.json({ success: true, data: updated }, { headers: securityHeaders() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: message }, { status: 500, headers: securityHeaders() });
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500, headers: securityHeaders() });
   }
 }
 
@@ -145,8 +143,7 @@ export async function DELETE(request: NextRequest) {
     await querySingle<any>(`DELETE FROM event_shopping_items WHERE id = $1`, [id]);
     return NextResponse.json({ success: true }, { headers: securityHeaders() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: message }, { status: 500, headers: securityHeaders() });
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500, headers: securityHeaders() });
   }
 }
 

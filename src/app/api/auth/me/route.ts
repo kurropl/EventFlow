@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { sanitizeError } from '@/lib/security';
 
 export async function GET() {
   try {
@@ -14,9 +15,8 @@ export async function GET() {
     }
     return NextResponse.json({ success: true, authenticated: true, user });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: sanitizeError(error) },
       { status: 500 }
     );
   }

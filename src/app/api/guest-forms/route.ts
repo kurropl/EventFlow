@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
-import { sanitizeText, securityHeaders } from '@/lib/security';
+import { sanitizeText, securityHeaders, sanitizeError } from '@/lib/security';
 
 const MAX_GUESTS = 500;
 
@@ -48,8 +48,7 @@ export async function GET(request: NextRequest) {
       { headers: securityHeaders() }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: message }, { status: 500, headers: securityHeaders() });
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500, headers: securityHeaders() });
   }
 }
 
@@ -138,7 +137,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data: created }, { status: 201, headers: securityHeaders() });
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: message }, { status: 500, headers: securityHeaders() });
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500, headers: securityHeaders() });
   }
 }

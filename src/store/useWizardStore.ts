@@ -243,26 +243,26 @@ export const useWizardStore = create<WizardState>()(
 
         // Validate all required steps
         if (!state.step1) {
-          set({ submitError: 'Step 1 (event details) is required' });
+          set({ submitError: 'El paso 1 (datos del evento) es obligatorio' });
           return { success: false };
         }
         if (!state.step2) {
-          set({ submitError: 'Step 2 (menu selection) is required' });
+          set({ submitError: 'El paso 2 (selección de menú) es obligatorio' });
           return { success: false };
         }
         // Step 3: items required UNLESS using a proposed menu
         const hasProposedMenu = state.step2?.use_proposed === true && state.step2?.menu_id;
         const hasItems = (state.step3 as any)?.selected_items?.length > 0;
         if (!hasProposedMenu && !hasItems) {
-          set({ submitError: 'Step 3 (item selection) requires at least one item' });
+          set({ submitError: 'El paso 3 (selección de platos) requiere al menos un plato' });
           return { success: false };
         }
         if (!state.step4) {
-          set({ submitError: 'Step 4 (extras) is required' });
+          set({ submitError: 'El paso 4 (extras) es obligatorio' });
           return { success: false };
         }
         if (!state.clientInfo.name || !state.clientInfo.email) {
-          set({ submitError: 'Client name and email are required' });
+          set({ submitError: 'El nombre y el email del cliente son obligatorios' });
           return { success: false };
         }
 
@@ -386,7 +386,7 @@ export const useWizardStore = create<WizardState>()(
 
           if (!response.ok || !result.success) {
             const errorMsg =
-              result?.error ?? result?.details ?? 'Failed to create event';
+              result?.error ?? result?.details ?? 'Error al crear el evento';
             throw new Error(errorMsg);
           }
 
@@ -412,7 +412,7 @@ export const useWizardStore = create<WizardState>()(
           return { success: true, eventId: result.data?.id };
         } catch (error) {
           const errorMsg =
-            error instanceof Error ? error.message : 'Unknown submission error';
+            error instanceof Error ? error.message : 'Error desconocido al enviar';
           set({
             isSubmitting: false,
             submitError: errorMsg,

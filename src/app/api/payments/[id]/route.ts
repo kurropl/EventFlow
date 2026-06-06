@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
+import { sanitizeError } from '@/lib/security';
 
 /**
  * When a payment is marked as paid, check if this event has an associated lead
@@ -114,7 +115,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = sanitizeError(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
@@ -128,7 +129,7 @@ export async function DELETE(
     await querySingle<any>(`DELETE FROM payments WHERE id = $1 RETURNING id`, [id]);
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = sanitizeError(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

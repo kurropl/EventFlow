@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { queryMany, querySingle } from '@/lib/db';
 import { EventSetupCreateSchema } from '@/types/specs';
 import { emitWebhook } from '@/lib/webhooks';
+import { sanitizeError } from '@/lib/security';
 
 // ============================================================
 // GET — List events
@@ -105,9 +106,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: sanitizeError(error) },
       { status: 500 }
     );
   }
@@ -194,9 +194,8 @@ export async function POST(request: NextRequest) {
         { status: 422 }
       );
     }
-    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: sanitizeError(error) },
       { status: 500 }
     );
   }

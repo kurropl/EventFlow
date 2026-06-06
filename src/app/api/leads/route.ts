@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
+import { sanitizeError } from '@/lib/security';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,8 +39,7 @@ export async function GET(request: NextRequest) {
     const rows = await queryMany<any>(sql, params);
     return NextResponse.json({ data: rows });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }
 
@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: lead }, { status: 201 });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

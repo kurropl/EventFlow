@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
+import { sanitizeError } from '@/lib/security';
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: rows });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = sanitizeError(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = sanitizeError(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

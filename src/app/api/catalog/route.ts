@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { queryMany, querySingle } from '@/lib/db';
+import { sanitizeError } from '@/lib/security';
 import { CatalogItemCreateSchema } from '@/types/specs';
 
 // ============================================================
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: grouped });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = sanitizeError(error);
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 }
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
         { status: 422 }
       );
     }
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = sanitizeError(error);
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 }
@@ -115,7 +116,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: item });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = sanitizeError(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
@@ -139,7 +140,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = sanitizeError(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

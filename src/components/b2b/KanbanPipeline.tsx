@@ -36,26 +36,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   bautizo: 'Bautizo', 'comunión': 'Comunión', otro: 'Otro',
 };
 
-const DEMO_EVENTS: KanbanEvent[] = [
-  {
-    id: 'demo-1', client_name: 'María García', client_email: 'maria@email.com',
-    event_type: 'boda', guest_count: 150, kids_count: 10, event_date: '2025-09-15',
-    status: 'draft', selected_items: [{ name: 'Carrillera a baja temperatura', category: 'carne', quantity: 150 }],
-    bar_hours: 3, notes: null, created_at: '2025-05-18T10:00:00Z', total_pvp: 4500, total_cost: 2800,
-  },
-  {
-    id: 'demo-2', client_name: 'Carlos López', client_email: 'carlos@empresa.com',
-    event_type: 'corporativo', guest_count: 80, kids_count: 0, event_date: '2025-07-20',
-    status: 'sent', selected_items: [{ name: 'Presa a la brasa', category: 'carne', quantity: 80 }],
-    bar_hours: 2, notes: 'Evento de empresa', created_at: '2025-05-15T14:30:00Z', total_pvp: 2400, total_cost: 1500,
-  },
-  {
-    id: 'demo-3', client_name: 'Ana Martínez', client_email: 'ana@email.com',
-    event_type: 'comunión', guest_count: 200, kids_count: 50, event_date: '2025-08-10',
-    status: 'accepted', selected_items: [{ name: 'Merluza gratinada', category: 'pescado', quantity: 200 }],
-    bar_hours: 3, notes: null, created_at: '2025-05-10T09:00:00Z', total_pvp: 6800, total_cost: 4200,
-  },
-];
+const DEMO_EVENTS: KanbanEvent[] = [];
 
 function formatDate(d: string) {
   if (!d) return '';
@@ -454,12 +435,12 @@ export default function KanbanPipeline() {
         setEvents(data.data.map((e: any) => ({ ...e, selected_items: e.selected_items ?? [] })));
         setIsDemo(false);
       } else {
-        setEvents(DEMO_EVENTS);
-        setIsDemo(true);
+        setEvents([]);
+        setIsDemo(false);
       }
     } catch {
-      setEvents(DEMO_EVENTS);
-      setIsDemo(true);
+      setEvents([]);
+      setIsDemo(false);
     }
   }, []);
 
@@ -522,8 +503,8 @@ export default function KanbanPipeline() {
         ))}
       </div>
 
-      {isDemo && !loading && (
-        <p className="text-xs text-[#9CA3AF]">Mostrando datos de demostración (aún no hay presupuestos reales).</p>
+      {!loading && events.length === 0 && (
+        <p className="text-xs text-[#9CA3AF]">No hay presupuestos registrados aún.</p>
       )}
       {loading && <p className="text-xs text-[#9CA3AF]">Cargando presupuestos…</p>}
 

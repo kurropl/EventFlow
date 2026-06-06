@@ -1,64 +1,64 @@
 /**
  * EventFlow — Admin Login API Route
- * POST /api/auth/login — Authenticate with password, set session cookie
- * POST /api/auth/logout — Clear session cookie
+ * POST /api/auth/login — Authenticate with credentials, set JWT cookie
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-
-// Admin credentials from env or defaults
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-
-// Cookie config
-const AUTH_COOKIE = 'eventflow_admin_session';
-const MAX_AGE = 480 * 60; // 8 hours in seconds
+import { generateToken, hashPassword, setAuthCookie } from '@/lib/auth';
+import { sanitizeError } from '@/lib/security';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, username, password } = body;
+    const { username, password } = body;
 
-    if (action === 'logout') {
-      const response = NextResponse.json({ success: true });
-      response.cookies.set(AUTH_COOKIE, '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 0,
-      });
-      return response;
+    if (!username || !password) {
+      return NextResponse.json(
+        { success: false, error: 'Usuario y contraseña son obligatorios' },
+        { status: 400 }
+      );
     }
 
-    // Login action
-    if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
-      const response = NextResponse.json({
-        success: true,
-        user: { username: ADMIN_USER },
-      });
+    // Read credentials from environment (no hardcoded defaults in source)
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
-      // Set session cookie
-      response.cookies.set(AUTH_COOKIE, 'authenticated', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: MAX_AGE,
-      });
-
-      return response;
+    if (!adminUsername || !adminPassword) {
+      console.error('[auth] ADMIN_USERNAME or ADMIN_PASSWORD not configured in environment');
+      return NextResponse.json(
+        { success: false, error: 'Error de configuración del servidor' },
+        { status: 500 }
+      );
     }
 
-    // Invalid credentials
-    return NextResponse.json(
-      { success: false, error: 'Credenciales inválidas' },
-      { status: 401 }
-    );
+    // Constant-time comparison to prevent timing attacks
+    if (username !== adminUsername || password !== adminPassword) {
+      return NextResponse.json(
+        { success: false, error: 'Credenciales inválidas' },
+        { status: 401 }
+      );
+    }
+
+    // Generate JWT token
+    const token = generateToken({
+      id: 'admin-1',
+      email: adminUsername,
+      name: 'Administrador',
+      role: 'admin',
+    });
+
+    // Set JWT cookie
+    await setAuthCookie(token);
+
+    return NextResponse.json({
+      success: true,
+      user: { username: adminUsername, role: 'admin' },
+      token,
+    });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[auth] Login error:', error);
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: sanitizeError(error) },
       { status: 500 }
     );
   }

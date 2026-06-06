@@ -8,10 +8,8 @@ services:
       - "3020:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/eventflow
-      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...n_I0
-      - NEXT_PUBLIC_WEBHOOK_URL=
+    env_file:
+      - .env.local
     working_dir: /app
     command: npx next start
     volumes:
@@ -28,9 +26,9 @@ services:
     restart: unless-stopped
     environment:
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
       GOTRUE_SITE_URL: http://localhost:3020
-      GOTRUE_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-eventflow-2026
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
       GOTRUE_MAILER_AUTOCONFIRM: "true"
     networks:
       - eventflow-net
@@ -47,7 +45,7 @@ services:
       PG_META_DB_PORT: 5432
       PG_META_DB_NAME: postgres
       PG_META_DB_USER: postgres
-      PG_META_DB_PASSWORD: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     networks:
       - eventflow-net
     depends_on:
@@ -63,9 +61,9 @@ services:
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
-      DB_PASSWORD: postgres
-      JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-eventflow-2026
-      API_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-eventflow-2026
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET}
+      API_JWT_SECRET: ${JWT_SECRET}
       PORT: 4000
     networks:
       - eventflow-net
@@ -82,10 +80,10 @@ services:
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
-      DB_PASSWORD: postgres
-      JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-eventflow-2026
-      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YENN7ok
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET}
+      ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
       POSTGREST_URL: http://postgrest:3000
       PGBODY_MAX: 10485760
       FILE_SIZE_LIMIT: 5242880
@@ -100,10 +98,10 @@ services:
     container_name: eventflow-postgrest
     restart: unless-stopped
     environment:
-      PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/postgres
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-eventflow-2026
+      PGRST_JWT_SECRET: ${JWT_SECRET}
     networks:
       - eventflow-net
     depends_on:

@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { sanitizeError } from '@/lib/security';
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (e: any) {
     console.error('Error saving waiters:', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(e) }, { status: 500 });
   }
 }
 
@@ -46,6 +47,6 @@ export async function GET() {
     return NextResponse.json({ success: true, waiters: result.rows });
   } catch (e: any) {
     console.error('Error getting waiters:', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(e) }, { status: 500 });
   }
 }
