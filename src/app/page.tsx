@@ -228,25 +228,25 @@ export default function HomePage() {
         {/* Impactful video — autoplays the venue footage when present.
             Drop a file at public/video/hero.mp4 to use real footage; until then
             the cinematic backdrop above carries the hero. Hides itself on error. */}
-        {videoReady ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="absolute inset-0 z-0 h-full w-full object-cover"
-            onCanPlay={() => setVideoReady(true)}
-            onError={() => setVideoReady(true)}
-          >
-            <source src="/video/hero.mp4" type="video/mp4" />
-          </video>
-        ) : (
-          <div className="absolute inset-0 z-0 h-full w-full object-cover" style={{
-            background: 'linear-gradient(160deg, rgba(10,8,6,0.55) 0%, rgba(26,18,8,0.35) 40%, rgba(45,36,22,0.35) 60%, rgba(10,8,6,0.6) 100%), url(/images/hero-poster.jpg) center/cover no-repeat'
-          }} />
-        )}
+        {/* Fallback poster always visible behind video */}
+        <div className="absolute inset-0 z-0 h-full w-full object-cover" style={{
+          background: 'linear-gradient(160deg, rgba(10,8,6,0.55) 0%, rgba(26,18,8,0.35) 40%, rgba(45,36,22,0.35) 60%, rgba(10,8,6,0.6) 100%), url(/images/hero-poster.jpg) center/cover no-repeat'
+        }} />
+        {/* Video renders always; fades in when ready, hides on error */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          className="absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-1000"
+          style={{ opacity: videoReady ? 1 : 0 }}
+          onCanPlay={() => setVideoReady(true)}
+          onError={() => setVideoReady(false)}
+        >
+          <source src="/video/hero.mp4" type="video/mp4" />
+        </video>
 
         {/* Cinematic colour grade + legibility scrim over the video */}
         <div className="absolute inset-0 z-0 pointer-events-none" style={{
