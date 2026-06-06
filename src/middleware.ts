@@ -78,6 +78,7 @@ function isPublicRoute(pathname: string): boolean {
 
 function isPublicMethod(method: string, pathname: string): boolean {
   if (pathname === '/api/events' && method === 'POST') return true;
+  if (pathname === '/api/catalog' && method === 'GET') return true;
   if (pathname === '/api/guest-forms' && (method === 'GET' || method === 'POST')) return true;
   if (pathname === '/api/ai-quote' && method === 'POST') return true;
   if (pathname.startsWith('/api/webhooks/') && method === 'POST') return true;

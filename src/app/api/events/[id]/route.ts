@@ -279,10 +279,10 @@ export async function PUT(
           )).rows[0];
 
           await client.query(
-            `INSERT INTO event_orders (event_id, quote_id, confirmed_price, status,
+            `INSERT INTO event_orders (event_id, quote_id, client_id, confirmed_price, status,
               tables_suggested, tables_confirmed, waiters_suggested, waiters_confirmed)
-             VALUES ($1, $2, $3, 'in_progress', $4, $4, $5, $5)`,
-            [id, quote.id, pvpTotal, tablesSuggested, waitersSuggested]
+             VALUES ($1, $2, $3, $4, 'in_progress', $5, $5, $6, $6)`,
+            [id, quote.id, event.client_id || null, pvpTotal, tablesSuggested, waitersSuggested]
           );
 
           // 40% deposit (due 7 days from now)

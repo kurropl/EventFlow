@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         c.fiscal_name, c.fiscal_nif, c.fiscal_address, c.id as client_id
        FROM event_orders eo
        JOIN events e ON e.id = eo.event_id
-       LEFT JOIN clients c ON c.id = eo.client_id
+       LEFT JOIN clients c ON c.id = e.client_id
        WHERE eo.id = $1`, [event_order_id]
     );
     if (!order) return NextResponse.json({ error: 'Event order not found' }, { status: 404 });
