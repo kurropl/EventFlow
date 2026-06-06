@@ -22,6 +22,9 @@ interface KanbanEvent {
   total_pvp: number | string;
   total_cost: number | string;
   total_display?: number | string;
+  total_paid: number;
+  pending_payments: number;
+  total_payments: number;
 }
 
 const COLUMNS: { status: EventStatus; label: string; dot: string; tint: string; soft: string }[] = [
@@ -631,28 +634,42 @@ export default function KanbanPipeline() {
                       )}
 
                       {/* --- ACEPTADO --- */}
-                      {col.status === 'accepted' && (
-                        <>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setPaymentModal({ eventId: event.id, type: 'parcial' }); }}
-                            className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors"
-                          >
-                            Cobro parcial
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setPaymentModal({ eventId: event.id, type: 'total' }); }}
-                            className="flex-1 text-[11px] font-medium bg-[#EFFAF2] text-[#15803D] hover:bg-[#D1FAE5] py-1.5 rounded-lg transition-colors"
-                          >
-                            Cobro total
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled'); }}
-                            className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors"
-                          >
-                            Cancelar
-                          </button>
-                        </>
-                      )}
+                      {col.status === 'accepted' && (() => {
+                        const allPaid = (event.pending_payments ?? 0) === 0 && (event.total_payments ?? 0) > 0;
+                        const hasPaid = (event.total_paid ?? 0) > 0;
+                        return (
+                          <>
+                            {!allPaid ? (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setPaymentModal({ eventId: event.id, type: 'parcial' }); }}
+                                  className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors"
+                                >
+                                  Cobro parcial
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setPaymentModal({ eventId: event.id, type: 'total' }); }}
+                                  className="flex-1 text-[11px] font-medium bg-[#EFFAF2] text-[#15803D] hover:bg-[#D1FAE5] py-1.5 rounded-lg transition-colors"
+                                >
+                                  Cobro total
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled'); }}
+                                  className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors"
+                                >
+                                  Cancelar
+                                </button>
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] font-semibold text-[#15803D] bg-[#D1FAE5] px-2.5 py-1 rounded-full">
+                                  Pagado completo
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
 
                       {/* --- Links for accepted events (always visible) --- */}
                       {col.status === 'accepted' && (

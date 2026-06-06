@@ -27,7 +27,11 @@ export async function GET(request: NextRequest) {
     );
     const offset = parseInt(searchParams.get('offset') ?? '0', 10) || 0;
 
-    let query = `SELECT * FROM events`;
+    let query = `SELECT e.*,
+      (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE event_id = e.id AND paid = true) as total_paid,
+      (SELECT COUNT(*) FROM payments WHERE event_id = e.id AND paid = false) as pending_payments,
+      (SELECT COUNT(*) FROM payments WHERE event_id = e.id) as total_payments
+    FROM events e`
     const params: any[] = [];
     const conditions: string[] = [];
 
