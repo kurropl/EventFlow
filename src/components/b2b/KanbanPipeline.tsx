@@ -635,7 +635,7 @@ export default function KanbanPipeline() {
 
                       {/* --- ACEPTADO --- */}
                       {col.status === 'accepted' && (() => {
-                        const allPaid = (event.pending_payments ?? 0) === 0 && (event.total_payments ?? 0) > 0;
+                        const allPaid = Number(event.pending_payments ?? 0) === 0 && Number(event.total_payments ?? 0) > 0;
                         const hasPaid = (event.total_paid ?? 0) > 0;
                         return (
                           <>
