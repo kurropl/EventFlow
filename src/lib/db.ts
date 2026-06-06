@@ -5,7 +5,7 @@
  * Replaces Supabase client for local/self-hosted deployments.
  */
 
-import { Pool, QueryResult, QueryResultRow } from 'pg';
+import { Pool, QueryResult, QueryResultRow, PoolConfig } from 'pg';
 
 // ============================================================
 // Connection pool (singleton)
@@ -18,7 +18,7 @@ function getPool(): Pool {
     const connectionString =
       process.env.DATABASE_URL ||
       process.env.NEXT_PUBLIC_DATABASE_URL ||
-      'postgresql://postgres:postgres@localhost:5432/eventflow';
+      'postgresql://postgres:***@localhost:5432/eventflow';
 
     // Log the connection target (host/user/db only — never the password) so
     // misconfigured DATABASE_URL is obvious in container logs.
@@ -29,15 +29,17 @@ function getPool(): Pool {
       console.log('[db] connecting -> (could not parse DATABASE_URL)');
     }
 
-    pool = new Pool({
+    const poolConfig: PoolConfig = {
       connectionString,
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
-    });
+    };
+
+    pool = new Pool(poolConfig);
 
     // Log pool errors (don't crash)
-    pool.on('error', (err) => {
+    pool.on('error', (err: Error) => {
       console.error('[db] Unexpected pool error:', err.message);
     });
   }
@@ -48,9 +50,9 @@ function getPool(): Pool {
 // Query helpers
 // ============================================================
 
-export async function query<T extends QueryResultRow = any>(
+export async function query<T extends QueryResultRow = Record<string, unknown>>(
   text: string,
-  params?: any[]
+  params?: unknown[]
 ): Promise<QueryResult<T>> {
   const client = getPool();
   try {
@@ -63,17 +65,17 @@ export async function query<T extends QueryResultRow = any>(
   }
 }
 
-export async function querySingle<T extends QueryResultRow = any>(
+export async function querySingle<T extends QueryResultRow = Record<string, unknown>>(
   text: string,
-  params?: any[]
+  params?: unknown[]
 ): Promise<T | null> {
   const result = await query<T>(text, params);
   return result.rows?.[0] ?? null;
 }
 
-export async function queryMany<T extends QueryResultRow = any>(
+export async function queryMany<T extends QueryResultRow = Record<string, unknown>>(
   text: string,
-  params?: any[]
+  params?: unknown[]
 ): Promise<T[]> {
   const result = await query<T>(text, params);
   return result.rows ?? [];
@@ -84,7 +86,7 @@ export async function queryMany<T extends QueryResultRow = any>(
 // ============================================================
 
 export async function transaction<T>(
-  callback: (client: any) => Promise<T>
+  callback: (client: import('pg').PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await getPool().connect();
   try {

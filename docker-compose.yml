@@ -45,7 +45,7 @@ services:
       PG_META_DB_PORT: 5432
       PG_META_DB_NAME: postgres
       PG_META_DB_USER: postgres
-      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     networks:
       - eventflow-net
     depends_on:
@@ -61,7 +61,7 @@ services:
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET}
       API_JWT_SECRET: ${JWT_SECRET}
       PORT: 4000
@@ -80,7 +80,7 @@ services:
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET}
       ANON_KEY: ${SUPABASE_ANON_KEY:-}
       SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
@@ -115,7 +115,7 @@ services:
     environment:
       POSTGRES_DB: eventflow
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     command:
       - "postgres"
       - "-c"

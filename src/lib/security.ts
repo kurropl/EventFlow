@@ -46,13 +46,13 @@ export function isValidUUID(value: string): boolean {
 
 // ── Numeric Validation ──────────────────────────────────────────────
 
-export function toSafeInt(value: any, min = 0, max = 99999): number {
+export function toSafeInt(value: unknown, min = 0, max = 99999): number {
   const n = parseInt(String(value), 10);
   if (isNaN(n)) return min;
   return Math.max(min, Math.min(max, n));
 }
 
-export function toSafeFloat(value: any, min = 0, max = 999999): number {
+export function toSafeFloat(value: unknown, min = 0, max = 999999): number {
   const n = parseFloat(String(value));
   if (isNaN(n)) return min;
   return Math.max(min, Math.min(max, n));

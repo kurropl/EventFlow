@@ -7,6 +7,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { z } from 'zod';
+
+// ── Types ───────────────────────────────────────────────────────
+
+interface Provider {
+  id: string;
+  name: string;
+  category: string;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Validation ──────────────────────────────────────────────────
+
+const CreateProviderSchema = z.object({
+  name: z.string().min(1, 'El nombre es obligatorio'),
+  category: z.string().optional(),
+  contact_name: z.string().max(200).optional().nullable(),
+  phone: z.string().max(30).optional().nullable(),
+  email: z.string().email('Invalid email format').optional().nullable(),
+  notes: z.string().optional().nullable(),
+  active: z.boolean().optional(),
+});
+
+// ── Handlers ────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +45,7 @@ export async function GET(request: NextRequest) {
     const active = searchParams.get('active');
 
     const conditions: string[] = [];
-    const values: any[] = [];
+    const values: (string | boolean)[] = [];
     let idx = 1;
 
     if (category) {
@@ -28,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const rows = await queryMany<any>(
+    const rows = await queryMany<Provider>(
       `SELECT * FROM providers ${where} ORDER BY name ASC`,
       values
     );
@@ -43,22 +73,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const name = (body.name ?? '').trim();
-    if (!name) {
-      return NextResponse.json({ success: false, error: 'El nombre es obligatorio' }, { status: 422 });
+    const parsed = CreateProviderSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.issues[0]?.message || 'Validation error' },
+        { status: 400 }
+      );
     }
 
-    const category = body.category ?? 'otro';
-    const contact_name = body.contact_name ? String(body.contact_name).trim() : null;
-    const phone = body.phone ? String(body.phone).trim() : null;
-    const email = body.email ? String(body.email).trim() : null;
-    const notes = body.notes ?? null;
-    const active = body.active !== undefined ? Boolean(body.active) : true;
+    const { name, category, contact_name, phone, email, notes, active } = parsed.data;
 
-    const created = await querySingle<any>(
+    const created = await querySingle<Provider>(
       `INSERT INTO providers (name, category, contact_name, phone, email, notes, active)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [name, category, contact_name, phone, email, notes, active]
+      [name.trim(), category || 'otro', contact_name, phone, email, notes, active !== undefined ? active : true]
     );
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });

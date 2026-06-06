@@ -5,14 +5,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { z } from 'zod';
+
+// ── Types ───────────────────────────────────────────────────────
+
+interface Waiter {
+  id: string;
+  name: string;
+  role: string | null;
+}
+
+// ── Validation ──────────────────────────────────────────────────
+
+const WaiterInputSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'name is required'),
+  phone: z.string().optional().nullable(),
+  role: z.string().optional().nullable(),
+});
+
+const WaitersPostSchema = z.object({
+  waiters: z.array(WaiterInputSchema).min(1, 'At least one waiter is required'),
+});
+
+// ── Handlers ────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
-    const { waiters } = await req.json();
+    const body = await req.json();
+    const parsed = WaitersPostSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Validation error' },
+        { status: 400 }
+      );
+    }
+
+    const { waiters } = parsed.data;
 
     // Upsert all waiters
     for (const w of waiters) {
-      const existing = await query(
+      const existing = await query<Waiter>(
         'SELECT id FROM waiters WHERE name = $1',
         [w.name]
       );
@@ -31,7 +65,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Error saving waiters:', e);
     return NextResponse.json({ error: sanitizeError(e) }, { status: 500 });
   }
@@ -43,9 +77,9 @@ export async function POST(req: NextRequest) {
  */
 export async function GET() {
   try {
-    const result = await query('SELECT * FROM waiters ORDER BY name');
+    const result = await query<Waiter>('SELECT * FROM waiters ORDER BY name');
     return NextResponse.json({ success: true, waiters: result.rows });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Error getting waiters:', e);
     return NextResponse.json({ error: sanitizeError(e) }, { status: 500 });
   }

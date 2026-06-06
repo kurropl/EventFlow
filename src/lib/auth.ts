@@ -97,12 +97,20 @@ export async function getAuthCookie(): Promise<string | undefined> {
 // Auth helpers
 // ============================================================
 
+interface AdminRow {
+  id: string;
+  email: string;
+  name: string;
+  password_hash: string;
+  role: string;
+}
+
 export async function authenticateAdmin(
   email: string,
   password: string
 ): Promise<AuthResult> {
   try {
-    const admin = await querySingle<any>(
+    const admin = await querySingle<AdminRow>(
       `SELECT id, email, name, password_hash, role FROM admins WHERE email = $1 AND active = true`,
       [email]
     );
