@@ -385,7 +385,7 @@ export default function OperationsManager() {
         </button>
       </div>
       {orders.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl bg-[#EFF4FF] border border-[#BFDBFE]">
             <p className="text-[10px] text-[#2563EB] uppercase tracking-wide font-semibold">En curso</p>
             <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{orders.filter(o => o.status === 'in_progress').length}</p>
@@ -402,7 +402,7 @@ export default function OperationsManager() {
       )}
       {loading ? <div className="text-center py-12 text-sm text-[#6B7280]">Cargando...</div> :
         orders.length === 0 ? <div className="text-center py-12 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-2xl border border-dashed border-[#E5E7EB]">No hay órdenes de evento activas.</div> :
-        <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
@@ -473,7 +473,7 @@ export default function OperationsManager() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]"><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Comensales</p><p className="text-2xl font-bold text-[#1A1A2E] mt-1">{selected.guest_count}</p></div>
           <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]"><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Mesas sugeridas</p><p className="text-2xl font-bold text-[#1A1A2E] mt-1">{selected.tables_suggested}</p><p className="text-[10px] text-[#9CA3AF] mt-0.5">(8 pax/mesa)</p></div>
           <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]"><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Camareros</p><p className="text-2xl font-bold text-[#1A1A2E] mt-1">{selected.waiters_suggested}</p><p className="text-[10px] text-[#9CA3AF] mt-0.5">(1/12 pax)</p></div>
@@ -620,7 +620,7 @@ export default function OperationsManager() {
             No hay artículos en el escandallo. Pulsa "Regenerar" para calcular desde el catálogo.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+          <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
@@ -1017,7 +1017,7 @@ export default function OperationsManager() {
                     onChange={e => updateTableField(selectedTableData.id, 'name', e.target.value)}
                     className="w-full text-sm border border-[#ECECF1] rounded-xl px-3 py-2 focus:outline-none focus:border-[#C9A84C]"/>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">Capacidad</label>
                     <input type="number" value={selectedTableData.capacity}
@@ -1051,7 +1051,7 @@ export default function OperationsManager() {
                     ))}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-2 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
                   <button onClick={() => rotateTable(selectedTableData.id)}
                     className="text-xs font-medium py-2 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5F8] transition-colors flex items-center justify-center gap-1">
                     <Icon name="rotate" className="w-3 h-3"/>

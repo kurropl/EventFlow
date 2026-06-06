@@ -318,7 +318,7 @@ export default function CatalogCRUD() {
       )}
 
       {/* Category chips */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
         {CATEGORIES.map((cat) => {
           const count = items.filter((i) => i.category === cat && i.active).length;
           const active = filterCategory === cat;
@@ -334,7 +334,7 @@ export default function CatalogCRUD() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <div className="max-h-[calc(100vh-360px)] overflow-y-auto">
+        <div className="max-h-[calc(100vh-360px)] overflow-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-[#FAFAFC] z-10">
               <tr className="border-b border-[#ECECF1]">

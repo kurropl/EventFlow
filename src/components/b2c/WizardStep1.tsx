@@ -105,7 +105,7 @@ export default function WizardStep1() {
       {/* Event Type */}
       <div>
         <label className="block text-sm font-semibold text-stone-700 mb-3">Tipo de evento</label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {EVENT_TYPES.map((et) => (
             <button
               key={et.id}

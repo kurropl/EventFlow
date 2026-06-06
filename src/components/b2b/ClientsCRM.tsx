@@ -181,7 +181,7 @@ function ClientDrawer({ client, history, onClose, onSaved }: { client: ClientRow
           <button onClick={onClose} className="p-2 rounded-lg text-[#9CA3AF] hover:bg-[#F5F5F8]">✕</button>
         </div>
         <div className="p-5 space-y-5">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Stat label="Eventos" value={String(client.event_count)} />
             <Stat label="Total" value={money(client.total_value)} />
           </div>
@@ -243,7 +243,7 @@ function ClientForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => 
       <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-serif text-xl text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Nuevo cliente</h3>
         <Field label="Nombre *"><input value={f.name} onChange={set('name')} className="crm-inp" autoFocus /></Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Email"><input value={f.email} onChange={set('email')} className="crm-inp" /></Field>
           <Field label="Teléfono"><input value={f.phone} onChange={set('phone')} className="crm-inp" /></Field>
         </div>

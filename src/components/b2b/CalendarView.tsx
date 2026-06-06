@@ -705,7 +705,7 @@ function MonthView({
       className="bg-white rounded-2xl border border-[#ECECF1] shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden"
     >
       {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-[#F0F0F4]">
+      <div className="overflow-x-auto"><div className="grid grid-cols-7 min-w-[540px] border-b border-[#F0F0F4]">
         {DAYS_SHORT.map((d) => (
           <div
             key={d}
@@ -714,10 +714,10 @@ function MonthView({
             {d}
           </div>
         ))}
-      </div>
+      </div></div>
 
       {/* Grid */}
-      <div className="grid grid-cols-7">
+      <div className="overflow-x-auto"><div className="grid grid-cols-7 min-w-[540px]">
         {cells.map((d, i) => {
           const k = iso(d);
           const inMonth = d.getMonth() === anchorDate.getMonth();
@@ -795,7 +795,7 @@ function MonthView({
             </button>
           );
         })}
-      </div>
+      </div></div>
 
       {/* Legend */}
       <div className="flex items-center gap-4 px-5 py-3 border-t border-[#F0F0F4] text-[11px] text-ink-soft">
@@ -1434,7 +1434,7 @@ function DiaDView({
 
           {/* Quick stats */}
           <div className="border-t border-[#F0F0F4] pt-4 mt-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-green-50 rounded-xl p-3 text-center">
                 <p className="text-xl font-bold text-green-600">{doneCount}</p>
                 <p className="text-[10px] text-green-600/70 font-medium">
@@ -1687,7 +1687,7 @@ function ApptForm({
           />
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-[12px] font-medium text-ink-soft mb-1">
               Fecha

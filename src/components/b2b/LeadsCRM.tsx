@@ -247,7 +247,7 @@ export default function LeadsCRM() {
 
       {/* Datos del evento asociado */}
       {selectedLead.event_date && (
-        <div className="grid grid-cols-3 gap-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
           <div><p className="text-[11px] text-[#6B7280] uppercase tracking-wide">Tipo</p><p className="text-sm font-medium text-[#1A1A2E]">{selectedLead.event_type || '—'}</p></div>
           <div><p className="text-[11px] text-[#6B7280] uppercase tracking-wide">Fecha evento</p><p className="text-sm font-medium text-[#1A1A2E]">{fmtDate(selectedLead.event_date)}</p></div>
           <div><p className="text-[11px] text-[#6B7280] uppercase tracking-wide">Comensales</p><p className="text-sm font-medium text-[#1A1A2E]">{selectedLead.guest_count || '—'}</p></div>
@@ -283,7 +283,7 @@ export default function LeadsCRM() {
               </div>
 
               {quoteEditId === q.id ? (
-                <div className="grid grid-cols-2 gap-3 p-3 bg-[#FAF8F5] rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-[#FAF8F5] rounded-lg">
                   <div>
                     <label className="text-[10px] text-[#6B7280] uppercase tracking-wide">Base PVP</label>
                     <input type="number" value={quoteEdit.base_pvp} onChange={e => setQuoteEdit(p => ({...p, base_pvp: +e.target.value}))}
@@ -422,7 +422,7 @@ export default function LeadsCRM() {
           No hay leads todavía. Cuando un cliente envíe un presupuesto desde el configurador, aparecerá aquí.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">

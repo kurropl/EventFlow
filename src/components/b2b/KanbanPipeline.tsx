@@ -491,7 +491,7 @@ export default function KanbanPipeline() {
   return (
     <div className="space-y-6">
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {STATS.map((s) => (
           <div key={s.label} className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="flex items-center gap-2 mb-1.5">

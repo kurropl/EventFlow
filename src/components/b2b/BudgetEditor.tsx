@@ -227,7 +227,7 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
           <div className="px-6 py-5 space-y-5">
 
             {/* Event info */}
-            <div className="grid grid-cols-2 gap-3 text-[12px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
               <div className="bg-[#FAFAFC] rounded-xl p-3">
                 <span className="text-[#9CA3AF] block">Cliente</span>
                 <span className="font-semibold text-[#1A1A1A]">{event.client_name}</span>

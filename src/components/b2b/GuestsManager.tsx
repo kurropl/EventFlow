@@ -269,7 +269,7 @@ export default function GuestsManager() {
               )}
             </h3>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
               <span className="text-[#9CA3AF] text-xs block">Cliente</span>
               <span className="font-medium">{guestFormData.client_name}</span>
@@ -289,7 +289,7 @@ export default function GuestsManager() {
       )}
 
       {/* Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard label="Total invitados" value={summary.total} accent="#C9A84C" />
         <SummaryCard label="Adultos" value={summary.byMenu.adulto} accent="#1A1A1A" />
         <SummaryCard label="Niños" value={summary.byMenu.nino} accent="#3B82F6" />

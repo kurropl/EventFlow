@@ -322,7 +322,7 @@ function ProviderDrawer({
 
         <div className="p-5 space-y-5">
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Stat label="Estado" value={active ? 'Activo' : 'Inactivo'} />
             <Stat label="Creado" value={fmtDate(provider.created_at)} />
           </div>
@@ -352,7 +352,7 @@ function ProviderDrawer({
                 className="crm-inp"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Teléfono">
                 <input
                   value={phone}
@@ -504,7 +504,7 @@ function ProviderForm({
         <Field label="Persona de contacto">
           <input value={f.contact_name} onChange={set('contact_name')} className="crm-inp" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Teléfono">
             <input value={f.phone} onChange={set('phone')} className="crm-inp" />
           </Field>

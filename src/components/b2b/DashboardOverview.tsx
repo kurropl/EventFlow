@@ -207,7 +207,7 @@ Crear primer presupuesto
 ) : (
 <>
 {/* KPI cards */}
-<div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 {KPIS.map((k, i) => (
 <div>
 <Link href={k.href} className="block bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all">
@@ -364,7 +364,7 @@ return (
 {/* Quick links */}
 <div className="bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
 <h3 className="font-semibold text-sm text-[#1A1A1A] mb-3">Accesos rápidos</h3>
-<div className="grid grid-cols-2 gap-2">
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 {[
 { label: 'Agenda', href: '/admin/agenda', icon: 'agenda' },
 { label: 'Leads', href: '/admin/leads', icon: 'leads' },

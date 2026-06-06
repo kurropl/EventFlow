@@ -111,12 +111,12 @@ export default function BillingPanel() {
           {selectedInvoice.status === 'paid' ? 'Pagada' : selectedInvoice.status === 'pending' ? 'Pendiente' : selectedInvoice.status}
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
         <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Subtotal</p><p className="text-lg font-bold text-[#1A1A2E]">{money(selectedInvoice.subtotal)}</p></div>
         <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">IVA {selectedInvoice.iva_pct}%</p><p className="text-lg font-bold text-[#1A1A2E]">{money(selectedInvoice.iva_amount)}</p></div>
         <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Total</p><p className="text-lg font-bold text-[#1A1A2E]">{money(selectedInvoice.total)}</p></div>
       </div>
-      <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-white border border-[#E5E7EB]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white border border-[#E5E7EB]">
         <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Cliente fiscal</p><p className="text-sm text-[#1A1A2E] font-medium">{selectedInvoice.fiscal_name}</p><p className="text-xs text-[#6B7280]">{selectedInvoice.fiscal_nif}</p></div>
         <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Fechas</p><p className="text-sm text-[#1A1A2E]">Emitida: {fmtDate(selectedInvoice.created_at)}</p>{selectedInvoice.paid_at && <p className="text-xs text-green-600">Pagada: {fmtDate(selectedInvoice.paid_at)}</p>}</div>
       </div>
@@ -143,7 +143,7 @@ export default function BillingPanel() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl bg-[#FFF8EC] border border-[#FDE68A]">
           <p className="text-[10px] text-[#B45309] uppercase tracking-wide font-semibold">Pendiente cobro</p>
           <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{money(totalPendingAmount)}</p>
@@ -188,7 +188,7 @@ export default function BillingPanel() {
               No hay cobros registrados. Al aceptar un presupuesto se generan automáticamente la señal y el saldo final.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
@@ -293,7 +293,7 @@ export default function BillingPanel() {
               No hay facturas todavía. Completa un evento y genera la factura desde aquí.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
