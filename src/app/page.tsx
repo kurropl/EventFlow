@@ -469,7 +469,7 @@ export default function HomePage() {
               <div key={i} id={`evt-${i}`} data-reveal
                 className="rounded-xl p-6 md:p-7 transition-all duration-400 group cursor-pointer border"
                 style={{
-                  background: '#FFFFFF',
+                  background: '#F8F3E6',
                   borderColor: 'rgba(0,0,0,0.06)',
                   opacity: reveal(`evt-${i}`) ? 1 : 0,
                   transform: reveal(`evt-${i}`) ? 'translateY(0)' : 'translateY(20px)',
@@ -800,7 +800,7 @@ function AIChatWidget() {
       <div
         className="fixed bottom-24 right-4 sm:right-6 z-[9998] w-[calc(100vw-2rem)] sm:w-[400px] max-h-[70vh] rounded-2xl overflow-hidden flex flex-col"
         style={{
-          background: '#FFFFFF',
+          background: '#F8F3E6',
           boxShadow: '0 8px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(201,168,76,0.12)',
           opacity: isOpen ? 1 : 0,
           transform: isOpen ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.97)',
@@ -826,7 +826,7 @@ function AIChatWidget() {
               <div
                 className="max-w-[85%] px-4 py-3 text-sm leading-relaxed rounded-2xl"
                 style={{
-                  background: msg.role === 'user' ? '#1A1A1A' : '#FFFFFF',
+                  background: msg.role === 'user' ? '#1A1A1A' : '#F8F3E6',
                   color: msg.role === 'user' ? '#FFFFFF' : '#1A1A1A',
                   boxShadow: msg.role === 'assistant' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
                   whiteSpace: 'pre-line',
@@ -852,7 +852,7 @@ function AIChatWidget() {
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+              <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: '#F8F3E6', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <span className="inline-flex gap-1">
                   <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C9A84C', animationDelay: '0ms' }} />
                   <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C9A84C', animationDelay: '150ms' }} />
@@ -865,7 +865,7 @@ function AIChatWidget() {
         </div>
 
         {/* Quick chips */}
-        <div className="px-4 py-2 flex gap-2 overflow-x-auto" style={{ background: '#FFFFFF', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+        <div className="px-4 py-2 flex gap-2 overflow-x-auto" style={{ background: '#F8F3E6', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
           {quickChips.map(chip => (
             <button
               key={chip}
@@ -879,7 +879,7 @@ function AIChatWidget() {
         </div>
 
         {/* Input */}
-        <div className="px-4 py-3 flex items-center gap-2" style={{ background: '#FFFFFF', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+        <div className="px-4 py-3 flex items-center gap-2" style={{ background: '#F8F3E6', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
           <input
             ref={inputRef}
             type="text"
