@@ -207,6 +207,25 @@ export default function WizardStep2() {
                   </div>
                 ))}
               </div>
+
+              {/* Selection button */}
+              <div className="mt-3 pt-2 border-t border-stone-100">
+                {selectedAdultId === menu.id ? (
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-[#C9A84C]">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Seleccionado
+                  </span>
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedAdultId(menu.id); }}
+                    className="text-xs font-medium text-stone-400 hover:text-[#C9A84C] transition-colors"
+                  >
+                    Elegir este menú →
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -272,10 +291,29 @@ export default function WizardStep2() {
                     </div>
                   ))}
                 </div>
+
+                {/* Selection button (kid) */}
+                <div className="mt-3 pt-2 border-t border-stone-100">
+                  {selectedKidId === menu.id ? (
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-[#C9A84C]">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Seleccionado
+                    </span>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedKidId(menu.id); }}
+                      className="text-xs font-medium text-stone-400 hover:text-[#C9A84C] transition-colors"
+                    >
+                      Elegir este menú →
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
-          </div>
         </div>
+      </div>
       )}
 
       {/* Actions */}

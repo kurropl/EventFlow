@@ -41,7 +41,7 @@ export default function WizardStep4() {
           Extras y Complementos
         </h2>
         <p className="text-stone-500 text-sm max-w-md mx-auto font-light">
-          Anade toques especiales a tu celebracion
+          Añade toques especiales a tu celebración
         </p>
       </div>
 

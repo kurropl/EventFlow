@@ -887,6 +887,7 @@ function AIChatWidget() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Cuéntame sobre tu evento..."
+            aria-label="Cuéntame sobre tu evento"
             className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all duration-200"
             style={{ background: '#FAF8F5', border: '1px solid rgba(0,0,0,0.06)' }}
             disabled={isLoading}
@@ -894,6 +895,7 @@ function AIChatWidget() {
           <button
             onClick={() => sendMessage()}
             disabled={isLoading || !input.trim()}
+            aria-label="Enviar mensaje"
             className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-40"
             style={{ background: 'linear-gradient(135deg, #C9A84C, #D4B85C)', color: '#1A1A1A' }}
           >

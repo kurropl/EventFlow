@@ -361,8 +361,8 @@ export default function CatalogCRUD() {
                       {CATEGORY_LABELS[item.category] || item.category}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-right text-[#1A1A1A] text-[13px] tabular-nums">{item.estimated && <span className="text-[#C9A84C]/70">~</span>}{item.pvp.toFixed(2)}€</td>
-                  <td className="px-4 py-2.5 text-right text-[#6B7280] text-[13px] tabular-nums">{item.cost.toFixed(2)}€</td>
+                  <td className="px-4 py-2.5 text-right text-[#1A1A1A] text-[13px] tabular-nums">{item.estimated && <span className="text-[#C9A84C]/70">~</span>}{Number(item.pvp).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+                  <td className="px-4 py-2.5 text-right text-[#6B7280] text-[13px] tabular-nums">{Number(item.cost).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
                   <td className="px-4 py-2.5 text-right">
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
                       ${getMargin(item.pvp, item.cost) >= 50 ? 'bg-[#EFFAF2] text-[#16A34A]' :

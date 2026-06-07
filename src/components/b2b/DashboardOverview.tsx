@@ -150,8 +150,8 @@ const typeMax = Math.max(1, ...Object.values(typeCounts));
 
 // ── Quick stats ──────────────────────────────────────────────
 const KPIS = [
-{ label: 'Ingresos totales', value: `${totalRevenue.toLocaleString('es-ES')}€`, accent: '#16A34A', subtitle: `${payments.length} cobros`, href: '/admin/cobros', icon: 'revenue' },
-{ label: 'Pendiente de cobro', value: `${pendingRevenue.toLocaleString('es-ES')}€`, accent: '#D9920B', subtitle: 'presupuestos activos', href: '/admin/kanban', icon: 'pending' },
+{ label: 'Ingresos totales', value: `${totalRevenue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`, accent: '#16A34A', subtitle: `${payments.length} cobros`, href: '/admin/cobros', icon: 'revenue' },
+{ label: 'Pendiente de cobro', value: `${pendingRevenue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`, accent: '#D9920B', subtitle: 'presupuestos activos', href: '/admin/kanban', icon: 'pending' },
 { label: 'Comensales previstos', value: `${totalGuests.toLocaleString('es-ES')}`, accent: '#6B2737', subtitle: `${active.length} eventos`, href: '/admin/operations', icon: 'guests' },
 { label: 'Conversión', value: `${conversion}%`, accent: '#3B82F6', subtitle: `${confirmed} de ${events.length}`, href: '/admin/kanban', icon: 'conversion' },
 ];
@@ -232,7 +232,7 @@ Crear primer presupuesto
 <div className="bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
 <div className="flex items-center justify-between mb-4">
 <h3 className="font-semibold text-sm text-[#1A1A1A]">Ingresos mensuales</h3>
-<span className="text-[11px] text-[#9CA3AF]">{totalRevenue.toLocaleString('es-ES')}€ total</span>
+<span className="text-[11px] text-[#9CA3AF]">{totalRevenue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} € total</span>
 </div>
         <div className="flex items-end gap-1.5" style={{ height: '128px' }}>
           {monthlyRevenue.map((m) => {
@@ -243,7 +243,7 @@ Crear primer presupuesto
                   style={{ height: `${barHeight}px`, background: m.revenue > 0 ? 'linear-gradient(180deg, #C9A84C, #A88A3A)' : '#F0F0F4' }}>
                   {m.revenue > 0 && (
                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-[#6B7280] opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">
-                      {m.revenue.toLocaleString('es-ES')}€
+                      {m.revenue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
                     </div>
                   )}
                 </div>

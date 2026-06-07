@@ -4,11 +4,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useWizardStore } from '@/store/useWizardStore';
 
 const EVENT_TYPES = [
-  { id: 'boda', label: 'Boda', desc: 'El dia mas importante' },
+  { id: 'boda', label: 'Boda', desc: 'El día más importante' },
   { id: 'cumpleaños', label: 'Cumpleaños', desc: 'Celebra tu día especial' },
   { id: 'corporativo', label: 'Corporativo', desc: 'Eventos de empresa' },
   { id: 'bautizo', label: 'Bautizo', desc: 'Momentos especiales' },
-  { id: 'comunión', label: 'Comunion', desc: 'Celebraciones familiares' },
+  { id: 'comunión', label: 'Comunión', desc: 'Celebraciones familiares' },
   { id: 'otro', label: 'Otro', desc: 'Personaliza tu evento' },
 ];
 
@@ -155,13 +155,15 @@ export default function WizardStep1() {
         <label className="block text-sm font-semibold text-stone-700 mb-2">Comensales</label>
         <div className="flex gap-3">
           <div className="flex-1">
-            <input type="number" min="10" max="300" value={guestCount} onChange={(e) => setGuestCount(e.target.value)} placeholder="Adultos" className={inputClass} />
+            <label htmlFor="adults" className="block text-xs text-stone-500 mb-1">Adultos</label>
+            <input id="adults" type="number" min="10" max="300" value={guestCount} onChange={(e) => setGuestCount(e.target.value)} placeholder="Ej: 80" className={inputClass} />
           </div>
           <div className="flex-1">
-            <input type="number" min="0" max="50" value={kidsCount} onChange={(e) => setKidsCount(e.target.value)} placeholder="Niños" className={inputClass} />
+            <label htmlFor="kids" className="block text-xs text-stone-500 mb-1">Niños</label>
+            <input id="kids" type="number" min="0" max="50" value={kidsCount} onChange={(e) => setKidsCount(e.target.value)} placeholder="Ej: 10" className={inputClass} />
           </div>
         </div>
-        <p className="text-xs text-stone-400 mt-1.5">Minimo 10 comensales adultos</p>
+        <p className="text-xs text-stone-400 mt-1.5">Mínimo 10 comensales adultos</p>
       </div>
 
       {/* Next Button */}

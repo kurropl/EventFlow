@@ -60,9 +60,11 @@ export default function ClientsCRM() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<ClientRow | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [c, e] = await Promise.all([
         fetch('/api/clients').then((r) => r.json()),
@@ -70,7 +72,9 @@ export default function ClientsCRM() {
       ]);
       if (c.success) setClients(c.data);
       if (e.success) setEvents(e.data);
-    } catch { /* keep empty */ } finally { setLoading(false); }
+    } catch {
+      setError('No se pudieron cargar los datos');
+    } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -101,6 +105,13 @@ export default function ClientsCRM() {
           className="text-sm font-medium text-white px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all self-start"
           style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>+ Nuevo cliente</button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={load} className="text-red-600 underline text-xs ml-3">Reintentar</button>
+        </div>
+      )}
 
       <div className="relative max-w-sm">
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, email, teléfono…"

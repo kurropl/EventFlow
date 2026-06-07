@@ -77,6 +77,7 @@ export default function GuestsManager() {
   const [eventId, setEventId] = useState('');
   const [guestFormData, setGuestFormData] = useState<GuestFormData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
@@ -92,7 +93,9 @@ export default function GuestsManager() {
           const accepted = e.data.find((ev: EventLite) => ev.status === 'accepted');
           setEventId(accepted ? accepted.id : (e.data[0]?.id || ''));
         }
-      } catch { /* empty */ } finally { setLoading(false); }
+      } catch {
+        setError('No se pudieron cargar los eventos');
+      } finally { setLoading(false); }
     })();
   }, []);
 
@@ -105,7 +108,9 @@ export default function GuestsManager() {
       if (data.success) {
         setGuestFormData(data.data || { guests: [], client_name: '', email: '' });
       }
-    } catch { /* empty */ }
+    } catch {
+      setError('No se pudieron cargar los datos de invitados');
+    }
   }, [eventId]);
 
   useEffect(() => { loadGuestData(); }, [loadGuestData]);
@@ -146,7 +151,7 @@ export default function GuestsManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_id: eventId, guests: updatedGuests }),
       });
-    } catch { /* empty */ } finally { setSaving(false); }
+    } catch { setError('Error al guardar'); } finally { setSaving(false); }
   };
 
   const addGuest = async () => {
@@ -162,7 +167,7 @@ export default function GuestsManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_id: eventId, guests: updatedGuests }),
       });
-    } catch { /* empty */ } finally { setSaving(false); }
+    } catch { setError('Error al guardar'); } finally { setSaving(false); }
   };
 
   const removeGuest = async (idx: number) => {
@@ -177,7 +182,7 @@ export default function GuestsManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_id: eventId, guests: updatedGuests }),
       });
-    } catch { /* empty */ } finally { setSaving(false); }
+    } catch { setError('Error al guardar'); } finally { setSaving(false); }
   };
 
   const toggleDiet = (idx: number, dietId: string) => {
@@ -229,6 +234,13 @@ export default function GuestsManager() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadGuestData(); }} className="text-red-600 underline text-xs ml-3">Reintentar</button>
+        </div>
+      )}
 
       {ev && (
         <div className="flex items-center gap-3 text-xs text-[#9CA3AF]">
