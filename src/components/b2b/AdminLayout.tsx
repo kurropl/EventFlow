@@ -49,7 +49,7 @@ const GROUPS: MenuGroup[] = [
     label: 'Evento',
     items: [
       { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
-      { id: 'stock', label: 'Stock', sub: 'Inventario y suministros', href: '/admin/stock' },
+      { id: 'stock', label: 'Stock & Proveedores', sub: 'Inventario, ingredientes y suministros', href: '/admin/stock' },
       { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
     ],
@@ -65,7 +65,6 @@ const GROUPS: MenuGroup[] = [
     id: 'configuracion',
     label: 'Configuración',
     items: [
-      { id: 'proveedores', label: 'Proveedores', sub: 'Suministros y partners', href: '/admin/proveedores' },
       // Webhooks oculto — solo técnico, no visible en sidebar
       // { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones y reglas', href: '/admin/webhooks' },
     ],
