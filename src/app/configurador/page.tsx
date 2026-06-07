@@ -79,9 +79,9 @@ export default function ConfiguradorPage() {
             {currentStep > 1 && (
               <button
                 onClick={prevStep}
-                className="text-stone-500 hover:text-[#C9A84C] transition-colors p-1.5 rounded-lg hover:bg-[#C9A84C]/10"
+                className="text-stone-600 hover:text-[#C9A84C] transition-colors p-2 rounded-lg hover:bg-[#C9A84C]/10"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
@@ -112,10 +112,10 @@ export default function ConfiguradorPage() {
             <div className="relative mr-2">
               <button
                 onClick={() => setShowResetConfirm(!showResetConfirm)}
-                className="text-stone-400 hover:text-[#C9A84C] transition-colors p-1.5 rounded-lg hover:bg-[#C9A84C]/10"
+                className="text-stone-600 hover:text-[#C9A84C] transition-colors p-2 rounded-lg hover:bg-[#C9A84C]/10"
                 title="Restablecer todo"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M20.015 4.356v4.992" />
                 </svg>
               </button>

@@ -398,10 +398,10 @@ export default function WizardStep3() {
         <button
           onClick={handleNext}
           disabled={!canProceed}
-          className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+          className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 min-w-[140px] ${
             canProceed
               ? 'bg-[#1A1A1A] text-white hover:bg-stone-800 shadow-lg shadow-stone-900/20'
-              : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+              : 'bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed'
           }`}
         >
           {canProceed ? `Siguiente (${totalItems} platos)` : 'Selecciona al menos 1 plato principal'}

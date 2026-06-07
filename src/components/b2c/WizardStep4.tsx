@@ -78,7 +78,7 @@ export default function WizardStep4() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-stone-200">
-        <button onClick={prevStep} className="px-5 py-2.5 rounded-xl text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors">
+        <button onClick={prevStep} className="px-5 py-2.5 rounded-xl text-sm font-medium text-stone-600 hover:text-stone-700 border border-stone-200 bg-white hover:bg-stone-50 transition-colors">
           Anterior
         </button>
         <button

@@ -248,7 +248,7 @@ export default function WizardStep5() {
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-        <button onClick={prevStep} disabled={isSubmitting} className="px-6 py-3 rounded-xl text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors disabled:opacity-50">
+        <button onClick={prevStep} disabled={isSubmitting} className="px-6 py-3 rounded-xl text-sm font-medium text-stone-600 hover:text-stone-700 border border-stone-200 bg-white hover:bg-stone-50 transition-colors disabled:opacity-50">
           Anterior
         </button>
         <button

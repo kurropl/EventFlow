@@ -171,10 +171,10 @@ export default function WizardStep1() {
         <button
           onClick={handleNext}
           disabled={!canProceed || isLoading}
-          className={`px-8 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+          className={`px-8 py-3 rounded-xl text-sm font-medium transition-all duration-300 min-w-[140px] ${
             canProceed
               ? 'bg-[#1A1A1A] text-white hover:bg-stone-800 shadow-lg shadow-stone-900/20'
-              : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+              : 'bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed'
           }`}
         >
           {isLoading ? 'Procesando...' : 'Siguiente'}

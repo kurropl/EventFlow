@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { deductStockForEvent } from '@/app/api/stock/deduct/route';
 
 const BAR_PRICE_PER_HOUR = 15; // € per person per hour
 
@@ -319,6 +320,20 @@ export async function PUT(
         { success: false, error: 'Event not found' },
         { status: 404 }
       );
+    }
+
+    // ── Auto-deduct stock when event moves to 'completed' or 'paid' ──
+    if (status === 'completed' || status === 'paid') {
+      try {
+        const deductionResult = await deductStockForEvent(id);
+        console.log(
+          `[events PUT] Stock deducted for event ${id}: ${deductionResult.deducted} items`,
+          deductionResult.details
+        );
+      } catch (deductError) {
+        // Don't fail the event update if stock deduction fails — log and continue
+        console.error('[events PUT] Stock deduction failed (non-fatal):', deductError);
+      }
     }
 
     return NextResponse.json({ success: true, data: result.event });
