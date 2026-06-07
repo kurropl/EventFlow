@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Icon from '../shared/Icon';
 
 /* ------------------------------------------------------------------ */
@@ -95,6 +95,15 @@ export default function StockManager() {
   // Proveedores state
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(true);
+  const providersRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to providers if URL has #proveedores
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#proveedores') {
+      setActiveTab('stock');
+      setTimeout(() => providersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    }
+  }, []);
 
   /* ---------------------------------------------------------------- */
   /*  Data loading                                                     */
@@ -476,7 +485,7 @@ export default function StockManager() {
           </div>
 
           {/* ── PROVEEDORES ── */}
-          <div>
+          <div ref={providersRef}>
             <div className="flex items-center gap-2 mb-3">
               <Icon name="truck" className="w-4 h-4 text-[#C9A84C]" />
               <h3 className="text-sm font-semibold text-[#1A1A1A]">Proveedores</h3>
