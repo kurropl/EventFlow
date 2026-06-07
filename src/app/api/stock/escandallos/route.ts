@@ -1,10 +1,11 @@
 /**
  * EventFlow — Escandallos (Shopping Lists by Event) API Route
  * GET /api/stock/escandallos — List event_shopping_items grouped by event
+ * PUT /api/stock/escandallos — Update quantities/notes on a shopping item
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany } from '@/lib/db';
+import { queryMany, querySingle } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { verifyToken } from '@/lib/auth';
 
@@ -104,6 +105,89 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data: grouped });
+  } catch (error) {
+    const message = sanitizeError(error);
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 }
+    );
+  }
+}
+
+// ── PUT: Update escandallo quantities/notes ────────────────────────
+
+export async function PUT(request: NextRequest) {
+  try {
+    const auth = requireAuth(request);
+    if (!auth.authenticated) {
+      return NextResponse.json(
+        { success: false, error: auth.error },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { id, total_grams, total_units, total_ml, notes } = body as {
+      id?: string;
+      total_grams?: number;
+      total_units?: number;
+      total_ml?: number;
+      notes?: string;
+    };
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'El campo "id" es obligatorio' },
+        { status: 400 }
+      );
+    }
+
+    // Build dynamic SET clause — only update provided fields
+    const sets: string[] = [];
+    const values: (string | number | null)[] = [];
+    let idx = 1;
+
+    if (total_grams !== undefined) {
+      sets.push(`total_grams = $${idx++}`);
+      values.push(total_grams);
+    }
+    if (total_units !== undefined) {
+      sets.push(`total_units = $${idx++}`);
+      values.push(total_units);
+    }
+    if (total_ml !== undefined) {
+      sets.push(`total_ml = $${idx++}`);
+      values.push(total_ml);
+    }
+    if (notes !== undefined) {
+      sets.push(`notes = $${idx++}`);
+      values.push(notes);
+    }
+
+    if (sets.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No hay campos para actualizar' },
+        { status: 400 }
+      );
+    }
+
+    values.push(id);
+    const updated = await querySingle<any>(
+      `UPDATE event_shopping_items
+         SET ${sets.join(', ')}
+         WHERE id = $${idx}
+         RETURNING *`,
+      values
+    );
+
+    if (!updated) {
+      return NextResponse.json(
+        { success: false, error: 'Item no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     const message = sanitizeError(error);
     return NextResponse.json(

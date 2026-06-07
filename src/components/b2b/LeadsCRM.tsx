@@ -57,6 +57,8 @@ export default function LeadsCRM() {
   const [convertForm, setConvertForm] = useState({ fiscal_name: '', fiscal_nif: '', fiscal_address: '' });
   const [quoteEditId, setQuoteEditId] = useState<string | null>(null);
   const [quoteEdit, setQuoteEdit] = useState({ base_pvp: 0, bar_price: 0, extras_pvp: 0, iva_pct: 10 });
+  const [stockWarnings, setStockWarnings] = useState<Array<{ ingredient_name: string; needed: number; available: number; unit: string; deficit: number }>>([]);
+  const [showStockWarnings, setShowStockWarnings] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -173,10 +175,16 @@ export default function LeadsCRM() {
       // Mark the quote as accepted
       const acceptedQuote = selectedLead.quotes.find(q => q.status === 'sent' || q.status === 'draft');
       if (acceptedQuote) {
-        await fetch(`/api/quotes/${acceptedQuote.id}`, {
+        const quoteRes = await fetch(`/api/quotes/${acceptedQuote.id}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'accepted' }),
         });
+        const quoteData = await quoteRes.json();
+        // Check for stock warnings
+        if (quoteData.stockWarnings && quoteData.stockWarnings.length > 0) {
+          setStockWarnings(quoteData.stockWarnings);
+          setShowStockWarnings(true);
+        }
       }
 
       // Create event order (this moves the event to in_progress)
@@ -470,6 +478,57 @@ export default function LeadsCRM() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Stock Warnings Modal ── */}
+      {showStockWarnings && stockWarnings.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowStockWarnings(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#ECECF1] max-w-lg w-full mx-4 p-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-[#ECECF1] flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#FFF8EC] flex items-center justify-center">
+                <Icon name="alertTriangle" className="w-5 h-5 text-[#D97706]" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-[#1A1A1A]">Stock insuficiente</h3>
+                <p className="text-xs text-[#6B7280]">Hay ingredientes que no cubren la demanda del evento</p>
+              </div>
+            </div>
+            <div className="px-6 py-4 max-h-[320px] overflow-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#ECECF1]">
+                    <th className="text-left py-2 text-[#9CA3AF] font-medium text-[11px] uppercase">Ingrediente</th>
+                    <th className="text-right py-2 text-[#9CA3AF] font-medium text-[11px] uppercase">Necesario</th>
+                    <th className="text-right py-2 text-[#9CA3AF] font-medium text-[11px] uppercase">Disponible</th>
+                    <th className="text-right py-2 text-[#9CA3AF] font-medium text-[11px] uppercase">Déficit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockWarnings.map((w, i) => (
+                    <tr key={i} className="border-b border-[#F2F2F5] last:border-b-0">
+                      <td className="py-2 text-[#1A1A1A] text-[13px] font-medium">{w.ingredient_name}</td>
+                      <td className="py-2 text-right text-[#1A1A1A] text-[13px] tabular-nums">{w.needed} {w.unit}</td>
+                      <td className="py-2 text-right text-[#D97706] text-[13px] tabular-nums font-medium">{w.available} {w.unit}</td>
+                      <td className="py-2 text-right">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#FEF3F3] text-[#DC2626]">
+                          -{w.deficit} {w.unit}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-3 bg-[#FAFAFC] border-t border-[#ECECF1] flex justify-end">
+              <button
+                onClick={() => setShowStockWarnings(false)}
+                className="px-5 py-2 rounded-xl text-sm font-medium bg-[#1A1A1A] text-white hover:bg-[#2A2A3A] transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

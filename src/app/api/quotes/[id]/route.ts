@@ -185,10 +185,47 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           );
         }
 
-        return { quote: updatedQuote, eventOrder, payments, clientToken };
+        // ── Stock check: warn if insufficient stock ──
+        const stockWarnings: Array<{ ingredient_name: string; needed: number; available: number; unit: string; deficit: number }> = [];
+        try {
+          const eventItems = (await client.query(
+            `SELECT ingredient_name, SUM(total_grams) as grams, SUM(total_units) as units, SUM(total_ml) as ml
+             FROM event_shopping_items WHERE event_id = $1 GROUP BY ingredient_name`,
+            [quoteRow.event_id]
+          )).rows;
+
+          for (const ei of eventItems) {
+            const ing = (await client.query(
+              `SELECT id, name, unit, quantity FROM ingredients WHERE name ILIKE $1 AND active = true`,
+              [ei.ingredient_name]
+            )).rows[0];
+            if (!ing) continue;
+
+            const unit = (ing.unit || '').toLowerCase();
+            const available = Number(ing.quantity) || 0;
+            let needed = 0;
+            if (unit === 'g' || unit === 'gr') needed = Number(ei.grams) || 0;
+            else if (unit === 'kg') needed = (Number(ei.grams) || 0) / 1000;
+            else if (unit === 'ml') needed = Number(ei.ml) || 0;
+            else if (unit === 'l') needed = (Number(ei.ml) || 0) / 1000;
+            else needed = Number(ei.units) || 0;
+
+            if (needed > available) {
+              stockWarnings.push({
+                ingredient_name: ei.ingredient_name,
+                needed: Math.round(needed * 100) / 100,
+                available: Math.round(available * 100) / 100,
+                unit: ing.unit,
+                deficit: Math.round((needed - available) * 100) / 100,
+              });
+            }
+          }
+        } catch { /* stock check is best-effort, don't fail the accept */ }
+
+        return { quote: updatedQuote, eventOrder, payments, clientToken, stockWarnings };
       });
 
-      return NextResponse.json({ data: result.quote, eventOrder: result.eventOrder, payments: result.payments });
+      return NextResponse.json({ data: result.quote, eventOrder: result.eventOrder, payments: result.payments, stockWarnings: result.stockWarnings });
     }
 
     // Non-accepting update: just update the quote

@@ -91,6 +91,13 @@ export default function StockManager() {
   const [selectedEvent, setSelectedEvent] = useState('');
   const [escandallo, setEscandallo] = useState<Escandallo | null>(null);
   const [loadingEscandallo, setLoadingEscandallo] = useState(false);
+  const [editingEscandalloId, setEditingEscandalloId] = useState<string | null>(null);
+  const [escandalloEditData, setEscandalloEditData] = useState<{ total_grams: string; total_units: string; total_ml: string }>({ total_grams: '', total_units: '', total_ml: '' });
+  const [savingEscandallo, setSavingEscandallo] = useState(false);
+
+  // Stock check state
+  const [stockCheckLoading, setStockCheckLoading] = useState(false);
+  const [stockShortages, setStockShortages] = useState<Array<{ ingredient_name: string; needed: number; available: number; unit: string; metric: string }>>([]);
 
   // Proveedores state
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -202,10 +209,13 @@ export default function StockManager() {
   }, [escandallo]);
 
   const escandalloTotal = useMemo(() => {
-    if (!escandallo) return { count: 0, totalQty: 0 };
+    if (!escandallo) return { count: 0, totalQty: 0, totalGrams: 0, totalUnits: 0, totalMl: 0 };
     return {
       count: escandallo.items.length,
       totalQty: escandallo.items.reduce((s, i) => s + (i.total_grams || 0) + (i.total_units || 0) + (i.total_ml || 0), 0),
+      totalGrams: escandallo.items.reduce((s, i) => s + (i.total_grams || 0), 0),
+      totalUnits: escandallo.items.reduce((s, i) => s + (i.total_units || 0), 0),
+      totalMl: escandallo.items.reduce((s, i) => s + (i.total_ml || 0), 0),
     };
   }, [escandallo]);
 
@@ -256,6 +266,55 @@ export default function StockManager() {
       }
     } catch { /* ignore */ }
     finally { setSaving(false); }
+  };
+
+  /* ---------------------------------------------------------------- */
+  /*  Escandallo actions                                               */
+  /* ---------------------------------------------------------------- */
+
+  const startEscandalloEdit = (item: ShoppingItem) => {
+    setEditingEscandalloId(item.id);
+    setEscandalloEditData({
+      total_grams: String(item.total_grams ?? 0),
+      total_units: String(item.total_units ?? 0),
+      total_ml: String(item.total_ml ?? 0),
+    });
+  };
+
+  const saveEscandalloEdit = async () => {
+    if (!editingEscandalloId || savingEscandallo) return;
+    setSavingEscandallo(true);
+    try {
+      const res = await fetch('/api/stock/escandallos', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingEscandalloId,
+          total_grams: parseFloat(escandalloEditData.total_grams) || 0,
+          total_units: parseFloat(escandalloEditData.total_units) || 0,
+          total_ml: parseFloat(escandalloEditData.total_ml) || 0,
+        }),
+      });
+      if (res.ok) {
+        setEditingEscandalloId(null);
+        if (selectedEvent) await loadEscandallo(selectedEvent);
+      }
+    } catch { /* ignore */ }
+    finally { setSavingEscandallo(false); }
+  };
+
+  const checkStock = async () => {
+    if (!selectedEvent) return;
+    setStockCheckLoading(true);
+    setStockShortages([]);
+    try {
+      const res = await fetch(`/api/stock/check?event_id=${selectedEvent}`);
+      const data = await res.json();
+      if (res.ok && data.success && data.data) {
+        setStockShortages(data.data.shortages || []);
+      }
+    } catch { /* ignore */ }
+    finally { setStockCheckLoading(false); }
   };
 
   /* ---------------------------------------------------------------- */
@@ -575,7 +634,7 @@ export default function StockManager() {
           <div className="flex flex-col sm:flex-row gap-3">
             <select
               value={selectedEvent}
-              onChange={(e) => setSelectedEvent(e.target.value)}
+              onChange={(e) => { setSelectedEvent(e.target.value); setStockShortages([]); setEditingEscandalloId(null); }}
               className={`${selectCls} sm:w-80`}
             >
               <option value="">Seleccionar evento...</option>
@@ -645,28 +704,152 @@ export default function StockManager() {
                           <th className="text-right px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Gramos</th>
                           <th className="text-right px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Unidades</th>
                           <th className="text-right px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Ml</th>
+                          <th className="text-center px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {group.items.map((item) => (
-                          <tr key={item.id} className="border-b border-[#F2F2F5] last:border-b-0 hover:bg-[#FAFCFE] transition-colors">
-                            <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px]">{item.ingredient_name}</td>
-                            <td className="px-4 py-2.5 text-right text-[#1A1A1A] text-[13px] font-medium tabular-nums">
-                              {Number(item.total_grams || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 })}
-                            </td>
-                            <td className="px-4 py-2.5 text-right text-[#1A1A1A] text-[13px] font-medium tabular-nums">
-                              {Number(item.total_units || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
-                            </td>
-                            <td className="px-4 py-2.5 text-right text-[#6B7280] text-[13px] tabular-nums">
-                              {Number(item.total_ml || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
-                            </td>
-                          </tr>
-                        ))}
+                        {group.items.map((item) => {
+                          const isEditing = editingEscandalloId === item.id;
+                          return (
+                            <tr key={item.id} className="border-b border-[#F2F2F5] last:border-b-0 hover:bg-[#FAFCFE] transition-colors">
+                              <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px]">{item.ingredient_name}</td>
+                              <td className="px-4 py-2.5 text-right tabular-nums">
+                                {isEditing ? (
+                                  <input type="number" step="0.1" value={escandalloEditData.total_grams}
+                                    onChange={(e) => setEscandalloEditData((d) => ({ ...d, total_grams: e.target.value }))}
+                                    className="w-24 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
+                                ) : (
+                                  <span className="text-[#1A1A1A] text-[13px] font-medium">
+                                    {Number(item.total_grams || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 })}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums">
+                                {isEditing ? (
+                                  <input type="number" step="0.1" value={escandalloEditData.total_units}
+                                    onChange={(e) => setEscandalloEditData((d) => ({ ...d, total_units: e.target.value }))}
+                                    className="w-24 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
+                                ) : (
+                                  <span className="text-[#1A1A1A] text-[13px] font-medium">
+                                    {Number(item.total_units || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums">
+                                {isEditing ? (
+                                  <input type="number" step="0.1" value={escandalloEditData.total_ml}
+                                    onChange={(e) => setEscandalloEditData((d) => ({ ...d, total_ml: e.target.value }))}
+                                    className="w-24 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
+                                ) : (
+                                  <span className="text-[#6B7280] text-[13px]">
+                                    {Number(item.total_ml || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  {isEditing ? (
+                                    <>
+                                      <button onClick={saveEscandalloEdit} disabled={savingEscandallo}
+                                        className="p-1.5 rounded-lg text-white disabled:opacity-60"
+                                        style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }} title="Guardar">
+                                        <Icon name="check" className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button onClick={() => setEditingEscandalloId(null)}
+                                        className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors" title="Cancelar">
+                                        <Icon name="close" className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button onClick={() => startEscandalloEdit(item)}
+                                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors" title="Editar">
+                                      <Icon name="edit" className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </div>
               ))}
+
+              {/* Escandallo summary */}
+              <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                <div className="px-4 py-3 bg-[#FAFAFC] border-b border-[#ECECF1] flex items-center gap-2">
+                  <Icon name="scale" className="w-4 h-4 text-[#C9A84C]" />
+                  <span className="text-[13px] font-semibold text-[#1A1A1A]">Resumen Escandallo</span>
+                </div>
+                <div className="p-4 flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2 bg-[#FBF6E9] rounded-xl px-4 py-3 border border-[#ECECF1]">
+                    <span className="text-[12px] text-[#6B7280]">Total Gramos:</span>
+                    <span className="text-[13px] text-[#1A1A1A] font-semibold tabular-nums">
+                      {escandalloTotal.totalGrams.toLocaleString('es-ES', { maximumFractionDigits: 1 })} g
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#FBF6E9] rounded-xl px-4 py-3 border border-[#ECECF1]">
+                    <span className="text-[12px] text-[#6B7280]">Total Unidades:</span>
+                    <span className="text-[13px] text-[#1A1A1A] font-semibold tabular-nums">
+                      {escandalloTotal.totalUnits.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#FBF6E9] rounded-xl px-4 py-3 border border-[#ECECF1]">
+                    <span className="text-[12px] text-[#6B7280]">Total Ml:</span>
+                    <span className="text-[13px] text-[#1A1A1A] font-semibold tabular-nums">
+                      {escandalloTotal.totalMl.toLocaleString('es-ES', { maximumFractionDigits: 0 })} ml
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock check section */}
+              <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                <div className="px-4 py-3 bg-[#FAFAFC] border-b border-[#ECECF1] flex items-center gap-2">
+                  <Icon name="check" className="w-4 h-4 text-[#C9A84C]" />
+                  <span className="text-[13px] font-semibold text-[#1A1A1A]">Comprobar Stock</span>
+                </div>
+                <div className="p-4">
+                  <button
+                    onClick={checkStock}
+                    disabled={stockCheckLoading || !selectedEvent}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+                  >
+                    <Icon name={stockCheckLoading ? 'spinner' : 'search'} className={`w-4 h-4 ${stockCheckLoading ? 'animate-spin' : ''}`} />
+                    Comprobar stock
+                  </button>
+
+                  {stockShortages.length > 0 && (
+                    <div className="mt-4 p-4 rounded-xl border" style={{ background: stockShortages.some((s) => s.available === 0) ? '#FEF3F3' : '#FFF8EC', borderColor: stockShortages.some((s) => s.available === 0) ? '#FECACA' : '#FDE68A' }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Icon name="alertTriangle" className={`w-4 h-4 ${stockShortages.some((s: any) => s.available === 0) ? "text-[#DC2626]" : "text-[#D97706]"}`} />
+                        <span className="text-sm font-semibold" >
+                          {stockShortages.length} ingrediente{stockShortages.length > 1 ? 's' : ''} con falta de stock
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {stockShortages.map((shortage, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-[13px] py-1.5 border-b border-black/5 last:border-b-0">
+                            <span className="text-[#1A1A1A] font-medium">{shortage.ingredient_name}</span>
+                            <span className={`font-semibold ${shortage.available === 0 ? 'text-[#DC2626]' : 'text-[#D97706]'}`}>
+                              Necesita: {shortage.needed} · Disponible: {shortage.available} {shortage.unit}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!stockCheckLoading && stockShortages.length === 0 && selectedEvent && (
+                    <div className="mt-4 text-center text-[13px] text-[#9CA3AF] py-3">
+                      Pulsa "Comprobar stock" para verificar disponibilidad
+                    </div>
+                  )}
+                </div>
+              </div>
             </>
           )}
         </div>
