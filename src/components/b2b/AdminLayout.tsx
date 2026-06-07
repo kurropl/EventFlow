@@ -49,6 +49,7 @@ const GROUPS: MenuGroup[] = [
     label: 'Evento',
     items: [
       { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
+      { id: 'stock', label: 'Stock', sub: 'Inventario y suministros', href: '/admin/stock' },
       { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
     ],

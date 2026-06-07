@@ -27,6 +27,7 @@ const MAP: Record<string, LucideIcon> = {
   mapa: Lucide.Table,
   webhooks: Lucide.GitBranch,
   proveedores: Lucide.Truck,
+  stock: Lucide.Package,
   portal: Lucide.Globe,
   logout: Lucide.LogOut,
   menu: Lucide.Menu,
@@ -84,6 +85,16 @@ const MAP: Record<string, LucideIcon> = {
   candle: Lucide.CandlestickChart,
   apple: Lucide.Apple,
   minimize2: Lucide.Minimize2,
+
+  // Stock / Inventory
+  package: Lucide.Package,
+  packageCheck: Lucide.PackageCheck,
+  layers: Lucide.Layers,
+  alertTriangle: Lucide.AlertTriangle,
+  circleX: Lucide.CircleX,
+  truck: Lucide.Truck,
+  warehouse: Lucide.Warehouse,
+  scale: Lucide.Scale,
 };
 
 export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProps) {
