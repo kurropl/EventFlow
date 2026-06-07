@@ -18,6 +18,13 @@ export const metadata: Metadata = {
   title: 'J. Benitez — Salón de Celebraciones Premium en Sevilla',
   description: 'Celebra tu evento especial en J. Benitez. Bodas, comuniones, bautizos y eventos corporativos con servicio de catering premium.',
   metadataBase: new URL('https://eventcater.duckdns.org'),
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
   openGraph: {
     title: 'J. Benitez — Salón de Celebraciones Premium en Sevilla',
     description: 'Celebra tu evento especial en J. Benitez. Bodas, comuniones, bautizos y eventos corporativos con servicio de catering premium.',
