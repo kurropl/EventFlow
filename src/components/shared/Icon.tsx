@@ -82,6 +82,14 @@ const MAP: Record<string, LucideIcon> = {
   baby: Lucide.Baby,
   heart: Lucide.Heart,
 
+  // Staffing / Uniforms
+  shirt: Lucide.Shirt,
+  messageSquare: Lucide.MessageSquare,
+  listChecks: Lucide.ListChecks,
+  users: Lucide.Users,
+  clipboard: Lucide.Clipboard,
+  whatsapp: Lucide.MessageCircle,
+
   // Decorative selection
   flower: Lucide.Flower2,
   candle: Lucide.CandlestickChart,
