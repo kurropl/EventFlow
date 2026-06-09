@@ -339,14 +339,17 @@ function StaffingLineCard({
           {uniform && (
             <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
               <span
-                className="w-3 h-3 rounded-full border border-[#E5E5EC]"
-                style={{ backgroundColor: uniform.color || '#9CA3AF' }}
+                className="w-4 h-4 rounded-full border border-[#E5E5EC] flex-shrink-0"
+                style={{ backgroundColor: uniform.color === 'Negro' ? '#1A1A1A' : uniform.color === 'Blanco' ? '#FFFFFF' : uniform.color === 'Rojo' ? '#DC2626' : uniform.color === 'Marrón' ? '#92400E' : uniform.color === 'Gris' ? '#6B7280' : '#9CA3AF' }}
               />
               {uniform.name}
             </span>
           )}
           {!uniform && line.uniform && (
-            <span className="text-xs text-[#6B7280]">{line.uniform}</span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
+              <span className="w-4 h-4 rounded-full border border-[#E5E5EC] bg-[#9CA3AF] flex-shrink-0" />
+              {line.uniform}
+            </span>
           )}
           {/* Time */}
           {(line.start_time || line.end_time) && (
