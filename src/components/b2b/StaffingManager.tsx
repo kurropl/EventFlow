@@ -1253,18 +1253,38 @@ export default function StaffingManager() {
                   <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wider mb-1">
                     Uniforme
                   </label>
-                  <select
-                    value={workerForm.uniform}
-                    onChange={(e) => setWorkerForm((f) => ({ ...f, uniform: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:outline-none"
-                  >
-                    <option value="">Sin uniforme</option>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWorkerForm((f) => ({ ...f, uniform: '' }))}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${
+                        !workerForm.uniform
+                          ? 'border-[#C9A84C] bg-[#FFF8EC] text-[#8B6914] ring-1 ring-[#C9A84C]'
+                          : 'border-[#E5E5EC] bg-white text-[#6B7280] hover:border-[#C9A84C]/50'
+                      }`}
+                    >
+                      <span className="w-5 h-5 rounded-full border-2 border-dashed border-[#D1D5DB] flex items-center justify-center text-[10px] text-[#9CA3AF]">-</span>
+                      Ninguno
+                    </button>
                     {uniforms.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}{u.color ? ` (${u.color})` : ''}
-                      </option>
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setWorkerForm((f) => ({ ...f, uniform: u.id }))}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${
+                          workerForm.uniform === u.id
+                            ? 'border-[#C9A84C] bg-[#FFF8EC] text-[#8B6914] ring-1 ring-[#C9A84C]'
+                            : 'border-[#E5E5EC] bg-white text-[#6B7280] hover:border-[#C9A84C]/50'
+                        }`}
+                      >
+                        <span
+                          className="w-5 h-5 rounded-full border border-[#E5E5EC] flex-shrink-0"
+                          style={{ backgroundColor: u.color === 'Negro' ? '#1A1A1A' : u.color === 'Blanco' ? '#FFFFFF' : u.color === 'Rojo' ? '#DC2626' : u.color === 'Marrón' ? '#92400E' : u.color === 'Gris' ? '#6B7280' : '#9CA3AF' }}
+                        />
+                        <span className="truncate">{u.name}</span>
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
 
@@ -1723,18 +1743,38 @@ export default function StaffingManager() {
                   <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wider mb-1">
                     Uniforme
                   </label>
-                  <select
-                    value={lineForm.uniform}
-                    onChange={(e) => setLineForm((f) => ({ ...f, uniform: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:outline-none"
-                  >
-                    <option value="">Sin uniforme</option>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLineForm((f) => ({ ...f, uniform: '' }))}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${
+                        !lineForm.uniform
+                          ? 'border-[#C9A84C] bg-[#FFF8EC] text-[#8B6914] ring-1 ring-[#C9A84C]'
+                          : 'border-[#E5E5EC] bg-white text-[#6B7280] hover:border-[#C9A84C]/50'
+                      }`}
+                    >
+                      <span className="w-5 h-5 rounded-full border-2 border-dashed border-[#D1D5DB] flex items-center justify-center text-[10px] text-[#9CA3AF]">-</span>
+                      Ninguno
+                    </button>
                     {uniforms.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}{u.color ? ` (${u.color})` : ''}
-                      </option>
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setLineForm((f) => ({ ...f, uniform: u.id }))}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${
+                          lineForm.uniform === u.id
+                            ? 'border-[#C9A84C] bg-[#FFF8EC] text-[#8B6914] ring-1 ring-[#C9A84C]'
+                            : 'border-[#E5E5EC] bg-white text-[#6B7280] hover:border-[#C9A84C]/50'
+                        }`}
+                      >
+                        <span
+                          className="w-5 h-5 rounded-full border border-[#E5E5EC] flex-shrink-0"
+                          style={{ backgroundColor: u.color === 'Negro' ? '#1A1A1A' : u.color === 'Blanco' ? '#FFFFFF' : u.color === 'Rojo' ? '#DC2626' : u.color === 'Marrón' ? '#92400E' : u.color === 'Gris' ? '#6B7280' : '#9CA3AF' }}
+                        />
+                        <span className="truncate">{u.name}</span>
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wider mb-1">
