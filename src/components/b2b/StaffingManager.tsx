@@ -545,150 +545,137 @@ function StaffingLineCard({
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 
-  /* ── Uniform Icons (inline SVGs for clothing items) ── */
-  const UniformIcons = ({ uniformName }: { uniformName: string }) => {
+  /* ── Uniform Icons — Elegant fashion-illustration SVGs ── */
+  const UniformIcons = ({ uniformName, size = 16 }: { uniformName: string; size?: number }) => {
     const name = uniformName.toLowerCase();
-    
-    // Traje negro completo: black pants + black jacket
-    if (name.includes('traje negro completo')) {
-      return (
-        <span className="inline-flex items-center gap-0.5">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            {/* Pants */}
-            <path d="M4 2h8v5l-1 7H5L4 7V2z" fill="#1A1A1A" />
-            <path d="M7 2v10" stroke="#333" strokeWidth="0.5" />
-          </svg>
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+    const s = size;
+    const color = '#2C2C2C';
+    const light = '#B0A89A';
+
+    const icon = (() => {
+      // Traje negro completo — elegante traje con pantalón
+      if (name.includes('traje negro completo')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
             {/* Jacket */}
-            <path d="M3 3h10v4l-1 8H4L3 7V3z" fill="#1A1A1A" />
-            <path d="M7 3v4M5 5h4" stroke="#333" strokeWidth="0.5" />
+            <path d="M8 2h8l1 6-5 2-5-2L8 2z" fill={color} stroke="none" />
+            <path d="M8 2l-1 6 5 2 5-2-1-6" />
+            <path d="M12 10v4" />
+            <path d="M10 10v2M14 10v2" />
+            {/* Pants */}
+            <path d="M9 14l-1 8M15 14l1 8" />
+            <path d="M9 14h6" />
           </svg>
-        </span>
-      );
-    }
-    
-    // Chaleco negro + camisa blanca: black vest + white shirt
-    if (name.includes('chaleco negro') && name.includes('camisa')) {
+        );
+      }
+      // Chaleco negro + camisa blanca — chaleco sobre camisa
+      if (name.includes('chaleco negro') && name.includes('camisa')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            {/* Shirt (white) */}
+            <path d="M8 3h8v10H8V3z" fill="#FFFFFF" stroke={light} />
+            <path d="M10 3l-2 3h4l-2-3" stroke={light} />
+            <path d="M12 6v3" stroke={light} />
+            {/* Vest (black) */}
+            <path d="M9 6h6v7H9V6z" fill={color} stroke={color} />
+            <path d="M12 6v7" stroke="#444" strokeWidth="0.8" />
+          </svg>
+        );
+      }
+      // Chaleco de chef — chaqueta de cocina
+      if (name.includes('chaleco de chef')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 4h8v12H8V4z" fill="#FAFAFA" stroke={light} />
+            <path d="M10 4l-1 3h4l-1-3" stroke={light} />
+            <path d="M12 7v2" stroke={light} />
+            <circle cx="12" cy="11" r="0.8" fill={light} />
+            <circle cx="12" cy="14" r="0.8" fill={light} />
+          </svg>
+        );
+      }
+      // Gorra de chef — gorra alta
+      if (name.includes('gorra de chef')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 8h8v10H8V8z" fill="#FAFAFA" stroke={light} />
+            <path d="M7 8c0-3 2-5 5-5s5 2 5 5" fill="#FAFAFA" stroke={light} />
+            <path d="M7 8h10" />
+          </svg>
+        );
+      }
+      // Polo negro — camiseta con cuello
+      if (name.includes('polo negro')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3h8v11H8V3z" fill={color} stroke="none" />
+            <path d="M8 3l-2 4h3M16 3l2 4h-3" stroke={color} />
+            <path d="M10 3l-1 3h4l-1-3" stroke="#444" />
+            <path d="M12 6v2" stroke="#444" strokeWidth="0.8" />
+          </svg>
+        );
+      }
+      // Vestido rojo — vestido femenino elegante
+      if (name.includes('vestido rojo')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 3h4l1 5-3 5-3-5L10 3z" fill="#C0392B" stroke="none" />
+            <path d="M10 3c0 0 1.5 1.5 2 1.5S14 3 14 3" stroke="#A93226" strokeWidth="1" />
+            <path d="M8 14l-1 7M16 14l1 7" stroke="#C0392B" />
+            <path d="M8 14h8" stroke="#C0392B" />
+          </svg>
+        );
+      }
+      // Vestido negro elegante
+      if (name.includes('vestido negro')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 3h4l1 5-3 5-3-5L10 3z" fill={color} stroke="none" />
+            <path d="M10 3c0 0 1.5 1.5 2 1.5S14 3 14 3" stroke="#444" strokeWidth="1" />
+            <path d="M8 14l-1 7M16 14l1 7" stroke={color} />
+            <path d="M8 14h8" stroke={color} />
+          </svg>
+        );
+      }
+      // Delantal de cuero — delantal artesanal
+      if (name.includes('delantal de cuero')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 4h6v14H9V4z" fill="#8B6914" stroke="#7A5C10" strokeWidth="0.8" />
+            <path d="M10 4v-2M14 4v-2" stroke="#7A5C10" strokeWidth="1.5" />
+            <rect x="10" y="7" width="4" height="3" fill="#6B5210" rx="1" stroke="none" />
+            <path d="M10 12h4" stroke="#7A5C10" strokeWidth="0.6" />
+          </svg>
+        );
+      }
+      // Manta blanca + delantal
+      if (name.includes('manta blanca') || name.includes('delantal blanco')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 4h6v14H9V4z" fill="#FAFAFA" stroke={light} />
+            <path d="M10 4v-2M14 4v-2" stroke={light} strokeWidth="1.5" />
+            <rect x="10" y="7" width="4" height="3" fill="#F0EDE6" rx="1" stroke="none" />
+            <path d="M10 12h4" stroke={light} strokeWidth="0.6" />
+          </svg>
+        );
+      }
+      // Uniforme de limpieza
+      if (name.includes('limpieza')) {
+        return (
+          <svg width={s} height={s} viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 4h8v12H8V4z" fill="#6B7280" stroke="none" />
+            <path d="M10 4l-1 3h4l-1-3" stroke="#555" />
+            <path d="M12 7v2" stroke="#555" strokeWidth="0.8" />
+          </svg>
+        );
+      }
+      // Default — elegante círculo con borde dorado
       return (
-        <span className="inline-flex items-center gap-0.5">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            {/* White shirt */}
-            <path d="M4 3h8v9H4V3z" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
-            <path d="M7 3v2M6 3l1 1.5L8 3" stroke="#D1D5DB" strokeWidth="0.5" />
-          </svg>
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            {/* Black vest */}
-            <path d="M5 3h6v9H5V3z" fill="#1A1A1A" />
-            <path d="M8 3v9" stroke="#333" strokeWidth="0.3" />
-          </svg>
-        </span>
+        <span className="w-4 h-4 rounded-full border border-[#C9A84C]/40 bg-[#F8F3E6] flex-shrink-0" />
       );
-    }
-    
-    // Chaleco de chef: white chef coat
-    if (name.includes('chaleco de chef')) {
-      return (
-        <span className="inline-flex items-center gap-0.5">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            <path d="M4 4h8v8H4V4z" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
-            <circle cx="8" cy="3" r="2" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
-            <path d="M7 4v2M9 4v2" stroke="#D1D5DB" strokeWidth="0.5" />
-          </svg>
-        </span>
-      );
-    }
-    
-    // Gorra de chef: chef hat
-    if (name.includes('gorra de chef')) {
-      return (
-        <span className="inline-flex items-center">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            <ellipse cx="8" cy="5" rx="4" ry="3" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
-            <rect x="5" y="7" width="6" height="6" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
-          </svg>
-        </span>
-      );
-    }
-    
-    // Polo negro: black polo shirt
-    if (name.includes('polo negro')) {
-      return (
-        <span className="inline-flex items-center">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            <path d="M4 3h8v9H4V3z" fill="#1A1A1A" />
-            <path d="M7 3l1 2 1-2" stroke="#333" strokeWidth="0.5" />
-            <path d="M4 5l-1 2h2M12 5l1 2h-2" fill="#1A1A1A" />
-          </svg>
-        </span>
-      );
-    }
-    
-    // Vestido rojo: red dress
-    if (name.includes('vestido rojo')) {
-      return (
-        <span className="inline-flex items-center">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            <path d="M6 2h4l1 5-3 7-3-7L6 2z" fill="#DC2626" />
-            <path d="M6 2c0 0 1 1 2 1s2-1 2-1" stroke="#B91C1C" strokeWidth="0.5" />
-          </svg>
-        </span>
-      );
-    }
-    
-    // Vestido negro elegante: black elegant dress
-    if (name.includes('vestido negro')) {
-      return (
-        <span className="inline-flex items-center">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            <path d="M6 2h4l1 5-3 7-3-7L6 2z" fill="#1A1A1A" />
-            <path d="M6 2c0 0 1 1 2 1s2-1 2-1" stroke="#333" strokeWidth="0.5" />
-          </svg>
-        </span>
-      );
-    }
-    
-    // Delantal de cuero: brown apron
-    if (name.includes('delantal de cuero')) {
-      return (
-        <span className="inline-flex items-center">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            <path d="M5 3h6v10H5V3z" fill="#92400E" />
-            <path d="M6 3v-1M10 3v-1" stroke="#92400E" strokeWidth="1" />
-            <rect x="6" y="5" width="4" height="3" fill="#78350F" rx="0.5" />
-          </svg>
-        </span>
-      );
-    }
-    
-    // Manta blanca + delantal: white apron
-    if (name.includes('manta blanca') || name.includes('delantal blanco')) {
-      return (
-        <span className="inline-flex items-center">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            <path d="M5 3h6v10H5V3z" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
-            <path d="M6 3v-1M10 3v-1" stroke="#D1D5DB" strokeWidth="1" />
-            <rect x="6" y="5" width="4" height="3" fill="#F3F4F6" rx="0.5" />
-          </svg>
-        </span>
-      );
-    }
-    
-    // Uniforme de limpieza: gray uniform
-    if (name.includes('limpieza')) {
-      return (
-        <span className="inline-flex items-center">
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
-            <path d="M4 3h8v9H4V3z" fill="#6B7280" />
-            <path d="M6 3v2M10 3v2" stroke="#4B5563" strokeWidth="0.5" />
-          </svg>
-        </span>
-      );
-    }
-    
-    // Default: color dot fallback
-    return (
-      <span className="w-4 h-4 rounded-full border border-[#E5E5EC] bg-[#9CA3AF] flex-shrink-0" />
-    );
+    })();
+
+    return <span className="inline-flex items-center flex-shrink-0">{icon}</span>;
   };
 
 
