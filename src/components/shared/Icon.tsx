@@ -29,6 +29,7 @@ const MAP: Record<string, LucideIcon> = {
   proveedores: Lucide.Truck,
   stock: Lucide.Package,
   portal: Lucide.Globe,
+  staffing: Lucide.Users,
   logout: Lucide.LogOut,
   menu: Lucide.Menu,
   close: Lucide.X,
@@ -46,6 +47,7 @@ const MAP: Record<string, LucideIcon> = {
   user: Lucide.User,
   userCheck: Lucide.UserCheck,
   clipboardList: Lucide.ClipboardList,
+  send: Lucide.Send,
 
   // KPI
   revenue: Lucide.CreditCard,

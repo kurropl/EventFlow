@@ -54,6 +54,13 @@ const GROUPS: MenuGroup[] = [
     ],
   },
   {
+    id: 'staffing',
+    label: 'Staffing',
+    items: [
+      { id: 'staffing', label: 'Personal', sub: 'Trabajadores y asignación', href: '/admin/staffing' },
+    ],
+  },
+  {
     id: 'stock',
     label: 'Stock & Proveedores',
     items: [
