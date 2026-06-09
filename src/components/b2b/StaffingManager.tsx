@@ -15,6 +15,8 @@ interface Worker {
   roles: string[];
   uniform: string;
   active: boolean;
+  contract_url?: string;
+  contract_name?: string;
 }
 
 interface EventOption {
@@ -72,6 +74,7 @@ interface Uniform {
 }
 
 type Tab = 'workers' | 'event_staffing';
+type EventSubTab = 'lines' | 'nomina';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -562,6 +565,8 @@ export default function StaffingManager() {
   });
   const [savingWorker, setSavingWorker] = useState(false);
   const [workerFormError, setWorkerFormError] = useState('');
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [uploadingContract, setUploadingContract] = useState(false);
 
   /* ── Uniforms state ── */
   const [uniforms, setUniforms] = useState<Uniform[]>([]);
@@ -597,6 +602,17 @@ export default function StaffingManager() {
 
   /* ── Close line confirmation ── */
   const [closeLineId, setCloseLineId] = useState<string | null>(null);
+
+  /* ── Event staffing sub-tab ── */
+  const [eventSubTab, setEventSubTab] = useState<EventSubTab>('lines');
+
+  /* ── Worker pay (Nomina) state ── */
+  const [workerPay, setWorkerPay] = useState<any[]>([]);
+  const [payMeta, setPayMeta] = useState({ totalHours: 0, totalPay: 0, count: 0 });
+  const [loadingPay, setLoadingPay] = useState(false);
+  const [editingPayId, setEditingPayId] = useState<string | null>(null);
+  const [payForm, setPayForm] = useState({ hours: '', hourly_rate: '', notes: '' });
+  const [savingPay, setSavingPay] = useState(false);
 
   /* ───────────────────────────────────────────────────────────────── */
   /*  Data loading                                                     */
@@ -683,6 +699,31 @@ export default function StaffingManager() {
     [loadLineOffers, loadLineAssignments]
   );
 
+  const loadWorkerPay = useCallback(async (eventId: string) => {
+    if (!eventId) {
+      setWorkerPay([]);
+      setPayMeta({ totalHours: 0, totalPay: 0, count: 0 });
+      return;
+    }
+    try {
+      setLoadingPay(true);
+      const res = await fetch(`/api/staffing/pay?event_id=${eventId}`);
+      const data = await res.json();
+      if (data.success) {
+        setWorkerPay(data.data || []);
+        setPayMeta(data.meta || { totalHours: 0, totalPay: 0, count: 0 });
+      } else {
+        setWorkerPay([]);
+        setPayMeta({ totalHours: 0, totalPay: 0, count: 0 });
+      }
+    } catch {
+      setWorkerPay([]);
+      setPayMeta({ totalHours: 0, totalPay: 0, count: 0 });
+    } finally {
+      setLoadingPay(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'workers') loadWorkers();
     if (activeTab === 'event_staffing' && events.length === 0) loadEvents();
@@ -692,8 +733,11 @@ export default function StaffingManager() {
   }, [activeTab, loadWorkers, loadEvents, loadUniforms, events.length, initialEventId]);
 
   useEffect(() => {
-    if (selectedEvent) loadStaffingLines(selectedEvent);
-  }, [selectedEvent, loadStaffingLines]);
+    if (selectedEvent) {
+      loadStaffingLines(selectedEvent);
+      loadWorkerPay(selectedEvent);
+    }
+  }, [selectedEvent, loadStaffingLines, loadWorkerPay]);
 
   // Load offers/assignments for all lines when lines change
   useEffect(() => {
@@ -752,6 +796,7 @@ export default function StaffingManager() {
     setWorkerFormError('');
     setEditingWorkerId(null);
     setShowWorkerForm(false);
+    setContractFile(null);
   };
 
   const startEditWorker = (w: Worker) => {
@@ -795,8 +840,14 @@ export default function StaffingManager() {
         body: JSON.stringify(workerForm),
       });
       if (res.ok) {
-        resetWorkerForm();
-        await loadWorkers();
+        const data = await res.json();
+        const workerId = editingWorkerId || data.data?.id;
+        if (contractFile && workerId) {
+          await uploadContract(workerId, contractFile);
+        } else {
+          resetWorkerForm();
+          await loadWorkers();
+        }
       }
     } catch {
       /* ignore */
@@ -951,6 +1002,102 @@ export default function StaffingManager() {
         await loadStaffingLines(selectedEvent);
         await loadLineDetails(lineId);
       }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  /* ───────────────────────────────────────────────────────────────── */
+  /*  Contract upload / delete                                         */
+  /* ───────────────────────────────────────────────────────────────── */
+
+  const uploadContract = async (workerId: string, file: File) => {
+    try {
+      setUploadingContract(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/staffing/workers/${workerId}/contract`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        await loadWorkers();
+        setContractFile(null);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setUploadingContract(false);
+    }
+  };
+
+  const deleteContract = async (workerId: string) => {
+    try {
+      const res = await fetch(`/api/staffing/workers/${workerId}/contract`, {
+        method: 'DELETE',
+      });
+      if (res.ok) await loadWorkers();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  /* ───────────────────────────────────────────────────────────────── */
+  /*  Pay (Nomina) actions                                             */
+  /* ───────────────────────────────────────────────────────────────── */
+
+  const savePayEntry = async (workerId: string) => {
+    if (!selectedEvent || !payForm.hours || !payForm.hourly_rate) return;
+    setSavingPay(true);
+    try {
+      if (editingPayId) {
+        const res = await fetch(`/api/staffing/pay?id=${editingPayId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            worker_id: workerId,
+            event_id: selectedEvent,
+            hours: parseFloat(payForm.hours) || 0,
+            hourly_rate: parseFloat(payForm.hourly_rate) || 0,
+            notes: payForm.notes,
+          }),
+        });
+        if (res.ok) {
+          setEditingPayId(null);
+          setPayForm({ hours: '', hourly_rate: '', notes: '' });
+          await loadWorkerPay(selectedEvent);
+        }
+      } else {
+        const res = await fetch('/api/staffing/pay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            worker_id: workerId,
+            event_id: selectedEvent,
+            hours: parseFloat(payForm.hours) || 0,
+            hourly_rate: parseFloat(payForm.hourly_rate) || 0,
+            notes: payForm.notes,
+          }),
+        });
+        if (res.ok) {
+          setPayForm({ hours: '', hourly_rate: '', notes: '' });
+          await loadWorkerPay(selectedEvent);
+        }
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setSavingPay(false);
+    }
+  };
+
+  const deletePayEntry = async (id: string) => {
+    if (!selectedEvent) return;
+    try {
+      const res = await fetch(`/api/staffing/pay?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) await loadWorkerPay(selectedEvent);
     } catch {
       /* ignore */
     }
@@ -1145,6 +1292,67 @@ export default function StaffingManager() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Contract upload */}
+              <div>
+                <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wider mb-1">
+                  Contrato laboral
+                </label>
+                {editingWorkerId && workers.find(w => w.id === editingWorkerId)?.contract_name && (
+                  <div className="flex items-center gap-2 mb-2 p-2 bg-[#F8F3E6] rounded-lg border border-[#ECECF1]">
+                    <Icon name="fileText" className="w-4 h-4 text-[#C9A84C]" />
+                    <a
+                      href={workers.find(w => w.id === editingWorkerId)?.contract_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-[#1A1A1A] underline hover:text-[#C9A84C] truncate flex-1"
+                    >
+                      {workers.find(w => w.id === editingWorkerId)?.contract_name}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => editingWorkerId && deleteContract(editingWorkerId)}
+                      className="p-1 rounded-lg text-[#DC2626] hover:bg-[#FEF3F3] transition-colors shrink-0"
+                      title="Eliminar contrato"
+                    >
+                      <Icon name="trash" className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && file.size > 10 * 1024 * 1024) {
+                      setWorkerFormError('El archivo no puede superar 10 MB');
+                      return;
+                    }
+                    setContractFile(file || null);
+                  }}
+                  className="w-full text-sm text-[#6B7280] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[#FBF6E9] file:text-[#A88A3A] hover:file:bg-[#F0E6C8] file:transition-colors file:cursor-pointer"
+                />
+                <p className="text-[10px] text-[#9CA3AF] mt-1">PDF, JPG, PNG o DOC. Max. 10 MB.</p>
+                {contractFile && (
+                  <div className="flex items-center gap-2 mt-1.5 text-xs text-[#1A1A1A]">
+                    <Icon name="fileText" className="w-3 h-3 text-[#C9A84C]" />
+                    <span className="truncate">{contractFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setContractFile(null)}
+                      className="text-[#DC2626] hover:underline ml-1"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )}
+                {uploadingContract && (
+                  <div className="flex items-center gap-2 mt-1.5 text-xs text-[#C9A84C]">
+                    <Icon name="spinner" className="w-3 h-3 animate-spin" />
+                    <span>Subiendo contrato...</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-3">
@@ -1391,12 +1599,46 @@ export default function StaffingManager() {
                   {staffingLines.filter((l) => l.status === 'filled').length} completa
                   {staffingLines.filter((l) => l.status === 'filled').length !== 1 ? 's' : ''}
                 </span>
+                {payMeta.totalPay > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FBF6E9] text-[#A88A3A] font-semibold">
+                    <Icon name="banknote" className="w-3 h-3" />
+                    Coste personal: {payMeta.totalPay.toFixed(2)} EUR
+                  </span>
+                )}
               </div>
             </div>
           )}
 
+          {/* Event sub-tabs */}
+          {selectedEvent && (
+            <div className="flex gap-1 bg-[#F8F3E6] rounded-xl p-1 border border-[#ECECF1]">
+              {([
+                { key: 'lines' as EventSubTab, label: 'Lineas de staffing', icon: 'clipboardList' },
+                { key: 'nomina' as EventSubTab, label: 'Nomina', icon: 'banknote' },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setEventSubTab(tab.key)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    eventSubTab === tab.key
+                      ? 'bg-white text-[#1A1A1A] shadow-sm border border-[#ECECF1]'
+                      : 'text-[#6B7280] hover:text-[#1A1A1A] hover:bg-white/50'
+                  }`}
+                >
+                  <Icon name={tab.icon} className="w-4 h-4" />
+                  {tab.label}
+                  {tab.key === 'nomina' && payMeta.count > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#C9A84C] text-white font-bold">
+                      {payMeta.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Inline line form */}
-          {showLineForm && selectedEvent && (
+          {showLineForm && selectedEvent && eventSubTab === 'lines' && (
             <div className="bg-white rounded-2xl border border-[#C9A84C]/30 p-5 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-[#1A1A1A]">
@@ -1533,7 +1775,7 @@ export default function StaffingManager() {
           )}
 
           {/* Staffing lines grouped by role */}
-          {selectedEvent && !loadingLines && staffingLines.length > 0 && (
+          {selectedEvent && !loadingLines && staffingLines.length > 0 && eventSubTab === 'lines' && (
             <div className="space-y-6">
               {Object.entries(linesByRole).map(([role, lines]) => (
                 <div key={role}>
@@ -1572,7 +1814,7 @@ export default function StaffingManager() {
           )}
 
           {/* Loading */}
-          {selectedEvent && loadingLines && (
+          {selectedEvent && loadingLines && eventSubTab === 'lines' && (
             <div className="text-center py-12 text-[#9CA3AF]">
               <Icon name="spinner" className="w-5 h-5 animate-spin mx-auto mb-2" />
               Cargando lineas de staffing...
@@ -1580,11 +1822,182 @@ export default function StaffingManager() {
           )}
 
           {/* Empty state */}
-          {selectedEvent && !loadingLines && staffingLines.length === 0 && (
+          {selectedEvent && !loadingLines && staffingLines.length === 0 && eventSubTab === 'lines' && (
             <div className="bg-white rounded-2xl border border-[#ECECF1] p-12 text-center text-[#9CA3AF]">
               <Icon name="clipboardList" className="w-8 h-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">No hay lineas de staffing para este evento</p>
               <p className="text-xs mt-1">Crea una nueva linea para empezar a planificar el personal</p>
+            </div>
+          )}
+
+          {/* ──────────────── Nomina sub-tab ──────────────── */}
+          {selectedEvent && eventSubTab === 'nomina' && (
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-white rounded-xl border border-[#ECECF1] px-4 py-3">
+                  <p className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Total horas</p>
+                  <p className="text-lg font-bold text-[#1A1A1A] mt-0.5">{payMeta.totalHours.toFixed(1)}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-[#ECECF1] px-4 py-3">
+                  <p className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Coste total</p>
+                  <p className="text-lg font-bold text-[#C9A84C] mt-0.5">{payMeta.totalPay.toFixed(2)} EUR</p>
+                </div>
+                <div className="bg-white rounded-xl border border-[#ECECF1] px-4 py-3">
+                  <p className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Trabajadores</p>
+                  <p className="text-lg font-bold text-[#1A1A1A] mt-0.5">{payMeta.count}</p>
+                </div>
+              </div>
+
+              {/* Pay table */}
+              {loadingPay ? (
+                <div className="text-center py-12 text-[#9CA3AF]">
+                  <Icon name="spinner" className="w-5 h-5 animate-spin mx-auto mb-2" />
+                  Cargando nomina...
+                </div>
+              ) : workerPay.length > 0 ? (
+                <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#ECECF1] bg-[#FAFAFC]">
+                        <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Trabajador</th>
+                        <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Rol</th>
+                        <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Horas</th>
+                        <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Tarifa (EUR/h)</th>
+                        <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Total (EUR)</th>
+                        <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Notas</th>
+                        <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workerPay.map((p: any) => {
+                        const isEditing = editingPayId === p.id;
+                        const computedTotal = isEditing
+                          ? (parseFloat(payForm.hours) || 0) * (parseFloat(payForm.hourly_rate) || 0)
+                          : (p.hours || 0) * (p.hourly_rate || 0);
+                        return (
+                          <tr key={p.id} className="border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors">
+                            <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium">{p.worker_name}</td>
+                            <td className="px-4 py-2.5">
+                              <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FBF6E9] text-[#A88A3A]">
+                                {p.role || '--'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min="0"
+                                  value={payForm.hours}
+                                  onChange={(e) => setPayForm(f => ({ ...f, hours: e.target.value }))}
+                                  className="w-16 px-2 py-1 text-center rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
+                                />
+                              ) : (
+                                <span className="text-[13px]">{p.hours}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min="0"
+                                  value={payForm.hourly_rate}
+                                  onChange={(e) => setPayForm(f => ({ ...f, hourly_rate: e.target.value }))}
+                                  className="w-16 px-2 py-1 text-center rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
+                                />
+                              ) : (
+                                <span className="text-[13px]">{p.hourly_rate?.toFixed(2)}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <span className="text-[13px] font-semibold text-[#C9A84C]">
+                                {computedTotal.toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-[#6B7280] text-[12px]">
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={payForm.notes}
+                                  onChange={(e) => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                                  className="w-full px-2 py-1 rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
+                                  placeholder="Notas..."
+                                />
+                              ) : (
+                                <span className="truncate block max-w-[120px]">{p.notes || '--'}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {isEditing ? (
+                                  <>
+                                    <button
+                                      onClick={() => savePayEntry(p.worker_id)}
+                                      disabled={savingPay}
+                                      className="p-1.5 rounded-lg text-[#16A34A] hover:bg-[#EFFAF2] transition-colors"
+                                      title="Guardar"
+                                    >
+                                      {savingPay ? (
+                                        <Icon name="spinner" className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <Icon name="check" className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => { setEditingPayId(null); setPayForm({ hours: '', hourly_rate: '', notes: '' }); }}
+                                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8] transition-colors"
+                                      title="Cancelar"
+                                    >
+                                      <Icon name="close" className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setEditingPayId(p.id);
+                                        setPayForm({ hours: String(p.hours), hourly_rate: String(p.hourly_rate), notes: p.notes || '' });
+                                      }}
+                                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors"
+                                      title="Editar"
+                                    >
+                                      <Icon name="edit" className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => deletePayEntry(p.id)}
+                                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors"
+                                      title="Eliminar"
+                                    >
+                                      <Icon name="trash" className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-[#F8F3E6] font-semibold">
+                        <td className="px-4 py-2.5 text-[13px] text-[#1A1A1A]" colSpan={2}>Total</td>
+                        <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">{payMeta.totalHours.toFixed(1)}</td>
+                        <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">--</td>
+                        <td className="px-4 py-2.5 text-right text-[13px] text-[#C9A84C]">{payMeta.totalPay.toFixed(2)} EUR</td>
+                        <td className="px-4 py-2.5" colSpan={2}></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-[#ECECF1] p-12 text-center text-[#9CA3AF]">
+                  <Icon name="banknote" className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">No hay registros de nomina para este evento</p>
+                  <p className="text-xs mt-1">Los registros apareceran aqui cuando se asignen pagos a trabajadores</p>
+                </div>
+              )}
             </div>
           )}
 
