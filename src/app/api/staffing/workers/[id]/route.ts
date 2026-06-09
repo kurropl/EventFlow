@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
 import { sanitizeError, isValidUUID, sanitizeText } from '@/lib/security';
 import { verifyToken } from '@/lib/auth';
+import { normalizePhone } from '@/lib/whatsapp';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
@@ -115,7 +116,7 @@ export async function PUT(
 
     const allowed: Record<string, { transform: (v: any) => any }> = {
       name:           { transform: (v) => sanitizeText(String(v), 200) },
-      phone:          { transform: (v) => sanitizeText(String(v), 50) },
+      phone:          { transform: (v) => { const d = normalizePhone(sanitizeText(String(v), 50)); return d ? `+${d}` : sanitizeText(String(v), 50); } },
       roles:          { transform: (v) => Array.isArray(v) ? v.map((r: string) => sanitizeText(r, 50)).filter(Boolean) : v },
       default_uniform:{ transform: (v) => sanitizeText(String(v), 200) || null },
       availability:   { transform: (v) => v },

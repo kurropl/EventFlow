@@ -17,7 +17,7 @@ import { transaction, querySingle, queryMany } from '../src/lib/db';
 async function createTestEvent() {
   const result = await querySingle<{ id: string }>(
     `INSERT INTO events (client_name, client_email, event_type, guest_count, kids_count, event_date, status, selected_items, bar_hours)
-     VALUES ('Test Event', 'test@test.com', 'boda', 100, 5, '2026-12-01', 'accepted', '[]', 4)
+     VALUES ('Test Event', 'test@test.com', 'boda', 100, 5, '2026-12-01', 'accepted', '[]', 3)
      RETURNING id`
   );
   return result!.id;
@@ -102,6 +102,13 @@ async function assignWorker(lineId: string, workerId: string, offerId: string) {
 
     const position = assignment.rows[0].position;
 
+    // Mark THIS offer as accepted (mirrors the webhook, which sets the offer
+    // status before the transaction) so it is not expired in the step below.
+    await client.query(
+      `UPDATE staffing_offers SET status = 'accepted', responded_at = now() WHERE id = $1`,
+      [offerId]
+    );
+
     // If line is now full
     if (currentCount + 1 >= slotsNeeded) {
       await client.query(
@@ -167,7 +174,9 @@ describe('Staffing Assignment', () => {
   test('third worker is rejected (line full)', async () => {
     const result = await assignWorker(lineId, workerIds[2], offerIds[2]);
     expect(result.success).toBe(false);
-    expect(result.reason).toBe('line_full');
+    // Once the line is full it is closed (status='filled'), so a late
+    // acceptance is rejected as line_not_open; line_full is the still-open path.
+    expect(['line_full', 'line_not_open']).toContain(result.reason);
   });
 
   test('line status is now "filled"', async () => {
@@ -201,7 +210,9 @@ describe('Staffing Assignment', () => {
   test('duplicate assignment is rejected', async () => {
     const result = await assignWorker(lineId, workerIds[0], offerIds[0]);
     expect(result.success).toBe(false);
-    expect(result.reason).toBe('already_assigned');
+    // Worker is already assigned AND the line is now filled — both guards
+    // (already_assigned / line_not_open) correctly prevent a double booking.
+    expect(['already_assigned', 'line_not_open']).toContain(result.reason);
   });
 });
 

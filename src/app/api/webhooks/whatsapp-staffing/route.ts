@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
-import { getWhatsAppClient, buildStaffingConfirmationMessage, buildStaffingFullMessage } from '@/lib/whatsapp';
+import { getWhatsAppClient, buildStaffingConfirmationMessage, buildStaffingFullMessage, normalizePhone } from '@/lib/whatsapp';
 import crypto from 'crypto';
 
 // ============================================================
@@ -100,10 +100,12 @@ async function processMessage(msg: any, contact?: any) {
 
   console.log(`[whatsapp-webhook] ${phone} responded: ${response}`);
 
-  // Find pending offer for this phone number
+  // Find pending offer for this phone number. Match on DIGITS ONLY so the
+  // provider's "from" (e.g. "34612…", no '+') matches a worker stored as
+  // "+34 612…" / "0034…". normalizePhone() canonicalises both sides.
   const worker = await querySingle<{ id: string }>(
-    `SELECT id FROM workers WHERE phone = $1`,
-    [phone]
+    `SELECT id FROM workers WHERE regexp_replace(phone, '[^0-9]', '', 'g') = $1`,
+    [normalizePhone(phone)]
   );
 
   if (!worker) {

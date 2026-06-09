@@ -22,6 +22,24 @@ export interface WhatsAppMessage {
 }
 
 // ============================================================
+// Phone normalization
+// ============================================================
+
+/**
+ * Canonical phone for matching/storage. Returns digits only (no '+', spaces or
+ * separators). WhatsApp Cloud sends `from` without a leading '+', while admins
+ * may type it with '+34', '0034' or spaces — normalizing both sides guarantees
+ * the webhook can match the incoming number to a worker.
+ */
+export function normalizePhone(phone: string | null | undefined): string {
+  if (!phone) return '';
+  let digits = String(phone).replace(/[^\d]/g, '');
+  // Strip an international "00" prefix (e.g. 0034… → 34…)
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  return digits;
+}
+
+// ============================================================
 // WhatsApp Cloud API Implementation
 // ============================================================
 

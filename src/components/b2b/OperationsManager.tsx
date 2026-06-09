@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '@/components/shared/Icon';
+import EventStaffingPanel from '@/components/b2b/EventStaffingPanel';
 
 // ── Types ──────────────────────────────────────────────────────
 interface EventOrder {
@@ -736,6 +737,15 @@ export default function OperationsManager() {
           </div>
         )}
       </div>
+
+      {/* Personal del evento (escandallo de personal) — puente con Staffing */}
+      <EventStaffingPanel
+        eventId={selected.event_id}
+        eventDate={selected.event_date}
+        guestCount={selected.guest_count}
+        waitersSuggested={selected.waiters_suggested}
+        canEdit={canComplete}
+      />
 
       {/* Selección decorativa */}
       <div className="space-y-3">

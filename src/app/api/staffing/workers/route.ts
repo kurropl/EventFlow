@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
 import { sanitizeError, isValidUUID, sanitizeText } from '@/lib/security';
 import { verifyToken } from '@/lib/auth';
+import { normalizePhone } from '@/lib/whatsapp';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
@@ -93,7 +94,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const name = sanitizeText(body.name, 200);
-    const phone = sanitizeText(body.phone, 50);
+    // Store phone in canonical E.164 (+<digits>) so display is consistent and
+    // the WhatsApp webhook can always match the incoming number.
+    const rawPhone = sanitizeText(body.phone, 50);
+    const phoneDigits = normalizePhone(rawPhone);
+    const phone = phoneDigits ? `+${phoneDigits}` : rawPhone;
     const roles = Array.isArray(body.roles) ? body.roles.map((r: string) => sanitizeText(r, 50)).filter(Boolean) : [];
 
     if (!name) {

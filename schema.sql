@@ -990,3 +990,69 @@ ALTER TABLE waiters DISABLE ROW LEVEL SECURITY;
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_client ON events(client_id);
+
+-- ============================================================
+-- 16. STAFFING MODULE — workers, staffing_lines, offers, assignments
+--     (también disponible como migración: scripts/migration-staffing.sql)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS workers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  roles TEXT[] NOT NULL DEFAULT '{}',
+  default_uniform TEXT,
+  availability JSONB NOT NULL DEFAULT '{}',
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_workers_roles ON workers USING GIN (roles);
+CREATE INDEX IF NOT EXISTS idx_workers_active ON workers (active) WHERE active = true;
+ALTER TABLE workers DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS staffing_lines (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  slots_needed INTEGER NOT NULL DEFAULT 1,
+  start_time TIMESTAMPTZ,
+  end_time TIMESTAMPTZ,
+  location TEXT,
+  uniform TEXT,
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'filled', 'cancelled')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_staffing_lines_event ON staffing_lines (event_id);
+CREATE INDEX IF NOT EXISTS idx_staffing_lines_status ON staffing_lines (status);
+ALTER TABLE staffing_lines DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS staffing_offers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  staffing_line_id UUID NOT NULL REFERENCES staffing_lines(id) ON DELETE CASCADE,
+  worker_id UUID NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'accepted', 'rejected', 'expired')),
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  responded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_staffing_offers_line ON staffing_offers (staffing_line_id);
+CREATE INDEX IF NOT EXISTS idx_staffing_offers_worker ON staffing_offers (worker_id);
+CREATE INDEX IF NOT EXISTS idx_staffing_offers_status ON staffing_offers (status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_staffing_offers_unique ON staffing_offers (staffing_line_id, worker_id);
+ALTER TABLE staffing_offers DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS staffing_assignments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  staffing_line_id UUID NOT NULL REFERENCES staffing_lines(id) ON DELETE CASCADE,
+  worker_id UUID NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+  offer_id UUID REFERENCES staffing_offers(id),
+  confirmed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  position INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_staffing_assignments_line ON staffing_assignments (staffing_line_id);
+CREATE INDEX IF NOT EXISTS idx_staffing_assignments_worker ON staffing_assignments (worker_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_staffing_assignments_unique ON staffing_assignments (staffing_line_id, worker_id);
+ALTER TABLE staffing_assignments DISABLE ROW LEVEL SECURITY;
