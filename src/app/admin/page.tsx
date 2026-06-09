@@ -42,6 +42,9 @@ const ProvidersManager = dynamic(() => import('@/components/b2b/ProvidersManager
 const StockManager = dynamic(() => import('@/components/b2b/StockManager'), {
   loading: () => <PanelSkeleton />,
 });
+const StaffingManager = dynamic(() => import('@/components/b2b/StaffingManager'), {
+  loading: () => <PanelSkeleton />,
+});
 
 function PanelSkeleton() {
   return (
@@ -69,9 +72,10 @@ export default function AdminDashboard() {
   const isWebhooks = pathname?.includes('webhooks');
   const isProveedores = pathname?.includes('proveedores');
   const isStock = pathname?.includes('stock');
+  const isStaffing = pathname?.includes('staffing');
   const isMapa = pathname?.includes('mapa-mesas');
   const isLeads = pathname?.includes('leads');
-  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock;
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing;
 
   return (
     <AdminLayout>
@@ -83,6 +87,7 @@ export default function AdminDashboard() {
       {isGuests && <GuestsManager />}
       {isCatalog && <CatalogCRUD />}
       {isStock && <StockManager />}
+      {isStaffing && <StaffingManager />}
       {isOperations && <OperationsManager />}
       {isWebhooks && <WebhooksPanel />}
       {isProveedores && <ProvidersManager />}
