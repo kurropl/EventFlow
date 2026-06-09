@@ -337,18 +337,15 @@ function StaffingLineCard({
           </span>
           {/* Uniform */}
           {uniform && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
-              <span
-                className="w-4 h-4 rounded-full border border-[#E5E5EC] flex-shrink-0"
-                style={{ backgroundColor: uniform.color === 'Negro' ? '#1A1A1A' : uniform.color === 'Blanco' ? '#FFFFFF' : uniform.color === 'Rojo' ? '#DC2626' : uniform.color === 'Marrón' ? '#92400E' : uniform.color === 'Gris' ? '#6B7280' : '#9CA3AF' }}
-              />
-              {uniform.name}
+            <span className="inline-flex items-center gap-1 text-xs text-[#6B7280]">
+              <UniformIcons uniformName={uniform.name} />
+              <span className="truncate">{uniform.name}</span>
             </span>
           )}
           {!uniform && line.uniform && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
-              <span className="w-4 h-4 rounded-full border border-[#E5E5EC] bg-[#9CA3AF] flex-shrink-0" />
-              {line.uniform}
+            <span className="inline-flex items-center gap-1 text-xs text-[#6B7280]">
+              <UniformIcons uniformName={line.uniform} />
+              <span className="truncate">{line.uniform}</span>
             </span>
           )}
           {/* Time */}
@@ -547,6 +544,153 @@ function StaffingLineCard({
 /* ------------------------------------------------------------------ */
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
+
+  /* ── Uniform Icons (inline SVGs for clothing items) ── */
+  const UniformIcons = ({ uniformName }: { uniformName: string }) => {
+    const name = uniformName.toLowerCase();
+    
+    // Traje negro completo: black pants + black jacket
+    if (name.includes('traje negro completo')) {
+      return (
+        <span className="inline-flex items-center gap-0.5">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            {/* Pants */}
+            <path d="M4 2h8v5l-1 7H5L4 7V2z" fill="#1A1A1A" />
+            <path d="M7 2v10" stroke="#333" strokeWidth="0.5" />
+          </svg>
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            {/* Jacket */}
+            <path d="M3 3h10v4l-1 8H4L3 7V3z" fill="#1A1A1A" />
+            <path d="M7 3v4M5 5h4" stroke="#333" strokeWidth="0.5" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Chaleco negro + camisa blanca: black vest + white shirt
+    if (name.includes('chaleco negro') && name.includes('camisa')) {
+      return (
+        <span className="inline-flex items-center gap-0.5">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            {/* White shirt */}
+            <path d="M4 3h8v9H4V3z" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
+            <path d="M7 3v2M6 3l1 1.5L8 3" stroke="#D1D5DB" strokeWidth="0.5" />
+          </svg>
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            {/* Black vest */}
+            <path d="M5 3h6v9H5V3z" fill="#1A1A1A" />
+            <path d="M8 3v9" stroke="#333" strokeWidth="0.3" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Chaleco de chef: white chef coat
+    if (name.includes('chaleco de chef')) {
+      return (
+        <span className="inline-flex items-center gap-0.5">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            <path d="M4 4h8v8H4V4z" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
+            <circle cx="8" cy="3" r="2" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
+            <path d="M7 4v2M9 4v2" stroke="#D1D5DB" strokeWidth="0.5" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Gorra de chef: chef hat
+    if (name.includes('gorra de chef')) {
+      return (
+        <span className="inline-flex items-center">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            <ellipse cx="8" cy="5" rx="4" ry="3" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
+            <rect x="5" y="7" width="6" height="6" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Polo negro: black polo shirt
+    if (name.includes('polo negro')) {
+      return (
+        <span className="inline-flex items-center">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            <path d="M4 3h8v9H4V3z" fill="#1A1A1A" />
+            <path d="M7 3l1 2 1-2" stroke="#333" strokeWidth="0.5" />
+            <path d="M4 5l-1 2h2M12 5l1 2h-2" fill="#1A1A1A" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Vestido rojo: red dress
+    if (name.includes('vestido rojo')) {
+      return (
+        <span className="inline-flex items-center">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            <path d="M6 2h4l1 5-3 7-3-7L6 2z" fill="#DC2626" />
+            <path d="M6 2c0 0 1 1 2 1s2-1 2-1" stroke="#B91C1C" strokeWidth="0.5" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Vestido negro elegante: black elegant dress
+    if (name.includes('vestido negro')) {
+      return (
+        <span className="inline-flex items-center">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            <path d="M6 2h4l1 5-3 7-3-7L6 2z" fill="#1A1A1A" />
+            <path d="M6 2c0 0 1 1 2 1s2-1 2-1" stroke="#333" strokeWidth="0.5" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Delantal de cuero: brown apron
+    if (name.includes('delantal de cuero')) {
+      return (
+        <span className="inline-flex items-center">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            <path d="M5 3h6v10H5V3z" fill="#92400E" />
+            <path d="M6 3v-1M10 3v-1" stroke="#92400E" strokeWidth="1" />
+            <rect x="6" y="5" width="4" height="3" fill="#78350F" rx="0.5" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Manta blanca + delantal: white apron
+    if (name.includes('manta blanca') || name.includes('delantal blanco')) {
+      return (
+        <span className="inline-flex items-center">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            <path d="M5 3h6v10H5V3z" fill="#FFFFFF" stroke="#D1D5DB" strokeWidth="0.5" />
+            <path d="M6 3v-1M10 3v-1" stroke="#D1D5DB" strokeWidth="1" />
+            <rect x="6" y="5" width="4" height="3" fill="#F3F4F6" rx="0.5" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Uniforme de limpieza: gray uniform
+    if (name.includes('limpieza')) {
+      return (
+        <span className="inline-flex items-center">
+          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+            <path d="M4 3h8v9H4V3z" fill="#6B7280" />
+            <path d="M6 3v2M10 3v2" stroke="#4B5563" strokeWidth="0.5" />
+          </svg>
+        </span>
+      );
+    }
+    
+    // Default: color dot fallback
+    return (
+      <span className="w-4 h-4 rounded-full border border-[#E5E5EC] bg-[#9CA3AF] flex-shrink-0" />
+    );
+  };
+
 
 export default function StaffingManager() {
   const searchParams = useSearchParams();
@@ -1280,10 +1424,7 @@ export default function StaffingManager() {
                             : 'border-[#E5E5EC] bg-white text-[#6B7280] hover:border-[#C9A84C]/50'
                         }`}
                       >
-                        <span
-                          className="w-5 h-5 rounded-full border border-[#E5E5EC] flex-shrink-0"
-                          style={{ backgroundColor: u.color === 'Negro' ? '#1A1A1A' : u.color === 'Blanco' ? '#FFFFFF' : u.color === 'Rojo' ? '#DC2626' : u.color === 'Marrón' ? '#92400E' : u.color === 'Gris' ? '#6B7280' : '#9CA3AF' }}
-                        />
+                        <UniformIcons uniformName={u.name} />
                         <span className="truncate">{u.name}</span>
                       </button>
                     ))}
@@ -1770,10 +1911,7 @@ export default function StaffingManager() {
                             : 'border-[#E5E5EC] bg-white text-[#6B7280] hover:border-[#C9A84C]/50'
                         }`}
                       >
-                        <span
-                          className="w-5 h-5 rounded-full border border-[#E5E5EC] flex-shrink-0"
-                          style={{ backgroundColor: u.color === 'Negro' ? '#1A1A1A' : u.color === 'Blanco' ? '#FFFFFF' : u.color === 'Rojo' ? '#DC2626' : u.color === 'Marrón' ? '#92400E' : u.color === 'Gris' ? '#6B7280' : '#9CA3AF' }}
-                        />
+                        <UniformIcons uniformName={u.name} />
                         <span className="truncate">{u.name}</span>
                       </button>
                     ))}
