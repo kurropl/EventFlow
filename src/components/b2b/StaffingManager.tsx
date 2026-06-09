@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Icon from '../shared/Icon';
 
 /* ------------------------------------------------------------------ */
@@ -108,7 +109,9 @@ function formatDate(d: string) {
 /* ------------------------------------------------------------------ */
 
 export default function StaffingManager() {
-  const [activeTab, setActiveTab] = useState<Tab>('workers');
+  const searchParams = useSearchParams();
+  const initialEventId = searchParams.get('event_id') || '';
+  const [activeTab, setActiveTab] = useState<Tab>(initialEventId ? 'event_staffing' : 'workers');
 
   /* ── Workers state ── */
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -128,7 +131,7 @@ export default function StaffingManager() {
 
   /* ── Event staffing state ── */
   const [events, setEvents] = useState<EventOption[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState(initialEventId);
   const [staffingLines, setStaffingLines] = useState<StaffingLine[]>([]);
   const [loadingLines, setLoadingLines] = useState(false);
   const [expandedLineId, setExpandedLineId] = useState<string | null>(null);
@@ -188,7 +191,9 @@ export default function StaffingManager() {
   useEffect(() => {
     if (activeTab === 'workers') loadWorkers();
     if (activeTab === 'event_staffing' && events.length === 0) loadEvents();
-  }, [activeTab, loadWorkers, loadEvents, events.length]);
+    // Auto-load events if we have an initial event_id from URL
+    if (initialEventId && events.length === 0) loadEvents();
+  }, [activeTab, loadWorkers, loadEvents, events.length, initialEventId]);
 
   useEffect(() => {
     if (selectedEvent) loadStaffingLines(selectedEvent);

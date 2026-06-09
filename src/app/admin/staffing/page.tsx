@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 
 const StaffingManager = dynamic(() => import('@/components/b2b/StaffingManager'), {
@@ -18,7 +19,7 @@ const StaffingManager = dynamic(() => import('@/components/b2b/StaffingManager')
       </div>
       <div className="bg-white rounded-2xl border border-[#ECECF1] p-6 space-y-4">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-12 bg-[#F5F5F8] rounded-lg" />
+          <div key={i} className="h-12 bg-[#F8F3E6] rounded-lg" />
         ))}
       </div>
     </div>
@@ -26,5 +27,14 @@ const StaffingManager = dynamic(() => import('@/components/b2b/StaffingManager')
 });
 
 export default function StaffingPage() {
-  return <StaffingManager />;
+  return (
+    <Suspense fallback={
+      <div className="space-y-6 animate-pulse p-6">
+        <div className="h-6 w-48 bg-[#ECECF1] rounded-lg" />
+        <div className="h-64 bg-[#F8F3E6] rounded-xl" />
+      </div>
+    }>
+      <StaffingManager />
+    </Suspense>
+  );
 }
