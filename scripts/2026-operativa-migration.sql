@@ -63,7 +63,18 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS rectificativa_of UUID REFERENCES i
 -- No schema change needed — payments.concept is TEXT, no CHECK constraint
 
 -- ═══════════════════════════════════════════════════════════════
--- 6. Verify new columns exist
+-- 6. Expand CHECK constraints to allow new statuses
+-- ═══════════════════════════════════════════════════════════════
+ALTER TABLE events DROP CONSTRAINT IF EXISTS events_status_check;
+ALTER TABLE events ADD CONSTRAINT events_status_check
+  CHECK (status = ANY (ARRAY['draft','sent','accepted','in_progress','completed','paid','cancelled','lost','reopened']));
+
+ALTER TABLE event_orders DROP CONSTRAINT IF EXISTS event_orders_status_check;
+ALTER TABLE event_orders ADD CONSTRAINT event_orders_status_check
+  CHECK (status = ANY (ARRAY['in_progress','completed','cancelled','reopened']));
+
+-- ═══════════════════════════════════════════════════════════════
+-- 7. Verify new columns exist
 -- ═══════════════════════════════════════════════════════════════
 DO $$
 BEGIN
