@@ -246,7 +246,7 @@ export default function HomePage() {
           onCanPlay={() => setVideoReady(true)}
           onError={() => setVideoReady(false)}
         >
-          <source src="/video/hero.mp4" type="video/mp4" />
+          <source src="/video/hero.mp4" type="video/mp4; codecs=avc1.42E01E" />
         </video>
 
         {/* Cinematic colour grade + legibility scrim over the video */}
