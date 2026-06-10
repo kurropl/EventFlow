@@ -1,4 +1,5 @@
 'use client';
+import { Suspense } from 'react';
 import AdminLayout from '@/components/b2b/AdminLayout';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
@@ -87,7 +88,7 @@ export default function AdminDashboard() {
       {isGuests && <GuestsManager />}
       {isCatalog && <CatalogCRUD />}
       {isStock && <StockManager />}
-      {isStaffing && <StaffingManager />}
+      {isStaffing && <Suspense fallback={<div className="p-6 animate-pulse"><div className="h-64 bg-stone-100 rounded-xl" /></div>}><StaffingManager /></Suspense>}
       {isOperations && <OperationsManager />}
       {isWebhooks && <WebhooksPanel />}
       {isProveedores && <ProvidersManager />}
