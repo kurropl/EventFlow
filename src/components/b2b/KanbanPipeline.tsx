@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BudgetEditor from './BudgetEditor';
 
-type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled';
+type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled' | 'lost' | 'reopened';
 
 interface KanbanEvent {
   id: string;
@@ -31,6 +31,9 @@ const COLUMNS: { status: EventStatus; label: string; dot: string; tint: string; 
   { status: 'draft', label: 'Borrador', dot: '#3B82F6', tint: '#EFF4FF', soft: '#DCE7FF' },
   { status: 'sent', label: 'Enviado', dot: '#D9920B', tint: '#FFF8EC', soft: '#FBE8C4' },
   { status: 'accepted', label: 'Aceptado', dot: '#16A34A', tint: '#EFFAF2', soft: '#CDEBD6' },
+  { status: 'completed', label: 'Realizado', dot: '#7C3AED', tint: '#F3F0FF', soft: '#DDD6FE' },
+  { status: 'reopened', label: 'Reabierto', dot: '#F59E0B', tint: '#FFFBEB', soft: '#FDE68A' },
+  { status: 'lost', label: 'Perdido', dot: '#9CA3AF', tint: '#F9FAFB', soft: '#E5E7EB' },
   { status: 'cancelled', label: 'Cancelado', dot: '#DC2626', tint: '#FEF3F3', soft: '#F6D6D6' },
 ];
 
@@ -492,7 +495,7 @@ export default function KanbanPipeline() {
   const paymentEvent = paymentModal ? events.find((e) => e.id === paymentModal.eventId) ?? null : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 flex flex-col h-full">
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {STATS.map((s) => (
@@ -512,11 +515,11 @@ export default function KanbanPipeline() {
       {loading && <p className="text-xs text-[#9CA3AF]">Cargando presupuestos…</p>}
 
       {/* Board */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-4 overflow-x-auto pb-4 flex-1 min-h-0">
         {COLUMNS.map((col) => {
           const colEvents = getEventsByStatus(col.status);
           return (
-            <div key={col.status} className="flex-shrink-0 w-[300px] flex flex-col rounded-2xl bg-[#FAFAFC] border border-[#ECECF1] max-h-[calc(100vh-280px)]">
+            <div key={col.status} className="flex-shrink-0 w-[300px] flex flex-col rounded-2xl bg-[#FAFAFC] border border-[#ECECF1] h-full">
               {/* Column header */}
               <div className="px-4 py-3 flex items-center justify-between rounded-t-2xl" style={{ background: col.tint }}>
                 <div className="flex items-center gap-2">
