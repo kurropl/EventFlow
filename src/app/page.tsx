@@ -59,7 +59,6 @@ export default function HomePage() {
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
   const [videoReady, setVideoReady] = useState(false);
-  const [videoFailed, setVideoFailed] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -233,23 +232,21 @@ export default function HomePage() {
         <div className="absolute inset-0 z-0 h-full w-full object-cover" style={{
           background: 'linear-gradient(160deg, rgba(10,8,6,0.55) 0%, rgba(26,18,8,0.35) 40%, rgba(45,36,22,0.35) 60%, rgba(10,8,6,0.6) 100%), url(/images/hero-poster.jpg) center/cover no-repeat'
         }} />
-        {/* Video — only renders if hero.mp4 exists; removed from DOM on 404 */}
-        {!videoFailed && (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-1000"
-            style={{ opacity: videoReady ? 1 : 0 }}
-            onCanPlay={() => setVideoReady(true)}
-            onError={() => setVideoFailed(true)}
-          >
-            <source src="/video/hero.mp4" type="video/mp4" />
-          </video>
-        )}
+        {/* Video renders always; fades in when ready, hides on error */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          className="absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-1000"
+          style={{ opacity: videoReady ? 1 : 0 }}
+          onCanPlay={() => setVideoReady(true)}
+          onError={() => setVideoReady(false)}
+        >
+          <source src="/video/hero.mp4" type="video/mp4" />
+        </video>
 
         {/* Cinematic colour grade + legibility scrim over the video */}
         <div className="absolute inset-0 z-0 pointer-events-none" style={{
