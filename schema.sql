@@ -568,7 +568,11 @@ CREATE INDEX IF NOT EXISTS idx_event_menu_items_event ON event_menu_items(event_
 ALTER TABLE event_menu_items DISABLE ROW LEVEL SECURITY;
 
 -- Add operations_generated_at to events table
-ALTER TABLE events ADD COLUMN IF NOT EXISTS operations_generated_at TIMESTAMPTZ;-- ============================================================
+ALTER TABLE events ADD COLUMN IF NOT EXISTS operations_generated_at TIMESTAMPTZ;
+-- stock_deducted: idempotency flag for /api/stock/deduct (was referenced by the
+-- deduct route but never defined → 500 on a clean DB).
+ALTER TABLE events ADD COLUMN IF NOT EXISTS stock_deducted BOOLEAN NOT NULL DEFAULT false;
+-- ============================================================
 -- 17. QUOTES (Presupuestos) — ciclo de vida del precio
 -- ============================================================
 CREATE TABLE IF NOT EXISTS quotes (
@@ -841,7 +845,11 @@ item_details AS (
     SELECT
         ei.event_id,
         ei.order_id,
-        (ei.item->>'item_id')::TEXT AS item_name,
+        -- Match the catalog dish by its NAME. Wizard submissions store the dish
+        -- under `name` (not `item_id`), so the previous `item_id` join matched
+        -- nothing and the escandallo came out empty. Fallback to item_id keeps
+        -- backwards-compatibility with any older rows that used that field.
+        COALESCE(NULLIF(ei.item->>'name', ''), ei.item->>'item_id')::TEXT AS item_name,
         (ei.item->>'category')::TEXT AS category,
         (ei.item->>'quantity')::NUMERIC AS item_qty
     FROM event_items ei
@@ -864,10 +872,12 @@ SELECT
     ib.event_id,
     ib.order_id,
     ib.ingredient_name,
+    MAX(ing_stock.supplier) AS provider_name,
     SUM(COALESCE(ib.grams, 0) * ib.item_qty) AS total_grams,
     SUM(COALESCE(ib.count, 0) * ib.item_qty) AS total_units,
     SUM(COALESCE(ib.ml, 0) * ib.item_qty) AS total_ml
 FROM ingredient_breakdown ib
+LEFT JOIN ingredients ing_stock ON lower(trim(ing_stock.name)) = lower(trim(ib.ingredient_name))
 GROUP BY ib.event_id, ib.order_id, ib.ingredient_name
 ORDER BY ib.ingredient_name;
 
