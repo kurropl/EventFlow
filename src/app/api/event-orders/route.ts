@@ -13,29 +13,40 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('event_id');
     const status = searchParams.get('status');
 
-    let sql = `SELECT eo.*, e.client_name, e.client_email, e.event_type, 
+    let sql = `SELECT DISTINCT ON (e.id)
+      COALESCE(eo.id, gen_random_uuid()) as id,
+      e.id as event_id, e.client_name, e.client_email, e.event_type,
       e.guest_count, e.kids_count, e.event_date, e.selected_items, e.client_token,
-      c.name as client_name_fiscal, c.fiscal_nif
-      FROM event_orders eo 
-      JOIN events e ON e.id = eo.event_id
-      LEFT JOIN clients c ON c.id = eo.client_id`;
+      c.name as client_name_fiscal, c.fiscal_nif,
+      eo.confirmed_price, COALESCE(eo.status, e.status) as status,
+      eo.tables_suggested, eo.waiters_suggested, eo.created_at
+      FROM events e
+      LEFT JOIN event_orders eo ON eo.event_id = e.id
+      LEFT JOIN clients c ON c.id = eo.client_id
+      LEFT JOIN staffing_lines sl ON sl.event_id = e.id
+      WHERE (e.status != 'cancelled' AND e.status != 'draft')
+      OR sl.id IS NOT NULL`;
     const params: any[] = [];
     const conds: string[] = [];
 
-    if (eventId) { conds.push(`eo.event_id = $${params.length + 1}`); params.push(eventId); }
-    if (status) { conds.push(`eo.status = $${params.length + 1}`); params.push(status); }
+    if (eventId) { conds.push(`e.id = $${params.length + 1}`); params.push(eventId); }
+    if (status) { conds.push(`COALESCE(eo.status, e.status) = $${params.length + 1}`); params.push(status); }
 
     if (conds.length) sql += ` WHERE ${conds.join(' AND ')}`;
-    sql += ` ORDER BY eo.created_at DESC`;
+    sql += ` ORDER BY e.id, e.event_date DESC NULLS LAST`;
 
     const rows = await queryMany<any>(sql, params);
 
-    // Fetch shopping list for each order
+    // Fetch shopping list for each order (only for real event_orders)
     for (const row of rows) {
-      try {
-        const shop = await queryMany<any>(`SELECT * FROM shopping_list WHERE order_id = $1`, [row.id]);
-        row.shopping_list = shop || [];
-      } catch { row.shopping_list = []; }
+      if (row.confirmed_price != null) {
+        try {
+          const shop = await queryMany<any>(`SELECT * FROM shopping_list WHERE order_id = $1`, [row.id]);
+          row.shopping_list = shop || [];
+        } catch { row.shopping_list = []; }
+      } else {
+        row.shopping_list = [];
+      }
     }
 
     return NextResponse.json({ data: rows });

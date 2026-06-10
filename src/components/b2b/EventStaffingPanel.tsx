@@ -146,7 +146,7 @@ export default function EventStaffingPanel({ eventId, eventDate, guestCount, wai
           <button onClick={load} className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F5F5F8] transition-colors" title="Actualizar">
             <Icon name="refreshCw" className="w-3.5 h-3.5" />
           </button>
-          <Link href="/admin/staffing" className="text-[11px] font-medium text-[#A88A3A] hover:underline">Gestionar →</Link>
+          <Link href={`/admin/staffing?event_id=${eventId}`} className="text-[11px] font-medium text-[#A88A3A] hover:underline">Gestionar →</Link>
         </div>
       </div>
 
