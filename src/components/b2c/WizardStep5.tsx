@@ -23,6 +23,39 @@ export default function WizardStep5() {
   const selectedMenu = PROPOSED_MENUS.find(m => m.id === step2?.menu_id);
   const selectedKidMenu = PROPOSED_MENUS.find(m => m.id === step2?.kid_menu_id);
   const selectedItems = (step3 as any)?.selected_items || [];
+  const useProposed = (step2 as any)?.use_proposed;
+
+  // Calculate plates and rations from proposed menu or selected items
+  const calcMenuStats = (menu: typeof selectedMenu, guestCount: number) => {
+    if (!menu) return { plates: 0, rations: 0 };
+    const foodSections = menu.sections.filter(s => 
+      !s.section.toLowerCase().includes('bebida') && 
+      !s.section.toLowerCase().includes('postre y bebida')
+    );
+    const plates = foodSections.reduce((sum, s) => sum + s.items.length, 0);
+    // Each food item = 1 ration per guest (approximate)
+    const rations = plates * guestCount;
+    return { plates, rations };
+  };
+
+  const guestCount = Number(step1?.guest_count) || 0;
+  const kidsCount = Number(step1?.kids_count) || 0;
+
+  let totalPlates: number;
+  let totalQuantity: number;
+
+  if (useProposed && selectedMenu) {
+    const adultStats = calcMenuStats(selectedMenu, guestCount);
+    const kidStats = calcMenuStats(selectedKidMenu, kidsCount);
+    totalPlates = adultStats.plates + kidStats.plates;
+    totalQuantity = adultStats.rations + kidStats.rations;
+  } else if (selectedItems.length > 0) {
+    totalQuantity = selectedItems.reduce((sum: number, i: any) => sum + (i.quantity || 0), 0);
+    totalPlates = selectedItems.length;
+  } else {
+    totalPlates = 0;
+    totalQuantity = 0;
+  }
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -46,9 +79,6 @@ export default function WizardStep5() {
     if (!groupedItems[item.category]) groupedItems[item.category] = [];
     groupedItems[item.category].push(item);
   });
-
-  const totalQuantity = selectedItems.reduce((sum: number, i: any) => sum + (i.quantity || 0), 0);
-  const totalPlates = selectedItems.length;
 
   const handleSubmit = async () => {
     if (submitted) return;

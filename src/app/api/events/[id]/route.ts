@@ -336,6 +336,19 @@ export async function PUT(
       }
     }
 
+    // ── Auto-update lead status when event is sent ──
+    if (status === 'sent' && result.event?.client_email) {
+      try {
+        await querySingle(
+          `UPDATE leads SET status = 'presupuestado', updated_at = now()
+           WHERE lower(email) = lower($1) AND status IN ('nuevo', 'contactado')`,
+          [result.event.client_email]
+        );
+      } catch (e) {
+        console.error('[events PUT] Lead status update failed (non-fatal):', e);
+      }
+    }
+
     return NextResponse.json({ success: true, data: result.event });
   } catch (error) {
     return NextResponse.json(

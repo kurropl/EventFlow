@@ -11,6 +11,7 @@ type MenuItem = {
   label: string;
   sub: string;
   href: string;
+  soon?: boolean;
   children?: { id: string; label: string; sub: string; href: string }[];
 };
 
@@ -79,8 +80,7 @@ const GROUPS: MenuGroup[] = [
     id: 'configuracion',
     label: 'Configuración',
     items: [
-      // Webhooks oculto — solo técnico, no visible en sidebar
-      // { id: 'webhooks', label: 'Webhooks', sub: 'Integraciones y reglas', href: '/admin/webhooks' },
+      { id: 'config', label: 'Configuración', sub: 'Datos del negocio', href: '/admin/config', soon: true },
     ],
   },
 ];
@@ -182,8 +182,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 const hasActiveChild = item.children?.some(c => c.id === currentItem?.id);
                 const showChildren = item.children && (isActive || hasActiveChild);
 
+                const isSoon = (item as any).soon;
                 return (
                   <div key={item.id}>
+                    {isSoon ? (
+                      <span
+                        title="Próximamente — módulo en desarrollo"
+                        className="group flex items-center gap-3 px-3 py-2 rounded-xl text-sm opacity-50 cursor-not-allowed"
+                      >
+                        <span className="text-[#9CA3AF]">
+                          <Icon name={item.id} />
+                        </span>
+                        {!collapsed && (
+                          <span className="flex-1 min-w-0">
+                            <span className="block leading-tight font-medium text-[#6B7280]">{item.label}</span>
+                            <span className="block text-[11px] text-[#A8A8B0] leading-tight">{item.sub} · Próximamente</span>
+                          </span>
+                        )}
+                      </span>
+                    ) : (
                     <Link
                       href={item.href}
                       onClick={onNavigate}
@@ -205,6 +222,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       )}
                       {(isActive || hasActiveChild) && !collapsed && <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />}
                     </Link>
+                    )}
 
                     {item.children && showChildren && !collapsed && (
                       <div

@@ -742,6 +742,11 @@ export default function StaffingManager() {
 
   /* ── Worker pay (Nomina) state ── */
   const [workerPay, setWorkerPay] = useState<any[]>([]);
+  const safeNum = (v: unknown, fallback = 0): number => {
+    const n = typeof v === 'number' ? v : parseFloat(String(v ?? fallback));
+    return isNaN(n) ? fallback : n;
+  };
+  const fmt = (v: unknown, decimals = 2): string => safeNum(v).toFixed(decimals);
   const [payMeta, setPayMeta] = useState({ totalHours: 0, totalPay: 0, count: 0 });
   const [loadingPay, setLoadingPay] = useState(false);
   const [editingPayId, setEditingPayId] = useState<string | null>(null);
@@ -845,7 +850,8 @@ export default function StaffingManager() {
       const data = await res.json();
       if (data.success) {
         setWorkerPay(data.data || []);
-        setPayMeta(data.meta || { totalHours: 0, totalPay: 0, count: 0 });
+        const m = data.meta || { totalHours: 0, totalPay: 0, count: 0 };
+        setPayMeta({ totalHours: Number(m.totalHours) || 0, totalPay: Number(m.totalPay) || 0, count: Number(m.count) || 0 });
       } else {
         setWorkerPay([]);
         setPayMeta({ totalHours: 0, totalPay: 0, count: 0 });
@@ -1753,7 +1759,7 @@ export default function StaffingManager() {
                 {payMeta.totalPay > 0 && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FBF6E9] text-[#A88A3A] font-semibold">
                     <Icon name="banknote" className="w-3 h-3" />
-                    Coste personal: {payMeta.totalPay.toFixed(2)} EUR
+                    Coste personal: {fmt(payMeta.totalPay)} EUR
                   </span>
                 )}
               </div>
@@ -2005,11 +2011,11 @@ export default function StaffingManager() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-white rounded-xl border border-[#ECECF1] px-4 py-3">
                   <p className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Total horas</p>
-                  <p className="text-lg font-bold text-[#1A1A1A] mt-0.5">{payMeta.totalHours.toFixed(1)}</p>
+                  <p className="text-lg font-bold text-[#1A1A1A] mt-0.5">{fmt(payMeta.totalHours, 1)}</p>
                 </div>
                 <div className="bg-white rounded-xl border border-[#ECECF1] px-4 py-3">
                   <p className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Coste total</p>
-                  <p className="text-lg font-bold text-[#C9A84C] mt-0.5">{payMeta.totalPay.toFixed(2)} EUR</p>
+                  <p className="text-lg font-bold text-[#C9A84C] mt-0.5">{fmt(payMeta.totalPay)} EUR</p>
                 </div>
                 <div className="bg-white rounded-xl border border-[#ECECF1] px-4 py-3">
                   <p className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Trabajadores</p>
@@ -2076,12 +2082,12 @@ export default function StaffingManager() {
                                   className="w-16 px-2 py-1 text-center rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
                                 />
                               ) : (
-                                <span className="text-[13px]">{p.hourly_rate?.toFixed(2)}</span>
+                                <span className="text-[13px]">{fmt(p.hourly_rate)}</span>
                               )}
                             </td>
                             <td className="px-4 py-2.5 text-right">
                               <span className="text-[13px] font-semibold text-[#C9A84C]">
-                                {computedTotal.toFixed(2)}
+                                {fmt(computedTotal)}
                               </span>
                             </td>
                             <td className="px-4 py-2.5 text-[#6B7280] text-[12px]">
@@ -2151,9 +2157,9 @@ export default function StaffingManager() {
                     <tfoot>
                       <tr className="bg-[#F8F3E6] font-semibold">
                         <td className="px-4 py-2.5 text-[13px] text-[#1A1A1A]" colSpan={2}>Total</td>
-                        <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">{payMeta.totalHours.toFixed(1)}</td>
+                        <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">{fmt(payMeta.totalHours, 1)}</td>
                         <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">--</td>
-                        <td className="px-4 py-2.5 text-right text-[13px] text-[#C9A84C]">{payMeta.totalPay.toFixed(2)} EUR</td>
+                        <td className="px-4 py-2.5 text-right text-[13px] text-[#C9A84C]">{fmt(payMeta.totalPay)} EUR</td>
                         <td className="px-4 py-2.5" colSpan={2}></td>
                       </tr>
                     </tfoot>

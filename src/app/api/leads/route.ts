@@ -48,9 +48,14 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 200);
     const offset = parseInt(searchParams.get('offset') ?? '0', 10);
 
-    let sql = `SELECT l.*, 
-      COALESCE((SELECT jsonb_agg(jsonb_build_object('id',q.id,'status',q.status,'total_pvp',q.total_pvp))
-       FROM quotes q WHERE q.lead_id = l.id), '[]'::jsonb) AS quotes
+    let sql = `SELECT l.*,
+      COALESCE((
+        SELECT jsonb_agg(DISTINCT jsonb_build_object('id',q.id,'status',q.status,'total_pvp',q.total_pvp,'event_date',e.event_date,'event_type',e.event_type))
+        FROM quotes q
+        JOIN events e ON e.id = q.event_id
+        WHERE q.lead_id = l.id
+           OR (l.email IS NOT NULL AND e.client_email = l.email)
+      ), '[]'::jsonb) AS quotes
       FROM leads l`;
     const params: (string | number)[] = [];
     const conds: string[] = [];
