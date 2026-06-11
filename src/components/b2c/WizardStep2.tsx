@@ -331,24 +331,26 @@ export default function WizardStep2() {
           <button
             onClick={handleCustomizeMenu}
             disabled={!canUseMenu}
+            title={!canUseMenu ? 'Selecciona un menú primero' : ''}
             className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
               canUseMenu
                 ? 'bg-[#C9A84C] text-white hover:bg-[#B8973F] shadow-md shadow-[#C9A84C]/20'
                 : 'bg-stone-200 text-stone-400 cursor-not-allowed'
             }`}
           >
-            Personalizar Menu
+            Personalizar Menú
           </button>
           <button
             onClick={handleUseMenu}
             disabled={!canUseMenu}
+            title={!canUseMenu ? 'Selecciona un menú primero' : ''}
             className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
               canUseMenu
                 ? 'bg-[#1A1A1A] text-white hover:bg-stone-800'
                 : 'bg-stone-200 text-stone-400 cursor-not-allowed'
             }`}
           >
-            Usar este Menu
+            Usar este Menú
           </button>
         </div>
       </div>
