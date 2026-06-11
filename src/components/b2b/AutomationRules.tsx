@@ -780,7 +780,7 @@ export default function AutomationRules() {
                 </span>
               </div>
               <div className="flex items-center gap-3 text-[11px] text-[#6B7280]">
-                <span>Condiciones: {log.conditions_met ? '✅ Cumplidas' : '⏭️ No cumplidas'}</span>
+                <span>Condiciones: {log.conditions_met ? 'Cumplidas' : 'No cumplidas'}</span>
                 <span>{log.execution_ms}ms</span>
               </div>
               {log.error_message && (

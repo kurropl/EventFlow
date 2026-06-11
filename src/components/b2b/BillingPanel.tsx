@@ -124,7 +124,7 @@ export default function BillingPanel() {
         {selectedInvoice.status === 'pending' && (
           <button onClick={() => { fetch(`/api/invoices/${selectedInvoice.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paid' }) }).then(() => { setSelectedInvoice(null); fetchData(); }); }}
             className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors">
-            ✅ Marcar como Pagada
+            Marcar como Pagada
           </button>
         )}
         <a href={`/admin/recibo/${selectedInvoice.id}`} target="_blank"

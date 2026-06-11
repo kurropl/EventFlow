@@ -13,7 +13,7 @@ interface Worker {
   name: string;
   phone: string;
   roles: string[];
-  uniform: string;
+  default_uniform: string;
   active: boolean;
   contract_url?: string;
   contract_name?: string;
@@ -945,7 +945,7 @@ export default function StaffingManager() {
       name: w.name,
       phone: w.phone,
       roles: w.roles,
-      uniform: w.uniform,
+      uniform: w.default_uniform || '',
       active: w.active,
     });
     setShowWorkerForm(true);
@@ -977,7 +977,7 @@ export default function StaffingManager() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workerForm),
+        body: JSON.stringify({ ...workerForm, default_uniform: workerForm.uniform }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -1578,7 +1578,7 @@ export default function StaffingManager() {
                   {filteredWorkers.map((w) => {
                     const st = statusBadge(w.active ? 'active' : 'inactive');
                     const workerUniform = uniforms.find(
-                      (u) => u.id === w.uniform || u.name === w.uniform
+                      (u) => u.id === w.default_uniform || u.name === w.default_uniform
                     );
                     return (
                       <tr
@@ -1613,7 +1613,7 @@ export default function StaffingManager() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-[#6B7280] text-[13px] max-w-[160px] truncate" title={workerUniform?.description || w.uniform}>
+                        <td className="px-4 py-2.5 text-[#6B7280] text-[13px] max-w-[160px] truncate" title={workerUniform?.description || w.default_uniform}>
                           {workerUniform ? (
                             <span className="inline-flex items-center gap-1.5">
                               <span
@@ -1622,8 +1622,8 @@ export default function StaffingManager() {
                               />
                               {workerUniform.name}
                             </span>
-                          ) : w.uniform ? (
-                            w.uniform
+                          ) : w.default_uniform ? (
+                            w.default_uniform
                           ) : (
                             '--'
                           )}

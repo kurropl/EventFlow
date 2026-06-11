@@ -439,7 +439,7 @@ export default function OperationsManager() {
                   <td className="px-4 py-3.5 text-right text-sm font-medium text-[#1A1A2E]">{money(o.confirmed_price)}</td>
                   <td className="px-4 py-3.5 text-center">
                     <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${o.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' : o.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-                      {o.status === 'in_progress' ? 'En curso' : o.status === 'completed' ? '✅' : o.status}
+                      {o.status === 'in_progress' ? 'En curso' : o.status === 'completed' ? 'Completado' : o.status}
                     </span>
                   </td>
                 </tr>
@@ -528,7 +528,7 @@ export default function OperationsManager() {
                   )}
                 </p>
                 <div className="flex gap-3 pt-2">
-                  <button onClick={handleComplete} className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors">✅ Finalizar Evento</button>
+                  <button onClick={handleComplete} className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors">Finalizar Evento</button>
                   <button onClick={() => setShowComplete(false)} className="text-sm font-medium px-5 py-2.5 rounded-xl border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">Cancelar</button>
                 </div>
               </motion.div>

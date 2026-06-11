@@ -338,7 +338,7 @@ export default function LeadsCRM() {
                   {q.status === 'sent' && (
                     <button onClick={() => acceptQuote(q.id)}
                       className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-[#15803D] text-white hover:bg-[#166534] transition-colors">
-                      ✅ Aceptar Presupuesto
+                      Aceptar Presupuesto
                     </button>
                   )}
                 </div>
@@ -381,7 +381,7 @@ export default function LeadsCRM() {
               <div className="flex gap-3 pt-2">
                 <button onClick={handleConvert}
                   className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors">
-                  ✅ Convertir a Cliente y Activar Evento
+                  Convertir a Cliente y Activar Evento
                 </button>
                 <button onClick={() => setShowConvert(false)}
                   className="text-sm font-medium px-5 py-2.5 rounded-xl border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">

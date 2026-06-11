@@ -76,7 +76,7 @@ export default function JustificantePago() {
               <p className={`text-xs font-medium mt-1 ${
                 invoice.status === 'paid' ? 'text-green-600' : 'text-amber-600'
               }`}>
-                {invoice.status === 'paid' ? '✅ PAGADA' : '⚠ PENDIENTE'}
+                {invoice.status === 'paid' ? 'Pagada' : 'Pendiente'}
                 {invoice.paid_at && ` · ${fmtDate(invoice.paid_at)}`}
               </p>
             </div>
