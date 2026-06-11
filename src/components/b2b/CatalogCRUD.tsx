@@ -77,10 +77,15 @@ export default function CatalogCRUD() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState({ name: '', category: '', pvp: '', cost: '', active: true });
   const [newItem, setNewItem] = useState({ name: '', category: CATEGORIES[0], pvp: '', cost: '' });
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const PAGE_SIZE = 30;
 
-  const loadCatalog = useCallback(async () => {
+  const loadCatalog = useCallback(async (pageNum = 1) => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/catalog?all=true');
+      const params = new URLSearchParams({ all: 'true', page: String(pageNum), limit: String(PAGE_SIZE) });
+      const res = await fetch(`/api/catalog?${params}`);
       const data = await res.json();
       if (res.ok && data.success && data.data) {
         const flat: CatalogItem[] = [];
@@ -101,15 +106,16 @@ export default function CatalogCRUD() {
           }
         }
         setItems(flat);
+        if (data.pagination) setTotalPages(data.pagination.totalPages || 1);
       }
     } catch {
       /* keep whatever we have */
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [PAGE_SIZE]);
 
-  useEffect(() => { loadCatalog(); }, [loadCatalog]);
+  useEffect(() => { loadCatalog(page); }, [loadCatalog, page]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -402,8 +408,27 @@ export default function CatalogCRUD() {
           <div className="text-center py-12 text-[#9CA3AF]">No se encontraron artículos</div>
         )}
         {filteredItems.length > 0 && (
-          <div className="px-4 py-2 border-t border-[#F2F2F5] text-xs text-[#9CA3AF] text-right">
-            Mostrando {filteredItems.length} de {items.length} artículos
+          <div className="px-4 py-2 border-t border-[#F2F2F5] flex items-center justify-between text-xs text-[#9CA3AF]">
+            <span>Mostrando {filteredItems.length} artículos</span>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="px-3 py-1 rounded-lg border border-[#E5E7EB] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#F8F3E6] transition-colors"
+                >
+                  Anterior
+                </button>
+                <span className="text-[#6B7280] font-medium">Página {page} de {totalPages}</span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1 rounded-lg border border-[#E5E7EB] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#F8F3E6] transition-colors"
+                >
+                  Siguiente
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

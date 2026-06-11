@@ -47,23 +47,47 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const showAll = searchParams.get('all') === 'true';
     const activeFilter = showAll ? '' : 'WHERE active = true';
-    // Return ALL items (active + inactive) for admin management
+    
+    // Pagination params
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.min(100, Math.max(10, parseInt(searchParams.get('limit') || '50')));
+    const offset = (page - 1) * limit;
+    const search = searchParams.get('search') || '';
+    const categoryFilter = searchParams.get('category') || '';
+    
+    // Build WHERE clause
+    const conditions: string[] = showAll ? [] : ['active = true'];
+    if (search) conditions.push(`(name ILIKE $1 OR category ILIKE $1)`);
+    if (categoryFilter) conditions.push(`category = $${conditions.length + 1}`);
+    const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+    
+    // Get total count
+    const countParams: any[] = [];
+    if (search) countParams.push(`%${search}%`);
+    if (categoryFilter) countParams.push(categoryFilter);
+    const countResult = await queryMany<any>(`SELECT COUNT(*)::int as total FROM catalog_items ${where}`, countParams);
+    const totalItems = countResult[0]?.total || 0;
+    const totalPages = Math.ceil(totalItems / limit);
+
     let items = await queryMany<any>(
       `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, active, created_at, updated_at
        FROM catalog_items
-       ${activeFilter}
-       ORDER BY category, name`
+       ${where}
+       ORDER BY category, name
+       LIMIT ${limit} OFFSET ${offset}`,
+      countParams
     );
 
     // Auto-seed if catalog is empty
-    if (items.length === 0 && !showAll) {
+    if (totalItems === 0 && !showAll && !search && !categoryFilter) {
       const seeded = await autoSeedCatalog();
       if (seeded > 0) {
         items = await queryMany<any>(
           `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, active, created_at, updated_at
            FROM catalog_items
            WHERE active = true
-           ORDER BY category, name`
+           ORDER BY category, name
+           LIMIT ${limit} OFFSET ${offset}`
         );
       }
     }
@@ -79,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, data: grouped },
+      { success: true, data: grouped, pagination: { page, limit, totalItems, totalPages, hasMore: page < totalPages } },
       { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } }
     );
   } catch (error) {
