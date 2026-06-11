@@ -80,7 +80,7 @@ const GROUPS: MenuGroup[] = [
     id: 'configuracion',
     label: 'Configuración',
     items: [
-      { id: 'config', label: 'Configuración', sub: 'Datos del negocio', href: '/admin/config', soon: true },
+      { id: 'config', label: 'Configuración', sub: 'Datos del negocio', href: '/admin/config' },
     ],
   },
 ];
