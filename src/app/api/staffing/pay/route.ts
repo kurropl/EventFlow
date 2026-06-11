@@ -1,12 +1,13 @@
 /**
  * EventFlow — Worker-Event Pay (Salary per Event)
  * GET    /api/staffing/pay?event_id=X          — List pay for an event
- * POST   /api/staffing/pay                     — Create/update pay
+ * POST   /api/staffing/pay                     — Create/update pay entry
+ * PUT    /api/staffing/pay                     — Update status (mark as paid)
  * DELETE /api/staffing/pay?id=X                — Delete pay entry
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
-import { sanitizeError, isValidUUID, toSafeFloat } from '@/lib/security';
+import { sanitizeError, isValidUUID, toSafeFloat, sanitizeText } from '@/lib/security';
 import { verifyToken } from '@/lib/auth';
 
 function requireAuth(request: NextRequest): { authenticated: boolean; error?: string } {
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
 
     const rows = await queryMany<any>(
       `SELECT wep.id, wep.worker_id, wep.event_id, wep.hours, wep.hourly_rate, wep.total_pay, wep.notes,
+              wep.status, wep.paid_at, wep.created_at, wep.updated_at,
               w.name AS worker_name, w.phone AS worker_phone, w.roles AS worker_roles
        FROM worker_event_pay wep
        JOIN workers w ON w.id = wep.worker_id
@@ -42,8 +44,14 @@ export async function GET(request: NextRequest) {
     // Calculate totals
     const totalHours = rows.reduce((sum, r) => sum + Number(r.hours || 0), 0);
     const totalPay = rows.reduce((sum, r) => sum + Number(r.total_pay || 0), 0);
+    const pendingCount = rows.filter(r => r.status === 'pending').length;
+    const paidCount = rows.filter(r => r.status === 'paid').length;
 
-    return NextResponse.json({ success: true, data: rows, meta: { totalHours, totalPay, count: rows.length } });
+    return NextResponse.json({
+      success: true,
+      data: rows,
+      meta: { totalHours, totalPay, count: rows.length, pendingCount, paidCount }
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
   }
@@ -69,8 +77,8 @@ export async function POST(request: NextRequest) {
     const totalPay = Math.round(h * rate * 100) / 100;
 
     const created = await querySingle<any>(
-      `INSERT INTO worker_event_pay (worker_id, event_id, hours, hourly_rate, total_pay, notes)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO worker_event_pay (worker_id, event_id, hours, hourly_rate, total_pay, notes, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending')
        ON CONFLICT (worker_id, event_id) 
        DO UPDATE SET hours = $3, hourly_rate = $4, total_pay = $5, notes = $6, updated_at = now()
        RETURNING *`,
@@ -78,6 +86,74 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const auth = requireAuth(request);
+    if (!auth.authenticated) return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
+
+    const body = await request.json();
+    const { id, status, hours, hourly_rate, notes } = body;
+
+    if (!id || !isValidUUID(id)) {
+      return NextResponse.json({ success: false, error: 'id válido es obligatorio' }, { status: 422 });
+    }
+
+    const fields: string[] = [];
+    const vals: any[] = [];
+    let idx = 1;
+
+    if (status !== undefined) {
+      fields.push(`status = $${idx++}`);
+      vals.push(sanitizeText(String(status), 20));
+      if (status === 'paid') {
+        fields.push(`paid_at = now()`);
+      }
+    }
+    if (hours !== undefined) {
+      const h = toSafeFloat(hours, 0, 24);
+      fields.push(`hours = $${idx++}`);
+      vals.push(h);
+    }
+    if (hourly_rate !== undefined) {
+      const rate = toSafeFloat(hourly_rate, 0, 1000);
+      fields.push(`hourly_rate = $${idx++}`);
+      vals.push(rate);
+    }
+    if (notes !== undefined) {
+      fields.push(`notes = $${idx++}`);
+      vals.push(notes ? sanitizeText(String(notes), 1000) : null);
+    }
+
+    // Recalculate total_pay if hours or rate changed
+    if (hours !== undefined || hourly_rate !== undefined) {
+      const existing = await querySingle<any>(`SELECT hours, hourly_rate FROM worker_event_pay WHERE id = $1`, [id]);
+      if (existing) {
+        const newHours = hours !== undefined ? toSafeFloat(hours, 0, 24) : Number(existing.hours);
+        const newRate = hourly_rate !== undefined ? toSafeFloat(hourly_rate, 0, 1000) : Number(existing.hourly_rate);
+        const newTotal = Math.round(newHours * newRate * 100) / 100;
+        fields.push(`total_pay = $${idx++}`);
+        vals.push(newTotal);
+      }
+    }
+
+    if (fields.length === 0) {
+      return NextResponse.json({ success: false, error: 'Nada que actualizar' }, { status: 400 });
+    }
+
+    fields.push(`updated_at = now()`);
+    vals.push(id);
+
+    const updated = await querySingle<any>(
+      `UPDATE worker_event_pay SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      vals
+    );
+
+    return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
   }

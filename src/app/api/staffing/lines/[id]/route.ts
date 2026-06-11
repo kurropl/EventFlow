@@ -173,6 +173,23 @@ export async function PUT(
       );
     }
 
+    // Auto-create pay entries when closing staffing line
+    if (body.status === 'filled') {
+      const assigned = await queryMany<any>(
+        `SELECT sa.worker_id FROM staffing_assignments sa WHERE sa.staffing_line_id = $1`,
+        [id]
+      );
+      for (const a of assigned) {
+        // Upsert: only create if not already exists
+        await querySingle<any>(
+          `INSERT INTO worker_event_pay (worker_id, event_id, status)
+           VALUES ($1, $2, 'pending')
+           ON CONFLICT (worker_id, event_id) DO NOTHING`,
+          [a.worker_id, updated.event_id]
+        );
+      }
+    }
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     const message = sanitizeError(error);

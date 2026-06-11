@@ -747,7 +747,7 @@ export default function StaffingManager() {
     return isNaN(n) ? fallback : n;
   };
   const fmt = (v: unknown, decimals = 2): string => safeNum(v).toFixed(decimals);
-  const [payMeta, setPayMeta] = useState({ totalHours: 0, totalPay: 0, count: 0 });
+  const [payMeta, setPayMeta] = useState({ totalHours: 0, totalPay: 0, count: 0, pendingCount: 0, paidCount: 0 });
   const [loadingPay, setLoadingPay] = useState(false);
   const [editingPayId, setEditingPayId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({ hours: '', hourly_rate: '', notes: '' });
@@ -843,7 +843,7 @@ export default function StaffingManager() {
   const loadWorkerPay = useCallback(async (eventId: string) => {
     if (!eventId) {
       setWorkerPay([]);
-      setPayMeta({ totalHours: 0, totalPay: 0, count: 0 });
+      setPayMeta({ totalHours: 0, totalPay: 0, count: 0, pendingCount: 0, paidCount: 0 });
       return;
     }
     try {
@@ -852,15 +852,15 @@ export default function StaffingManager() {
       const data = await res.json();
       if (data.success) {
         setWorkerPay(data.data || []);
-        const m = data.meta || { totalHours: 0, totalPay: 0, count: 0 };
-        setPayMeta({ totalHours: Number(m.totalHours) || 0, totalPay: Number(m.totalPay) || 0, count: Number(m.count) || 0 });
+        const m = data.meta || { totalHours: 0, totalPay: 0, count: 0, pendingCount: 0, paidCount: 0 };
+        setPayMeta({ totalHours: Number(m.totalHours) || 0, totalPay: Number(m.totalPay) || 0, count: Number(m.count) || 0, pendingCount: Number(m.pendingCount) || 0, paidCount: Number(m.paidCount) || 0 });
       } else {
         setWorkerPay([]);
-        setPayMeta({ totalHours: 0, totalPay: 0, count: 0 });
+        setPayMeta({ totalHours: 0, totalPay: 0, count: 0, pendingCount: 0, paidCount: 0 });
       }
     } catch {
       setWorkerPay([]);
-      setPayMeta({ totalHours: 0, totalPay: 0, count: 0 });
+      setPayMeta({ totalHours: 0, totalPay: 0, count: 0, pendingCount: 0, paidCount: 0 });
     } finally {
       setLoadingPay(false);
     }
@@ -1243,6 +1243,19 @@ export default function StaffingManager() {
     } catch {
       /* ignore */
     }
+  };
+
+  const markAsPaid = async (payId: string) => {
+    setSavingPay(true);
+    try {
+      await fetch('/api/staffing/pay', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: payId, status: 'paid' }),
+      });
+      if (selectedEvent) await loadWorkerPay(String(selectedEvent));
+    } catch { /* ignore */ }
+    setSavingPay(false);
   };
 
   /* ───────────────────────────────────────────────────────────────── */
@@ -2059,143 +2072,206 @@ export default function StaffingManager() {
               {loadingPay ? (
                 <div className="text-center py-12 text-[#9CA3AF]">
                   <Icon name="spinner" className="w-5 h-5 animate-spin mx-auto mb-2" />
-                  Cargando nomina...
+                  Cargando nómina...
                 </div>
               ) : workerPay.length > 0 ? (
-                <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[#ECECF1] bg-[#FAFAFC]">
-                        <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Trabajador</th>
-                        <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Rol</th>
-                        <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Horas</th>
-                        <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Tarifa (EUR/h)</th>
-                        <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Total (EUR)</th>
-                        <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Notas</th>
-                        <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {workerPay.map((p: any) => {
-                        const isEditing = editingPayId === p.id;
-                        const computedTotal = isEditing
-                          ? (parseFloat(payForm.hours) || 0) * (parseFloat(payForm.hourly_rate) || 0)
-                          : (p.hours || 0) * (p.hourly_rate || 0);
-                        return (
-                          <tr key={p.id} className="border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors">
-                            <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium">{p.worker_name}</td>
-                            <td className="px-4 py-2.5">
-                              <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FBF6E9] text-[#A88A3A]">
-                                {p.role || '--'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  step="0.5"
-                                  min="0"
-                                  value={payForm.hours}
-                                  onChange={(e) => setPayForm(f => ({ ...f, hours: e.target.value }))}
-                                  className="w-16 px-2 py-1 text-center rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
-                                />
-                              ) : (
-                                <span className="text-[13px]">{p.hours}</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  step="0.5"
-                                  min="0"
-                                  value={payForm.hourly_rate}
-                                  onChange={(e) => setPayForm(f => ({ ...f, hourly_rate: e.target.value }))}
-                                  className="w-16 px-2 py-1 text-center rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
-                                />
-                              ) : (
-                                <span className="text-[13px]">{fmt(p.hourly_rate)}</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              <span className="text-[13px] font-semibold text-[#C9A84C]">
-                                {fmt(computedTotal)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-[#6B7280] text-[12px]">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={payForm.notes}
-                                  onChange={(e) => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                                  className="w-full px-2 py-1 rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
-                                  placeholder="Notas..."
-                                />
-                              ) : (
-                                <span className="truncate block max-w-[120px]">{p.notes || '--'}</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
+                <div className="space-y-4">
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white rounded-xl border border-[#ECECF1] p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+                        <p className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Pendientes</p>
+                      </div>
+                      <p className="text-xl font-bold text-[#F59E0B]">{payMeta.pendingCount || 0}</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-[#ECECF1] p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
+                        <p className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Pagados</p>
+                      </div>
+                      <p className="text-xl font-bold text-[#16A34A]">{payMeta.paidCount || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                    <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[#ECECF1] bg-[#FAFAFC]">
+                          <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Trabajador</th>
+                          <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Rol</th>
+                          <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Horas</th>
+                          <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Tarifa (EUR/h)</th>
+                          <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Total (EUR)</th>
+                          <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Estado</th>
+                          <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Pagado el</th>
+                          <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Notas</th>
+                          <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {workerPay.map((p: any) => {
+                          const isEditing = editingPayId === p.id;
+                          const isPaid = p.status === 'paid';
+                          const computedTotal = isEditing
+                            ? (parseFloat(payForm.hours) || 0) * (parseFloat(payForm.hourly_rate) || 0)
+                            : (p.total_pay || 0);
+                          return (
+                            <tr key={p.id} className={`border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors ${isPaid ? 'opacity-60' : ''}`}>
+                              <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium">{p.worker_name}</td>
+                              <td className="px-4 py-2.5">
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FBF6E9] text-[#A88A3A]">
+                                  {p.role || (p.worker_roles && p.worker_roles[0]) || '--'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
                                 {isEditing ? (
-                                  <>
-                                    <button
-                                      onClick={() => savePayEntry(p.worker_id)}
-                                      disabled={savingPay}
-                                      className="p-1.5 rounded-lg text-[#16A34A] hover:bg-[#EFFAF2] transition-colors"
-                                      title="Guardar"
-                                    >
-                                      {savingPay ? (
-                                        <Icon name="spinner" className="w-3.5 h-3.5 animate-spin" />
-                                      ) : (
-                                        <Icon name="check" className="w-3.5 h-3.5" />
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() => { setEditingPayId(null); setPayForm({ hours: '', hourly_rate: '', notes: '' }); }}
-                                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8] transition-colors"
-                                      title="Cancelar"
-                                    >
-                                      <Icon name="close" className="w-3.5 h-3.5" />
-                                    </button>
-                                  </>
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    min="0"
+                                    value={payForm.hours}
+                                    onChange={(e) => setPayForm(f => ({ ...f, hours: e.target.value }))}
+                                    className="w-16 px-2 py-1 text-center rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
+                                  />
                                 ) : (
-                                  <>
-                                    <button
-                                      onClick={() => {
-                                        setEditingPayId(p.id);
-                                        setPayForm({ hours: String(p.hours), hourly_rate: String(p.hourly_rate), notes: p.notes || '' });
-                                      }}
-                                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors"
-                                      title="Editar"
-                                    >
-                                      <Icon name="edit" className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => deletePayEntry(p.id)}
-                                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors"
-                                      title="Eliminar"
-                                    >
-                                      <Icon name="trash" className="w-3.5 h-3.5" />
-                                    </button>
-                                  </>
+                                  <span className="text-[13px]">{fmt(p.hours, 1)}</span>
                                 )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-[#F8F3E6] font-semibold">
-                        <td className="px-4 py-2.5 text-[13px] text-[#1A1A1A]" colSpan={2}>Total</td>
-                        <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">{fmt(payMeta.totalHours, 1)}</td>
-                        <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">--</td>
-                        <td className="px-4 py-2.5 text-right text-[13px] text-[#C9A84C]">{fmt(payMeta.totalPay)} EUR</td>
-                        <td className="px-4 py-2.5" colSpan={2}></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    min="0"
+                                    value={payForm.hourly_rate}
+                                    onChange={(e) => setPayForm(f => ({ ...f, hourly_rate: e.target.value }))}
+                                    className="w-16 px-2 py-1 text-center rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
+                                  />
+                                ) : (
+                                  <span className="text-[13px]">{fmt(p.hourly_rate)}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-right">
+                                <span className="text-[13px] font-semibold text-[#C9A84C]">
+                                  {isEditing ? fmt(computedTotal) : fmt(p.total_pay)} EUR
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                <span
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                                  style={isPaid
+                                    ? { backgroundColor: '#DCFCE7', color: '#16A34A' }
+                                    : { backgroundColor: '#FEF9C3', color: '#F59E0B' }
+                                  }
+                                >
+                                  {isPaid ? 'Pagado' : 'Pendiente'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-[12px] text-[#6B7280]">
+                                {p.paid_at ? new Date(p.paid_at).toLocaleDateString('es-ES') : '--'}
+                              </td>
+                              <td className="px-4 py-2.5 text-[#6B7280] text-[12px]">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={payForm.notes}
+                                    onChange={(e) => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                                    className="w-full px-2 py-1 rounded-lg border border-[#C9A84C] text-sm focus:outline-none"
+                                    placeholder="Notas..."
+                                  />
+                                ) : (
+                                  <span className="truncate block max-w-[100px]">{p.notes || '--'}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  {isEditing ? (
+                                    <>
+                                      <button
+                                        onClick={() => savePayEntry(p.worker_id)}
+                                        disabled={savingPay}
+                                        className="p-1.5 rounded-lg text-[#16A34A] hover:bg-[#EFFAF2] transition-colors"
+                                        title="Guardar"
+                                      >
+                                        {savingPay ? (
+                                          <Icon name="spinner" className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                          <Icon name="check" className="w-3.5 h-3.5" />
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={() => { setEditingPayId(null); setPayForm({ hours: '', hourly_rate: '', notes: '' }); }}
+                                        className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8] transition-colors"
+                                        title="Cancelar"
+                                      >
+                                        <Icon name="close" className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setEditingPayId(p.id);
+                                          setPayForm({ hours: String(p.hours), hourly_rate: String(p.hourly_rate), notes: p.notes || '' });
+                                        }}
+                                        className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors"
+                                        title="Editar"
+                                      >
+                                        <Icon name="edit" className="w-3.5 h-3.5" />
+                                      </button>
+                                      {!isPaid && (
+                                        <button
+                                          onClick={() => markAsPaid(p.id)}
+                                          disabled={savingPay}
+                                          className="p-1.5 rounded-lg text-[#16A34A] hover:bg-[#EFFAF2] transition-colors"
+                                          title="Marcar Pagado"
+                                        >
+                                          <Icon name="check-circle" className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => deletePayEntry(p.id)}
+                                        className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors"
+                                        title="Eliminar"
+                                      >
+                                        <Icon name="trash" className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-[#F8F3E6] font-semibold">
+                          <td className="px-4 py-2.5 text-[13px] text-[#1A1A1A]" colSpan={2}>Total ({payMeta.count} registros)</td>
+                          <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">{fmt(payMeta.totalHours, 1)}</td>
+                          <td className="px-4 py-2.5 text-center text-[13px] text-[#1A1A1A]">--</td>
+                          <td className="px-4 py-2.5 text-right text-[13px]">
+                            <span className="text-[#C9A84C]">{fmt(payMeta.totalPay)} EUR</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-center text-[11px]">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#FEF9C3', color: '#F59E0B' }}>
+                              {payMeta.pendingCount || 0} pend.
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-center text-[11px]">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#DCFCE7', color: '#16A34A' }}>
+                              {payMeta.paidCount || 0} pag.
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5"></td>
+                          <td className="px-4 py-2.5"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl border border-[#ECECF1] p-12 text-center text-[#9CA3AF]">
