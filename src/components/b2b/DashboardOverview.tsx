@@ -87,11 +87,11 @@ return () => { cancelled = true; };
 const active = events.filter((e) => e.status !== 'cancelled');
 const countBy = (s: string) => events.filter((e) => e.status === s).length;
 const totalGuests = active.reduce((s, e) => s + (e.guest_count || 0) + (e.kids_count || 0), 0);
-const confirmed = countBy('accepted') + countBy('paid') + countBy('in_progress') + countBy('completed');
+const confirmed = countBy('accepted') + countBy('paid') + countBy('in_progress');
 const conversion = events.length ? Math.round((confirmed / events.length) * 100) : 0;
 const totalRevenue = payments.filter(p => p.paid).reduce((s, p) => s + Number(p.amount || 0), 0);
 const pendingRevenue = events
-.filter(e => e.status === 'accepted' || e.status === 'sent')
+.filter(e => ['draft', 'sent', 'accepted', 'reopened'].includes(e.status))
 .reduce((s, e) => s + Number(e.total_display || e.total_pvp || 0), 0);
 
 // ── Monthly revenue chart ────────────────────────────────────
@@ -192,7 +192,7 @@ Cargando datos...
 </div>
 ) : events.length === 0 ? (
 <div className="text-center py-20">
-<div className="text-4xl mb-3">📋</div>
+<div className="w-12 h-12 rounded-xl bg-[#FBF6E9] flex items-center justify-center mx-auto mb-3"><svg className="w-6 h-6 text-[#C9A84C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg></div>
 <p className="text-lg font-serif text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
 Aún no hay presupuestos
 </p>
