@@ -494,6 +494,17 @@ export default function KanbanPipeline() {
   const sendBudgetEvent = sendBudgetEventId ? events.find((e) => e.id === sendBudgetEventId) ?? null : null;
   const paymentEvent = paymentModal ? events.find((e) => e.id === paymentModal.eventId) ?? null : null;
 
+  const isIncompleteDraft = (ev: any) => ev.status === 'draft' && (
+    !ev.selected_items?.length || !ev.client_email || !ev.guest_count
+  );
+  const incompleteReasons = (ev: any) => {
+    const r: string[] = [];
+    if (!ev.selected_items?.length) r.push('Sin platos');
+    if (!ev.client_email) r.push('Sin email');
+    if (!ev.guest_count) r.push('Sin comensales');
+    return r;
+  };
+
   return (
     <div className="space-y-6 flex flex-col h-full">
       {/* Stat cards */}
@@ -542,7 +553,8 @@ export default function KanbanPipeline() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                    className="bg-white rounded-xl p-3.5 border border-[#ECECF1] shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all cursor-pointer group"
+                    className={`bg-white rounded-xl p-3.5 border shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all cursor-pointer group ${isIncompleteDraft(event) ? 'border-orange-300 border-dashed' : 'border-[#ECECF1]'}`}
+                    title={isIncompleteDraft(event) ? incompleteReasons(event).join(' · ') : ''}
                     onClick={() => setEditingId(event.id)}
                   >
                     {/* Client */}
@@ -558,6 +570,11 @@ export default function KanbanPipeline() {
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#FBF6E9] text-[#A88A3A] whitespace-nowrap">
                         {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
                       </span>
+                      {isIncompleteDraft(event) && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 whitespace-nowrap">
+                          Incompleto
+                        </span>
+                      )}
                     </div>
 
                     {/* Meta */}
