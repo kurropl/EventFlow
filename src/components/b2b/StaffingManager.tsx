@@ -752,6 +752,8 @@ export default function StaffingManager() {
   const [editingPayId, setEditingPayId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({ hours: '', hourly_rate: '', notes: '' });
   const [savingPay, setSavingPay] = useState(false);
+  const [showAddPay, setShowAddPay] = useState(false);
+  const [newPayForm, setNewPayForm] = useState({ worker_id: '', hours: '', hourly_rate: '10', notes: '' });
 
   /* ───────────────────────────────────────────────────────────────── */
   /*  Data loading                                                     */
@@ -1389,40 +1391,6 @@ export default function StaffingManager() {
                     placeholder="600 000 000"
                   />
                 </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wider mb-1">
-                    Uniforme
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setWorkerForm((f) => ({ ...f, uniform: '' }))}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${
-                        !workerForm.uniform
-                          ? 'border-[#C9A84C] bg-[#FFF8EC] text-[#8B6914] ring-1 ring-[#C9A84C]'
-                          : 'border-[#E5E5EC] bg-white text-[#6B7280] hover:border-[#C9A84C]/50'
-                      }`}
-                    >
-                      <span className="w-5 h-5 rounded-full border-2 border-dashed border-[#D1D5DB] flex items-center justify-center text-[10px] text-[#9CA3AF]">-</span>
-                      Ninguno
-                    </button>
-                    {uniforms.map((u) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => setWorkerForm((f) => ({ ...f, uniform: u.id }))}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${
-                          workerForm.uniform === u.id
-                            ? 'border-[#C9A84C] bg-[#FFF8EC] text-[#8B6914] ring-1 ring-[#C9A84C]'
-                            : 'border-[#E5E5EC] bg-white text-[#6B7280] hover:border-[#C9A84C]/50'
-                        }`}
-                      >
-                        <UniformIcons uniformName={u.name} />
-                        <span className="truncate">{u.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               <div>
@@ -1563,9 +1531,6 @@ export default function StaffingManager() {
                     <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">
                       Roles
                     </th>
-                    <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">
-                      Uniforme
-                    </th>
                     <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">
                       Estado
                     </th>
@@ -1577,9 +1542,6 @@ export default function StaffingManager() {
                 <tbody>
                   {filteredWorkers.map((w) => {
                     const st = statusBadge(w.active ? 'active' : 'inactive');
-                    const workerUniform = uniforms.find(
-                      (u) => u.id === w.default_uniform || u.name === w.default_uniform
-                    );
                     return (
                       <tr
                         key={w.id}
@@ -1612,21 +1574,6 @@ export default function StaffingManager() {
                               <span className="text-[#A8A8B0] text-[12px]">--</span>
                             )}
                           </div>
-                        </td>
-                        <td className="px-4 py-2.5 text-[#6B7280] text-[13px] max-w-[160px] truncate" title={workerUniform?.description || w.default_uniform}>
-                          {workerUniform ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <span
-                                className="w-3 h-3 rounded-full border border-[#E5E5EC] shrink-0"
-                                style={{ backgroundColor: workerUniform.color || '#9CA3AF' }}
-                              />
-                              {workerUniform.name}
-                            </span>
-                          ) : w.default_uniform ? (
-                            w.default_uniform
-                          ) : (
-                            '--'
-                          )}
                         </td>
                         <td className="px-4 py-2.5 text-center">
                           <span
@@ -2023,6 +1970,91 @@ export default function StaffingManager() {
                 </div>
               </div>
 
+              {/* Add pay entry button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowAddPay(!showAddPay)}
+                  className="px-4 py-2 rounded-xl text-xs font-medium border border-[#C9A84C]/30 text-[#A88A3A] hover:bg-[#FBF6E9] transition-all"
+                >
+                  {showAddPay ? 'Cancelar' : '+ Agregar trabajador a nómina'}
+                </button>
+              </div>
+
+              {/* Add pay entry form */}
+              {showAddPay && (
+                <div className="bg-white rounded-2xl border border-[#C9A84C]/30 p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-medium text-[#6B7280] uppercase tracking-wider mb-1">Trabajador</label>
+                      <select
+                        value={newPayForm.worker_id}
+                        onChange={(e) => setNewPayForm(f => ({ ...f, worker_id: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-[#E5E5EC] text-sm focus:border-[#C9A84C] focus:outline-none"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {workers.filter(w => w.active && !workerPay.some(p => p.worker_id === w.id)).map(w => (
+                          <option key={w.id} value={w.id}>{w.name} ({w.roles.join(', ')})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-[#6B7280] uppercase tracking-wider mb-1">Horas</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={newPayForm.hours}
+                        onChange={(e) => setNewPayForm(f => ({ ...f, hours: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-[#E5E5EC] text-sm focus:border-[#C9A84C] focus:outline-none"
+                        placeholder="8"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-[#6B7280] uppercase tracking-wider mb-1">Tarifa (EUR/h)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={newPayForm.hourly_rate}
+                        onChange={(e) => setNewPayForm(f => ({ ...f, hourly_rate: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-[#E5E5EC] text-sm focus:border-[#C9A84C] focus:outline-none"
+                        placeholder="10"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        onClick={async () => {
+                          if (!newPayForm.worker_id || !newPayForm.hours) return;
+                          setSavingPay(true);
+                          try {
+                            await fetch('/api/staffing/pay', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                worker_id: newPayForm.worker_id,
+                                event_id: String(selectedEvent),
+                                hours: parseFloat(newPayForm.hours),
+                                hourly_rate: parseFloat(newPayForm.hourly_rate) || 10,
+                                notes: newPayForm.notes,
+                              }),
+                            });
+                            setShowAddPay(false);
+                            setNewPayForm({ worker_id: '', hours: '', hourly_rate: '10', notes: '' });
+                            await loadWorkerPay(String(selectedEvent));
+                          } catch { /* ignore */ }
+                          setSavingPay(false);
+                        }}
+                        disabled={!newPayForm.worker_id || !newPayForm.hours || savingPay}
+                        className="w-full px-4 py-2 rounded-xl text-sm font-medium text-white disabled:opacity-40 transition-all"
+                        style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+                      >
+                        {savingPay ? 'Guardando...' : 'Guardar'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Pay table */}
               {loadingPay ? (
                 <div className="text-center py-12 text-[#9CA3AF]">
@@ -2168,8 +2200,15 @@ export default function StaffingManager() {
               ) : (
                 <div className="bg-white rounded-2xl border border-[#ECECF1] p-12 text-center text-[#9CA3AF]">
                   <Icon name="banknote" className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No hay registros de nomina para este evento</p>
-                  <p className="text-xs mt-1">Los registros apareceran aqui cuando se asignen pagos a trabajadores</p>
+                  <p className="text-sm">No hay registros de nómina para este evento</p>
+                  <p className="text-xs mt-1 mb-4">Agrega trabajadores y registra sus horas para calcular la nómina</p>
+                  <button
+                    onClick={() => setShowAddPay(true)}
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-white"
+                    style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+                  >
+                    + Agregar primer trabajador
+                  </button>
                 </div>
               )}
             </div>
