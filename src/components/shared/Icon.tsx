@@ -102,6 +102,8 @@ const MAP: Record<string, LucideIcon> = {
   layers: Lucide.Layers,
   alertTriangle: Lucide.AlertTriangle,
   circleX: Lucide.CircleX,
+  checkCircle: Lucide.CheckCircle,
+  'check-circle': Lucide.CheckCircle,
   truck: Lucide.Truck,
   warehouse: Lucide.Warehouse,
   scale: Lucide.Scale,
