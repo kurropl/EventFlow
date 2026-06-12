@@ -1107,9 +1107,10 @@ export default function StaffingManager() {
 
   const sendOffers = async () => {
     if (!offerLineId || offerSelectedWorkers.size === 0) return;
+    const lineId = offerLineId; // capture before modal closes
     setSendingOffers(true);
     try {
-      const res = await fetch(`/api/staffing/lines/${offerLineId}/offers`, {
+      const res = await fetch(`/api/staffing/lines/${lineId}/offers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1119,7 +1120,7 @@ export default function StaffingManager() {
       if (res.ok) {
         closeOfferModal();
         if (selectedEvent) await loadStaffingLines(selectedEvent);
-        await loadLineOffers(offerLineId);
+        await loadLineOffers(lineId);
       }
     } catch {
       /* ignore */
