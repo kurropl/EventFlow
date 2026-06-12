@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 /* ------------------------------------------------------------------ */
 
 interface DataListProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   loading?: boolean;
   emptyIcon?: React.ReactNode;
   emptyTitle?: string;
