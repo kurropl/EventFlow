@@ -84,7 +84,7 @@ export default function CatalogCRUD() {
   const [newItem, setNewItem] = useState({ name: '', category: CATEGORIES[0], pvp: '', cost: '' });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const PAGE_SIZE = 30;
+  const PAGE_SIZE = 500;
 
   const loadCatalog = useCallback(async (pageNum = 1) => {
     setLoading(true);

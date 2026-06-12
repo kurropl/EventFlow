@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     
     // Pagination params
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Math.max(10, parseInt(searchParams.get('limit') || '50')));
+    const limit = Math.min(500, Math.max(10, parseInt(searchParams.get('limit') || '500')));
     const offset = (page - 1) * limit;
     const search = searchParams.get('search') || '';
     const categoryFilter = searchParams.get('category') || '';
