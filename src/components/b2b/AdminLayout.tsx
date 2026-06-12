@@ -221,7 +221,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setExpandedGroups(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const Brand = ({ subtitle = 'Panel de gestion' }: { subtitle?: string }) => (
+  const Brand = ({ subtitle = 'Panel de gestión' }: { subtitle?: string }) => (
     <div className="flex items-center gap-3 min-w-0">
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
         style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
@@ -281,7 +281,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <div key={item.id}>
                     {isSoon ? (
                       <span
-                        title="Proximamente — modulo en desarrollo"
+                        title="Próximamente — módulo en desarrollo"
                         className="group flex items-center gap-3 px-3 py-2 rounded-xl text-sm opacity-50 cursor-not-allowed"
                       >
                         <span className="text-[#9CA3AF]">
@@ -290,7 +290,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         {!collapsed && (
                           <span className="flex-1 min-w-0">
                             <span className="block leading-tight font-medium text-[#6B7280]">{item.label}</span>
-                            <span className="block text-[11px] text-[#A8A8B0] leading-tight">{item.sub} · Proximamente</span>
+                            <span className="block text-[11px] text-[#A8A8B0] leading-tight">{item.sub} · Próximamente</span>
                           </span>
                         )}
                       </span>
