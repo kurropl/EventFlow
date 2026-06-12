@@ -28,12 +28,38 @@ const defaultSettings: Settings = {
   iva_pct: 10,
 };
 
+// Validation patterns
+const CIF_REGEX = /^[A-Z]\d{8}$|^\d{8}[A-Z]$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[679]\d{8}$/;
+
+function validateField(field: keyof Settings, value: string): string {
+  switch (field) {
+    case 'cif':
+      if (!value) return 'El CIF/NIF es obligatorio';
+      if (!CIF_REGEX.test(value.toUpperCase())) return 'Formato: letra + 8 digitos o 8 digitos + letra';
+      return '';
+    case 'email':
+      if (!value) return 'El email es obligatorio';
+      if (!EMAIL_REGEX.test(value)) return 'Formato de email no valido';
+      return '';
+    case 'phone':
+      if (!value) return '';
+      const digits = value.replace(/\s/g, '');
+      if (!PHONE_REGEX.test(digits)) return 'Formato: 6XX, 7XX o 9XX seguido de 7 digitos';
+      return '';
+    default:
+      return '';
+  }
+}
+
 export default function ConfigPage() {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch('/api/settings')
@@ -45,7 +71,20 @@ export default function ConfigPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const validate = (current: Settings): boolean => {
+    const errors: Record<string, string> = {};
+    const cifErr = validateField('cif', current.cif);
+    const emailErr = validateField('email', current.email);
+    const phoneErr = validateField('phone', current.phone);
+    if (cifErr) errors.cif = cifErr;
+    if (emailErr) errors.email = emailErr;
+    if (phoneErr) errors.phone = phoneErr;
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSave = async () => {
+    if (!validate(settings)) return;
     setSaving(true);
     setError('');
     setSaved(false);
@@ -71,6 +110,14 @@ export default function ConfigPage() {
 
   const update = (field: keyof Settings, value: any) => {
     setSettings(prev => ({ ...prev, [field]: value }));
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
   };
 
   if (loading) {
@@ -135,8 +182,16 @@ export default function ConfigPage() {
                 type="text"
                 value={settings.cif}
                 onChange={(e) => update('cif', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-[#FAF8F5] text-sm focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
+                placeholder="B12345678"
+                className={`w-full px-3 py-2.5 rounded-lg border bg-[#FAF8F5] text-sm focus:ring-2 transition-all ${
+                  validationErrors.cif
+                    ? 'border-red-400 focus:ring-red-300 focus:border-red-400'
+                    : 'border-[#E5E7EB] focus:ring-[#C9A84C] focus:border-[#C9A84C]'
+                }`}
               />
+              {validationErrors.cif && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.cif}</p>
+              )}
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-[#6B7280] mb-1">Dirección</label>
@@ -148,13 +203,21 @@ export default function ConfigPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">Teléfono</label>
+              <label className="block text-xs font-medium text-[#6B7280] mb-1">Telefono</label>
               <input
                 type="tel"
                 value={settings.phone}
                 onChange={(e) => update('phone', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-[#FAF8F5] text-sm focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
+                placeholder="612 345 678"
+                className={`w-full px-3 py-2.5 rounded-lg border bg-[#FAF8F5] text-sm focus:ring-2 transition-all ${
+                  validationErrors.phone
+                    ? 'border-red-400 focus:ring-red-300 focus:border-red-400'
+                    : 'border-[#E5E7EB] focus:ring-[#C9A84C] focus:border-[#C9A84C]'
+                }`}
               />
+              {validationErrors.phone && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.phone}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-[#6B7280] mb-1">Email</label>
@@ -162,8 +225,16 @@ export default function ConfigPage() {
                 type="email"
                 value={settings.email}
                 onChange={(e) => update('email', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-[#FAF8F5] text-sm focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
+                placeholder="info@negocio.es"
+                className={`w-full px-3 py-2.5 rounded-lg border bg-[#FAF8F5] text-sm focus:ring-2 transition-all ${
+                  validationErrors.email
+                    ? 'border-red-400 focus:ring-red-300 focus:border-red-400'
+                    : 'border-[#E5E7EB] focus:ring-[#C9A84C] focus:border-[#C9A84C]'
+                }`}
               />
+              {validationErrors.email && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.email}</p>
+              )}
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-[#6B7280] mb-1">URL del logo</label>
@@ -178,12 +249,12 @@ export default function ConfigPage() {
           </div>
         </div>
 
-        {/* Parámetros */}
+        {/* Parametros */}
         <div className="bg-white rounded-2xl border border-[#ECECF1] p-6">
-          <h2 className="text-base font-semibold text-[#1A1A1A] mb-4">Parámetros del Sistema</h2>
+          <h2 className="text-base font-semibold text-[#1A1A1A] mb-4">Parametros del Sistema</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">Precio barra por hora (€)</label>
+              <label className="block text-xs font-medium text-[#6B7280] mb-1">Precio barra por hora (EUR)</label>
               <input
                 type="number"
                 step="0.50"

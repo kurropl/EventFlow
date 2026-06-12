@@ -33,6 +33,8 @@ const MAP: Record<string, LucideIcon> = {
   logout: Lucide.LogOut,
   menu: Lucide.Menu,
   close: Lucide.X,
+  config: Lucide.Settings,
+  chevronRight: Lucide.ChevronRight,
 
   // Actions
   trash: Lucide.Trash2,

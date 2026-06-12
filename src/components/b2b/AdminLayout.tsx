@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Icon from '../shared/Icon';
@@ -31,7 +31,7 @@ const GROUPS: MenuGroup[] = [
   },
   {
     id: 'captacion',
-    label: 'Captación',
+    label: 'Captacion',
     items: [
       { id: 'leads', label: 'Leads', sub: 'Prospectos y presupuestos', href: '/admin/leads' },
       { id: 'kanban', label: 'Pipeline', sub: 'Presupuestos', href: '/admin/kanban' },
@@ -40,7 +40,7 @@ const GROUPS: MenuGroup[] = [
   },
   {
     id: 'planificacion',
-    label: 'Planificación',
+    label: 'Planificacion',
     items: [
       { id: 'agenda', label: 'Agenda', sub: 'Calendario y citas', href: '/admin/agenda' },
     ],
@@ -49,7 +49,7 @@ const GROUPS: MenuGroup[] = [
     id: 'evento',
     label: 'Evento',
     items: [
-      { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
+      { id: 'catalog', label: 'Catalogo', sub: 'Platos y precios', href: '/admin/catalog' },
       { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
     ],
@@ -58,7 +58,7 @@ const GROUPS: MenuGroup[] = [
     id: 'staffing',
     label: 'Staffing',
     items: [
-      { id: 'staffing', label: 'Personal', sub: 'Trabajadores y asignación', href: '/admin/staffing' },
+      { id: 'staffing', label: 'Personal', sub: 'Trabajadores y asignacion', href: '/admin/staffing' },
     ],
   },
   {
@@ -78,9 +78,9 @@ const GROUPS: MenuGroup[] = [
   },
   {
     id: 'configuracion',
-    label: 'Configuración',
+    label: 'Configuracion',
     items: [
-      { id: 'config', label: 'Configuración', sub: 'Datos del negocio', href: '/admin/config' },
+      { id: 'config', label: 'Configuracion', sub: 'Datos del negocio', href: '/admin/config' },
     ],
   },
 ];
@@ -89,6 +89,32 @@ const ALL_ITEMS = GROUPS.flatMap(g => [
   ...g.items,
   ...g.items.flatMap(i => i.children || []),
 ]);
+
+// ── Warning Banner Component ──────────────────────────────────
+function SettingsWarningBanner({ onClose }: { onClose?: () => void }) {
+  return (
+    <div className="mx-3 mb-3 px-4 py-3 rounded-xl border border-amber-300 bg-amber-50">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex-shrink-0">
+          <Icon name="config" className="w-5 h-5 text-amber-600" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-amber-800">
+            Configura los datos del negocio para emitir facturas validas
+          </p>
+          <Link
+            href="/admin/config"
+            onClick={onClose}
+            className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-amber-700 underline hover:text-amber-900 transition-colors"
+          >
+            Ir a Configuracion
+            <Icon name="chevronRight" className="w-3 h-3" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Component ────────────────────────────────────────────────
 interface AdminLayoutProps {
@@ -104,6 +130,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     panel: true,
     evento: true,
   });
+  const [showBanner, setShowBanner] = useState(false);
+
+  // Check if business settings are incomplete (missing CIF or email)
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data) {
+          const cif = (d.data.cif || '').trim();
+          const email = (d.data.email || '').trim();
+          if (!cif || !email) {
+            setShowBanner(true);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Determine current item
   const currentItem = ALL_ITEMS.find(t => {
@@ -127,7 +170,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setExpandedGroups(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const Brand = ({ subtitle = 'Panel de gestión' }: { subtitle?: string }) => (
+  const Brand = ({ subtitle = 'Panel de gestion' }: { subtitle?: string }) => (
     <div className="flex items-center gap-3 min-w-0">
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
         style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
@@ -187,7 +230,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <div key={item.id}>
                     {isSoon ? (
                       <span
-                        title="Próximamente — módulo en desarrollo"
+                        title="Proximamente — modulo en desarrollo"
                         className="group flex items-center gap-3 px-3 py-2 rounded-xl text-sm opacity-50 cursor-not-allowed"
                       >
                         <span className="text-[#9CA3AF]">
@@ -196,7 +239,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         {!collapsed && (
                           <span className="flex-1 min-w-0">
                             <span className="block leading-tight font-medium text-[#6B7280]">{item.label}</span>
-                            <span className="block text-[11px] text-[#A8A8B0] leading-tight">{item.sub} · Próximamente</span>
+                            <span className="block text-[11px] text-[#A8A8B0] leading-tight">{item.sub} · Proximamente</span>
                           </span>
                         )}
                       </span>
@@ -269,7 +312,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="min-h-screen flex flex-col md:flex-row bg-[#F5F5F8] text-[#1A1A1A]">
       {/* ===== MOBILE TOP BAR ===== */}
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 h-16 bg-white/90 backdrop-blur-xl border-b border-[#ECECF1]">
-        <button onClick={() => setMobileNavOpen(true)} className="p-2 -ml-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8]" aria-label="Abrir menú">
+        <button onClick={() => setMobileNavOpen(true)} className="p-2 -ml-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8]" aria-label="Abrir menu">
           <Icon name="menu" className="w-5 h-5" />
         </button>
         <span className="font-serif text-base text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{currentLabel}</span>
@@ -290,6 +333,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </button>
             </div>
             <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto"><NavList onNavigate={() => setMobileNavOpen(false)} /></nav>
+            {showBanner && <SettingsWarningBanner onClose={() => setMobileNavOpen(false)} />}
             <div className="px-3 py-4 border-t border-[#F0F0F4]">
               <Link href="/" onClick={() => setMobileNavOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#6B7280] hover:bg-[#F5F5F8]">
                 <span className="text-[#9CA3AF]"><Icon name="portal" /></span>
@@ -316,6 +360,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
           <NavList collapsed={!sidebarOpen} />
         </nav>
+        {showBanner && sidebarOpen && <SettingsWarningBanner />}
         <div className="px-3 py-4 border-t border-[#F0F0F4]">
           <Link href="/" title="Ver portal" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A] transition-all">
             <span className="text-[#9CA3AF]"><Icon name="portal" /></span>
@@ -327,7 +372,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* ===== MAIN ===== */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="hidden md:flex h-[72px] items-center px-5 gap-4 bg-white/80 backdrop-blur-xl border-b border-[#ECECF1] sticky top-0 z-20">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A] transition-all" aria-label="Alternar menú">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A] transition-all" aria-label="Alternar menu">
             <Icon name="menu" className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
