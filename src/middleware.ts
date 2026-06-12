@@ -61,23 +61,26 @@ async function verifyJWT(token: string, secret: string): Promise<boolean> {
 
 /** Public API routes that don't require authentication */
 function isPublicRoute(pathname: string): boolean {
-  // POST /api/events — configurator submission (public)
-  // GET /api/guest-forms — guest form access (public)
-  // POST /api/guest-forms — guest form submission (public)
-  // POST /api/ai-quote — AI chatbot quote (public)
-  // POST /api/webhooks/* — webhook endpoints (public, verified separately)
+  // Cron endpoints (triggered by external scheduler)
+  if (pathname.startsWith('/api/cron/')) return true;
+  // Public quote pages
+  if (pathname.startsWith('/presupuesto/')) return true;
+  if (pathname.startsWith('/api/quotes/public/')) return true;
+  // Stock auto-orders (internal cron)
+  if (pathname === '/api/stock/auto-orders') return true;
   if (pathname.startsWith('/api/webhooks/')) return true;
   if (pathname === '/api/ai-quote') return true;
   if (pathname === '/api/guest-forms') return true;
   if (pathname === '/api/events' && !pathname.includes('/api/events/')) {
-    // Only POST is public; GET requires auth
-    // We check method below
-    return false; // handled by method check
+    return false;
   }
   return false;
 }
 
 function isPublicMethod(method: string, pathname: string): boolean {
+  if (pathname.startsWith('/api/cron/')) return true;
+  if (pathname.startsWith('/api/quotes/public/')) return true;
+  if (pathname === '/api/stock/auto-orders') return true;
   if (pathname === '/api/events' && method === 'POST') return true;
   if (pathname === '/api/catalog' && method === 'GET') return true;
   if (pathname === '/api/guest-forms' && (method === 'GET' || method === 'POST')) return true;

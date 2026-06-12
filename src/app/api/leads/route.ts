@@ -101,6 +101,17 @@ export async function POST(request: NextRequest) {
       [name, email || null, phone || null, source || 'manual', event_type || null, guest_count || null, event_date || null]
     );
 
+    // Send welcome email to new lead
+    if (lead && lead.email) {
+      try {
+        const { sendEmail, templates } = await import('@/lib/email');
+        const tpl = await templates.newLead(lead.name, lead.email);
+        await sendEmail({ to: lead.email, subject: tpl.subject, html: tpl.html });
+      } catch (e) {
+        console.warn('[EMAIL] Failed to send new lead email:', e);
+      }
+    }
+
     return NextResponse.json({ data: lead }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });

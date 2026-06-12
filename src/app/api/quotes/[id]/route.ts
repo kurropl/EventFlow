@@ -246,6 +246,43 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     );
     if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
 
+    // Send email when quote is sent to client
+    if (status === 'sent' && quote.total_pvp) {
+      try {
+        const event = await querySingle<any>(`SELECT client_name, client_email FROM events WHERE id = $1`, [quote.event_id]);
+        if (event?.client_email) {
+          const { sendEmail, templates } = await import('@/lib/email');
+          const validUntil = quote.valid_until ? new Date(quote.valid_until).toLocaleDateString('es-ES') : 'No especificada';
+          const tpl = await templates.quoteSent(event.client_name, event.client_email, quote.id, Number(quote.total_pvp), validUntil);
+          await sendEmail({ to: event.client_email, subject: tpl.subject, html: tpl.html });
+        }
+      } catch (e) {
+        console.warn('[EMAIL] Failed to send quote email:', e);
+      }
+    }
+
+    // S2.3: Auto-sync lead status ↔ quote status
+    if (status && ['sent', 'accepted'].includes(status)) {
+      try {
+        const event = await querySingle<any>(`SELECT lead_id FROM events WHERE id = $1`, [quote.event_id]);
+        if (event?.lead_id) {
+          const leadStatusMap: Record<string, string> = {
+            sent: 'presupuestado',
+            accepted: 'confirmado',
+          };
+          const newLeadStatus = leadStatusMap[status];
+          if (newLeadStatus) {
+            await querySingle(
+              `UPDATE leads SET status = $1, updated_at = NOW() WHERE id = $2`,
+              [newLeadStatus, event.lead_id]
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('[SYNC] Failed to sync lead status:', e);
+      }
+    }
+
     return NextResponse.json({ data: quote });
   } catch (error) {
     return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });

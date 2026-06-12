@@ -1,0 +1,36 @@
+/**
+ * EventFlow — Public Quote API (no auth required)
+ * GET /api/quotes/public/[id]
+ */
+import { NextRequest, NextResponse } from 'next/server';
+import { querySingle } from '@/lib/db';
+
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const quote = await querySingle<any>(
+      `SELECT q.*,
+        json_build_object(
+          'client_name', e.client_name,
+          'client_email', e.client_email,
+          'event_type', e.event_type,
+          'event_date', e.event_date,
+          'guest_count', e.guest_count,
+          'selected_items', e.selected_items
+        ) AS event
+      FROM quotes q
+      JOIN events e ON e.id = q.event_id
+      WHERE q.id = $1`,
+      [id]
+    );
+
+    if (!quote) {
+      return NextResponse.json({ success: false, error: 'Presupuesto no encontrado' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: quote });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
