@@ -17,6 +17,7 @@ const MAP: Record<string, LucideIcon> = {
   // Navigation
   dashboard: Lucide.LayoutDashboard,
   agenda: Lucide.CalendarDays,
+  checklist: Lucide.ClipboardCheck,
   leads: Lucide.UserPlus,
   kanban: Lucide.Kanban,
   clientes: Lucide.Users,

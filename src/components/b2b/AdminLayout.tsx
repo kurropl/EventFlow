@@ -43,6 +43,7 @@ const GROUPS: MenuGroup[] = [
     label: 'Planificación',
     items: [
       { id: 'agenda', label: 'Agenda', sub: 'Calendario y citas', href: '/admin/agenda' },
+      { id: 'checklist', label: 'Día D', sub: 'Checklist del evento', href: '/admin/checklist' },
     ],
   },
   {
