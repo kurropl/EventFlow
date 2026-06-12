@@ -33,6 +33,141 @@ const CIF_REGEX = /^[A-Z]\d{8}$|^\d{8}[A-Z]$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[679]\d{8}$/;
 
+/* ── Event Jobs Panel ── */
+interface JobDef {
+  id: string;
+  label: string;
+  description: string;
+  endpoint: string;
+  method: 'GET' | 'POST';
+  icon: string;
+}
+
+const EVENT_JOBS: JobDef[] = [
+  {
+    id: 'payment-reminders',
+    label: 'Recordatorios de cobro',
+    description: 'Envia email a clientes con pagos pendientes vencidos o proximos a vencer.',
+    endpoint: '/api/cron/payment-reminders',
+    method: 'GET',
+    icon: '1',
+  },
+  {
+    id: 'pre-event-reminders',
+    label: 'Recordatorios pre-evento',
+    description: 'Envia recordatorios 3 dias y 1 dia antes del evento a los clientes.',
+    endpoint: '/api/cron/pre-event-reminders',
+    method: 'GET',
+    icon: '2',
+  },
+  {
+    id: 'post-event-followup',
+    label: 'Seguimiento post-evento',
+    description: 'Envia email de seguimiento 1-3 dias despues de finalizar un evento.',
+    endpoint: '/api/cron/post-event-followup',
+    method: 'GET',
+    icon: '3',
+  },
+  {
+    id: 'auto-orders',
+    label: 'Pedidos automaticos a proveedores',
+    description: 'Detecta ingredientes por debajo del stock minimo y genera pedidos agrupados por proveedor.',
+    endpoint: '/api/stock/auto-orders',
+    method: 'POST',
+    icon: '4',
+  },
+];
+
+function EventJobsPanel() {
+  const [results, setResults] = useState<Record<string, { ok: boolean; msg: string; data?: any }>>({});
+  const [running, setRunning] = useState<Record<string, boolean>>({});
+
+  const runJob = async (job: JobDef) => {
+    setRunning((p) => ({ ...p, [job.id]: true }));
+    setResults((p) => ({ ...p, [job.id]: { ok: false, msg: 'Ejecutando...' } }));
+    try {
+      const res = await fetch(job.endpoint, { method: job.method });
+      const data = await res.json();
+      if (data.success) {
+        // Build a summary message based on the job type
+        let msg = '';
+        if (job.id === 'payment-reminders') {
+          msg = data.sent > 0
+            ? `${data.sent} recordatorio(s) enviado(s). ${data.failed || 0} fallido(s).`
+            : data.message || 'No hay pagos pendientes para recordar.';
+        } else if (job.id === 'pre-event-reminders') {
+          const total = (data.three_day || 0) + (data.one_day || 0);
+          msg = total > 0
+            ? `${data.sent} recordatorio(s) enviado(s) (${data.three_day} a 3d, ${data.one_day} a 1d).`
+            : 'No hay eventos proximos para recordar.';
+        } else if (job.id === 'post-event-followup') {
+          msg = data.sent > 0
+            ? `${data.sent} email(s) de seguimiento enviado(s).`
+            : data.message || 'No hay eventos recientes para hacer seguimiento.';
+        } else if (job.id === 'auto-orders') {
+          msg = data.orders_created > 0
+            ? `${data.orders_created} pedido(s) creado(s) con ${data.total_items} ingrediente(s) bajo minimo.`
+            : data.message || 'No hay ingredientes por debajo del stock minimo.';
+        }
+        setResults((p) => ({ ...p, [job.id]: { ok: true, msg, data } }));
+      } else {
+        setResults((p) => ({ ...p, [job.id]: { ok: false, msg: data.error || 'Error desconocido' } }));
+      }
+    } catch (e) {
+      setResults((p) => ({ ...p, [job.id]: { ok: false, msg: 'Error de conexion' } }));
+    }
+    setRunning((p) => ({ ...p, [job.id]: false }));
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#ECECF1] p-6">
+      <h2 className="text-base font-semibold text-[#1A1A1A] mb-1">Configuracion de Eventos</h2>
+      <p className="text-xs text-[#6B7280] mb-5">Ejecucion manual de tareas automaticas. Puedes lanzar cada job cuando lo necesites.</p>
+      <div className="space-y-3">
+        {EVENT_JOBS.map((job) => {
+          const isRunning = running[job.id];
+          const result = results[job.id];
+          return (
+            <div key={job.id} className="flex items-start gap-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#ECECF1]">
+              {/* Icon */}
+              <div className="w-9 h-9 rounded-lg bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-sm font-bold text-[#C9A84C]">{job.icon}</span>
+              </div>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-medium text-[#1A1A1A]">{job.label}</h3>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#ECECF1] text-[#6B7280] font-mono">{job.method} {job.endpoint}</span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">{job.description}</p>
+                {/* Result */}
+                {result && (
+                  <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${result.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                    {result.msg}
+                  </div>
+                )}
+              </div>
+              {/* Button */}
+              <button
+                onClick={() => runJob(job)}
+                disabled={isRunning}
+                className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-medium border border-[#C9A84C] text-[#C9A84C] hover:bg-[#C9A84C] hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-0.5"
+              >
+                {isRunning ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                    Ejecutando
+                  </span>
+                ) : 'Ejecutar'}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function validateField(field: keyof Settings, value: string): string {
   switch (field) {
     case 'cif':
@@ -275,6 +410,9 @@ export default function ConfigPage() {
             </div>
           </div>
         </div>
+
+        {/* Configuración de Eventos — Jobs */}
+        <EventJobsPanel />
 
         {/* Save button bottom */}
         <div className="flex justify-end pb-8">
