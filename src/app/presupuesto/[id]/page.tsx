@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 
 interface QuoteData {
   id: string;
@@ -52,8 +52,7 @@ function fmtEUR(v: number) {
   return v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
 }
 
-export default function PresupuestoPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function PresupuestoPage({ params }: { params: { id: string } }) {
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,7 +62,7 @@ export default function PresupuestoPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/quotes/public/${resolvedParams.id}`);
+        const res = await fetch(`/api/quotes/public/${params.id}`);
         const data = await res.json();
         if (data.success) {
           setQuote(data.data);
@@ -77,13 +76,13 @@ export default function PresupuestoPage({ params }: { params: Promise<{ id: stri
       setLoading(false);
     }
     load();
-  }, [resolvedParams.id]);
+  }, [params.id]);
 
   const handleAccept = async () => {
     if (!quote || accepting) return;
     setAccepting(true);
     try {
-      const res = await fetch(`/api/quotes/public/${resolvedParams.id}/accept`, {
+      const res = await fetch(`/api/quotes/public/${params.id}/accept`, {
         method: 'POST',
       });
       const data = await res.json();

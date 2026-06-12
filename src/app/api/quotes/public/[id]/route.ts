@@ -8,6 +8,13 @@ import { querySingle } from '@/lib/db';
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+
+    // Validate UUID format to avoid PG cast errors
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return NextResponse.json({ success: false, error: 'Presupuesto no encontrado' }, { status: 404 });
+    }
+
     const quote = await querySingle<any>(
       `SELECT q.*,
         json_build_object(

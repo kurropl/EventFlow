@@ -10,6 +10,12 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   try {
     const { id } = await params;
 
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return NextResponse.json({ success: false, error: 'Presupuesto no encontrado' }, { status: 404 });
+    }
+
     // Get quote
     const quote = await querySingle<any>(
       `SELECT q.*, e.id AS event_id, e.client_name, e.client_email, e.event_type
