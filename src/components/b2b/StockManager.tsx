@@ -490,10 +490,8 @@ export default function StockManager() {
             <Icon name="package" className="w-5 h-5 text-[#6B7280]" />
           </div>
           <div>
-            <span className="block text-[20px] font-bold text-[#1A1A1A] tabular-nums">
-              {ingredients.length}
-            </span>
-            <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Total ingredientes</span>
+            <span className="block text-[20px] font-bold text-[#1A1A1A] tabular-nums">{ingredients.length}</span>
+            <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Total</span>
           </div>
         </div>
         <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 border border-[#ECECF1] shadow-[0_1px_3px_rgba(16,24,40,0.06)]">
@@ -501,9 +499,7 @@ export default function StockManager() {
             <Icon name="alertTriangle" className="w-5 h-5 text-[#D97706]" />
           </div>
           <div>
-            <span className="block text-[20px] font-bold text-[#D97706] tabular-nums">
-              {lowStockCount}
-            </span>
+            <span className="block text-[20px] font-bold text-[#D97706] tabular-nums">{lowStockCount}</span>
             <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Stock bajo</span>
           </div>
         </div>
@@ -512,9 +508,7 @@ export default function StockManager() {
             <Icon name="circleX" className="w-5 h-5 text-[#DC2626]" />
           </div>
           <div>
-            <span className="block text-[20px] font-bold text-[#DC2626] tabular-nums">
-              {outOfStockCount}
-            </span>
+            <span className="block text-[20px] font-bold text-[#DC2626] tabular-nums">{outOfStockCount}</span>
             <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Agotados</span>
           </div>
         </div>
@@ -523,9 +517,7 @@ export default function StockManager() {
             <Icon name="truck" className="w-5 h-5 text-[#C9A84C]" />
           </div>
           <div>
-            <span className="block text-[20px] font-bold text-[#C9A84C] tabular-nums">
-              {providers.length}
-            </span>
+            <span className="block text-[20px] font-bold text-[#C9A84C] tabular-nums">{providers.length}</span>
             <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Proveedores</span>
           </div>
         </div>
@@ -572,13 +564,9 @@ export default function StockManager() {
               <Icon name="package" className="w-4 h-4 text-[#C9A84C]" />
               <h3 className="text-sm font-semibold text-[#1A1A1A]">Inventario</h3>
               <span className="text-xs text-[#9CA3AF] ml-auto">{filteredIngredients.length} ingredientes</span>
-              <button
-                onClick={() => setShowAddIngredient(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white transition-all ml-2"
-                style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-              >
+              <button onClick={() => setShowAddIngredient(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white transition-all ml-2" style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
                 <Icon name="plus" className="w-3.5 h-3.5" />
-                Añadir ingrediente
+                Añadir
               </button>
             </div>
 
@@ -629,12 +617,12 @@ export default function StockManager() {
                       const isRestocking = restockId === item.id;
 
                       return (
-                        <tr key={item.id} className={`border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors ${item.quantity === 0 ? 'border-l-[3px] border-l-[#DC2626]' : item.quantity <= item.min_stock ? 'border-l-[3px] border-l-[#D97706]' : 'border-l-[3px] border-l-[#16A34A]'}`}>
-                          <td className="px-4 py-3 text-[#1A1A1A] text-[13px] font-medium max-w-[220px] truncate" title={item.name}>
+                        <tr key={item.id} className="border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors" style={{ borderLeft: `3px solid ${item.quantity === 0 ? '#DC2626' : item.quantity <= item.min_stock ? '#D97706' : '#16A34A'}` }}>
+                          <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium max-w-[220px] truncate" title={item.name}>
                             {item.name}
                           </td>
-                          <td className="px-4 py-3 text-[#6B7280] text-[13px]">{item.unit}</td>
-                          <td className="px-4 py-3 text-right tabular-nums">
+                          <td className="px-4 py-2.5 text-[#6B7280] text-[13px]">{item.unit}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums">
                             {isEditing ? (
                               <input type="number" step="0.1" value={editData.quantity}
                                 onChange={(e) => setEditData((d) => ({ ...d, quantity: e.target.value }))}
@@ -645,7 +633,7 @@ export default function StockManager() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-right tabular-nums">
+                          <td className="px-4 py-2.5 text-right tabular-nums">
                             {isEditing ? (
                               <input type="number" step="0.1" value={editData.min_stock}
                                 onChange={(e) => setEditData((d) => ({ ...d, min_stock: e.target.value }))}
@@ -663,20 +651,20 @@ export default function StockManager() {
                                 className="w-24 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
                             ) : (
                               <span className="text-[13px] text-[#1A1A1A] font-medium">
-                                {item.cost_per_unit ? `€${item.cost_per_unit.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                                {item.cost_per_unit ? `${Number(item.cost_per_unit).toFixed(2)}\u20AC` : '\u2014'}
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-[#6B7280] text-[13px] max-w-[160px] truncate" title={item.supplier}>
+                          <td className="px-4 py-2.5 text-[#6B7280] text-[13px] max-w-[160px] truncate" title={item.supplier}>
                             {item.supplier || '—'}
                           </td>
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-4 py-2.5 text-center">
                             <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full ${status.bg} ${status.color}`}>
                               <Icon name={status.icon} className="w-3 h-3" />
                               {status.label}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-4 py-2.5 text-center">
                             <div className="flex items-center justify-center gap-1">
                               {isEditing ? (
                                 <>
@@ -754,13 +742,9 @@ export default function StockManager() {
               <Icon name="truck" className="w-4 h-4 text-[#C9A84C]" />
               <h3 className="text-sm font-semibold text-[#1A1A1A]">Proveedores</h3>
               <span className="text-xs text-[#9CA3AF] ml-auto">{providers.length} proveedores</span>
-              <button
-                onClick={() => setShowAddProvider(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white transition-all ml-2"
-                style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-              >
+              <button onClick={() => setShowAddProvider(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white transition-all ml-2" style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
                 <Icon name="plus" className="w-3.5 h-3.5" />
-                Añadir proveedor
+                Añadir
               </button>
             </div>
 
@@ -800,182 +784,129 @@ export default function StockManager() {
             </div>
           </div>
         </div>
+      )}
 
-        {/* ── ADD INGREDIENT MODAL ── */}
-        {showAddIngredient && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-[#ECECF1] w-full max-w-md max-h-[90vh] overflow-auto">
-              <div className="px-6 py-4 border-b border-[#ECECF1] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon name="package" className="w-4 h-4 text-[#C9A84C]" />
-                  <h3 className="text-sm font-semibold text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                    Añadir ingrediente
-                  </h3>
-                </div>
-                <button onClick={() => { setShowAddIngredient(false); setNewItem({ name: '', unit: 'kg', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' }); }}
-                  className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors">
-                  <Icon name="close" className="w-4 h-4" />
-                </button>
+      {/* ============================================================= */}
+      {/*  ADD INGREDIENT MODAL                                          */}
+      {/* ============================================================= */}
+      {showAddIngredient && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#ECECF1] w-full max-w-md">
+            <div className="px-6 py-4 border-b border-[#ECECF1] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="package" className="w-4 h-4 text-[#C9A84C]" />
+                <h3 className="text-sm font-semibold text-[#1A1A1A]">A&#241;adir ingrediente</h3>
               </div>
-              <div className="p-6 space-y-4">
+              <button onClick={() => { setShowAddIngredient(false); setNewItem({ name: '', unit: 'kg', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' }); }}
+                className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors">
+                <Icon name="close" className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Nombre *</label>
+                <input type="text" placeholder="Nombre del ingrediente..." value={newItem.name}
+                  onChange={(e) => setNewItem((n) => ({ ...n, name: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Nombre *</label>
-                  <input
-                    type="text"
-                    placeholder="Nombre del ingrediente..."
-                    value={newItem.name}
-                    onChange={(e) => setNewItem((n) => ({ ...n, name: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all"
-                  />
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Unidad</label>
+                  <select value={newItem.unit} onChange={(e) => setNewItem((n) => ({ ...n, unit: e.target.value }))}
+                    className="px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all w-full">
+                    <option value="kg">kg</option><option value="g">g</option><option value="l">l</option><option value="ml">ml</option><option value="ud">ud</option><option value="caja">caja</option>
+                  </select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Unidad</label>
-                    <select
-                      value={newItem.unit}
-                      onChange={(e) => setNewItem((n) => ({ ...n, unit: e.target.value }))}
-                      className={selectCls + ' w-full'}
-                    >
-                      <option value="kg">kg</option>
-                      <option value="g">g</option>
-                      <option value="l">l</option>
-                      <option value="ml">ml</option>
-                      <option value="ud">ud</option>
-                      <option value="caja">caja</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Proveedor</label>
-                    <select
-                      value={newItem.supplier}
-                      onChange={(e) => setNewItem((n) => ({ ...n, supplier: e.target.value }))}
-                      className={selectCls + ' w-full'}
-                    >
-                      <option value="">Sin proveedor</option>
-                      {providers.map((p) => (
-                        <option key={p.id} value={p.name}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Cantidad</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      placeholder="0"
-                      value={newItem.quantity}
-                      onChange={(e) => setNewItem((n) => ({ ...n, quantity: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all text-right tabular-nums"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Stock mínimo</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      placeholder="0"
-                      value={newItem.min_stock}
-                      onChange={(e) => setNewItem((n) => ({ ...n, min_stock: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all text-right tabular-nums"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Coste/unidad</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={newItem.cost_per_unit}
-                      onChange={(e) => setNewItem((n) => ({ ...n, cost_per_unit: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all text-right tabular-nums"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Proveedor</label>
+                  <select value={newItem.supplier} onChange={(e) => setNewItem((n) => ({ ...n, supplier: e.target.value }))}
+                    className="px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all w-full">
+                    <option value="">Sin proveedor</option>
+                    {providers.map((p) => (<option key={p.id} value={p.name}>{p.name}</option>))}
+                  </select>
                 </div>
               </div>
-              <div className="px-6 py-4 border-t border-[#ECECF1] flex justify-end gap-2">
-                <button
-                  onClick={() => { setShowAddIngredient(false); setNewItem({ name: '', unit: 'kg', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' }); }}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#6B7280] hover:bg-[#F5F5F8] transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAddIngredient}
-                  disabled={!newItem.name || savingNewItem}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 transition-all"
-                  style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-                >
-                  <Icon name={savingNewItem ? 'spinner' : 'check'} className={`w-4 h-4 inline mr-1 ${savingNewItem ? 'animate-spin' : ''}`} />
-                  Añadir
-                </button>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Cantidad</label>
+                  <input type="number" step="0.1" min="0" placeholder="0" value={newItem.quantity}
+                    onChange={(e) => setNewItem((n) => ({ ...n, quantity: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm text-right tabular-nums focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">M&#237;nimo</label>
+                  <input type="number" step="0.1" min="0" placeholder="0" value={newItem.min_stock}
+                    onChange={(e) => setNewItem((n) => ({ ...n, min_stock: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm text-right tabular-nums focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Coste/u</label>
+                  <input type="number" step="0.01" min="0" placeholder="0.00" value={newItem.cost_per_unit}
+                    onChange={(e) => setNewItem((n) => ({ ...n, cost_per_unit: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm text-right tabular-nums focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* ── ADD PROVIDER MODAL ── */}
-        {showAddProvider && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-[#ECECF1] w-full max-w-md max-h-[90vh] overflow-auto">
-              <div className="px-6 py-4 border-b border-[#ECECF1] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon name="truck" className="w-4 h-4 text-[#C9A84C]" />
-                  <h3 className="text-sm font-semibold text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                    Añadir proveedor
-                  </h3>
-                </div>
-                <button onClick={() => { setShowAddProvider(false); setNewProvider({ name: '', category: '' }); }}
-                  className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors">
-                  <Icon name="close" className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Nombre *</label>
-                  <input
-                    type="text"
-                    placeholder="Nombre del proveedor..."
-                    value={newProvider.name}
-                    onChange={(e) => setNewProvider((p) => ({ ...p, name: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Categoría</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Carnicería, Frutería, Lácteos..."
-                    value={newProvider.category}
-                    onChange={(e) => setNewProvider((p) => ({ ...p, category: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all"
-                  />
-                </div>
-              </div>
-              <div className="px-6 py-4 border-t border-[#ECECF1] flex justify-end gap-2">
-                <button
-                  onClick={() => { setShowAddProvider(false); setNewProvider({ name: '', category: '' }); }}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#6B7280] hover:bg-[#F5F5F8] transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAddProvider}
-                  disabled={!newProvider.name || savingNewProvider}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 transition-all"
-                  style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-                >
-                  <Icon name={savingNewProvider ? 'spinner' : 'check'} className={`w-4 h-4 inline mr-1 ${savingNewProvider ? 'animate-spin' : ''}`} />
-                  Añadir
-                </button>
-              </div>
+            <div className="px-6 py-4 border-t border-[#ECECF1] flex justify-end gap-2">
+              <button onClick={() => { setShowAddIngredient(false); setNewItem({ name: '', unit: 'kg', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' }); }}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#6B7280] hover:bg-[#F5F5F8] transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleAddIngredient} disabled={!newItem.name || savingNewItem}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 transition-all"
+                style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+                <Icon name={savingNewItem ? 'spinner' : 'check'} className={'w-4 h-4 inline mr-1 ' + (savingNewItem ? 'animate-spin' : '')} />
+                A&#241;adir
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/*  ADD PROVIDER MODAL                                            */}
+      {/* ============================================================= */}
+      {showAddProvider && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#ECECF1] w-full max-w-md">
+            <div className="px-6 py-4 border-b border-[#ECECF1] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="truck" className="w-4 h-4 text-[#C9A84C]" />
+                <h3 className="text-sm font-semibold text-[#1A1A1A]">A&#241;adir proveedor</h3>
+              </div>
+              <button onClick={() => { setShowAddProvider(false); setNewProvider({ name: '', category: '' }); }}
+                className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors">
+                <Icon name="close" className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Nombre *</label>
+                <input type="text" placeholder="Nombre del proveedor..." value={newProvider.name}
+                  onChange={(e) => setNewProvider((p) => ({ ...p, name: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Categor&#237;a</label>
+                <input type="text" placeholder="Ej: Carnicer&#237;a, Fruter&#237;a, L&#225;cteos..." value={newProvider.category}
+                  onChange={(e) => setNewProvider((p) => ({ ...p, category: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-[#ECECF1] flex justify-end gap-2">
+              <button onClick={() => { setShowAddProvider(false); setNewProvider({ name: '', category: '' }); }}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#6B7280] hover:bg-[#F5F5F8] transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleAddProvider} disabled={!newProvider.name || savingNewProvider}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 transition-all"
+                style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+                <Icon name={savingNewProvider ? 'spinner' : 'check'} className={'w-4 h-4 inline mr-1 ' + (savingNewProvider ? 'animate-spin' : '')} />
+                A&#241;adir
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ============================================================= */}
