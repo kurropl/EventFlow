@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link'; import Icon from '../shared/Icon';
+import { StatStrip } from '@/components/ui';
 
 type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled';
 
@@ -134,7 +135,7 @@ const todayIso = new Date().toISOString().slice(0, 10);
 const upcoming = [...active]
 .filter((e) => (e.event_date || '').slice(0, 10) >= todayIso)
 .sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''))
-.slice(0, 6);
+.slice(0, 3);
 
 // ── Pipeline ─────────────────────────────────────────────────
 const pipeline: string[] = ['draft', 'sent', 'accepted', 'paid'];
@@ -148,13 +149,7 @@ return counts;
 }, [events]);
 const typeMax = Math.max(1, ...Object.values(typeCounts));
 
-// ── Quick stats ──────────────────────────────────────────────
-const KPIS = [
-{ label: 'Ingresos totales', value: `${totalRevenue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`, accent: '#16A34A', subtitle: `${payments.length} cobros`, href: '/admin/cobros', icon: 'revenue' },
-{ label: 'Pendiente de cobro', value: `${pendingRevenue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`, accent: '#D9920B', subtitle: 'presupuestos activos', href: '/admin/kanban', icon: 'pending' },
-{ label: 'Comensales previstos', value: `${totalGuests.toLocaleString('es-ES')}`, accent: '#6B2737', subtitle: `${active.length} eventos`, href: '/admin/operations', icon: 'guests' },
-{ label: 'Conversión', value: `${conversion}%`, accent: '#3B82F6', subtitle: `${confirmed} de ${events.length}`, href: '/admin/kanban', icon: 'conversion' },
-];
+
 
 return (
 <div className="space-y-6">
@@ -206,22 +201,29 @@ Crear primer presupuesto
 </div>
 ) : (
 <>
-{/* KPI cards */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-{KPIS.map((k, i) => (
-<div>
-<Link href={k.href} className="block bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all">
-<div className="flex items-center justify-between mb-3">
-<span className="flex items-center gap-2">
-<span className="w-2 h-2 rounded-full" style={{ background: k.accent }} />
-<span className="text-[12px] text-[#6B7280]">{k.label}</span>
-</span>
-<span className="text-[#9CA3AF]"><Icon name={k.icon} className="w-4 h-4" /></span>
-</div>
-<div className="text-3xl font-semibold text-[#1A1A1A] tabular-nums">{k.value}</div>
-<div className="text-[11px] text-[#9CA3AF] mt-1">{k.subtitle}</div>
-</Link>
-</div>
+{/* StatStrip */}
+<StatStrip items={[
+  { label: 'Ingresos', value: `${totalRevenue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`, accent: true },
+  { label: 'Pendiente', value: `${pendingRevenue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €` },
+  { label: 'Eventos', value: confirmed },
+  { label: 'Comensales', value: totalGuests.toLocaleString('es-ES') },
+]} />
+
+{/* Accesos rápidos */}
+<div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+{[
+  { label: 'Leads', href: '/admin/leads', icon: 'leads' },
+  { label: 'Pipeline', href: '/admin/kanban', icon: 'kanban' },
+  { label: 'Catálogo', href: '/admin/catalog', icon: 'catalog' },
+  { label: 'Agenda', href: '/admin/agenda', icon: 'agenda' },
+  { label: 'Inventario', href: '/admin/stock', icon: 'stock' },
+  { label: 'Cobros', href: '/admin/cobros', icon: 'cobros' },
+].map((q) => (
+  <Link key={q.href} href={q.href}
+    className="flex flex-col items-center gap-1.5 text-center text-[11px] font-medium text-[#374151] bg-white border border-[#ECECF1] rounded-xl px-2 py-3 hover:border-[#E0D3A8] hover:bg-[#FBF6E9] transition-all">
+    <span className="text-[#9CA3AF]"><Icon name={q.icon} className="w-4 h-4" /></span>
+    {q.label}
+  </Link>
 ))}
 </div>
 
@@ -258,7 +260,7 @@ Crear primer presupuesto
 <div className="bg-white rounded-2xl border border-[#ECECF1] shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden">
 <div className="px-5 py-4 border-b border-[#F0F0F4] flex items-center justify-between">
 <h3 className="font-semibold text-sm text-[#1A1A1A]">Próximos eventos</h3>
-<Link href="/admin/kanban" className="text-xs text-[#A88A3A] hover:underline">Ver todos</Link>
+<Link href="/admin/agenda" className="text-xs text-[#A88A3A] hover:underline">Ver agenda</Link>
 </div>
 <div className="divide-y divide-[#F2F2F5]">
 {upcoming.length === 0 ? (
@@ -361,27 +363,7 @@ return (
 </div>
 )}
 
-{/* Quick links */}
-<div className="bg-white rounded-2xl border border-[#ECECF1] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-<h3 className="font-semibold text-sm text-[#1A1A1A] mb-3">Accesos rápidos</h3>
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-{[
-{ label: 'Agenda', href: '/admin/agenda', icon: 'agenda' },
-{ label: 'Leads', href: '/admin/leads', icon: 'leads' },
-{ label: 'Clientes', href: '/admin/clientes', icon: 'clientes' },
-{ label: 'Cobros', href: '/admin/cobros', icon: 'cobros' },
-{ label: 'Invitados', href: '/admin/invitados', icon: 'invitados' },
-{ label: 'Catálogo', href: '/admin/catalog', icon: 'catalog' },
-{ label: 'Operaciones', href: '/admin/operations', icon: 'operations' },
-].map((q) => (
-<Link key={q.href} href={q.href}
-className="flex items-center gap-2.5 text-[12px] font-medium text-[#374151] bg-[#FAFAFC] border border-[#ECECF1] rounded-xl px-3 py-2.5 hover:border-[#E0D3A8] hover:bg-[#FBF6E9] transition-all">
-<span className="text-[#9CA3AF]"><Icon name={q.icon} className="w-3.5 h-3.5" /></span>
-{q.label}
-</Link>
-))}
-</div>
-</div>
+
 </div>
 </div>
 </>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Icon from '../shared/Icon';
@@ -31,7 +31,7 @@ const GROUPS: MenuGroup[] = [
   },
   {
     id: 'captacion',
-    label: 'Captacion',
+    label: 'Captación',
     items: [
       { id: 'leads', label: 'Leads', sub: 'Prospectos y presupuestos', href: '/admin/leads' },
       { id: 'kanban', label: 'Pipeline', sub: 'Presupuestos', href: '/admin/kanban' },
@@ -40,7 +40,7 @@ const GROUPS: MenuGroup[] = [
   },
   {
     id: 'planificacion',
-    label: 'Planificacion',
+    label: 'Planificación',
     items: [
       { id: 'agenda', label: 'Agenda', sub: 'Calendario y citas', href: '/admin/agenda' },
     ],
@@ -49,7 +49,7 @@ const GROUPS: MenuGroup[] = [
     id: 'evento',
     label: 'Evento',
     items: [
-      { id: 'catalog', label: 'Catalogo', sub: 'Platos y precios', href: '/admin/catalog' },
+      { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
       { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
     ],
@@ -78,9 +78,9 @@ const GROUPS: MenuGroup[] = [
   },
   {
     id: 'configuracion',
-    label: 'Configuracion',
+    label: 'Configuración',
     items: [
-      { id: 'config', label: 'Configuracion', sub: 'Datos del negocio', href: '/admin/config' },
+      { id: 'config', label: 'Configuración', sub: 'Datos del negocio', href: '/admin/config' },
     ],
   },
 ];
@@ -100,14 +100,14 @@ function SettingsWarningBanner({ onClose }: { onClose?: () => void }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-amber-800">
-            Configura los datos del negocio para emitir facturas validas
+            Configura los datos del negocio para emitir facturas válidas
           </p>
           <Link
             href="/admin/config"
             onClick={onClose}
             className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-amber-700 underline hover:text-amber-900 transition-colors"
           >
-            Ir a Configuracion
+            Ir a Configuración
             <Icon name="chevronRight" className="w-3 h-3" />
           </Link>
         </div>
@@ -124,13 +124,70 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     panel: true,
     evento: true,
   });
   const [showBanner, setShowBanner] = useState(false);
+
+  const drawerRef = useRef<HTMLElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Close mobile drawer on Escape key
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileNavOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileNavOpen]);
+
+  // Focus trap for mobile drawer
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    // Focus the first focusable element inside the drawer after render
+    const timer = setTimeout(() => {
+      const drawer = drawerRef.current;
+      if (!drawer) return;
+      const focusable = drawer.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length > 0) focusable[0].focus();
+    }, 50);
+
+    const trapFocus = (e: FocusEvent) => {
+      const drawer = drawerRef.current;
+      if (!drawer) return;
+      const focusable = drawer.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.target === document && !drawer.contains(e.target as Node)) {
+        e.preventDefault();
+        first.focus();
+      }
+      if (e.target === last && !e.shiftKey) {
+        // Allow natural tab but wrap
+      }
+    };
+    document.addEventListener('focus', trapFocus, true);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('focus', trapFocus, true);
+      if (previousFocusRef.current) {
+        previousFocusRef.current.focus();
+        previousFocusRef.current = null;
+      }
+    };
+  }, [mobileNavOpen]);
 
   // Check if business settings are incomplete (missing CIF or email)
   useEffect(() => {
@@ -312,7 +369,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="min-h-screen flex flex-col md:flex-row bg-[#F5F5F8] text-[#1A1A1A]">
       {/* ===== MOBILE TOP BAR ===== */}
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 h-16 bg-white/90 backdrop-blur-xl border-b border-[#ECECF1]">
-        <button onClick={() => setMobileNavOpen(true)} className="p-2 -ml-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8]" aria-label="Abrir menu">
+        <button onClick={() => setMobileNavOpen(true)} className="p-2 -ml-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8]" aria-label="Abrir menú" aria-expanded={mobileNavOpen} aria-controls="mobile-drawer">
           <Icon name="menu" className="w-5 h-5" />
         </button>
         <span className="font-serif text-base text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{currentLabel}</span>
@@ -325,7 +382,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {mobileNavOpen && (
         <div className="md:hidden fixed inset-0 z-50" onClick={() => setMobileNavOpen(false)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white border-r border-[#ECECF1] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <aside id="mobile-drawer" ref={drawerRef as any} role="dialog" aria-modal="true" aria-label="Menú de navegación" className="absolute left-0 top-0 bottom-0 w-72 bg-white border-r border-[#ECECF1] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="h-16 px-4 flex items-center justify-between border-b border-[#F0F0F4]">
               <Brand />
               <button onClick={() => setMobileNavOpen(false)} className="p-2 rounded-lg text-[#9CA3AF] hover:bg-[#F5F5F8]" aria-label="Cerrar">
@@ -345,26 +402,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
 
       {/* ===== DESKTOP SIDEBAR ===== */}
-      <aside
-        className={`hidden md:flex sticky top-0 h-screen flex-col bg-white border-r border-[#ECECF1] transition-all duration-300 overflow-hidden ${
-          sidebarOpen ? 'w-64' : 'w-[72px]'
-        }`}
-      >
+      <aside className="hidden md:flex sticky top-0 h-screen w-64 flex-col bg-white border-r border-[#ECECF1] overflow-hidden">
         <div className="h-[72px] px-5 flex items-center border-b border-[#F0F0F4]">
-          {sidebarOpen ? <Brand /> : (
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm mx-auto" style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
-              <span className="font-bold text-sm text-white" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>JB</span>
-            </div>
-          )}
+          <Brand />
         </div>
         <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
-          <NavList collapsed={!sidebarOpen} />
+          <NavList />
         </nav>
-        {showBanner && sidebarOpen && <SettingsWarningBanner />}
+        {showBanner && <SettingsWarningBanner />}
         <div className="px-3 py-4 border-t border-[#F0F0F4]">
           <Link href="/" title="Ver portal" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A] transition-all">
             <span className="text-[#9CA3AF]"><Icon name="portal" /></span>
-            {sidebarOpen && <span className="font-medium">Ver portal</span>}
+            <span className="font-medium">Ver portal</span>
           </Link>
         </div>
       </aside>
@@ -372,9 +421,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* ===== MAIN ===== */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="hidden md:flex h-[72px] items-center px-5 gap-4 bg-white/80 backdrop-blur-xl border-b border-[#ECECF1] sticky top-0 z-20">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F8] hover:text-[#1A1A1A] transition-all" aria-label="Alternar menu">
-            <Icon name="menu" className="w-5 h-5" />
-          </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-serif text-lg text-[#1A1A1A] leading-tight" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>{currentLabel}</h1>
             <p className="text-[12px] text-[#9CA3AF] leading-tight">{currentSub}</p>
