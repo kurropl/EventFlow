@@ -7,6 +7,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import DiaDChecklist from './DiaDChecklist';
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -548,15 +550,7 @@ export default function CalendarView() {
       )}
 
       {viewMode === 'diad' && (
-        <DiaDView
-          events={upcomingEvents}
-          selectedEvent={diadEvent}
-          onSelectEvent={setDiadEvent}
-          checklistItems={filteredChecklist}
-          onToggle={toggleCheckItem}
-          onDelete={deleteCheckItem}
-          onAdd={() => setShowAddCheck(true)}
-        />
+        <DiaDChecklist events={upcomingEvents} />
       )}
 
       {/* ── Detail sidebar for month view ── */}
