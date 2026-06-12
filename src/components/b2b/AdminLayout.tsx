@@ -163,18 +163,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const trapFocus = (e: FocusEvent) => {
       const drawer = drawerRef.current;
       if (!drawer) return;
-      const focusable = drawer.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.target === document && !drawer.contains(e.target as Node)) {
+      if (!drawer.contains(e.target as Node)) {
         e.preventDefault();
-        first.focus();
-      }
-      if (e.target === last && !e.shiftKey) {
-        // Allow natural tab but wrap
+        const focusable = drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length > 0) focusable[0].focus();
       }
     };
     document.addEventListener('focus', trapFocus, true);
