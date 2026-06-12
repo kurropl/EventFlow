@@ -68,6 +68,72 @@ function formatQty(value: number, unit: string): string {
   return `${value.toLocaleString('es-ES', { maximumFractionDigits: 1 })} ${unit}`;
 }
 
+/* ── Inline-editable provider row ──────────────────────────────── */
+function ProviderRow({ p, ingredients, setProviders }: {
+  p: Provider;
+  ingredients: { supplier: string }[];
+  setProviders: React.Dispatch<React.SetStateAction<Provider[]>>;
+}) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const ingredientCount = ingredients.filter((i) => i.supplier === p.name).length;
+
+  const saveField = async (field: string) => {
+    setSaving(true);
+    try {
+      await fetch(`/api/providers/${p.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: draft[field] || null }),
+      });
+      setProviders((prev: any[]) => prev.map((x: any) => x.id === p.id ? { ...x, [field]: draft[field] || null } : x));
+    } catch {}
+    setEditing(null);
+    setSaving(false);
+  };
+
+  const Cell = ({ field, value }: { field: string; value: string | null }) => {
+    if (editing === field) {
+      return (
+        <input
+          autoFocus
+          value={draft[field] || ''}
+          onChange={(e) => setDraft(d => ({ ...d, [field]: e.target.value }))}
+          onBlur={() => saveField(field)}
+          onKeyDown={(e) => { if (e.key === 'Enter') saveField(field); if (e.key === 'Escape') setEditing(null); }}
+          disabled={saving}
+          className="w-full px-2 py-1 text-[13px] border border-[#C9A84C] rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A84C]"
+        />
+      );
+    }
+    return (
+      <span
+        className="cursor-pointer hover:bg-[#FBF6E9] px-2 py-1 rounded-lg transition-colors text-[#6B7280] text-[13px]"
+        title={value || 'Click para editar'}
+        onClick={() => { setEditing(field); setDraft({ [field]: value || '' }); }}
+      >
+        {value || <span className="text-[#C9A84C] italic text-[12px]">+ anadir</span>}
+      </span>
+    );
+  };
+
+  return (
+    <tr className="border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors">
+      <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium max-w-[200px] truncate" title={p.name}>{p.name}</td>
+      <td className="px-4 py-2.5">
+        <span className="text-[10px] bg-[#F5F5F8] text-[#6B7280] px-2 py-0.5 rounded-full">{p.category}</span>
+      </td>
+      <td className="px-4 py-2.5"><Cell field="contact_name" value={p.contact_name} /></td>
+      <td className="px-4 py-2.5"><Cell field="phone" value={p.phone} /></td>
+      <td className="px-4 py-2.5"><Cell field="email" value={p.email} /></td>
+      <td className="px-4 py-2.5 text-center">
+        <span className="inline-flex items-center justify-center min-w-[24px] h-6 rounded-full bg-[#FBF6E9] text-[#C9A84C] text-xs font-semibold">{ingredientCount}</span>
+      </td>
+    </tr>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -583,45 +649,9 @@ export default function StockManager() {
                     </tr>
                   </thead>
                   <tbody>
-                    {providers.map((p) => {
-                      const ingredientCount = ingredients.filter((i) => i.supplier === p.name).length;
-                      return (
-                        <tr key={p.id} className="border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors">
-                          <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium max-w-[200px] truncate" title={p.name}>
-                            {p.name}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <span className="text-[10px] bg-[#F5F5F8] text-[#6B7280] px-2 py-0.5 rounded-full">
-                              {p.category}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-[#6B7280] text-[13px] max-w-[180px] truncate" title={p.contact_name}>
-                            {p.contact_name || '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-[#6B7280] text-[13px]">
-                            {p.phone ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Icon name="phone" className="w-3 h-3 text-[#C9A84C]" />
-                                {p.phone}
-                              </span>
-                            ) : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-[#6B7280] text-[13px] max-w-[220px] truncate" title={p.email}>
-                            {p.email ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Icon name="email" className="w-3 h-3 text-[#C9A84C]" />
-                                {p.email}
-                              </span>
-                            ) : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <span className="inline-flex items-center justify-center min-w-[24px] h-6 rounded-full bg-[#FBF6E9] text-[#C9A84C] text-xs font-semibold">
-                              {ingredientCount}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {providers.map((p) => (
+                      <ProviderRow key={p.id} p={p} ingredients={ingredients} setProviders={setProviders} />
+                    ))}
                   </tbody>
                 </table>
               </div>
