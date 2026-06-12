@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Icon from '../shared/Icon';
+import { StatStrip, DataCard, DataList, PageHeader } from '@/components/ui';
 
 interface CatalogItem {
   id: string;
@@ -65,6 +66,10 @@ function estimatePrices(name: string, category: string): { pvp: number; cost: nu
   const pvp = Math.max(1.5, Math.round(base.pvp * multiplier * v * 100) / 100);
   const cost = Math.max(0.5, Math.round(base.cost * multiplier * v * 0.8 * 100) / 100);
   return { pvp, cost };
+}
+
+function money(v: number) {
+  return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
 export default function CatalogCRUD() {
@@ -207,24 +212,39 @@ export default function CatalogCRUD() {
   const avgMargin = items.length ? items.reduce((s, i) => s + getMargin(i.pvp, i.cost), 0) / items.length : 0;
   const hasEstimated = items.some((i) => i.estimated);
 
+  const activeCategories = useMemo(() =>
+    CATEGORIES
+      .map((cat) => ({
+        label: CATEGORY_LABELS[cat] || cat,
+        count: items.filter((i) => i.category === cat && i.active).length,
+      }))
+      .filter((c) => c.count > 0),
+    [items],
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h2 className="text-[#1A1A1A] text-xl font-serif mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Catálogo de artículos</h2>
-          <p className="text-[#6B7280] text-sm">
-            <span className="text-[#A88A3A] font-semibold">{totalItems}</span> artículos · <span className="text-[#16A34A] font-medium">{avgMargin.toFixed(0)}%</span> margen medio · <span className="text-[#6B7280]">{activeItems}</span> activos
-          </p>
-        </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm hover:shadow transition-all"
-          style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-        >
-          + Nuevo artículo
-        </button>
-      </div>
+      <PageHeader
+        title="Catálogo de artículos"
+        subtitle="Gestión completa del catálogo"
+        actions={
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm hover:shadow transition-all"
+            style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+          >
+            + Nuevo artículo
+          </button>
+        }
+        stats={
+          <StatStrip items={[
+            { label: 'Total', value: totalItems, accent: true },
+            { label: 'Margen medio', value: `${avgMargin.toFixed(0)}%` },
+            { label: 'Activos', value: activeItems },
+          ]} />
+        }
+      />
 
       {hasEstimated && (
         <p className="text-[12px] text-[#9CA3AF] -mt-3">
@@ -232,26 +252,10 @@ export default function CatalogCRUD() {
         </p>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <input
-          type="text"
-          placeholder="Buscar artículo..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all"
-        />
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="px-4 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:outline-none"
-        >
-          <option value="all">Todas las categorías</option>
-          {CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-          ))}
-        </select>
-      </div>
+      {/* Category stat strip */}
+      <StatStrip
+        items={activeCategories.map((c) => ({ label: c.label, value: String(c.count) }))}
+      />
 
       {/* New Item Form */}
       {showForm && (
@@ -323,115 +327,101 @@ export default function CatalogCRUD() {
         </div>
       )}
 
-      {/* Category chips */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
-        {CATEGORIES.map((cat) => {
-          const count = items.filter((i) => i.category === cat && i.active).length;
-          const active = filterCategory === cat;
-          return (
-            <div key={cat} className={`px-3 py-2 rounded-xl border cursor-pointer transition-all ${active ? 'border-[#C9A84C] bg-[#FBF6E9]' : 'border-[#ECECF1] bg-white hover:border-[#E0D3A8]'}`}
-              onClick={() => setFilterCategory((f) => (f === cat ? 'all' : cat))}>
-              <div className="text-[#9CA3AF] truncate">{CATEGORY_LABELS[cat]}</div>
-              <div className="text-[#1A1A1A] font-semibold text-sm">{count}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <div className="max-h-[calc(100vh-360px)] overflow-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-[#FAFAFC] z-10">
-              <tr className="border-b border-[#ECECF1]">
-                <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Artículo</th>
-                <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Categoría</th>
-                <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">PVP</th>
-                <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Coste</th>
-                <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Margen</th>
-                <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.map((item, i) => (
-                <motion.tr
-                  key={item.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: Math.min(i * 0.005, 0.4) }}
-                  className="border-b border-[#F2F2F5] hover:bg-[#FAFAFC] transition-colors"
-                >
-                  <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] max-w-[250px] truncate" title={item.name}>{item.name}</td>
-                  <td className="px-4 py-2.5">
-                    <span className="text-[10px] bg-[#F5F5F8] text-[#6B7280] px-2 py-0.5 rounded-full">
-                      {CATEGORY_LABELS[item.category] || item.category}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right text-[#1A1A1A] text-[13px] tabular-nums">{item.estimated && <span className="text-[#C9A84C]/70">~</span>}{Number(item.pvp).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
-                  <td className="px-4 py-2.5 text-right text-[#6B7280] text-[13px] tabular-nums">{Number(item.cost).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
-                  <td className="px-4 py-2.5 text-right">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
-                      ${getMargin(item.pvp, item.cost) >= 50 ? 'bg-[#EFFAF2] text-[#16A34A]' :
-                        getMargin(item.pvp, item.cost) >= 30 ? 'bg-[#FFF8EC] text-[#D9920B]' :
-                        'bg-[#FEF3F3] text-[#DC2626]'}`}>
-                      {getMargin(item.pvp, item.cost)}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-center">
-                    <button
-                      onClick={() => toggleActive(item)}
-                      className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors cursor-pointer ${item.active ? 'bg-[#EFFAF2] text-[#16A34A] hover:bg-[#D1FAE5]' : 'bg-[#FEF3F3] text-[#DC2626] hover:bg-[#FEE2E2]'}`}
-                      title={item.active ? 'Desactivar' : 'Activar'}
-                    >
-                      {item.active ? '● Activo' : '○ Inactivo'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2.5 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => startEdit(item)} className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors" title="Editar">
-                        <Icon name="edit" className="w-3.5 h-3.5"/>
-                      </button>
-                      <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF2F2] hover:text-[#DC2626] transition-colors" title="Desactivar">
-                        <Icon name="trash" className="w-3.5 h-3.5"/>
-                      </button>
-                    </div>
-                  </td>
-                </motion.tr>
+      {/* Data List */}
+      <DataList
+        loading={loading}
+        count={filteredItems.length}
+        emptyTitle="No se encontraron artículos"
+        emptyDescription="Prueba con otros filtros o añade un nuevo artículo."
+        filters={
+          <>
+            <input
+              type="text"
+              placeholder="Buscar artículo..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all"
+            />
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="px-4 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:outline-none"
+            >
+              <option value="all">Todas las categorías</option>
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
               ))}
-            </tbody>
-          </table>
+            </select>
+          </>
+        }
+      >
+        {filteredItems.map((item) => (
+          <DataCard
+            key={item.id}
+            avatar={{
+              initials: item.name.charAt(0).toUpperCase(),
+              color: 'linear-gradient(135deg, #C9A84C, #A88A3A)',
+            }}
+            title={item.name}
+            subtitle={CATEGORY_LABELS[item.category] || item.category}
+            badges={[
+              item.active
+                ? { label: 'Activo', variant: 'success' as const }
+                : { label: 'Inactivo', variant: 'neutral' as const },
+            ]}
+            meta={[
+              { label: 'PVP', value: `${item.estimated ? '~' : ''}${money(item.pvp)}` },
+              { label: 'Coste', value: money(item.cost) },
+              { label: 'Margen', value: `${getMargin(item.pvp, item.cost)}%` },
+            ]}
+            actions={
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); startEdit(item); }}
+                  className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors"
+                  title="Editar"
+                >
+                  <Icon name="edit" className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleActive(item); }}
+                  className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors cursor-pointer ${item.active ? 'bg-[#EFFAF2] text-[#16A34A] hover:bg-[#D1FAE5]' : 'bg-[#FEF3F3] text-[#DC2626] hover:bg-[#FEE2E2]'}`}
+                  title={item.active ? 'Desactivar' : 'Activar'}
+                >
+                  {item.active ? '● Activo' : '○ Inactivo'}
+                </button>
+              </>
+            }
+            onClick={() => startEdit(item)}
+          />
+        ))}
+      </DataList>
+
+      {/* Pagination */}
+      {filteredItems.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-[#9CA3AF]">
+          <span>Mostrando {filteredItems.length} artículos</span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-3 py-1 rounded-lg border border-[#E5E7EB] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#F8F3E6] transition-colors"
+              >
+                Anterior
+              </button>
+              <span className="text-[#6B7280] font-medium">Página {page} de {totalPages}</span>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-3 py-1 rounded-lg border border-[#E5E7EB] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#F8F3E6] transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          )}
         </div>
-        {loading && (
-          <div className="text-center py-12 text-[#9CA3AF]">Cargando catálogo…</div>
-        )}
-        {!loading && filteredItems.length === 0 && (
-          <div className="text-center py-12 text-[#9CA3AF]">No se encontraron artículos</div>
-        )}
-        {filteredItems.length > 0 && (
-          <div className="px-4 py-2 border-t border-[#F2F2F5] flex items-center justify-between text-xs text-[#9CA3AF]">
-            <span>Mostrando {filteredItems.length} artículos</span>
-            {totalPages > 1 && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="px-3 py-1 rounded-lg border border-[#E5E7EB] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#F8F3E6] transition-colors"
-                >
-                  Anterior
-                </button>
-                <span className="text-[#6B7280] font-medium">Página {page} de {totalPages}</span>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="px-3 py-1 rounded-lg border border-[#E5E7EB] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#F8F3E6] transition-colors"
-                >
-                  Siguiente
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

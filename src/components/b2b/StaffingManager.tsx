@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Icon from '../shared/Icon';
+import { DataCard, DataList, PageHeader } from '@/components/ui';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1318,46 +1319,23 @@ export default function StaffingManager() {
       {/* ============================================================= */}
       {activeTab === 'workers' && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Icon name="user" className="w-4 h-4 text-[#C9A84C]" />
-            <h3 className="text-sm font-semibold text-[#1A1A1A]">Trabajadores</h3>
-            <span className="text-xs text-[#9CA3AF] ml-auto">
-              {filteredWorkers.length} trabajador{filteredWorkers.length !== 1 ? 'es' : ''}
-              {activeWorkersCount > 0 && (
-                <span className="ml-1 text-[#16A34A]">
-                  {' '}&middot; {activeWorkersCount} activos
-                </span>
-              )}
-            </span>
-          </div>
-
-          {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Icon
-                name="search"
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A8A8B0]"
-              />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, telefono o rol..."
-                value={searchWorker}
-                onChange={(e) => setSearchWorker(e.target.value)}
-                className="pl-10 pr-4 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all w-full"
-              />
-            </div>
-            <button
-              onClick={() => {
-                resetWorkerForm();
-                setShowWorkerForm(true);
-              }}
-              className={goldBtn}
-              style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-            >
-              <Icon name="plus" className="w-4 h-4" />
-              Nuevo trabajador
-            </button>
-          </div>
+          <PageHeader
+            title="Trabajadores"
+            subtitle={`${filteredWorkers.length} trabajador${filteredWorkers.length !== 1 ? 'es' : ''}${activeWorkersCount > 0 ? ` \u00b7 ${activeWorkersCount} activos` : ''}`}
+            actions={
+              <button
+                onClick={() => {
+                  resetWorkerForm();
+                  setShowWorkerForm(true);
+                }}
+                className={goldBtn}
+                style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+              >
+                <Icon name="plus" className="w-4 h-4" />
+                Nuevo trabajador
+              </button>
+            }
+          />
 
           {/* Inline worker form */}
           {showWorkerForm && (
@@ -1530,112 +1508,71 @@ export default function StaffingManager() {
             </div>
           )}
 
-          {/* Workers table */}
-          <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <div className="max-h-[calc(100vh-420px)] overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-[#FAFAFC] z-10">
-                  <tr className="border-b border-[#ECECF1]">
-                    <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">
-                      Nombre
-                    </th>
-                    <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">
-                      Telefono
-                    </th>
-                    <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">
-                      Roles
-                    </th>
-                    <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredWorkers.map((w) => {
-                    const st = statusBadge(w.active ? 'active' : 'inactive');
-                    return (
-                      <tr
-                        key={w.id}
-                        className="border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors"
+          {/* Workers list */}
+          <DataList
+            loading={loadingWorkers}
+            emptyIcon={<Icon name="user" className="w-8 h-8" />}
+            emptyTitle={searchWorker ? 'No se encontraron trabajadores' : 'No hay trabajadores registrados'}
+            emptyDescription={searchWorker ? 'Intenta con otros criterios de busqueda' : undefined}
+            count={filteredWorkers.length}
+            filters={
+              <div className="relative flex-1">
+                <Icon
+                  name="search"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A8A8B0]"
+                />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, telefono o rol..."
+                  value={searchWorker}
+                  onChange={(e) => setSearchWorker(e.target.value)}
+                  className="pl-10 pr-4 py-2 rounded-xl bg-[#F8F8FA] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all w-full"
+                />
+              </div>
+            }
+          >
+            {filteredWorkers.map((w) => {
+              const initials = w.name
+                .split(' ')
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((n) => n[0])
+                .join('')
+                .toUpperCase();
+              const isActive = w.active;
+              return (
+                <DataCard
+                  key={w.id}
+                  avatar={{ initials }}
+                  title={w.name}
+                  subtitle={w.phone || undefined}
+                  badges={[
+                    ...w.roles.map((r) => ({ label: r, variant: 'warning' as const })),
+                    { label: isActive ? 'Activo' : 'Inactivo', variant: isActive ? 'success' as const : 'danger' as const },
+                  ]}
+                  meta={[{ label: 'Contrato', value: w.contract_name || 'Sin contrato' }]}
+                  actions={
+                    <>
+                      <button
+                        onClick={() => startEditWorker(w)}
+                        className="p-2 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors"
+                        title="Editar"
                       >
-                        <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium max-w-[200px] truncate" title={w.name}>
-                          {w.name}
-                        </td>
-                        <td className="px-4 py-2.5 text-[#6B7280] text-[13px]">
-                          {w.phone ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Icon name="phone" className="w-3 h-3 text-[#C9A84C]" />
-                              {w.phone}
-                            </span>
-                          ) : (
-                            '--'
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex flex-wrap gap-1">
-                            {w.roles.map((r) => (
-                              <span
-                                key={r}
-                                className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FBF6E9] text-[#A88A3A]"
-                              >
-                                {r}
-                              </span>
-                            ))}
-                            {w.roles.length === 0 && (
-                              <span className="text-[#A8A8B0] text-[12px]">--</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.color}`}
-                          >
-                            {st.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => startEditWorker(w)}
-                              className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors"
-                              title="Editar"
-                            >
-                              <Icon name="edit" className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => deleteWorker(w.id)}
-                              className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors"
-                              title="Eliminar"
-                            >
-                              <Icon name="trash" className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {loadingWorkers && (
-              <div className="text-center py-12 text-[#9CA3AF]">
-                <Icon name="spinner" className="w-5 h-5 animate-spin mx-auto mb-2" />
-                Cargando trabajadores...
-              </div>
-            )}
-            {!loadingWorkers && filteredWorkers.length === 0 && (
-              <div className="text-center py-12 text-[#9CA3AF]">
-                <Icon name="user" className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                {searchWorker
-                  ? 'No se encontraron trabajadores'
-                  : 'No hay trabajadores registrados'}
-              </div>
-            )}
-          </div>
+                        <Icon name="edit" className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => deleteWorker(w.id)}
+                        className="p-2 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors"
+                        title="Eliminar"
+                      >
+                        <Icon name="trash" className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  }
+                />
+              );
+            })}
+          </DataList>
         </div>
       )}
 

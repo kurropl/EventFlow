@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '../shared/Icon';
+import { DataCard, DataList, PageHeader } from '@/components/ui';
 
 interface Lead {
   id: string; name: string; email: string | null; phone: string | null;
@@ -398,12 +399,10 @@ export default function LeadsCRM() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-[#1A1A2E]">Leads</h1>
-          <p className="text-xs text-[#6B7280]">Prospectos del configurador y contactos manuales</p>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title="Leads"
+        subtitle="Prospectos del configurador y contactos manuales"
+        actions={
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
             className="text-[11px] font-medium border border-[#E5E7EB] rounded-xl px-3 py-2 bg-white text-[#1A1A2E] focus:outline-none">
             <option value="">Todos los estados</option>
@@ -413,73 +412,48 @@ export default function LeadsCRM() {
             <option value="convertido">Convertido</option>
             <option value="perdido">Perdido</option>
           </select>
+        }
+      />
+
+      {/* Leads DataList */}
+      <DataList
+        loading={loading}
+        count={leads.length}
+        filters={
           <div className="relative">
-<Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Buscar..."
               className="text-sm border border-[#E5E7EB] rounded-xl pl-9 pr-4 py-2 w-56 focus:outline-none focus:ring-2 focus:ring-[#1A1A2E]/10" />
           </div>
-        </div>
-      </div>
-
-      {/* Leads Table */}
-      {loading ? (
-        <div className="text-center py-12 text-sm text-[#6B7280]">Cargando...</div>
-      ) : leads.length === 0 ? (
-        <div className="text-center py-12 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-2xl border border-dashed border-[#E5E7EB]">
-          No hay leads todavía. Cuando un cliente envíe un presupuesto desde el configurador, aparecerá aquí.
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
-                <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Lead</th>
-                <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Contacto</th>
-                <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Evento</th>
-                <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Estado</th>
-                <th className="text-right text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Presupuestos</th>
-                <th className="text-right text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => (
-                <tr key={lead.id}
-                  onClick={() => setSelectedLead(lead)}
-                  className="border-b border-[#F3F4F6] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-[#1A1A2E] text-white flex items-center justify-center text-[10px] font-bold">
-                        {initials(lead.name)}
-                      </div>
-                      <span className="text-sm font-medium text-[#1A1A2E]">{lead.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <p className="text-xs text-[#6B7280]">{lead.email || '—'}</p>
-                    <p className="text-[11px] text-[#9CA3AF]">{lead.phone || ''}</p>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <p className="text-xs text-[#1A1A2E]">{lead.event_type || '—'}</p>
-                    <p className="text-[11px] text-[#9CA3AF]">{lead.guest_count ? `${lead.guest_count} pax` : ''}</p>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[lead.status] || ''}`}>
-                      {STATUS_LABELS[lead.status] || lead.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <span className="text-xs text-[#1A1A2E]">{lead.quotes?.length || 0}</span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-xs text-[#9CA3AF]">
-                    {fmtDate(lead.created_at)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        }
+        emptyTitle="No hay leads todavía"
+        emptyDescription="Cuando un cliente envíe un presupuesto desde el configurador, aparecerá aquí."
+      >
+        {leads.map((lead) => {
+          const statusVariant =
+            lead.status === 'convertido' ? 'success' :
+            lead.status === 'presupuestado' ? 'warning' :
+            lead.status === 'nuevo' ? 'info' :
+            lead.status === 'perdido' ? 'danger' : 'neutral';
+          return (
+            <DataCard
+              key={lead.id}
+              onClick={() => setSelectedLead(lead)}
+              avatar={{ initials: initials(lead.name) }}
+              title={lead.name}
+              subtitle={lead.email || undefined}
+              badges={[{ label: STATUS_LABELS[lead.status] || lead.status, variant: statusVariant }]}
+              meta={[
+                { label: 'Tel', value: lead.phone || '—' },
+                { label: 'Evento', value: `${lead.event_type || '—'} · ${lead.guest_count || 0} pax` },
+                { label: 'Presupuestos', value: String(lead.quotes?.length || 0) },
+                { label: 'Fecha', value: fmtDate(lead.created_at) },
+              ]}
+            />
+          );
+        })}
+      </DataList>
 
       {/* ── Stock Warnings Modal ── */}
       {showStockWarnings && stockWarnings.length > 0 && (

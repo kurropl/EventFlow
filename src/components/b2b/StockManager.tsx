@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Icon from '../shared/Icon';
+import { DataCard, DataList } from '@/components/ui';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -594,146 +595,109 @@ export default function StockManager() {
               </select>
             </div>
 
-            {/* Stock Table */}
-            <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-              <div className="max-h-[calc(100vh-480px)] overflow-auto">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-[#FAFAFC] z-10">
-                    <tr className="border-b border-[#ECECF1]">
-                      <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Nombre</th>
-                      <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Unidad</th>
-                      <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Stock</th>
-                      <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Mínimo</th>
-                      <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Coste/u</th>
-                      <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Proveedor</th>
-                      <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Estado</th>
-                      <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredIngredients.map((item) => {
-                      const status = stockStatus(item.quantity, item.min_stock);
-                      const isEditing = editingId === item.id;
-                      const isRestocking = restockId === item.id;
+            {/* Stock List */}
+            <DataList
+              loading={loading}
+              emptyIcon={<Icon name="package" className="w-8 h-8" />}
+              emptyTitle="No se encontraron ingredientes"
+              count={filteredIngredients.length}
+            >
+              {filteredIngredients.map((item) => {
+                const status = stockStatus(item.quantity, item.min_stock);
+                const isEditing = editingId === item.id;
+                const isRestocking = restockId === item.id;
 
-                      return (
-                        <tr key={item.id} className="border-b border-[#F2F2F5] hover:bg-[#FAFCFE] transition-colors" style={{ borderLeft: `3px solid ${item.quantity === 0 ? '#DC2626' : item.quantity <= item.min_stock ? '#D97706' : '#16A34A'}` }}>
-                          <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium max-w-[220px] truncate" title={item.name}>
-                            {item.name}
-                          </td>
-                          <td className="px-4 py-2.5 text-[#6B7280] text-[13px]">{item.unit}</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums">
-                            {isEditing ? (
-                              <input type="number" step="0.1" value={editData.quantity}
-                                onChange={(e) => setEditData((d) => ({ ...d, quantity: e.target.value }))}
-                                className="w-24 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
-                            ) : (
-                              <span className={`text-[13px] ${status.color} font-medium`}>
-                                {formatQty(item.quantity, item.unit)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums">
-                            {isEditing ? (
-                              <input type="number" step="0.1" value={editData.min_stock}
-                                onChange={(e) => setEditData((d) => ({ ...d, min_stock: e.target.value }))}
-                                className="w-24 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
-                            ) : (
-                              <span className="text-[13px] text-[#6B7280]">
-                                {formatQty(item.min_stock, item.unit)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums">
-                            {isEditing ? (
-                              <input type="number" step="0.01" value={editData.cost_per_unit}
-                                onChange={(e) => setEditData((d) => ({ ...d, cost_per_unit: e.target.value }))}
-                                className="w-24 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
-                            ) : (
-                              <span className="text-[13px] text-[#1A1A1A] font-medium">
-                                {item.cost_per_unit ? `${Number(item.cost_per_unit).toFixed(2)}\u20AC` : '\u2014'}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2.5 text-[#6B7280] text-[13px] max-w-[160px] truncate" title={item.supplier}>
-                            {item.supplier || '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full ${status.bg} ${status.color}`}>
-                              <Icon name={status.icon} className="w-3 h-3" />
-                              {status.label}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              {isEditing ? (
-                                <>
-                                  <button onClick={saveEdit} disabled={saving}
-                                    className="p-1.5 rounded-lg text-white disabled:opacity-60"
-                                    style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }} title="Guardar">
-                                    <Icon name="check" className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button onClick={() => setEditingId(null)}
-                                    className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors" title="Cancelar">
-                                    <Icon name="close" className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
-                              ) : isRestocking ? (
-                                <>
-                                  <input type="number" step="0.1" placeholder="Cantidad" value={restockQty}
-                                    onChange={(e) => setRestockQty(e.target.value)}
-                                    className="w-20 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
-                                  <button onClick={() => handleRestock(item.id)} disabled={saving || !restockQty}
-                                    className="p-1.5 rounded-lg text-white disabled:opacity-60"
-                                    style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }} title="Confirmar reposición">
-                                    <Icon name="check" className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button onClick={() => { setRestockId(null); setRestockQty(''); }}
-                                    className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors" title="Cancelar">
-                                    <Icon name="close" className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button onClick={() => startEdit(item)}
-                                    className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors" title="Editar">
-                                    <Icon name="edit" className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button onClick={() => { setRestockId(item.id); setRestockQty(''); }}
-                                    className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#EFFAF2] hover:text-[#16A34A] transition-colors" title="Reponer stock">
-                                    <Icon name="plus" className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                return (
+                  <DataCard
+                    key={item.id}
+                    avatar={{
+                      initials: item.name.charAt(0).toUpperCase(),
+                      color: item.quantity === 0
+                        ? '#DC2626'
+                        : item.quantity <= item.min_stock
+                          ? '#D97706'
+                          : '#16A34A',
+                    }}
+                    title={item.name}
+                    subtitle={item.supplier || 'Sin proveedor'}
+                    badges={[{
+                      label: status.label,
+                      variant: status.label === 'OK' ? 'success' : status.label === 'Bajo' ? 'warning' : 'danger',
+                    }]}
+                    meta={[
+                      { label: 'Stock', value: formatQty(item.quantity, item.unit) },
+                      { label: 'Mínimo', value: formatQty(item.min_stock, item.unit) },
+                      { label: 'Coste/u', value: item.cost_per_unit ? `${Number(item.cost_per_unit).toFixed(2)}€` : '—' },
+                    ]}
+                    actions={
+                      isEditing ? (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-[#9CA3AF]">Stock:</span>
+                            <input type="number" step="0.1" value={editData.quantity}
+                              onChange={(e) => setEditData((d) => ({ ...d, quantity: e.target.value }))}
+                              className="w-20 px-2 py-1 rounded-lg border border-[#C9A84C] bg-white text-[#1A1A1A] text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-[#9CA3AF]">Mín:</span>
+                            <input type="number" step="0.1" value={editData.min_stock}
+                              onChange={(e) => setEditData((d) => ({ ...d, min_stock: e.target.value }))}
+                              className="w-20 px-2 py-1 rounded-lg border border-[#C9A84C] bg-white text-[#1A1A1A] text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-[#9CA3AF]">Coste:</span>
+                            <input type="number" step="0.01" value={editData.cost_per_unit}
+                              onChange={(e) => setEditData((d) => ({ ...d, cost_per_unit: e.target.value }))}
+                              className="w-20 px-2 py-1 rounded-lg border border-[#C9A84C] bg-white text-[#1A1A1A] text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                          </div>
+                          <button onClick={saveEdit} disabled={saving}
+                            className="p-1.5 rounded-lg text-white disabled:opacity-60"
+                            style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }} title="Guardar">
+                            <Icon name="check" className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setEditingId(null)}
+                            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors" title="Cancelar">
+                            <Icon name="close" className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : isRestocking ? (
+                        <div className="flex items-center gap-1.5">
+                          <input type="number" step="0.1" placeholder="Cantidad" value={restockQty}
+                            onChange={(e) => setRestockQty(e.target.value)}
+                            className="w-24 px-2 py-1 rounded-lg border border-[#C9A84C] bg-white text-[#1A1A1A] text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                          <button onClick={() => handleRestock(item.id)} disabled={saving || !restockQty}
+                            className="p-1.5 rounded-lg text-white disabled:opacity-60"
+                            style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }} title="Confirmar reposición">
+                            <Icon name="check" className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => { setRestockId(null); setRestockQty(''); }}
+                            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors" title="Cancelar">
+                            <Icon name="close" className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => startEdit(item)}
+                            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors" title="Editar">
+                            <Icon name="edit" className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => { setRestockId(item.id); setRestockQty(''); }}
+                            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#EFFAF2] hover:text-[#16A34A] transition-colors" title="Reponer stock">
+                            <Icon name="plus" className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )
+                    }
+                  />
+                );
+              })}
+            </DataList>
+            {filteredIngredients.length > 0 && (lowStockCount > 0 || outOfStockCount > 0) && (
+              <div className="px-4 py-2 text-xs text-[#9CA3AF] text-right">
+                {lowStockCount > 0 && <span className="text-[#D97706]">{lowStockCount} bajo mínimo</span>}
+                {outOfStockCount > 0 && <span className="ml-2 text-[#DC2626]">{outOfStockCount} agotado{outOfStockCount > 1 ? 's' : ''}</span>}
               </div>
-
-              {loading && (
-                <div className="text-center py-12 text-[#9CA3AF]">
-                  <Icon name="spinner" className="w-5 h-5 animate-spin mx-auto mb-2" />
-                  Cargando inventario...
-                </div>
-              )}
-              {!loading && filteredIngredients.length === 0 && (
-                <div className="text-center py-12 text-[#9CA3AF]">
-                  <Icon name="package" className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  No se encontraron ingredientes
-                </div>
-              )}
-              {filteredIngredients.length > 0 && (
-                <div className="px-4 py-2 border-t border-[#F2F2F5] text-xs text-[#9CA3AF] text-right">
-                  {filteredIngredients.length} ingrediente{filteredIngredients.length > 1 ? 's' : ''}
-                  {lowStockCount > 0 && <span className="ml-2 text-[#D97706]">· {lowStockCount} bajo mínimo</span>}
-                  {outOfStockCount > 0 && <span className="ml-2 text-[#DC2626]">· {outOfStockCount} agotado{outOfStockCount > 1 ? 's' : ''}</span>}
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* ── PROVEEDORES ── */}

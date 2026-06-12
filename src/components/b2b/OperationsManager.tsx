@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '@/components/shared/Icon';
 import EventStaffingPanel from '@/components/b2b/EventStaffingPanel';
+import { PageHeader, StatStrip, DataCard, DataList } from '@/components/ui';
 
 // ── Types ──────────────────────────────────────────────────────
 interface EventOrder {
@@ -387,67 +388,47 @@ export default function OperationsManager() {
   // ── List View ────────────────────────────────────────────────
   const renderList = () => (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-[#1A1A2E]">Operaciones</h1>
-          <p className="text-xs text-[#6B7280]">Eventos activos, escandallos y logística</p>
-        </div>
-        <button onClick={fetchOrders} className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
-          <Icon name="refresh" className="w-3.5 h-3.5"/>
-        </button>
-      </div>
-      {orders.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-[#EFF4FF] border border-[#BFDBFE]">
-            <p className="text-[10px] text-[#2563EB] uppercase tracking-wide font-semibold">En curso</p>
-            <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{orders.filter(o => o.status === 'in_progress').length}</p>
-          </div>
-          <div className="p-4 rounded-xl bg-[#EFFAF2] border border-[#A7F3D0]">
-            <p className="text-[10px] text-[#15803D] uppercase tracking-wide font-semibold">Completados</p>
-            <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{orders.filter(o => o.status === 'completed').length}</p>
-          </div>
-          <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
-            <p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Total pax</p>
-            <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{orders.reduce((s, o) => s + (o.guest_count || 0), 0)}</p>
-          </div>
-        </div>
-      )}
-      {loading ? <div className="text-center py-12 text-sm text-[#6B7280]">Cargando...</div> :
-        orders.length === 0 ? <div className="text-center py-12 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-2xl border border-dashed border-[#E5E7EB]">No hay órdenes de evento activas.</div> :
-        <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
-                <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Cliente</th>
-                <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Evento</th>
-                <th className="text-center text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Pax</th>
-                <th className="text-center text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Mesas</th>
-                <th className="text-center text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Camareros</th>
-                <th className="text-right text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Total</th>
-                <th className="text-center text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(o => (
-                <tr key={o.id} onClick={() => handleSelectOrder(o)}
-                  className="border-b border-[#F3F4F6] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
-                  <td className="px-4 py-3.5"><p className="text-sm font-medium text-[#1A1A2E]">{o.client_name}</p><p className="text-[11px] text-[#9CA3AF]">{o.client_email}</p></td>
-                  <td className="px-4 py-3.5"><p className="text-sm text-[#1A1A2E]">{o.event_type}</p><p className="text-[11px] text-[#9CA3AF]">{fmtDate(o.event_date)}</p></td>
-                  <td className="px-4 py-3.5 text-center text-sm text-[#1A1A2E] font-medium">{o.guest_count}</td>
-                  <td className="px-4 py-3.5 text-center"><span className="text-sm font-medium text-[#1A1A2E]">{o.tables_confirmed || o.tables_suggested}</span><span className="text-[10px] text-[#9CA3AF] ml-1">/ {o.tables_suggested}</span></td>
-                  <td className="px-4 py-3.5 text-center"><span className="text-sm font-medium text-[#1A1A2E]">{o.waiters_confirmed || o.waiters_suggested}</span><span className="text-[10px] text-[#9CA3AF] ml-1">/ {o.waiters_suggested}</span></td>
-                  <td className="px-4 py-3.5 text-right text-sm font-medium text-[#1A1A2E]">{money(o.confirmed_price)}</td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${o.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' : o.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-                      {o.status === 'in_progress' ? 'En curso' : o.status === 'completed' ? 'Completado' : o.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      }
+      <PageHeader
+        title="Operaciones"
+        subtitle="Eventos activos, escandallos y logística"
+        actions={
+          <button onClick={fetchOrders} className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+            <Icon name="refresh" className="w-3.5 h-3.5"/>
+          </button>
+        }
+        stats={orders.length > 0 ? (
+          <StatStrip items={[
+            { label: 'En curso', value: orders.filter(o => o.status === 'in_progress').length, accent: true },
+            { label: 'Completados', value: orders.filter(o => o.status === 'completed').length },
+            { label: 'Total pax', value: orders.reduce((s, o) => s + (o.guest_count || 0), 0) },
+          ]} />
+        ) : undefined}
+      />
+      <DataList loading={loading} count={orders.length} emptyTitle="No hay órdenes de evento activas.">
+        {orders.map(o => (
+          <DataCard
+            key={o.id}
+            onClick={() => handleSelectOrder(o)}
+            avatar={{
+              initials: o.client_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+              color: 'linear-gradient(135deg, #C9A84C, #A88A3A)',
+            }}
+            title={o.client_name}
+            subtitle={o.client_email}
+            badges={[{
+              label: o.status === 'in_progress' ? 'En curso' : o.status === 'completed' ? 'Completado' : o.status,
+              variant: o.status === 'in_progress' ? 'info' : o.status === 'completed' ? 'success' : 'neutral',
+            }]}
+            meta={[
+              { label: 'Evento', value: o.event_type + ' · ' + fmtDate(o.event_date) },
+              { label: 'Pax', value: String(o.guest_count) },
+              { label: 'Mesas', value: (o.tables_confirmed || 0) + '/' + o.tables_suggested },
+              { label: 'Camareros', value: (o.waiters_confirmed || 0) + '/' + o.waiters_suggested },
+              { label: 'Total', value: money(o.confirmed_price) },
+            ]}
+          />
+        ))}
+      </DataList>
     </div>
   );
 
