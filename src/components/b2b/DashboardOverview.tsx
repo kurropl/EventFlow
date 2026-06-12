@@ -137,6 +137,16 @@ const upcoming = [...active]
 .sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''))
 .slice(0, 3);
 
+// Helper: is event within 3 days (Día D)?
+const isWithinDays = (dateStr: string, days: number) => {
+  if (!dateStr) return false;
+  const eventDate = new Date(dateStr.slice(0, 10));
+  const now = new Date();
+  const diffMs = eventDate.getTime() - now.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays >= 0 && diffDays <= days;
+};
+
 // ── Pipeline ─────────────────────────────────────────────────
 const pipeline: string[] = ['draft', 'sent', 'accepted', 'paid'];
 const pipelineMax = Math.max(1, ...pipeline.map(countBy));
@@ -282,9 +292,18 @@ style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
 </div>
 <div className="text-right flex-shrink-0">
 <div className="text-[12px] font-medium text-[#374151]">{fmtDate(e.event_date)}</div>
-<span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full mt-0.5 ${m.chip}`}>
+<div className="flex items-center justify-end gap-1.5 mt-0.5">
+<span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${m.chip}`}>
 {m.label}
 </span>
+{isWithinDays(e.event_date, 3) && (
+<Link href={`/admin/checklist?event_id=${e.id}`}
+  className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C9A84C] text-white hover:bg-[#A88A3A] transition-colors shadow-sm">
+  <Icon name="clipboardCheck" className="w-2.5 h-2.5"/>
+  Día D
+</Link>
+)}
+</div>
 </div>
 </div>
 );

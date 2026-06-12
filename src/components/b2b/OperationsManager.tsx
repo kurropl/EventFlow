@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '@/components/shared/Icon';
 import EventStaffingPanel from '@/components/b2b/EventStaffingPanel';
@@ -51,6 +52,7 @@ const snap = (v: number) => Math.round(v / GRID) * GRID;
 
 // ── Component ──────────────────────────────────────────────────
 export default function OperationsManager() {
+  const router = useRouter();
   const [orders, setOrders] = useState<EventOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<EventOrder | null>(null);
@@ -59,6 +61,7 @@ export default function OperationsManager() {
   const [waitersManual, setWaitersManual] = useState(0);
   const [extraItems, setExtraItems] = useState<{ desc: string; amount: number }[]>([]);
   const [showComplete, setShowComplete] = useState(false);
+  const [showBudget, setShowBudget] = useState(false);
 
   // Map state
   const [tables, setTables] = useState<CanvasTable[]>([]);
@@ -441,6 +444,37 @@ export default function OperationsManager() {
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        {/* Sticky Action Bar */}
+        <div className="sticky top-0 z-30 -mx-6 px-6 py-2.5 bg-[#FAF8F5]/95 backdrop-blur-sm border-b border-[#E0D3A8]/50 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <button onClick={() => router.push(`/admin/mapa-mesas?event_id=${selected!.event_id}`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-white border border-[#E0D3A8] text-[#8B6914] hover:bg-[#FBF6E9] hover:border-[#C9A84C] transition-colors whitespace-nowrap">
+              <Icon name="layout" className="w-3.5 h-3.5"/>
+              Mapa de mesas
+            </button>
+            <button onClick={() => { setViewMode('detail'); setTimeout(() => { document.getElementById('escandallo-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-white border border-[#E0D3A8] text-[#8B6914] hover:bg-[#FBF6E9] hover:border-[#C9A84C] transition-colors whitespace-nowrap">
+              <Icon name="shoppingCart" className="w-3.5 h-3.5"/>
+              Escandallo
+            </button>
+            <button onClick={() => router.push(`/admin/checklist?event_id=${selected!.event_id}`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-white border border-[#E0D3A8] text-[#8B6914] hover:bg-[#FBF6E9] hover:border-[#C9A84C] transition-colors whitespace-nowrap">
+              <Icon name="clipboardCheck" className="w-3.5 h-3.5"/>
+              Día D / Checklist
+            </button>
+            <button onClick={() => setShowBudget(prev => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-colors whitespace-nowrap ${showBudget ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white border-[#E0D3A8] text-[#8B6914] hover:bg-[#FBF6E9] hover:border-[#C9A84C]'}`}>
+              <Icon name="cheque" className="w-3.5 h-3.5"/>
+              Ver presupuesto
+            </button>
+            <button onClick={() => router.push(`/admin/cobros?event_id=${selected!.event_id}`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[#C9A84C] text-white hover:bg-[#A88A3A] transition-colors whitespace-nowrap shadow-sm">
+              <Icon name="banknote" className="w-3.5 h-3.5"/>
+              Cobrar
+            </button>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="flex items-center gap-3">
           <button onClick={() => setSelected(null)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
@@ -479,6 +513,39 @@ export default function OperationsManager() {
           <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]"><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Camareros</p><p className="text-2xl font-bold text-[#1A1A2E] mt-1">{selected.waiters_suggested}</p><p className="text-[10px] text-[#9CA3AF] mt-0.5">(1/12 pax)</p></div>
           <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]"><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Precio</p><p className="text-2xl font-bold text-[#1A1A2E] mt-1">{money(selected.confirmed_price)}</p></div>
         </div>
+
+        {/* Budget / Presupuesto panel */}
+        {showBudget && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            className="rounded-xl bg-white border border-[#E0D3A8] p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-[#1A1A2E] flex items-center gap-2">
+              <Icon name="cheque" className="w-4 h-4 text-[#C9A84C]"/> Presupuesto del evento
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-[#FAF8F5]">
+                <p className="text-[10px] text-[#6B7280] uppercase">Precio base</p>
+                <p className="text-lg font-bold text-[#1A1A2E]">{money(selected.confirmed_price)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-[#FAF8F5]">
+                <p className="text-[10px] text-[#6B7280] uppercase">Precio final</p>
+                <p className="text-lg font-bold text-[#1A1A2E]">{money(selected.final_price || selected.confirmed_price)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-[#FAF8F5]">
+                <p className="text-[10px] text-[#6B7280] uppercase">Pax</p>
+                <p className="text-lg font-bold text-[#1A1A2E]">{selected.guest_count + (selected.kids_count || 0)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-[#FAF8F5]">
+                <p className="text-[10px] text-[#6B7280] uppercase">Precio/pax</p>
+                <p className="text-lg font-bold text-[#1A1A2E]">
+                  {money((selected.final_price || selected.confirmed_price) / Math.max(1, selected.guest_count + (selected.kids_count || 0)))}
+                </p>
+              </div>
+            </div>
+            <div className="text-[11px] text-[#9CA3AF]">
+              Consumos extra: {money(extraItems.filter(e => e.desc && e.amount > 0).reduce((s, e) => s + e.amount, 0))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Tab bar: Escandallo | Mapa */}
         <div className="flex border-b border-[#E5E7EB]">
@@ -602,7 +669,7 @@ export default function OperationsManager() {
 
       {/* Escandallo editable */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div id="escandallo-section" className="flex items-center justify-between scroll-mt-20">
           <h3 className="text-sm font-semibold text-[#1A1A2E]"><Icon name="clipboardList" className="w-4 h-4 inline mr-1.5"/> Lista de Necesidades (Escandallo)</h3>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-[#9CA3AF]">{shoppingItems.length} artículos</span>

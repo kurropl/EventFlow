@@ -114,15 +114,15 @@ function EventJobsPanel() {
         setResults((p) => ({ ...p, [job.id]: { ok: false, msg: data.error || 'Error desconocido' } }));
       }
     } catch (e) {
-      setResults((p) => ({ ...p, [job.id]: { ok: false, msg: 'Error de conexion' } }));
+      setResults((p) => ({ ...p, [job.id]: { ok: false, msg: 'Error de conexión' } }));
     }
     setRunning((p) => ({ ...p, [job.id]: false }));
   };
 
   return (
     <div className="bg-white rounded-2xl border border-[#ECECF1] p-6">
-      <h2 className="text-base font-semibold text-[#1A1A1A] mb-1">Configuracion de Eventos</h2>
-      <p className="text-xs text-[#6B7280] mb-5">Ejecucion manual de tareas automaticas. Puedes lanzar cada job cuando lo necesites.</p>
+      <h2 className="text-base font-semibold text-[#1A1A1A] mb-1">Configuración de Eventos</h2>
+      <p className="text-xs text-[#6B7280] mb-5">Ejecución manual de tareas automáticas. Puedes lanzar cada job cuando lo necesites.</p>
       <div className="space-y-3">
         {EVENT_JOBS.map((job) => {
           const isRunning = running[job.id];

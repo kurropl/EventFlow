@@ -1286,7 +1286,7 @@ export default function StaffingManager() {
             Personal & Staffing
           </h2>
           <p className="text-sm text-[#6B7280] mt-1">
-            Gestion de trabajadores y asignacion a eventos
+            Gestión de trabajadores y asignación a eventos
           </p>
         </div>
       </div>
@@ -1523,7 +1523,7 @@ export default function StaffingManager() {
                 />
                 <input
                   type="text"
-                  placeholder="Buscar por nombre, telefono o rol..."
+                  placeholder="Buscar por nombre, teléfono o rol..."
                   value={searchWorker}
                   onChange={(e) => setSearchWorker(e.target.value)}
                   className="pl-10 pr-4 py-2 rounded-xl bg-[#F8F8FA] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all w-full"

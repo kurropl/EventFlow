@@ -23,7 +23,7 @@ const MAP: Record<string, LucideIcon> = {
   cobros: Lucide.WalletMinimal,
   invitados: Lucide.UserCheck,
   catalog: Lucide.UtensilsCrossed,
-  operations: Lucide.Settings,
+  operations: Lucide.ClipboardList,
   mapa: Lucide.Table,
   webhooks: Lucide.GitBranch,
   proveedores: Lucide.Truck,
@@ -109,6 +109,10 @@ const MAP: Record<string, LucideIcon> = {
   truck: Lucide.Truck,
   warehouse: Lucide.Warehouse,
   scale: Lucide.Scale,
+  shoppingCart: Lucide.ShoppingCart,
+  clipboardCheck: Lucide.ClipboardCheck,
+  banknote: Lucide.Banknote,
+  link: Lucide.Link,
 };
 
 export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProps) {

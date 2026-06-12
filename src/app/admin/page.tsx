@@ -46,6 +46,9 @@ const StockManager = dynamic(() => import('@/components/b2b/StockManager'), {
 const StaffingManager = dynamic(() => import('@/components/b2b/StaffingManager'), {
   loading: () => <PanelSkeleton />,
 });
+const ChecklistPanel = dynamic(() => import('@/components/b2b/ChecklistPanel'), {
+  loading: () => <PanelSkeleton />,
+});
 
 function PanelSkeleton() {
   return (
@@ -75,8 +78,9 @@ export default function AdminDashboard() {
   const isStock = pathname?.includes('stock');
   const isStaffing = pathname?.includes('staffing');
   const isMapa = pathname?.includes('mapa-mesas');
+  const isChecklist = pathname?.includes('checklist');
   const isLeads = pathname?.includes('leads');
-  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing;
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing || isChecklist;
 
   return (
     <AdminLayout>
@@ -93,6 +97,7 @@ export default function AdminDashboard() {
       {isWebhooks && <WebhooksPanel />}
       {isProveedores && <ProvidersManager />}
       {isMapa && <OperationsManager />}
+      {isChecklist && <ChecklistPanel />}
       {!isOther && <DashboardOverview />}
     </AdminLayout>
   );
