@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import DiaDChecklist from './DiaDChecklist';
 
@@ -165,11 +166,13 @@ const STORAGE_KEY = 'eventflow-checklist';
 // ─── Main CalendarView ──────────────────────────────────────────
 
 export default function CalendarView() {
+  const searchParams = useSearchParams();
   const today = new Date();
   const todayStr = iso(today);
 
   // ── State ──
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const initialView: ViewMode = searchParams.get('view') === 'diad' ? 'diad' : 'month';
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
   // Anchor date for the current view
   const [anchorDate, setAnchorDate] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)

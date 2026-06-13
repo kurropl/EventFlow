@@ -85,7 +85,7 @@ export default function AdminDashboard() {
   return (
     <AdminLayout>
       {isLeads && <LeadsCRM />}
-      {isAgenda && <CalendarView />}
+      {isAgenda && <Suspense fallback={<PanelSkeleton />}><CalendarView /></Suspense>}
       {isKanban && <KanbanPipeline />}
       {isClients && <ClientsCRM />}
       {isBilling && <BillingPanel />}
