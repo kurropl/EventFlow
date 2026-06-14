@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Icon from '../shared/Icon';
 import { DataCard, DataList } from '@/components/ui';
+import { StatStrip } from '@/components/ui/StatStrip';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -485,44 +486,12 @@ export default function StockManager() {
       </div>
 
       {/* KPI Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 border border-[#ECECF1] shadow-[0_1px_3px_rgba(16,24,40,0.06)]">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#F3F4F6]">
-            <Icon name="package" className="w-5 h-5 text-[#6B7280]" />
-          </div>
-          <div>
-            <span className="block text-[20px] font-bold text-[#1A1A1A] tabular-nums">{ingredients.length}</span>
-            <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Total</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 border border-[#ECECF1] shadow-[0_1px_3px_rgba(16,24,40,0.06)]">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#FEF3C7]">
-            <Icon name="alertTriangle" className="w-5 h-5 text-[#D97706]" />
-          </div>
-          <div>
-            <span className="block text-[20px] font-bold text-[#D97706] tabular-nums">{lowStockCount}</span>
-            <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Stock bajo</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 border border-[#ECECF1] shadow-[0_1px_3px_rgba(16,24,40,0.06)]">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#FEF3F3]">
-            <Icon name="circleX" className="w-5 h-5 text-[#DC2626]" />
-          </div>
-          <div>
-            <span className="block text-[20px] font-bold text-[#DC2626] tabular-nums">{outOfStockCount}</span>
-            <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Agotados</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 border border-[#ECECF1] shadow-[0_1px_3px_rgba(16,24,40,0.06)]">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#FBF6E9]">
-            <Icon name="truck" className="w-5 h-5 text-[#C9A84C]" />
-          </div>
-          <div>
-            <span className="block text-[20px] font-bold text-[#C9A84C] tabular-nums">{providers.length}</span>
-            <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Proveedores</span>
-          </div>
-        </div>
-      </div>
+      <StatStrip items={[
+        { label: 'Total', value: ingredients.length, accent: true },
+        { label: 'Stock bajo', value: lowStockCount },
+        { label: 'Agotados', value: outOfStockCount },
+        { label: 'Proveedores', value: providers.length },
+      ]} />
 
       {/* Tabs */}
       <div className="flex gap-1 bg-[#F8F3E6] rounded-xl p-1 border border-[#ECECF1]">
