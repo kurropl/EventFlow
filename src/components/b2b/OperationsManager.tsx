@@ -24,7 +24,7 @@ const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning'
   lost:       { label: 'Perdido',    variant: 'danger' },
   pending:    { label: 'Pendiente',  variant: 'warning' },
   confirmed:  { label: 'Confirmado', variant: 'success' },
-  won:        { label: 'Ganado',     variant: 'accent' },
+  won:        { label: 'Ganado',     variant: 'warning' },
 };
 
 // ── Types ──────────────────────────────────────────────────────
