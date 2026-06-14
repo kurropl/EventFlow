@@ -364,11 +364,6 @@ export default function CatalogCRUD() {
             }}
             title={item.name}
             subtitle={CATEGORY_LABELS[item.category] || item.category}
-            badges={[
-              item.active
-                ? { label: 'Activo', variant: 'success' as const }
-                : { label: 'Inactivo', variant: 'neutral' as const },
-            ]}
             meta={[
               { label: 'PVP', value: `${item.estimated ? '~' : ''}${money(item.pvp)}` },
               { label: 'Coste', value: money(item.cost) },
