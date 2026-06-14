@@ -2061,7 +2061,7 @@ export default function StaffingManager() {
                               <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px] font-medium">{p.worker_name}</td>
                               <td className="px-4 py-2.5">
                                 <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FBF6E9] text-[#A88A3A]">
-                                  {p.role || (p.worker_roles && p.worker_roles[0]) || '--'}
+                                  {normalizeRole(p.role || (p.worker_roles && p.worker_roles[0]) || '--')}
                                 </span>
                               </td>
                               <td className="px-4 py-2.5 text-center">
