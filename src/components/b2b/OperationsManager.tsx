@@ -13,7 +13,7 @@ import EventStaffingPanel from '@/components/b2b/EventStaffingPanel';
 import { PageHeader, StatStrip, DataCard, DataList } from '@/components/ui';
 
 // ── Status Map (Spanish labels + color variants) ──────────────
-const STATUS_MAP: Record<string, { label: string; variant: string }> = {
+const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = {
   draft:      { label: 'Borrador',   variant: 'neutral' },
   sent:       { label: 'Enviado',    variant: 'info' },
   accepted:   { label: 'Aceptado',   variant: 'success' },
