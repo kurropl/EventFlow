@@ -12,6 +12,21 @@ import Icon from '@/components/shared/Icon';
 import EventStaffingPanel from '@/components/b2b/EventStaffingPanel';
 import { PageHeader, StatStrip, DataCard, DataList } from '@/components/ui';
 
+// ── Status Map (Spanish labels + color variants) ──────────────
+const STATUS_MAP: Record<string, { label: string; variant: string }> = {
+  draft:      { label: 'Borrador',   variant: 'neutral' },
+  sent:       { label: 'Enviado',    variant: 'info' },
+  accepted:   { label: 'Aceptado',   variant: 'success' },
+  in_progress:{ label: 'En curso',   variant: 'info' },
+  completed:  { label: 'Completado', variant: 'success' },
+  cancelled:  { label: 'Cancelado',  variant: 'danger' },
+  paid:       { label: 'Pagado',     variant: 'success' },
+  lost:       { label: 'Perdido',    variant: 'danger' },
+  pending:    { label: 'Pendiente',  variant: 'warning' },
+  confirmed:  { label: 'Confirmado', variant: 'success' },
+  won:        { label: 'Ganado',     variant: 'accent' },
+};
+
 // ── Types ──────────────────────────────────────────────────────
 interface EventOrder {
   id: string; event_id: string; client_name: string; client_email: string;
@@ -419,14 +434,14 @@ export default function OperationsManager() {
             title={o.client_name}
             subtitle={o.client_email}
             badges={[{
-              label: o.status === 'in_progress' ? 'En curso' : o.status === 'completed' ? 'Completado' : o.status,
-              variant: o.status === 'in_progress' ? 'info' : o.status === 'completed' ? 'success' : 'neutral',
+              label: STATUS_MAP[o.status]?.label || o.status,
+              variant: STATUS_MAP[o.status]?.variant || 'neutral',
             }]}
             meta={[
               { label: 'Evento', value: o.event_type + ' · ' + fmtDate(o.event_date) },
               { label: 'Pax', value: String(o.guest_count) },
-              { label: 'Mesas', value: (o.tables_confirmed || 0) + '/' + o.tables_suggested },
-              { label: 'Camareros', value: (o.waiters_confirmed || 0) + '/' + o.waiters_suggested },
+              { label: 'Mesas', value: (o.tables_confirmed || 0) + '/' + (o.tables_suggested ?? '—') },
+              { label: 'Camareros', value: (o.waiters_confirmed || 0) + '/' + (o.waiters_suggested ?? '—') },
               { label: 'Total', value: money(o.confirmed_price) },
             ]}
           />
@@ -493,8 +508,8 @@ export default function OperationsManager() {
                 Mapa de mesas
               </button>
             )}
-            <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border ${selected.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' : selected.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-              {selected.status === 'in_progress' ? 'En curso' : selected.status === 'completed' ? 'Completado' : selected.status}
+            <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border ${STATUS_MAP[selected.status]?.variant === 'info' ? 'bg-blue-50 text-blue-700 border-blue-200' : STATUS_MAP[selected.status]?.variant === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : STATUS_MAP[selected.status]?.variant === 'danger' ? 'bg-red-50 text-red-700 border-red-200' : STATUS_MAP[selected.status]?.variant === 'warning' ? 'bg-amber-50 text-amber-700 border-amber-200' : STATUS_MAP[selected.status]?.variant === 'accent' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
+              {STATUS_MAP[selected.status]?.label || selected.status}
             </span>
             {selected.client_token && (
               <button onClick={copyClientLink}

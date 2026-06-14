@@ -330,7 +330,7 @@ function StaffingLineCard({
           {/* Role badge */}
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FBF6E9] text-[#A88A3A] text-xs font-semibold">
             <Icon name="user" className="w-3 h-3" />
-            {line.role}
+            {normalizeRole(line.role)}
           </span>
           {/* Slots */}
           <span className={`text-sm font-semibold ${isFilled ? 'text-[#16A34A]' : 'text-[#6B7280]'}`}>
@@ -1547,7 +1547,7 @@ export default function StaffingManager() {
                   title={w.name}
                   subtitle={w.phone || undefined}
                   badges={[
-                    ...w.roles.map((r) => ({ label: r, variant: 'warning' as const })),
+                    ...w.roles.map((r) => ({ label: normalizeRole(r), variant: 'warning' as const })),
                     { label: isActive ? 'Activo' : 'Inactivo', variant: isActive ? 'success' as const : 'danger' as const },
                   ]}
                   meta={[{ label: 'Contrato', value: w.contract_name || 'Sin contrato' }]}
