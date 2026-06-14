@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { StatStrip } from '@/components/ui/StatStrip';
 
 interface Payment {
   id: string; event_id: string; concept: string;
@@ -143,28 +144,12 @@ export default function BillingPanel() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-[#FFF8EC] border border-[#FDE68A]">
-          <p className="text-[10px] text-[#B45309] uppercase tracking-wide font-semibold">Pendiente cobro</p>
-          <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{money(totalPendingAmount)}</p>
-          <p className="text-[10px] text-[#6B7280]">{unpaidPayments.length} cobros pendientes</p>
-        </div>
-        <div className="p-4 rounded-xl bg-[#EFFAF2] border border-[#A7F3D0]">
-          <p className="text-[10px] text-[#15803D] uppercase tracking-wide font-semibold">Cobrado</p>
-          <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{money(totalPaidAmount)}</p>
-          <p className="text-[10px] text-[#6B7280]">{paidPayments.length} pagos recibidos</p>
-        </div>
-        <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA]">
-          <p className="text-[10px] text-[#DC2626] uppercase tracking-wide font-semibold">Vencidos</p>
-          <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{overduePayments.length}</p>
-          <p className="text-[10px] text-[#6B7280]">{money(overduePayments.reduce((s, p) => s + Number(p.amount), 0))}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
-          <p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Total facturado</p>
-          <p className="text-2xl font-bold text-[#1A1A2E] mt-1">{money(invoices.reduce((s, i) => s + Number(i.total), 0))}</p>
-          <p className="text-[10px] text-[#6B7280]">{invoices.length} facturas</p>
-        </div>
-      </div>
+      <StatStrip items={[
+        { label: 'Pendiente', value: money(totalPendingAmount), accent: true },
+        { label: 'Cobrado', value: money(totalPaidAmount) },
+        { label: 'Vencidos', value: overduePayments.length },
+        { label: 'Facturado', value: money(invoices.reduce((s, i) => s + (i.total || 0), 0)) },
+      ]} />
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-[#F3F4F6] rounded-xl w-fit">
