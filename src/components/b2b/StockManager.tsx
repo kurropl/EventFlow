@@ -628,10 +628,10 @@ export default function StockManager() {
   };
 
   const updateActualsField = (itemId: string, field: string, value: string) => {
-    setActualsData((prev) => ({
-      ...prev,
-      [itemId]: { actual_quantity: '', actual_unit: 'g', actual_cost: '', ...prev[itemId], [field]: value },
-    }));
+    setActualsData((prev) => {
+      const existing = prev[itemId] || { actual_quantity: '', actual_unit: 'g', actual_cost: '' };
+      return { ...prev, [itemId]: { ...existing, [field]: value } };
+    });
   };
 
   /* ---------------------------------------------------------------- */
