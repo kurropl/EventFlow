@@ -46,6 +46,28 @@ interface ShoppingItem {
   total_ml: number;
   provider_name: string;
   completed: boolean;
+  actual_quantity?: number;
+  actual_unit?: string;
+  actual_cost?: number;
+  cost_per_unit?: number;
+}
+
+interface RecipeItem {
+  id?: string;
+  ingredient_name: string;
+  quantity_per_pax: number;
+  unit: string;
+  supplier: string;
+}
+
+interface Recipe {
+  id: string;
+  name: string;
+  category: string;
+  base_pax: number;
+  description: string;
+  is_active: boolean;
+  items: RecipeItem[];
 }
 
 interface Escandallo {
@@ -54,7 +76,7 @@ interface Escandallo {
   items: ShoppingItem[];
 }
 
-type Tab = 'stock' | 'escandallos' | 'pedidos';
+type Tab = 'stock' | 'escandallos' | 'pedidos' | 'recetas';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -188,6 +210,33 @@ export default function StockManager() {
   const [newProvider, setNewProvider] = useState({ name: '', category: '' });
   const [savingNewProvider, setSavingNewProvider] = useState(false);
 
+  // Recipes state
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loadingRecipes, setLoadingRecipes] = useState(false);
+  const [showRecipeForm, setShowRecipeForm] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [recipeForm, setRecipeForm] = useState({
+    name: '',
+    category: 'general',
+    base_pax: '50',
+    description: '',
+    items: [] as RecipeItem[],
+  });
+  const [savingRecipe, setSavingRecipe] = useState(false);
+
+  // Actuals state (escandallo)
+  const [actualsData, setActualsData] = useState<Record<string, { actual_quantity: string; actual_unit: string; actual_cost: string }>>({});
+  const [savingActuals, setSavingActuals] = useState<string | null>(null);
+
+  // Generate order state
+  const [generatingOrder, setGeneratingOrder] = useState(false);
+  const [generateOrderResult, setGenerateOrderResult] = useState<{ count: number } | null>(null);
+
+  // Price history state
+  const [priceHistoryIngredientId, setPriceHistoryIngredientId] = useState<string | null>(null);
+  const [priceHistory, setPriceHistory] = useState<Array<{ old_price: number; new_price: number; created_at: string }>>([]);
+  const [loadingPriceHistory, setLoadingPriceHistory] = useState(false);
+
   // Auto-scroll to providers if URL has #proveedores
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hash === '#proveedores') {
@@ -256,11 +305,33 @@ export default function StockManager() {
     finally { setLoadingEscandallo(false); }
   }, []);
 
+  const loadRecipes = useCallback(async () => {
+    try {
+      setLoadingRecipes(true);
+      const res = await fetch('/api/recipes');
+      const data = await res.json();
+      if (data.success) setRecipes(data.data || []);
+    } catch { /* ignore */ }
+    finally { setLoadingRecipes(false); }
+  }, []);
+
+  const loadPriceHistory = useCallback(async (ingredientId: string) => {
+    try {
+      setLoadingPriceHistory(true);
+      setPriceHistoryIngredientId(ingredientId);
+      const res = await fetch(`/api/stock/price-history?ingredient_id=${ingredientId}`);
+      const data = await res.json();
+      if (data.success) setPriceHistory(data.data || []);
+    } catch { /* ignore */ }
+    finally { setLoadingPriceHistory(false); }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'stock') { loadStock(); loadProviders(); }
     if (activeTab === 'escandallos' && events.length === 0) loadEvents();
     if (activeTab === 'pedidos') loadOrders();
-  }, [activeTab, loadStock, loadProviders, loadEvents, loadOrders, events.length]);
+    if (activeTab === 'recetas') loadRecipes();
+  }, [activeTab, loadStock, loadProviders, loadEvents, loadOrders, loadRecipes, events.length]);
 
   useEffect(() => {
     if (selectedEvent) loadEscandallo(selectedEvent);
@@ -456,6 +527,137 @@ export default function StockManager() {
   };
 
   /* ---------------------------------------------------------------- */
+  /*  Recipe actions                                                   */
+  /* ---------------------------------------------------------------- */
+
+  const openNewRecipe = () => {
+    setEditingRecipe(null);
+    setRecipeForm({ name: '', category: 'general', base_pax: '50', description: '', items: [] });
+    setShowRecipeForm(true);
+  };
+
+  const openEditRecipe = (recipe: Recipe) => {
+    setEditingRecipe(recipe);
+    setRecipeForm({
+      name: recipe.name,
+      category: recipe.category,
+      base_pax: String(recipe.base_pax),
+      description: recipe.description || '',
+      items: recipe.items || [],
+    });
+    setShowRecipeForm(true);
+  };
+
+  const saveRecipe = async () => {
+    if (!recipeForm.name) return;
+    setSavingRecipe(true);
+    try {
+      const url = editingRecipe ? `/api/recipes/${editingRecipe.id}` : '/api/recipes';
+      const method = editingRecipe ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: recipeForm.name,
+          category: recipeForm.category,
+          base_pax: parseInt(recipeForm.base_pax) || 50,
+          description: recipeForm.description,
+          items: recipeForm.items,
+        }),
+      });
+      if (res.ok) {
+        setShowRecipeForm(false);
+        setEditingRecipe(null);
+        await loadRecipes();
+      }
+    } catch { /* ignore */ }
+    finally { setSavingRecipe(false); }
+  };
+
+  const deleteRecipe = async (id: string, name: string) => {
+    if (!confirm(`Eliminar receta "${name}"?`)) return;
+    try {
+      await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
+      await loadRecipes();
+    } catch { /* ignore */ }
+  };
+
+  const addRecipeItem = () => {
+    setRecipeForm((f) => ({
+      ...f,
+      items: [...f.items, { ingredient_name: '', quantity_per_pax: 0, unit: 'g', supplier: '' }],
+    }));
+  };
+
+  const removeRecipeItem = (idx: number) => {
+    setRecipeForm((f) => ({
+      ...f,
+      items: f.items.filter((_, i) => i !== idx),
+    }));
+  };
+
+  const updateRecipeItem = (idx: number, field: string, value: any) => {
+    setRecipeForm((f) => ({
+      ...f,
+      items: f.items.map((item, i) => i === idx ? { ...item, [field]: value } : item),
+    }));
+  };
+
+  /* ---------------------------------------------------------------- */
+  /*  Actuals actions                                                  */
+  /* ---------------------------------------------------------------- */
+
+  const saveActuals = async (itemId: string) => {
+    const data = actualsData[itemId];
+    if (!data) return;
+    setSavingActuals(itemId);
+    try {
+      await fetch('/api/stock/actuals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: itemId,
+          actual_quantity: parseFloat(data.actual_quantity) || null,
+          actual_unit: data.actual_unit || null,
+          actual_cost: parseFloat(data.actual_cost) || null,
+        }),
+      });
+      if (selectedEvent) await loadEscandallo(selectedEvent);
+    } catch { /* ignore */ }
+    finally { setSavingActuals(null); }
+  };
+
+  const updateActualsField = (itemId: string, field: string, value: string) => {
+    setActualsData((prev) => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], actual_quantity: '', actual_unit: 'g', actual_cost: '', ...prev[itemId], [field]: value },
+    }));
+  };
+
+  /* ---------------------------------------------------------------- */
+  /*  Generate order action                                            */
+  /* ---------------------------------------------------------------- */
+
+  const generateOrder = async () => {
+    if (!selectedEvent) return;
+    setGeneratingOrder(true);
+    setGenerateOrderResult(null);
+    try {
+      const res = await fetch('/api/stock/generate-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: selectedEvent }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGenerateOrderResult({ count: data.data?.count || 0 });
+        loadOrders();
+      }
+    } catch { /* ignore */ }
+    finally { setGeneratingOrder(false); }
+  };
+
+  /* ---------------------------------------------------------------- */
   /*  Shared styles                                                    */
   /* ---------------------------------------------------------------- */
 
@@ -499,6 +701,7 @@ export default function StockManager() {
           { key: 'stock' as Tab, label: 'Stock & Proveedores', icon: 'package' },
           { key: 'escandallos' as Tab, label: 'Escandallos por Evento', icon: 'layers' },
           { key: 'pedidos' as Tab, label: 'Pedidos a Proveedores', icon: 'truck' },
+          { key: 'recetas' as Tab, label: 'Recetas', icon: 'book' },
         ]).map((tab) => (
           <button
             key={tab.key}
@@ -618,6 +821,10 @@ export default function StockManager() {
                             <input type="number" step="0.01" value={editData.cost_per_unit}
                               onChange={(e) => setEditData((d) => ({ ...d, cost_per_unit: e.target.value }))}
                               className="w-20 px-2 py-1 rounded-lg border border-[#C9A84C] bg-white text-[#1A1A1A] text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                            <button onClick={() => loadPriceHistory(item.id)}
+                              className="text-[9px] text-[#C9A84C] hover:underline whitespace-nowrap" title="Ver historial de precios">
+                              (historial)
+                            </button>
                           </div>
                           <button onClick={saveEdit} disabled={saving}
                             className="p-1.5 rounded-lg text-white disabled:opacity-60"
@@ -921,12 +1128,21 @@ export default function StockManager() {
                           <th className="text-right px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Gramos</th>
                           <th className="text-right px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Unidades</th>
                           <th className="text-right px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Ml</th>
+                          <th className="text-center px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Real (cant. + ud)</th>
+                          <th className="text-right px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Coste real</th>
                           <th className="text-center px-4 py-2.5 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
                         {group.items.map((item) => {
                           const isEditing = editingEscandalloId === item.id;
+                          const actual = actualsData[item.id] || { actual_quantity: '', actual_unit: 'g', actual_cost: '' };
+                          const plannedQty = (item.total_grams || 0) + (item.total_units || 0) + (item.total_ml || 0);
+                          const actualQty = parseFloat(actual.actual_quantity) || 0;
+                          const deviation = plannedQty > 0 ? Math.abs(actualQty - plannedQty) / plannedQty : 0;
+                          const borderClass = actualQty > 0
+                            ? (deviation > 0.1 ? 'border border-[#DC2626]' : 'border border-[#16A34A]')
+                            : 'border border-[#E5E5EC]';
                           return (
                             <tr key={item.id} className="border-b border-[#F2F2F5] last:border-b-0 hover:bg-[#FAFCFE] transition-colors">
                               <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px]">{item.ingredient_name}</td>
@@ -959,12 +1175,43 @@ export default function StockManager() {
                                     className="w-24 px-2 py-1 rounded border border-[#C9A84C] bg-white text-[#1A1A1A] text-[13px] text-right focus:outline-none" />
                                 ) : (
                                   <span className="text-[#6B7280] text-[13px]">
-                                    {Number(item.total_ml || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-4 py-2.5 text-center">
-                                <div className="flex items-center justify-center gap-1">
+                                  {Number(item.total_ml || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  placeholder="0"
+                                  value={actual.actual_quantity}
+                                  onChange={(e) => updateActualsField(item.id, 'actual_quantity', e.target.value)}
+                                  className={`w-16 px-1.5 py-1 rounded text-[12px] text-right bg-white text-[#1A1A1A] focus:outline-none ${borderClass}`}
+                                />
+                                <select
+                                  value={actual.actual_unit}
+                                  onChange={(e) => updateActualsField(item.id, 'actual_unit', e.target.value)}
+                                  className="px-1 py-1 rounded border border-[#E5E5EC] bg-white text-[12px] text-[#6B7280] focus:outline-none"
+                                >
+                                  <option value="g">g</option>
+                                  <option value="ml">ml</option>
+                                  <option value="ud">ud</option>
+                                </select>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={actual.actual_cost}
+                                onChange={(e) => updateActualsField(item.id, 'actual_cost', e.target.value)}
+                                className={`w-20 px-1.5 py-1 rounded text-[12px] text-right bg-white text-[#1A1A1A] focus:outline-none ${borderClass}`}
+                              />
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
                                   {isEditing ? (
                                     <>
                                       <button onClick={saveEscandalloEdit} disabled={savingEscandallo}
@@ -978,10 +1225,17 @@ export default function StockManager() {
                                       </button>
                                     </>
                                   ) : (
-                                    <button onClick={() => startEscandalloEdit(item)}
-                                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors" title="Editar">
-                                      <Icon name="edit" className="w-3.5 h-3.5" />
-                                    </button>
+                                    <>
+                                      <button onClick={() => saveActuals(item.id)}
+                                        disabled={savingActuals === item.id || (!actual.actual_quantity && !actual.actual_cost)}
+                                        className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#EFFAF2] hover:text-[#16A34A] transition-colors disabled:opacity-40" title="Guardar real">
+                                        <Icon name={savingActuals === item.id ? 'spinner' : 'check'} className={`w-3.5 h-3.5 ${savingActuals === item.id ? 'animate-spin' : ''}`} />
+                                      </button>
+                                      <button onClick={() => startEscandalloEdit(item)}
+                                        className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors" title="Editar">
+                                        <Icon name="edit" className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
                                   )}
                                 </div>
                               </td>
@@ -1067,8 +1321,250 @@ export default function StockManager() {
                   )}
                 </div>
               </div>
+
+              {/* Generate order button */}
+              <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                <div className="px-4 py-3 bg-[#FAFAFC] border-b border-[#ECECF1] flex items-center gap-2">
+                  <Icon name="truck" className="w-4 h-4 text-[#C9A84C]" />
+                  <span className="text-[13px] font-semibold text-[#1A1A1A]">Generar Pedido a Proveedor</span>
+                </div>
+                <div className="p-4">
+                  <button
+                    onClick={generateOrder}
+                    disabled={generatingOrder || !selectedEvent}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-60 transition-all"
+                    style={{ backgroundColor: '#C9A84C' }}
+                  >
+                    <Icon name={generatingOrder ? 'spinner' : 'truck'} className={`w-4 h-4 ${generatingOrder ? 'animate-spin' : ''}`} />
+                    Generar pedido a proveedor
+                  </button>
+                  {generateOrderResult && (
+                    <div className="mt-3 p-3 rounded-xl bg-[#EFFAF2] border border-[#D1FAE5]">
+                      <div className="flex items-center gap-2">
+                        <Icon name="check" className="w-4 h-4 text-[#16A34A]" />
+                        <span className="text-[13px] text-[#16A34A] font-medium">
+                          {generateOrderResult.count} pedido{generateOrderResult.count !== 1 ? 's' : ''} generado{generateOrderResult.count !== 1 ? 's' : ''} correctamente
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </>
           )}         
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/*  RECETAS TAB                                                   */}
+      {/* ============================================================= */}
+      {activeTab === 'recetas' && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon name="book" className="w-4 h-4 text-[#C9A84C]" />
+              <h3 className="text-sm font-semibold text-[#1A1A1A]">Plantillas de Recetas</h3>
+              <span className="text-xs text-[#9CA3AF] ml-1">{recipes.length} receta{recipes.length !== 1 ? 's' : ''}</span>
+            </div>
+            <button
+              onClick={openNewRecipe}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all"
+              style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+            >
+              <Icon name="plus" className="w-4 h-4" />
+              Nueva Receta
+            </button>
+          </div>
+
+          {/* Recipe list */}
+          {loadingRecipes ? (
+            <div className="text-center py-12 text-[#9CA3AF]">
+              <Icon name="spinner" className="w-5 h-5 animate-spin mx-auto mb-2" />
+              Cargando recetas...
+            </div>
+          ) : recipes.length === 0 ? (
+            <div className="text-center py-12 text-[#9CA3AF]">
+              <Icon name="book" className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No hay recetas creadas</p>
+              <p className="text-xs text-[#A8A8B0] mt-1">Crea una nueva receta para empezar</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recipes.map((recipe) => (
+                <div key={recipe.id} className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-md transition-shadow">
+                  <div className="px-4 py-3 bg-[#FAFAFC] border-b border-[#ECECF1]">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[13px] font-semibold text-[#1A1A1A]">{recipe.name}</h4>
+                      <span className="text-[10px] bg-[#FBF6E9] text-[#C9A84C] px-2 py-0.5 rounded-full font-medium">{recipe.category}</span>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <div className="flex items-center gap-3 text-[12px] text-[#6B7280]">
+                      <span className="flex items-center gap-1">
+                        <Icon name="users" className="w-3 h-3" />
+                        {recipe.base_pax} comensales base
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Icon name="package" className="w-3 h-3" />
+                        {recipe.items?.length || 0} ingrediente{(recipe.items?.length || 0) !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {recipe.description && (
+                      <p className="text-[12px] text-[#9CA3AF] line-clamp-2">{recipe.description}</p>
+                    )}
+                  </div>
+                  <div className="px-4 py-3 border-t border-[#F2F2F5] flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => openEditRecipe(recipe)}
+                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FBF6E9] hover:text-[#C9A84C] transition-colors"
+                      title="Editar"
+                    >
+                      <Icon name="edit" className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteRecipe(recipe.id, recipe.name)}
+                      className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors"
+                      title="Eliminar"
+                    >
+                      <Icon name="trash" className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/*  RECETA FORM MODAL                                             */}
+      {/* ============================================================= */}
+      {showRecipeForm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#ECECF1] w-full max-w-2xl max-h-[90vh] overflow-auto">
+            <div className="px-6 py-4 border-b border-[#ECECF1] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="book" className="w-4 h-4 text-[#C9A84C]" />
+                <h3 className="text-sm font-semibold text-[#1A1A1A]">{editingRecipe ? 'Editar Receta' : 'Nueva Receta'}</h3>
+              </div>
+              <button onClick={() => { setShowRecipeForm(false); setEditingRecipe(null); }}
+                className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors">
+                <Icon name="close" className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Nombre *</label>
+                  <input type="text" placeholder="Nombre de la receta..." value={recipeForm.name}
+                    onChange={(e) => setRecipeForm((f) => ({ ...f, name: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Categoría</label>
+                  <select value={recipeForm.category} onChange={(e) => setRecipeForm((f) => ({ ...f, category: e.target.value }))}
+                    className="px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all w-full">
+                    <option value="boda">Boda</option>
+                    <option value="corporativo">Corporativo</option>
+                    <option value="bautizo">Bautizo</option>
+                    <option value="comuni&#243;n">Comuni&#243;n</option>
+                    <option value="cumple">Cumplea&#241;os</option>
+                    <option value="general">General</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Comensales base</label>
+                  <input type="number" min="1" step="1" value={recipeForm.base_pax}
+                    onChange={(e) => setRecipeForm((f) => ({ ...f, base_pax: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm text-right tabular-nums focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Descripci&#243;n</label>
+                  <input type="text" placeholder="Descripci&#243;n breve..." value={recipeForm.description}
+                    onChange={(e) => setRecipeForm((f) => ({ ...f, description: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
+                </div>
+              </div>
+
+              {/* Recipe items */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Icon name="package" className="w-4 h-4 text-[#C9A84C]" />
+                  <label className="text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium">Ingredientes de la receta</label>
+                </div>
+                {recipeForm.items.length > 0 && (
+                  <div className="bg-white rounded-xl border border-[#E5E5EC] overflow-hidden mb-3">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[#ECECF1] bg-[#FAFAFC]">
+                          <th className="text-left px-3 py-2 text-[10px] text-[#9CA3AF] font-medium uppercase tracking-wider">Ingrediente</th>
+                          <th className="text-right px-3 py-2 text-[10px] text-[#9CA3AF] font-medium uppercase tracking-wider">Cant./pax</th>
+                          <th className="text-center px-3 py-2 text-[10px] text-[#9CA3AF] font-medium uppercase tracking-wider">Unidad</th>
+                          <th className="text-left px-3 py-2 text-[10px] text-[#9CA3AF] font-medium uppercase tracking-wider">Proveedor</th>
+                          <th className="w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recipeForm.items.map((item, idx) => (
+                          <tr key={idx} className="border-b border-[#F2F2F5] last:border-b-0">
+                            <td className="px-2 py-1.5">
+                              <input type="text" placeholder="Nombre..." value={item.ingredient_name}
+                                onChange={(e) => updateRecipeItem(idx, 'ingredient_name', e.target.value)}
+                                className="w-full px-2 py-1 rounded border border-[#E5E5EC] bg-white text-[#1A1A1A] text-[12px] focus:border-[#C9A84C] focus:outline-none" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input type="number" step="0.1" min="0" value={item.quantity_per_pax || ''}
+                                onChange={(e) => updateRecipeItem(idx, 'quantity_per_pax', parseFloat(e.target.value) || 0)}
+                                className="w-16 px-2 py-1 rounded border border-[#E5E5EC] bg-white text-[#1A1A1A] text-[12px] text-right focus:border-[#C9A84C] focus:outline-none" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <select value={item.unit} onChange={(e) => updateRecipeItem(idx, 'unit', e.target.value)}
+                                className="w-full px-1 py-1 rounded border border-[#E5E5EC] bg-white text-[12px] text-[#6B7280] focus:outline-none">
+                                <option value="g">g</option>
+                                <option value="ml">ml</option>
+                                <option value="ud">ud</option>
+                              </select>
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input type="text" placeholder="Proveedor..." value={item.supplier}
+                                onChange={(e) => updateRecipeItem(idx, 'supplier', e.target.value)}
+                                className="w-full px-2 py-1 rounded border border-[#E5E5EC] bg-white text-[#1A1A1A] text-[12px] focus:border-[#C9A84C] focus:outline-none" />
+                            </td>
+                            <td className="px-1 py-1.5 text-center">
+                              <button onClick={() => removeRecipeItem(idx)}
+                                className="p-1 rounded text-[#9CA3AF] hover:text-[#DC2626] transition-colors">
+                                <Icon name="close" className="w-3 h-3" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <button onClick={addRecipeItem}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#C9A84C] hover:bg-[#FBF6E9] transition-colors border border-[#E5E5EC]">
+                  <Icon name="plus" className="w-3 h-3" />
+                  Añadir ingrediente
+                </button>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-[#ECECF1] flex justify-end gap-2">
+              <button onClick={() => { setShowRecipeForm(false); setEditingRecipe(null); }}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#6B7280] hover:bg-[#F5F5F8] transition-colors">
+                Cancelar
+              </button>
+              <button onClick={saveRecipe} disabled={!recipeForm.name || savingRecipe}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 transition-all"
+                style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+                <Icon name={savingRecipe ? 'spinner' : 'check'} className={'w-4 h-4 inline mr-1 ' + (savingRecipe ? 'animate-spin' : '')} />
+                {editingRecipe ? 'Guardar cambios' : 'Crear receta'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1394,6 +1890,54 @@ export default function StockManager() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/*  PRICE HISTORY MODAL                                           */}
+      {/* ============================================================= */}
+      {priceHistoryIngredientId && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#ECECF1] w-full max-w-md">
+            <div className="px-6 py-4 border-b border-[#ECECF1] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="clock" className="w-4 h-4 text-[#C9A84C]" />
+                <h3 className="text-sm font-semibold text-[#1A1A1A]">Historial de Precios</h3>
+              </div>
+              <button onClick={() => { setPriceHistoryIngredientId(null); setPriceHistory([]); }}
+                className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors">
+                <Icon name="close" className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6">
+              {loadingPriceHistory ? (
+                <div className="text-center py-6 text-[#9CA3AF]">
+                  <Icon name="spinner" className="w-5 h-5 animate-spin mx-auto mb-2" />
+                  Cargando historial...
+                </div>
+              ) : priceHistory.length === 0 ? (
+                <div className="text-center py-6 text-[#9CA3AF]">
+                  <Icon name="clock" className="w-6 h-6 mx-auto mb-2 opacity-40" />
+                  <p className="text-[13px]">No hay cambios de precio registrados</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {priceHistory.slice(0, 10).map((entry, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-2 border-b border-[#F2F2F5] last:border-b-0">
+                      <div className="flex items-center gap-2 text-[13px]">
+                        <span className="text-[#6B7280]">{entry.old_price?.toFixed(2) || '0.00'} EUR</span>
+                        <Icon name="arrowRight" className="w-3 h-3 text-[#9CA3AF]" />
+                        <span className="font-semibold text-[#1A1A1A]">{entry.new_price?.toFixed(2) || '0.00'} EUR</span>
+                      </div>
+                      <span className="text-[11px] text-[#9CA3AF]">
+                        {entry.created_at ? new Date(entry.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
