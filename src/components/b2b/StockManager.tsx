@@ -630,7 +630,7 @@ export default function StockManager() {
   const updateActualsField = (itemId: string, field: string, value: string) => {
     setActualsData((prev) => ({
       ...prev,
-      [itemId]: { ...prev[itemId], actual_quantity: '', actual_unit: 'g', actual_cost: '', ...prev[itemId], [field]: value },
+      [itemId]: { actual_quantity: '', actual_unit: 'g', actual_cost: '', ...prev[itemId], [field]: value },
     }));
   };
 
