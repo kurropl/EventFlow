@@ -213,7 +213,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           for (const r of roles) {
             await client.query(
               `INSERT INTO staffing_lines (event_id, role, slots_needed, notes, status)
-               VALUES ($1, $2, $3, 'Auto-generado al aceptar presupuesto', 'pending')`,
+               VALUES ($1, $2, $3, 'Auto-generado al aceptar presupuesto', 'open')`,
               [quoteRow.event_id, r.role, r.slots]
             );
           }
