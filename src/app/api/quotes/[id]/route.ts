@@ -94,9 +94,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         // Create event_order
         const eventOrder = (await client.query(
-          `INSERT INTO event_orders (event_id, quote_id, client_id, confirmed_price, status,
-            tables_suggested, tables_confirmed, waiters_suggested, waiters_confirmed)
-           VALUES ($1, $2, $3, $4, 'in_progress', $5, $5, $6, $6)
+          `INSERT INTO event_orders (event_id, quote_id, client_id, confirmed_price, final_price, status,
+            extra_consumptions, tables_suggested, tables_confirmed, waiters_suggested, waiters_confirmed)
+           VALUES ($1, $2, $3, $4, $4, 'in_progress', '[]', $5, $5, $6, $6)
            RETURNING *`,
           [quoteRow.event_id, params.id, eventRow?.client_id || null, pvpTotal, tablesSuggested, waitersSuggested]
         )).rows[0];
