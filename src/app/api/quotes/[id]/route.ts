@@ -328,7 +328,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json({ data: quote });
   } catch (error) {
-    console.error('[quotes PUT] ERROR:', error);
     return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }
