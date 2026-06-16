@@ -127,6 +127,22 @@ function formatTime(t: string) {
   return t;
 }
 
+/** Extract "HH:MM" from an ISO timestamp string or pass through as-is. */
+function extractTimeFromISO(isoStr: string | null | undefined): string {
+  if (!isoStr) return '';
+  if (isoStr.includes('T')) {
+    return isoStr.substring(11, 16); // "YYYY-MM-DDTHH:MM:SS.sssZ" → "HH:MM"
+  }
+  return isoStr;
+}
+
+/** Combine an event date string with a "HH:MM" time string into an ISO timestamp. */
+function combineDateAndTime(dateStr: string, timeStr: string): string | null {
+  if (!timeStr) return null;
+  const datePart = dateStr ? dateStr.split('T')[0] : new Date().toISOString().split('T')[0];
+  return `${datePart}T${timeStr}:00`;
+}
+
 function formatDate(d: string) {
   if (!d) return '--';
   return new Date(d).toLocaleDateString('es-ES', {
@@ -816,7 +832,7 @@ export default function StaffingManager() {
       setLoadingOffers((prev) => ({ ...prev, [lineId]: true }));
       const res = await fetch(`/api/staffing/lines/${lineId}/offers`);
       const data = await res.json();
-      setLineOffers((prev) => ({ ...prev, [lineId]: data.data || [] }));
+      setLineOffers((prev) => ({ ...prev, [lineId]: data.success ? (data.data || []) : [] }));
     } catch {
       setLineOffers((prev) => ({ ...prev, [lineId]: [] }));
     } finally {
@@ -828,7 +844,7 @@ export default function StaffingManager() {
     try {
       const res = await fetch(`/api/staffing/lines/${lineId}/assignments`);
       const data = await res.json();
-      setLineAssignments((prev) => ({ ...prev, [lineId]: data.data || [] }));
+      setLineAssignments((prev) => ({ ...prev, [lineId]: data.success ? (data.data || []) : [] }));
     } catch {
       setLineAssignments((prev) => ({ ...prev, [lineId]: [] }));
     }
@@ -1023,8 +1039,8 @@ export default function StaffingManager() {
     setLineForm({
       role: normalizeRole(line.role),
       slots_needed: String(line.slots_needed),
-      start_time: line.start_time || '',
-      end_time: line.end_time || '',
+      start_time: extractTimeFromISO(line.start_time),
+      end_time: extractTimeFromISO(line.end_time),
       location: line.location || '',
       uniform: line.uniform || '',
       notes: line.notes || '',
@@ -1047,6 +1063,8 @@ export default function StaffingManager() {
           ...lineForm,
           event_id: selectedEvent,
           slots_needed: parseInt(lineForm.slots_needed) || 1,
+          start_time: combineDateAndTime(selectedEventInfo?.event_date || '', lineForm.start_time),
+          end_time: combineDateAndTime(selectedEventInfo?.event_date || '', lineForm.end_time),
         }),
       });
       if (res.ok) {
@@ -1195,12 +1213,11 @@ export default function StaffingManager() {
     setSavingPay(true);
     try {
       if (editingPayId) {
-        const res = await fetch(`/api/staffing/pay?id=${editingPayId}`, {
-          method: 'POST',
+        const res = await fetch('/api/staffing/pay', {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            worker_id: workerId,
-            event_id: selectedEvent,
+            id: editingPayId,
             hours: parseFloat(payForm.hours) || 0,
             hourly_rate: parseFloat(payForm.hourly_rate) || 0,
             notes: payForm.notes,

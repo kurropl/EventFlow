@@ -1,14 +1,16 @@
 'use client';
 
 import React, { Suspense } from 'react';
+import AdminLayout from '@/components/b2b/AdminLayout';
 import EventDetail from '@/components/b2b/EventDetail';
-import { use } from 'react';
 
-export default function EventoPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function EventoPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   return (
-    <Suspense>
-      <EventDetail eventId={id} />
-    </Suspense>
+    <AdminLayout>
+      <Suspense>
+        <EventDetail eventId={id} />
+      </Suspense>
+    </AdminLayout>
   );
 }

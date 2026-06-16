@@ -290,6 +290,7 @@ export default function StockManager() {
   const loadEscandallo = useCallback(async (eventId: string) => {
     if (!eventId) { setEscandallo(null); return; }
     setLoadingEscandallo(true);
+    setEscandallo(null); // Clear previous data while loading
     try {
       const res = await fetch(`/api/stock/escandallos?event_id=${eventId}`);
       const data = await res.json();
@@ -297,8 +298,6 @@ export default function StockManager() {
         const group = data.data[eventId];
         if (group) {
           setEscandallo({ event_id: eventId, event_name: group.event_name, items: group.items || [] });
-        } else {
-          setEscandallo(null);
         }
       }
     } catch { /* ignore */ }
@@ -612,17 +611,19 @@ export default function StockManager() {
     if (!data) return;
     setSavingActuals(itemId);
     try {
-      await fetch('/api/stock/actuals', {
+      const res = await fetch('/api/stock/actuals', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: itemId,
-          actual_quantity: parseFloat(data.actual_quantity) || null,
-          actual_unit: data.actual_unit || null,
-          actual_cost: parseFloat(data.actual_cost) || null,
+          items: [{
+            id: itemId,
+            actual_quantity: parseFloat(data.actual_quantity) || null,
+            actual_unit: data.actual_unit || null,
+            actual_cost: parseFloat(data.actual_cost) || null,
+          }],
         }),
       });
-      if (selectedEvent) await loadEscandallo(selectedEvent);
+      if (res.ok && selectedEvent) await loadEscandallo(selectedEvent);
     } catch { /* ignore */ }
     finally { setSavingActuals(null); }
   };
