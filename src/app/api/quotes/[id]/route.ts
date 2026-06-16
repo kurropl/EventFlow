@@ -205,16 +205,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           const metres = Math.max(1, Math.ceil(guests / 40));
 
           const roles = [
-            { role: 'camarero', pax: camareros },
-            { role: 'cocinero', pax: cocineros },
-            { role: 'metre', pax: metres },
+            { role: 'camarero', slots: camareros },
+            { role: 'cocinero', slots: cocineros },
+            { role: 'metre', slots: metres },
           ];
 
           for (const r of roles) {
             await client.query(
-              `INSERT INTO staffing_lines (event_id, role, pax, hourly_cost, notes, status)
-               VALUES ($1, $2, $3, 0, 'Auto-generado al aceptar presupuesto', 'pending')`,
-              [quoteRow.event_id, r.role, r.pax]
+              `INSERT INTO staffing_lines (event_id, role, slots_needed, notes, status)
+               VALUES ($1, $2, $3, 'Auto-generado al aceptar presupuesto', 'pending')`,
+              [quoteRow.event_id, r.role, r.slots]
             );
           }
         }
