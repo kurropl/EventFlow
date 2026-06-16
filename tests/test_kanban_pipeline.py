@@ -75,7 +75,7 @@ def create_event(client_name):
         "client_email": f"{uuid.uuid4().hex[:8]}@test.com",
         "event_type": "boda", "event_date": event_date, "guest_count": 80,
         "status": "draft",
-        "selected_items": [{"item_id": "1", "name": "Menú boda clásico", "category": "compartir-mesa", "quantity": 1}]
+        "selected_items": [{"item_id": "1", "name": "Carpaccio de vaca vieja madurada con trufa y colmenillas", "category": "compartir-mesa", "quantity": 1}]
     })
     if body.get("success") and body.get("data", {}).get("id"):
         return body["data"]["id"]
