@@ -155,24 +155,67 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             try {
               ingredients = typeof catItem.ingredients === 'string'
                 ? JSON.parse(catItem.ingredients) : catItem.ingredients;
-            } catch { continue; }
+            } catch { /* fall through to fallback */ }
 
-            for (const ing of ingredients) {
+            if (ingredients.length > 0) {
+              for (const ing of ingredients) {
+                await client.query(
+                  `INSERT INTO event_shopping_items
+                    (event_id, order_id, ingredient_name, provider_name, total_grams, total_units, total_ml, completed)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
+                  [
+                    quoteRow.event_id,
+                    eventOrder.id,
+                    ing.name || 'Sin nombre',
+                    catItem.provider_name || null,
+                    (Number(ing.grams) || 0) * qty,
+                    (Number(ing.count) || 0) * qty,
+                    (Number(ing.ml) || 0) * qty,
+                  ]
+                );
+              }
+            } else {
+              // Catalog item exists but has no ingredients — create a single entry
               await client.query(
                 `INSERT INTO event_shopping_items
                   (event_id, order_id, ingredient_name, provider_name, total_grams, total_units, total_ml, completed)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
-                [
-                  quoteRow.event_id,
-                  eventOrder.id,
-                  ing.name || 'Sin nombre',
-                  catItem.provider_name || null,
-                  (Number(ing.grams) || 0) * qty,
-                  (Number(ing.count) || 0) * qty,
-                  (Number(ing.ml) || 0) * qty,
-                ]
+                 VALUES ($1, $2, $3, $4, 0, $5, 0, false)`,
+                [quoteRow.event_id, eventOrder.id, itemName, catItem.provider_name || null, qty]
               );
             }
+          } else {
+            // No catalog match at all — create a single entry with the item name
+            await client.query(
+              `INSERT INTO event_shopping_items
+                (event_id, order_id, ingredient_name, provider_name, total_grams, total_units, total_ml, completed)
+               VALUES ($1, $2, $3, null, 0, $4, 0, false)`,
+              [quoteRow.event_id, eventOrder.id, itemName, qty]
+            );
+          }
+        }
+
+        // ── Auto-generate staffing lines ──
+        const existingStaffing = (await client.query(
+          `SELECT 1 FROM staffing_lines WHERE event_id = $1 LIMIT 1`, [quoteRow.event_id]
+        )).rows[0];
+
+        if (!existingStaffing && guests > 0) {
+          const camareros = Math.ceil(guests / 12);
+          const cocineros = Math.ceil(guests / 30);
+          const metres = Math.max(1, Math.ceil(guests / 40));
+
+          const roles = [
+            { role: 'camarero', pax: camareros },
+            { role: 'cocinero', pax: cocineros },
+            { role: 'metre', pax: metres },
+          ];
+
+          for (const r of roles) {
+            await client.query(
+              `INSERT INTO staffing_lines (event_id, role, pax, hourly_cost, notes, status)
+               VALUES ($1, $2, $3, 0, 'Auto-generado al aceptar presupuesto', 'pending')`,
+              [quoteRow.event_id, r.role, r.pax]
+            );
           }
         }
 

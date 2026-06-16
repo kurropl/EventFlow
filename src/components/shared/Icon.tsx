@@ -115,6 +115,9 @@ const MAP: Record<string, LucideIcon> = {
   banknote: Lucide.Banknote,
   link: Lucide.Link,
   book: Lucide.BookOpen,
+  fileText: Lucide.FileText,
+  fichaEvento: Lucide.FileText,
+  receipt: Lucide.Receipt,
 };
 
 export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProps) {
