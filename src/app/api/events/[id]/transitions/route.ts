@@ -111,7 +111,7 @@ async function fwd3(event: any, motivo: string | undefined, req: NextRequest) {
   );
   if (!quote) return NextResponse.json({ success: false, error: 'No quote found' }, { status: 400 });
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3020';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const cookie = req.headers.get('cookie') || '';
   const res = await fetch(`${baseUrl}/api/quotes/${quote.id}`, {
     method: 'PUT',
@@ -228,7 +228,7 @@ async function inv2(event: any, motivo?: string) {
   await querySingle(`DELETE FROM staffing_lines WHERE event_id = $1`, [event.id]);
 
   // 5. Event back to sent
-  await querySingle(`UPDATE events SET status = 'sent', total_pvp = NULL, total_cost = NULL WHERE id = $1`, [event.id]);
+  await querySingle(`UPDATE events SET status = 'sent', total_pvp = 0, total_cost = 0 WHERE id = $1`, [event.id]);
 
   // 6. Lead back to presupuestado (linked via client_name matching)
   await querySingle(

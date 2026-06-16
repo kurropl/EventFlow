@@ -110,10 +110,10 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    // Update event status to 'sent' when a quote is created
-    await querySingle(`UPDATE events SET status = 'sent' WHERE id = $1`, [event_id]);
+    // NOTE: Event stays 'draft' until FWD-2 transition is explicitly triggered.
+    // The old code auto-set status='sent' on quote creation, bypassing the state machine.
 
-    return NextResponse.json({ data: quote }, { status: 201 });
+    return NextResponse.json({ success: true, data: quote }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }

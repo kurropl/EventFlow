@@ -225,7 +225,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         return { quote: updatedQuote, eventOrder, payments, clientToken, stockWarnings };
       });
 
-      return NextResponse.json({ data: result.quote, eventOrder: result.eventOrder, payments: result.payments, stockWarnings: result.stockWarnings });
+      return NextResponse.json({ success: true, data: result.quote, eventOrder: result.eventOrder, payments: result.payments, stockWarnings: result.stockWarnings });
     }
 
     // Non-accepting update: just update the quote
