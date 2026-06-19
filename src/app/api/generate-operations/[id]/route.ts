@@ -114,6 +114,13 @@ export async function POST(
             ? JSON.parse(catalog.ingredients)
             : catalog.ingredients;
         } catch {
+          // Catalog item exists but ingredients JSON is malformed — skip
+          // Log as a direct item instead
+          const key = itemName.toLowerCase().trim();
+          if (!ingredientTotals[key]) {
+            ingredientTotals[key] = { grams: 0, units: 0, ml: 0, category, item_name: itemName };
+          }
+          ingredientTotals[key].units += 1 * qty;
           continue;
         }
 
@@ -128,6 +135,13 @@ export async function POST(
           if (ing.count) t.units += Number(ing.count) * qty;
           if (ing.ml) t.ml += Number(ing.ml) * qty;
         }
+      } else {
+        // Item not found in catalog → add the item name itself as ingredient (1 unit)
+        const key = itemName.toLowerCase().trim();
+        if (!ingredientTotals[key]) {
+          ingredientTotals[key] = { grams: 0, units: 0, ml: 0, category, item_name: itemName };
+        }
+        ingredientTotals[key].units += 1 * qty;
       }
     }
 

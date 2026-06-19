@@ -831,7 +831,8 @@ CREATE TRIGGER trg_event_create_lead AFTER INSERT ON events
 -- ============================================================
 -- 27. VIEW: shopping list (escandallo)
 -- ============================================================
-CREATE OR REPLACE VIEW shopping_list AS
+DROP VIEW IF EXISTS shopping_list;
+CREATE VIEW shopping_list AS
 WITH event_items AS (
     SELECT
         eo.event_id,
@@ -845,10 +846,6 @@ item_details AS (
     SELECT
         ei.event_id,
         ei.order_id,
-        -- Match the catalog dish by its NAME. Wizard submissions store the dish
-        -- under `name` (not `item_id`), so the previous `item_id` join matched
-        -- nothing and the escandallo came out empty. Fallback to item_id keeps
-        -- backwards-compatibility with any older rows that used that field.
         COALESCE(NULLIF(ei.item->>'name', ''), ei.item->>'item_id')::TEXT AS item_name,
         (ei.item->>'category')::TEXT AS category,
         (ei.item->>'quantity')::NUMERIC AS item_qty
@@ -867,12 +864,30 @@ ingredient_breakdown AS (
     FROM item_details id
     JOIN catalog_items ci ON ci.name = id.item_name
     CROSS JOIN LATERAL jsonb_array_elements(ci.ingredients) AS ing
+
+    UNION ALL
+
+    -- Items without catalog match → use item name as ingredient (1 unit)
+    SELECT
+        id.event_id,
+        id.order_id,
+        id.item_qty,
+        NULL::UUID AS catalog_id,
+        id.item_name AS ingredient_name,
+        0::NUMERIC AS grams,
+        1::NUMERIC AS count,
+        0::NUMERIC AS ml
+    FROM item_details id
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catalog_items ci WHERE ci.name = id.item_name
+    )
+    AND id.item_name IS NOT NULL
 )
 SELECT
     ib.event_id,
     ib.order_id,
     ib.ingredient_name,
-    MAX(ing_stock.supplier) AS provider_name,
+    MAX(COALESCE(ing_stock.supplier, '—'))::TEXT AS provider_name,
     SUM(COALESCE(ib.grams, 0) * ib.item_qty) AS total_grams,
     SUM(COALESCE(ib.count, 0) * ib.item_qty) AS total_units,
     SUM(COALESCE(ib.ml, 0) * ib.item_qty) AS total_ml
