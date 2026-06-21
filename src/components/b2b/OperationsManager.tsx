@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '@/components/shared/Icon';
 import EventStaffingPanel from '@/components/b2b/EventStaffingPanel';
 import { PageHeader, StatStrip, DataCard, DataList } from '@/components/ui';
+import { formatMoney, formatCantidad, convertUnit } from '@/lib/units';
 
 // ── Status Map (Spanish labels + color variants) ──────────────
 const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = {
@@ -56,7 +57,7 @@ interface DragState { tableId: string; clientX: number; clientY: number; origX: 
 const CANVAS_W = 1200, CANVAS_H = 800, GRID = 20;
 const WAITER_COLORS = ['#C9A84C','#4682B4','#6B8E23','#9370DB','#CD5C5C','#20B2AA','#D2691E','#B8860B'];
 
-const money = (n: number | string) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(n) || 0);
+const money = formatMoney;
 const fmtDate = (d: string) => {
   if (!d) return '—';
   const [y, m, day] = d.slice(0, 10).split('-');
@@ -734,20 +735,20 @@ export default function OperationsManager() {
                         className="w-full text-sm text-[#6B7280] bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={item.total_grams || 0} min={0}
-                        onChange={e => updateShoppingItem(item.id, { total_grams: +e.target.value })}
+                      <input type="number" value={Math.round((item.total_grams || 0) * 100) / 100} min={0}
+                        onChange={e => updateShoppingItem(item.id, { total_grams: Math.round(+e.target.value * 100) / 100 })}
                         className="w-20 text-sm text-right text-[#6B7280] bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
                       {item.total_grams > 0 && <span className="text-[10px] text-[#9CA3AF] ml-0.5">g</span>}
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={item.total_units || 0} min={0}
-                        onChange={e => updateShoppingItem(item.id, { total_units: +e.target.value })}
+                      <input type="number" value={Math.round((item.total_units || 0) * 100) / 100} min={0}
+                        onChange={e => updateShoppingItem(item.id, { total_units: Math.round(+e.target.value * 100) / 100 })}
                         className="w-20 text-sm text-right text-[#6B7280] bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
                       {item.total_units > 0 && <span className="text-[10px] text-[#9CA3AF] ml-0.5">ud</span>}
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={item.total_ml || 0} min={0}
-                        onChange={e => updateShoppingItem(item.id, { total_ml: +e.target.value })}
+                      <input type="number" value={Math.round((item.total_ml || 0) * 100) / 100} min={0}
+                        onChange={e => updateShoppingItem(item.id, { total_ml: Math.round(+e.target.value * 100) / 100 })}
                         className="w-20 text-sm text-right text-[#6B7280] bg-transparent border-b border-transparent hover:border-[#E5E7EB] focus:border-[#C9A84C] focus:outline-none px-1 py-0.5" />
                       {item.total_ml > 0 && <span className="text-[10px] text-[#9CA3AF] ml-0.5">ml</span>}
                     </td>
