@@ -888,9 +888,14 @@ SELECT
     ib.order_id,
     ib.ingredient_name,
     MAX(COALESCE(ing_stock.supplier, '—'))::TEXT AS provider_name,
-    SUM(COALESCE(ib.grams, 0) * ib.item_qty) AS total_grams,
-    SUM(COALESCE(ib.count, 0) * ib.item_qty) AS total_units,
-    SUM(COALESCE(ib.ml, 0) * ib.item_qty) AS total_ml
+    ROUND(SUM(COALESCE(ib.grams, 0) * ib.item_qty), 2) AS total_grams,
+    ROUND(SUM(COALESCE(ib.count, 0) * ib.item_qty), 0) AS total_units,
+    ROUND(SUM(COALESCE(ib.ml, 0) * ib.item_qty), 2) AS total_ml,
+    CASE
+        WHEN SUM(COALESCE(ib.grams, 0)) > 0 THEN 'mass'::TEXT
+        WHEN SUM(COALESCE(ib.ml, 0)) > 0 THEN 'volume'::TEXT
+        ELSE 'count'::TEXT
+    END AS unit_dimension
 FROM ingredient_breakdown ib
 LEFT JOIN ingredients ing_stock ON lower(trim(ing_stock.name)) = lower(trim(ib.ingredient_name))
 GROUP BY ib.event_id, ib.order_id, ib.ingredient_name
@@ -979,16 +984,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_events_client_token ON events(client_token
 -- 31. EVENT SHOPPING ITEMS (Escandallo / lista de compras)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS event_shopping_items (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id        UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     order_id        UUID REFERENCES event_orders(id) ON DELETE SET NULL,
     ingredient_name TEXT NOT NULL,
     provider_name   TEXT,
     total_grams     NUMERIC(10,2) DEFAULT 0,
     total_units     INT DEFAULT 0,
-    total_ml        INT DEFAULT 0,
-    status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','ordered','delivered')),
-    notes           TEXT,
+    total_ml        NUMERIC(10,2) DEFAULT 0,
+    unit_dimension  TEXT CHECK (unit_dimension IN ('mass', 'volume', 'count', 'currency')),
+    completed       BOOLEAN NOT NULL DEFAULT false,
+    actual_cost     NUMERIC(10,2) DEFAULT 0,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
