@@ -1,5 +1,5 @@
 /**
- * EventFlow — Worker Trace Endpoint
+ * EventFlow — Worker Trace Endpoint (CORREGIDO)
  * GET /api/staffing/trace/[workerId]
  * Desde un trabajador, responde en qué eventos y presupuestos ha participado
  */
@@ -11,12 +11,17 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id?: string } }
 ) {
   try {
     const { id } = params;
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'ID de trabajador requerido.' },
+        { status: 400 }
+      );
+    }
 
-    // Validate UUID
     if (!UUID_REGEX.test(id)) {
       return NextResponse.json(
         { success: false, error: 'ID de trabajador inválido.' },
@@ -33,7 +38,7 @@ export async function GET(
       );
     }
 
-    // 2. Todas las asignaciones del trabajador
+    // 2. Todas las asignaciones + eventos
     const assignments = await queryMany<any>(
       `SELECT sa.*, sl.event_id, sl.role AS staffing_role, sl.slots_needed,
               e.client_name, e.event_date, e.status AS event_status,
@@ -47,7 +52,7 @@ export async function GET(
       [id]
     );
 
-    // 3. Agrupar por evento para el resumen
+    // 3. Agrupar por evento
     const eventsMap = new Map<string, any>();
     for (const a of assignments) {
       if (!eventsMap.has(a.event_id)) {
@@ -57,16 +62,15 @@ export async function GET(
           event_date: a.event_date,
           event_status: a.event_status,
           quote_id: a.quote_id,
-          roles: [],
+          roles: [a.staffing_role],
           total_hours: 0,
         });
+      } else {
+        const entry = eventsMap.get(a.event_id)!;
+        if (!entry.roles.includes(a.staffing_role)) {
+          entry.roles.push(a.staffing_role);
+        }
       }
-      const entry = eventsMap.get(a.event_id)!;
-      if (!entry.roles.includes(a.staffing_role)) {
-        entry.roles.push(a.staffing_role);
-      }
-      // pay info
-      total_hours: entry.total_hours;
     }
 
     // 4. Información de pago por evento
@@ -101,33 +105,27 @@ export async function GET(
     const quoteIds = [
       ...new Set(events.filter((e) => e.quote_id).map((e) => e.quote_id)),
     ];
-
     const quotes =
       quoteIds.length > 0
-        ? await queryMany<any>(
-            'SELECT * FROM quotes WHERE id = ANY($1)',
-            [quoteIds]
-          )
+        ? await queryMany<any>('SELECT * FROM quotes WHERE id = ANY($1)', [quoteIds])
         : [];
+
+    // 6. Totales
+    const totalPay = payEntries.reduce((sum: number, p: any) => sum + Number(p.total_pay || 0), 0);
+    const totalHours = payEntries.reduce((sum: number, p: any) => sum + Number(p.hours || 0), 0);
 
     return NextResponse.json({
       success: true,
       data: {
         worker,
-        assignments,
+        assignments: assignments,
         events,
         quotes,
         summary: {
           total_events: events.length,
           total_assignments: assignments.length,
-          total_pay: payEntries.reduce(
-            (sum: number, p: any) => sum + Number(p.total_pay || 0),
-            0
-          ),
-          total_hours: payEntries.reduce(
-            (sum: number, p: any) => sum + Number(p.hours || 0),
-            0
-          ),
+          total_pay: totalPay,
+          total_hours: totalHours,
         },
       },
     });
