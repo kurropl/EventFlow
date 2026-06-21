@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPool, querySingle, queryMany } from '@/lib/db';
+import { querySingle, queryMany } from '@/lib/db';
 import { recalcEventEscandallo, freezeEventEscandallo, checkMarginAlerts } from '@/lib/recalcEscandallo';
 import { sanitizeError } from '@/lib/security';
 

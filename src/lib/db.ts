@@ -13,7 +13,7 @@ import { Pool, QueryResult, QueryResultRow, PoolConfig } from 'pg';
 
 let pool: Pool | null = null;
 
-function getPool(): Pool {
+export function getPool(): Pool {
   if (!pool) {
     const connectionString =
       process.env.DATABASE_URL ||

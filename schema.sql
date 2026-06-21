@@ -1152,3 +1152,64 @@ CREATE INDEX IF NOT EXISTS idx_staffing_assignments_line ON staffing_assignments
 CREATE INDEX IF NOT EXISTS idx_staffing_assignments_worker ON staffing_assignments (worker_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_staffing_assignments_unique ON staffing_assignments (staffing_line_id, worker_id);
 ALTER TABLE staffing_assignments DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 28. ESCANDALLO — Receta como fuente de verdad
+-- ============================================================
+
+-- recipe_items already defined above (section X)
+-- Already exists from earlier migration
+
+-- ============================================================
+-- 28b. EVENT COST DEVIATIONS (Desviación final del evento)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_cost_deviations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    estimated_total_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+    actual_total_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+    deviation_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    deviation_pct NUMERIC(5,2),
+    closed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    notes TEXT
+);
+
+-- ============================================================
+-- 28c. RECIPE ITEM VERSIONS (Histórico de versiones)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS recipe_item_versions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_item_id UUID NOT NULL REFERENCES recipe_items(id) ON DELETE CASCADE,
+    version INT NOT NULL,
+    quantity NUMERIC(10,2) NOT NULL,
+    unit VARCHAR(20),
+    unit_dimension TEXT,
+    changed_by TEXT DEFAULT 'system',
+    changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    notes TEXT
+);
+
+-- ============================================================
+-- 28d. INGREDIENT PRICE HISTORY (ya existe, añadimos trigger)
+-- ============================================================
+-- Trigger ya creado en migración V2
+-- Solo falta añadirlo al schema.sql para referencia
+
+ALTER TABLE recipe_items
+  ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS version_note TEXT,
+  ADD COLUMN IF NOT EXISTS unit VARCHAR(10) DEFAULT 'g',
+  ADD COLUMN IF NOT EXISTS unit_dimension TEXT CHECK (unit_dimension IN ('mass','volume','count')),
+  ADD COLUMN IF NOT EXISTS quantity_override NUMERIC(10,2);
+
+ALTER TABLE event_shopping_items
+  ADD COLUMN IF NOT EXISTS recipe_item_id UUID REFERENCES recipe_items(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS recipe_version INT NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS theoretical_qty NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS theoretical_unit VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS theoretical_unit_dimension TEXT CHECK (theoretical_unit_dimension IN ('mass','volume','count')),
+  ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS actual_cost_total NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS deviation_qty NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS deviation_cost NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS frozen BOOLEAN NOT NULL DEFAULT false;
