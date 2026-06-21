@@ -77,10 +77,11 @@ export default function AdminDashboard() {
   const isProveedores = pathname?.includes('proveedores');
   const isStock = pathname?.includes('stock');
   const isStaffing = pathname?.includes('staffing');
-  const isMapa = pathname?.includes('mapa-mesas');
-  const isChecklist = pathname?.includes('checklist');
+  const isMapa = pathname?.includes('mapa-mas');
+  const isTraza = pathname?.includes('traza');
+  const isChecklist = pathname?.includes('checklist');[truncated]
   const isLeads = pathname?.includes('leads');
-  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing || isChecklist;
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing || isChecklist || isTraza;
 
   return (
     <AdminLayout>
@@ -97,6 +98,7 @@ export default function AdminDashboard() {
       {isWebhooks && <WebhooksPanel />}
       {isProveedores && <ProvidersManager />}
       {isMapa && <OperationsManager />}
+      {isTraza && <TrazaPanel />}
       {isChecklist && <ChecklistPanel />}
       {!isOther && <DashboardOverview />}
     </AdminLayout>
