@@ -1,0 +1,62 @@
+{
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+byalboroto.duckdns.org {
+    root * /usr/share/caddy/html
+    encode gzip
+
+    @raiz path /
+    rewrite @raiz /mapa-mesas.html
+
+    handle /fryshop* {
+        uri strip_prefix /fryshop
+        reverse_proxy fryshop-backend:3000
+    }
+    handle /freiduria* {
+        uri strip_prefix /freiduria
+        reverse_proxy 172.17.0.1:3002
+    }
+    handle {
+        file_server
+    }
+}
+
+optixmvp.duckdns.org {
+    encode gzip
+    tls {
+        dns duckdns {env.DUCKDNS_TOKEN}
+    }
+
+    handle /api/* {
+        reverse_proxy 172.17.0.1:8010
+    }
+    handle /health {
+        reverse_proxy 172.17.0.1:8010
+    }
+    handle {
+        reverse_proxy 172.17.0.1:3010
+    }
+}
+
+eventcater.duckdns.org {
+    encode gzip
+
+    tls {
+        dns duckdns {env.DUCKDNS_TOKEN}
+    }
+
+    handle /configurador* {
+        uri strip_prefix /configurador
+        reverse_proxy 172.17.0.1:3020
+    }
+    handle /admin* {
+        reverse_proxy 172.17.0.1:3020
+    }
+    handle /api* {
+        reverse_proxy 172.17.0.1:3020
+    }
+    handle {
+        reverse_proxy 172.17.0.1:3020
+    }
+}
