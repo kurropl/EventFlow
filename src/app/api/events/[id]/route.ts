@@ -104,42 +104,62 @@ export async function GET(
     const items = event.selected_items || [];
     let pvp = Number(event.total_pvp) || 0;
     let cost = Number(event.total_cost) || 0;
-    if (items.length > 0 && pvp === 0) {
-      const catalogItems = await queryMany<any>(
-        `SELECT id, name, pvp, cost, category FROM catalog_items WHERE active = true`,
-        []
-      );
-      const nameLookup = new Map<string, any>();
-      const catLookup = new Map<string, any[]>();
-      for (const ci of catalogItems) {
-        nameLookup.set(ci.name.toLowerCase().trim(), ci);
-        if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
-        const catArr = catLookup.get(ci.category)!;
-        catArr.push(ci);
-      }
-      for (const item of items) {
-        const itemName = (item.name || '').toLowerCase().trim();
-        const itemCat = (item.category || '').toLowerCase().trim();
-        let catItem = nameLookup.get(itemName);
-        if (!catItem && itemCat) {
-          const catItems = catLookup.get(itemCat);
-          if (catItems && catItems.length > 0) {
-            catItem = catItems.reduce((min: any, ci: any) =>
-              (Number(ci.pvp) || 0) < (Number(min?.pvp) || Infinity) ? ci : min
-            );
+    let costing = { lines: [], subtotal: 0, margin: 0, marginPercent: 0, pvp: 0 };
+
+    // Centralized costing from event_costs (same for budget/escandallo/invoice)
+    if (event.status === 'draft' || event.status === 'sent') {
+      // Recalcular desde catálogo
+      if (items.length > 0 && pvp === 0) {
+        const catalogItems = await queryMany<any>(
+          `SELECT id, name, pvp, cost, category FROM catalog_items WHERE active = true`,
+          []
+        );
+        const nameLookup = new Map<string, any>();
+        const catLookup = new Map<string, any[]>();
+        for (const ci of catalogItems) {
+          nameLookup.set(ci.name.toLowerCase().trim(), ci);
+          if (!catLookup.has(ci.category)) catLookup.set(ci.category, []);
+          const catArr = catLookup.get(ci.category)!;
+          catArr.push(ci);
+        }
+        for (const item of items) {
+          const itemName = (item.name || '').toLowerCase().trim();
+          const itemCat = (item.category || '').toLowerCase().trim();
+          let catItem = nameLookup.get(itemName);
+          if (!catItem && itemCat) {
+            const catItems = catLookup.get(itemCat);
+            if (catItems && catItems.length > 0) {
+              catItem = catItems.reduce((min: any, ci: any) =>
+                (Number(ci.pvp) || 0) < (Number(min?.pvp) || Infinity) ? ci : min
+              );
+            }
+          }
+          if (catItem) {
+            const qty = Number(item.quantity) || 1;
+            pvp += (Number(catItem.pvp) || 0) * qty;
+            cost += (Number(catItem.cost) || 0) * qty;
           }
         }
-        if (catItem) {
-          const qty = Number(item.quantity) || 1;
-          pvp += (Number(catItem.pvp) || 0) * qty;
-          cost += (Number(catItem.cost) || 0) * qty;
-        }
       }
+    } else if (event.status === 'accepted' || event.status === 'won') {
+      // Coste congelado desde event_costs
+      const eventLines = await queryMany<any>(
+        `SELECT ingredient_name, quantity, unit, unit_cost, line_total FROM event_costs WHERE event_id = $1`,
+        [event.id]
+      );
+      const subtotal = eventLines.reduce((s: number, l: any) => s + Number(l.line_total || 0), 0);
+      costing = {
+        lines: eventLines,
+        subtotal,
+        margin: subtotal * 0.2,
+        marginPercent: 20,
+        pvp: subtotal * 1.2,
+      };
     }
 
     return NextResponse.json({
       success: true,
-      data: { ...event, total_pvp: pvp, total_cost: cost, total_display: pvp + (Number(event.bar_price) || 0) },
+      data: { ...event, total_pvp: pvp, total_cost: cost, total_display: pvp + (Number(event.bar_price) || 0), costing },
     });
   } catch (error) {
     return NextResponse.json(

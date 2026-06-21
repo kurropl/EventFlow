@@ -1004,6 +1004,66 @@ DROP TRIGGER IF EXISTS trg_shopping_updated ON event_shopping_items;
 CREATE TRIGGER trg_shopping_updated BEFORE UPDATE ON event_shopping_items
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- ingredient_id column for unified ingredient reference
+ALTER TABLE event_shopping_items ADD COLUMN IF NOT EXISTS ingredient_id UUID;
+
+-- ============================================================
+-- 31b. INGREDIENTS (Entidad única de ingredientes)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ingredients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL DEFAULT 'general',
+    unit TEXT NOT NULL DEFAULT 'g',
+    unit_cost NUMERIC(8,4) NOT NULL DEFAULT 0,
+    pvp_ratio NUMERIC(5,4) NOT NULL DEFAULT 1.0,
+    stock_unit TEXT NOT NULL DEFAULT 'g',
+    packaging_size NUMERIC(10,2),
+    supplier_id UUID REFERENCES suppliers(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_ingredients_name ON ingredients(name);
+ALTER TABLE ingredients DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 31c. EVENT COSTS (Coste centralizado por evento)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_costs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    order_id UUID REFERENCES event_orders(id) ON DELETE SET NULL,
+    ingredient_id UUID NOT NULL REFERENCES ingredients(id),
+    ingredient_name TEXT NOT NULL,
+    quantity NUMERIC(10,2) NOT NULL DEFAULT 0,
+    unit TEXT NOT NULL DEFAULT 'g',
+    unit_cost NUMERIC(8,4) NOT NULL DEFAULT 0,
+    line_total NUMERIC(10,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_event_costs_event ON event_costs(event_id);
+ALTER TABLE event_costs DISABLE ROW LEVEL SECURITY;
+
+-- Vista unificada de costes
+CREATE OR REPLACE VIEW v_event_cost AS
+SELECT 
+    e.id AS event_id,
+    jsonb_agg(
+        json_build_object(
+            'ingredient_id', ec.ingredient_id,
+            'ingredient_name', ec.ingredient_name,
+            'quantity', ec.quantity,
+            'unit', ec.unit,
+            'unit_cost', ec.unit_cost,
+            'line_total', ec.line_total
+        )
+    ) AS lines,
+    SUM(ec.line_total) AS total_cost
+FROM events e
+LEFT JOIN event_costs ec ON ec.event_id = e.id
+GROUP BY e.id;
+
 -- ============================================================
 -- 32. WAITERS (Camareros del salón)
 -- ============================================================
