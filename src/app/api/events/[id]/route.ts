@@ -104,7 +104,7 @@ export async function GET(
     const items = event.selected_items || [];
     let pvp = Number(event.total_pvp) || 0;
     let cost = Number(event.total_cost) || 0;
-    let costing = { lines: [], subtotal: 0, margin: 0, marginPercent: 0, pvp: 0 };
+    let costing: { lines: any[]; subtotal: number; margin: number; marginPercent: number; pvp: number } = { lines: [], subtotal: 0, margin: 0, marginPercent: 0, pvp: 0 };
 
     // Centralized costing from event_costs (same for budget/escandallo/invoice)
     if (event.status === 'draft' || event.status === 'sent') {
