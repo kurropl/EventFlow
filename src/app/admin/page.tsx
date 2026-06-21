@@ -46,6 +46,9 @@ const StockManager = dynamic(() => import('@/components/b2b/StockManager'), {
 const StaffingManager = dynamic(() => import('@/components/b2b/StaffingManager'), {
   loading: () => <PanelSkeleton />,
 });
+const TrazaPanel = dynamic(() => import('@/components/b2b/TrazaPanel'), {
+  loading: () => <PanelSkeleton />,
+});
 const ChecklistPanel = dynamic(() => import('@/components/b2b/ChecklistPanel'), {
   loading: () => <PanelSkeleton />,
 });
@@ -79,7 +82,7 @@ export default function AdminDashboard() {
   const isStaffing = pathname?.includes('staffing');
   const isMapa = pathname?.includes('mapa-mas');
   const isTraza = pathname?.includes('traza');
-  const isChecklist = pathname?.includes('checklist');[truncated]
+  const isChecklist = pathname?.includes('checklist');
   const isLeads = pathname?.includes('leads');
   const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing || isChecklist || isTraza;
 
@@ -93,7 +96,7 @@ export default function AdminDashboard() {
       {isGuests && <GuestsManager />}
       {isCatalog && <CatalogCRUD />}
       {isStock && <StockManager />}
-      {isStaffing && <Suspense fallback={<div className="p-6 animate-pulse"><div className="h-64 bg-stone-100 rounded-xl" /></div>}><StaffingManager /></Suspense>}
+      {isStaffing && <Suspense fallback={<div className="animate-pulse p-6"><div className="h-64 bg-stone-100 rounded-xl" /></div>}><StaffingManager /></Suspense>}
       {isOperations && <OperationsManager />}
       {isWebhooks && <WebhooksPanel />}
       {isProveedores && <ProvidersManager />}
