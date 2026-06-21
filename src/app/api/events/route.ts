@@ -165,6 +165,26 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create event: no data returned');
     }
 
+    // Auto-crear quote implícito (presupuesto raíz) para el evento
+    try {
+      const quote = await querySingle<any>(
+        `INSERT INTO quotes (event_id, status, items, base_pvp, base_cost, total_pvp, total_cost, notes)
+         VALUES ($1, 'historical', $2::jsonb, $3, $4, $3, $4, 'Presupuesto implícito del configurador web')
+         RETURNING id`,
+        [event.id, JSON.stringify(validated.selected_items || []), validated.total_pvp || 0, validated.total_cost || 0]
+      );
+      if (quote?.id) {
+        await querySingle(
+          `UPDATE events SET quote_id = $1 WHERE id = $2`,
+          [quote.id, event.id]
+        );
+        event.quote_id = quote.id;
+      }
+    } catch (quoteError) {
+      // Non-fatal — el quote implícito es opcional para eventos históricos
+      console.error('[events POST] implicit quote creation skipped:', quoteError);
+    }
+
     // Best-effort: upsert a CRM client from the booking and link it.
     // Never blocks event creation (e.g. if the clients table isn't migrated yet).
     try {

@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS proposed_menus (
 CREATE TABLE IF NOT EXISTS events (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     menu_id         TEXT, -- menu1, menu2, etc. or UUID
+    quote_id        UUID REFERENCES quotes(id) ON DELETE SET NULL,
     client_name     TEXT NOT NULL,
     client_email    TEXT NOT NULL,
     client_phone    TEXT,
@@ -71,6 +72,7 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX idx_events_status ON events(status);
 CREATE INDEX idx_events_date ON events(event_date);
+CREATE INDEX idx_events_quote ON events(quote_id);
 
 -- ============================================================
 -- 4. COST BREAKDOWN
@@ -577,9 +579,10 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS stock_deducted BOOLEAN NOT NULL DEFA
 -- ============================================================
 CREATE TABLE IF NOT EXISTS quotes (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    event_id        UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    event_id        UUID REFERENCES events(id) ON DELETE CASCADE,
     lead_id         UUID REFERENCES leads(id) ON DELETE SET NULL,
-    status          TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','sent','accepted','rejected','expired')),
+    status          TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','sent','accepted','rejected','expired','historical')),
+    items           JSONB NOT NULL DEFAULT '[]'::jsonb,
     base_pvp        NUMERIC(12,2) NOT NULL DEFAULT 0,
     base_cost       NUMERIC(12,2) NOT NULL DEFAULT 0,
     bar_price       NUMERIC(10,2) NOT NULL DEFAULT 0,
@@ -740,24 +743,26 @@ CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(create
 ALTER TABLE automation_logs DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- 23. STAFF ASSIGNMENTS (Asignación de personal al evento)
+-- 23. (ELIMINADA) staff_assignments — tabla duplicada, reemplazada por staffing_assignments
 -- ============================================================
-CREATE TABLE IF NOT EXISTS staff_assignments (
+
+-- ============================================================
+-- 23b. STOCK ENTRIES (Movimientos de stock trazados)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS stock_entries (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    event_order_id  UUID NOT NULL REFERENCES event_orders(id) ON DELETE CASCADE,
-    role            TEXT NOT NULL CHECK (role IN ('camarero','cocinero','maitre','montaje','azafata','seguridad','otro')),
-    quantity        INT NOT NULL DEFAULT 0,
-    hours           NUMERIC(5,2) NOT NULL DEFAULT 8,
-    hourly_cost     NUMERIC(10,2) NOT NULL DEFAULT 18,
-    total_cost      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    ingredient_id   UUID REFERENCES ingredients(id) ON DELETE CASCADE,
+    event_id        UUID REFERENCES events(id) ON DELETE SET NULL,
+    quantity        NUMERIC(10,2) NOT NULL DEFAULT 0,
+    unit            TEXT DEFAULT 'g',
+    movement_reason TEXT NOT NULL DEFAULT 'operativo'
+        CHECK (movement_reason IN ('operativo','compra_prevision','merma','ajuste_inventario','inventario_inicial')),
     notes           TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_staff_order ON staff_assignments(event_order_id);
-ALTER TABLE staff_assignments DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- 23. UPDATE event STATUS ENUM (máquina de estados extendida)
+-- 23c. UPDATE event STATUS ENUM (máquina de estados extendida)
 -- Primero actualizar el CHECK constraint (permitir ambos sets)
 -- Luego migrar datos existentes
 -- Finalmente restringir el CHECK a los nuevos valores
