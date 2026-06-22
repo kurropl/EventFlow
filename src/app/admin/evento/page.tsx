@@ -15,7 +15,7 @@ export default function EventoPage() {
     <AdminLayout>
       <div className="p-6 max-w-5xl mx-auto">
         <Suspense fallback={<div className="text-center py-16 text-stone-500">Cargando...</div>}>
-          <EventoContent />
+          <LoadedEvento />
         </Suspense>
       </div>
     </AdminLayout>
