@@ -26,6 +26,11 @@ import {
 } from '@/components/ui/tabs';
 import Icon from '@/components/shared/Icon';
 import { EmptyState } from '@/components/ui/EmptyState';
+import dynamic from 'next/dynamic';
+
+const OCRScanner = dynamic(() => import('@/components/b2b/OCRScanner'), {
+  loading: () => <div className="h-48 bg-[#1e1e1e] rounded-xl animate-pulse" />,
+});
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -754,7 +759,7 @@ function HojasOperativasTab() {
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [loadingEvents, setLoadingEvents] = useState(true);
-  const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica'>('produccion');
+const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 'ocr'>('produccion');
   const [sheetData, setSheetData] = useState<HojaRow[]>([]);
   const [loadingSheet, setLoadingSheet] = useState(false);
   const [sheetError, setSheetError] = useState('');
@@ -805,6 +810,7 @@ function HojasOperativasTab() {
     { id: 'produccion', label: 'Producción' },
     { id: 'carga', label: 'Carga' },
     { id: 'logistica', label: 'Logística' },
+    { id: 'ocr', label: 'OCR Scanner' },
   ];
 
   return (
@@ -867,7 +873,11 @@ function HojasOperativasTab() {
           </div>
 
           {/* Sheet Content */}
-          {loadingSheet ? (
+          {sheetTab === 'ocr' ? (
+            <div className="space-y-4">
+              <OCRScanner eventId={selectedEventId || undefined} />
+            </div>
+          ) : loadingSheet ? (
             <div className="animate-pulse space-y-3 p-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="h-8 bg-[#1e1e1e] rounded" />

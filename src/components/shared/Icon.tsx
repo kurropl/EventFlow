@@ -118,6 +118,7 @@ const MAP: Record<string, LucideIcon> = {
   fileText: Lucide.FileText,
   fichaEvento: Lucide.FileText,
   receipt: Lucide.Receipt,
+  trazabilidad: Lucide.ScanLine,
 };
 
 export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProps) {

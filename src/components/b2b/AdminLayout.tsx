@@ -54,6 +54,7 @@ const GROUPS: MenuGroup[] = [
     items: [
       { id: 'catalog', label: 'Catálogo', sub: 'Platos y precios', href: '/admin/catalog' },
       { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
+      { id: 'mapa-mesas', label: 'Mapa Mesas', sub: 'Distribución del salón', href: '/admin/mapa-mesas' },
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
     ],
   },
@@ -70,6 +71,7 @@ const GROUPS: MenuGroup[] = [
     items: [
       { id: 'stock', label: 'Inventario', sub: 'Ingredientes y stock', href: '/admin/stock' },
       { id: 'proveedores', label: 'Proveedores', sub: 'Suministros y partners', href: '/admin/stock#proveedores' },
+      { id: 'trazabilidad', label: 'Trazabilidad Sanitaria', sub: 'APPCC, lotes y recepciones', href: '/admin/trazabilidad' },
     ],
   },
   {

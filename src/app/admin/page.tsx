@@ -49,6 +49,9 @@ const StaffingManager = dynamic(() => import('@/components/b2b/StaffingManager')
 const TrazaPanel = dynamic(() => import('@/components/b2b/TrazaPanel'), {
   loading: () => <PanelSkeleton />,
 });
+const TrazabilidadPanel = dynamic(() => import('@/components/b2b/TrazabilidadPanel'), {
+  loading: () => <PanelSkeleton />,
+});
 const ChecklistPanel = dynamic(() => import('@/components/b2b/ChecklistPanel'), {
   loading: () => <PanelSkeleton />,
 });
@@ -85,10 +88,11 @@ export default function AdminDashboard() {
   const isStaffing = pathname?.includes('staffing');
   const isMapa = pathname?.includes('mapa-mas');
   const isTraza = pathname?.includes('traza');
+  const isTrazabilidad = pathname?.includes('trazabilidad');
   const isChecklist = pathname?.includes('checklist');
   const isLeads = pathname?.includes('leads');
   const isCocina = pathname?.includes('cocina');
-  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing || isChecklist || isTraza || isCocina;
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing || isChecklist || isTraza || isTrazabilidad || isCocina;
 
   return (
     <AdminLayout>
@@ -106,6 +110,7 @@ export default function AdminDashboard() {
       {isProveedores && <ProvidersManager />}
       {isMapa && <OperationsManager />}
       {isTraza && <TrazaPanel />}
+      {isTrazabilidad && <TrazabilidadPanel />}
       {isChecklist && <ChecklistPanel />}
       {isCocina && <CocinaPanel />}
       {!isOther && <DashboardOverview />}
