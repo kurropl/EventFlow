@@ -13,15 +13,32 @@ const MENU = ['adulto', 'nino', 'bebe'];
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const eventId = searchParams.get('event_id');
+    const eventId = searchParams.get('event_id') || searchParams.get('eventId');
+    const status = searchParams.get('status');
+    const limit = parseInt(searchParams.get('limit') || '50', 10);
     if (!eventId) {
       return NextResponse.json({ success: false, error: 'event_id es obligatorio' }, { status: 422 });
     }
+
+    if (status) {
+      // Count filtered
+      const totalResult = await querySingle<any>(
+        `SELECT COUNT(*) as cnt FROM guests WHERE event_id = $1 AND status = $2`,
+        [eventId, status]
+      );
+      const total = totalResult ? Number(totalResult.cnt) : 0;
+      const rows = await queryMany<any>(
+        `SELECT * FROM guests WHERE event_id = $1 AND status = $2 ORDER BY group_name NULLS LAST, name ASC LIMIT $3`,
+        [eventId, status, limit]
+      );
+      return NextResponse.json({ success: true, data: rows, total });
+    }
+
     const rows = await queryMany<any>(
       `SELECT * FROM guests WHERE event_id = $1 ORDER BY group_name NULLS LAST, name ASC`,
       [eventId]
     );
-    return NextResponse.json({ success: true, data: rows });
+    return NextResponse.json({ success: true, data: rows, total: rows.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ success: false, error: message }, { status: 500 });

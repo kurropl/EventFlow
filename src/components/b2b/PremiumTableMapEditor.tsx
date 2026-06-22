@@ -4,6 +4,9 @@
  *
  * Diseño inspirado en el HTML adjunto: oscuro/dorado, SVG con sillas,
  * grid canvas, pan/zoom, sidebar con plantillas y propiedades.
+ *
+ * Persiste en /api/mapa-mesas/[eventId].
+ * Soporta auto-asignación de invitados a mesas.
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -182,6 +185,11 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [showTemplates, setShowTemplates] = useState(true);
   const [name, setName] = useState(eventName || 'Salón de Celebraciones');
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [autoAssigning, setAutoAssigning] = useState(false);
+  const [guestCount, setGuestCount] = useState(0);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -271,14 +279,64 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
     return () => window.removeEventListener('keydown', handleKey);
   }, [selectedId, readOnly]);
 
-  // ── Save ──
-  const handleSave = () => {
-    if (onSave) onSave({ tables, elements });
+  // ── Save to API ──
+  const handleSave = async () => {
+    if (!eventId) {
+      if (onSave) onSave({ tables, elements });
+      return;
+    }
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const res = await fetch(`/api/mapa-mesas/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, tables, elements }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSaveMessage('Guardado');
+        setTimeout(() => setSaveMessage(null), 2000);
+      } else {
+        setSaveMessage('Error al guardar');
+      }
+    } catch {
+      setSaveMessage('Error de conexión');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Auto-asignar invitados ──
+  const handleAutoAssign = async () => {
+    if (!eventId) return;
+    setAutoAssigning(true);
+    try {
+      const res = await fetch(`/api/mapa-mesas/${eventId}/assignments/auto`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Recargar contadores de ocupados
+        const mapRes = await fetch(`/api/mapa-mesas/${eventId}`);
+        const mapData = await mapRes.json();
+        if (mapData.success && mapData.data) {
+          setTables(mapData.data.tables || []);
+        }
+        setSaveMessage(`${data.assigned} invitados asignados`);
+        setTimeout(() => setSaveMessage(null), 3000);
+      }
+    } catch {
+      setSaveMessage('Error al auto-asignar');
+    } finally {
+      setAutoAssigning(false);
+    }
   };
 
   // ── Load from API ──
   useEffect(() => {
     if (!eventId) return;
+    setLoading(true);
     fetch(`/api/mapa-mesas/${eventId}`)
       .then(r => r.json())
       .then(data => {
@@ -286,6 +344,17 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
           setTables(data.data.tables || []);
           setElements(data.data.elements || []);
           setName(data.data.name || eventName || '');
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+
+    // Cargar invitados confirmados
+    fetch(`/api/guests?eventId=${eventId}&status=confirmed&limit=1`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.total !== undefined) {
+          setGuestCount(data.total);
         }
       })
       .catch(() => {});
@@ -315,12 +384,30 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
         </div>
 
         <div className="flex items-center gap-3">
+          {saveMessage && (
+            <span className="text-[#D4A548] text-xs font-medium bg-[#D4A548]/10 px-3 py-1 rounded-lg">
+              {saveMessage}
+            </span>
+          )}
+          {guestCount > 0 && (
+            <span className="text-[#D4A548]/60 text-xs hidden sm:inline">
+              {guestCount} invitados
+            </span>
+          )}
+          {loading && <span className="text-[#D4A548]/40 text-xs">Cargando...</span>}
           {!readOnly && (
             <>
-              <button onClick={handleSave}
+              {eventId && tables.length > 0 && (
+                <button onClick={handleAutoAssign} disabled={autoAssigning}
+                  className="px-3 py-1.5 rounded border border-[#D4A548]/40 text-[#D4A548] text-[10px] uppercase tracking-wider
+                    hover:bg-[#D4A548]/15 disabled:opacity-50 transition-colors">
+                  {autoAssigning ? 'Asignando...' : 'Auto-asignar'}
+                </button>
+              )}
+              <button onClick={handleSave} disabled={saving}
                 className="px-4 py-2 rounded bg-[#D4A548] text-[#1A1208] text-xs font-bold uppercase tracking-wider
-                  hover:bg-[#F0C060] transition-colors">
-                Guardar
+                  hover:bg-[#F0C060] disabled:opacity-50 transition-colors">
+                {saving ? 'Guardando...' : 'Guardar'}
               </button>
             </>
           )}
@@ -581,8 +668,10 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
 
       {/* ── Footer ── */}
       <footer className="px-6 py-2.5 bg-[#FBF8F1] border-t border-[#C9A84C]/20 flex items-center justify-between text-xs text-[#5A4A38]">
-        <span>{tables.length} mesas | {totalSeats} comensales</span>
-        <span className="opacity-60">{totalOccupied} ocupados | {totalSeats - totalOccupied} libres</span>
+        <span>{tables.length} mesas | {totalSeats} plazas</span>
+        <span className="opacity-60">{totalOccupied} ocupados | {totalSeats - totalOccupied} libres
+          {guestCount > 0 && <span className="ml-3">| {guestCount} invitados confirmados</span>}
+        </span>
       </footer>
     </div>
   );
