@@ -32,6 +32,10 @@ const OCRScanner = dynamic(() => import('@/components/b2b/OCRScanner'), {
   loading: () => <div className="h-48 bg-[#1e1e1e] rounded-xl animate-pulse" />,
 });
 
+const CocinaAlerts = dynamic(() => import('@/components/b2b/CocinaAlerts'), {
+  loading: () => <div className="h-32 bg-[#1e1e1e] rounded-xl animate-pulse" />,
+});
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -759,7 +763,7 @@ function HojasOperativasTab() {
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [loadingEvents, setLoadingEvents] = useState(true);
-const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 'ocr'>('produccion');
+const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 'alertas' | 'ocr'>('produccion');
   const [sheetData, setSheetData] = useState<HojaRow[]>([]);
   const [loadingSheet, setLoadingSheet] = useState(false);
   const [sheetError, setSheetError] = useState('');
@@ -810,6 +814,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
     { id: 'produccion', label: 'Producción' },
     { id: 'carga', label: 'Carga' },
     { id: 'logistica', label: 'Logística' },
+    { id: 'alertas', label: 'Alertas' },
     { id: 'ocr', label: 'OCR Scanner' },
   ];
 
@@ -873,7 +878,11 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
           </div>
 
           {/* Sheet Content */}
-          {sheetTab === 'ocr' ? (
+          {sheetTab === 'alertas' ? (
+            <div className="space-y-4">
+              <CocinaAlerts />
+            </div>
+          ) : sheetTab === 'ocr' ? (
             <div className="space-y-4">
               <OCRScanner eventId={selectedEventId || undefined} />
             </div>

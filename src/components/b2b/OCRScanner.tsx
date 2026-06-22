@@ -35,6 +35,8 @@ interface ApplyResult {
   status: string;
   stockId?: string;
   ingredientId?: string;
+  supplierOrderId?: string;
+  orderItemId?: string;
 }
 
 interface OCRScannerProps {
@@ -346,12 +348,29 @@ export default function OCRScanner({ eventId, onResult }: OCRScannerProps) {
                   {applyResults.filter(r => r.stockId).length} items aplicados
                 </span>
               </div>
+
+              {/* Supplier order info */}
+              {applyResults.some(r => r.supplierOrderId) && (
+                <div className="mb-3 p-2 rounded-lg bg-emerald-100 text-emerald-800 text-xs flex items-center gap-2">
+                  <Package className="w-4 h-4 shrink-0" />
+                  Pedido a proveedor creado/actualizado
+                  {applyResults.filter(r => r.orderItemId).length > 0 && (
+                    <span className="text-emerald-600">
+                      — {applyResults.filter(r => r.orderItemId).length} líneas añadidas
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-1 text-xs text-green-700">
                 {applyResults.slice(0, 5).map((r, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span>✓</span>
                     <span className="capitalize">{r.name}</span>
-                    <span className="text-green-500">[{r.status === 'stock_created' ? 'stock creado' : 'sin match'}]</span>
+                    <span className="text-green-500">
+                      [{r.status === 'stock_created' ? 'stock' : 'sin match'}
+                      {r.orderItemId ? '+ pedido' : ''}]
+                    </span>
                   </div>
                 ))}
                 {applyResults.length > 5 && (
