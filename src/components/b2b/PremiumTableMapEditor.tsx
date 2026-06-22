@@ -517,7 +517,7 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
           ref={canvasRef}
           className="relative overflow-hidden print-area"
           style={{ background: '#F6F1E7' }}
-          onMouseDown={handleCanvasMouseDown}
+          onMouseDown={() => {}}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
