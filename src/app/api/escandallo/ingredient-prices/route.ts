@@ -7,8 +7,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { querySingle, queryMany } from '@/lib/db';
-import { recalcEventEscandallo, freezeEventEscandallo, checkMarginAlerts } from '@/lib/recalcEscandallo';
+import { getPool, querySingle, queryMany } from '@/lib/db';
+import { recalcEventEscandallo, freezeEventEscandallo, checkMarginAlerts, propagatePriceToAllEvents } from '@/lib/recalcEscandallo';
 import { sanitizeError } from '@/lib/security';
 
 export async function PUT(request: NextRequest) {
