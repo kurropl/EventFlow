@@ -52,6 +52,9 @@ const TrazaPanel = dynamic(() => import('@/components/b2b/TrazaPanel'), {
 const ChecklistPanel = dynamic(() => import('@/components/b2b/ChecklistPanel'), {
   loading: () => <PanelSkeleton />,
 });
+const CocinaPanel = dynamic(() => import('@/components/b2b/CocinaPanel'), {
+  loading: () => <PanelSkeleton />,
+});
 
 function PanelSkeleton() {
   return (
@@ -84,7 +87,8 @@ export default function AdminDashboard() {
   const isTraza = pathname?.includes('traza');
   const isChecklist = pathname?.includes('checklist');
   const isLeads = pathname?.includes('leads');
-  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing || isChecklist || isTraza;
+  const isCocina = pathname?.includes('cocina');
+  const isOther = isLeads || isAgenda || isKanban || isClients || isBilling || isGuests || isCatalog || isOperations || isWebhooks || isMapa || isProveedores || isStock || isStaffing || isChecklist || isTraza || isCocina;
 
   return (
     <AdminLayout>
@@ -103,6 +107,7 @@ export default function AdminDashboard() {
       {isMapa && <OperationsManager />}
       {isTraza && <TrazaPanel />}
       {isChecklist && <ChecklistPanel />}
+      {isCocina && <CocinaPanel />}
       {!isOther && <DashboardOverview />}
     </AdminLayout>
   );
