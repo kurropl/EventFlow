@@ -77,11 +77,13 @@ export async function POST(request: NextRequest) {
           ]
         );
 
+        const stockRow = stockResult.rows?.[0] as any;
+
         results.push({
           name: itemName,
-          status: 'stock_created',
-          stockId: stockResult.rows[0]?.id,
-          ingredientId,
+          status: 'stock_created' as const,
+          stockId: String(stockRow?.id || ''),
+          ingredientId: String(ingredientId || ''),
         });
 
         // 3. Si es etiqueta con lote, registrar en trazabilidad
@@ -114,10 +116,11 @@ export async function POST(request: NextRequest) {
           ]
         );
 
+        const stockRow2 = stockResult.rows?.[0] as any;
         results.push({
           name: itemName,
-          status: 'stock_created_no_match',
-          stockId: stockResult.rows[0]?.id,
+          status: 'stock_created_no_match' as const,
+          stockId: String(stockRow2?.id || ''),
         });
       }
     }
