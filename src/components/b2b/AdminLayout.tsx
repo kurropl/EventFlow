@@ -56,6 +56,7 @@ const GROUPS: MenuGroup[] = [
       { id: 'operations', label: 'Operaciones', sub: 'Eventos en curso', href: '/admin/operations' },
       { id: 'mapa-mesas', label: 'Mapa Mesas', sub: 'Distribución del salón', href: '/admin/mapa-mesas' },
       { id: 'ocupacion', label: 'Ocupación', sub: 'Estado mesas en tiempo real', href: '/admin/ocupacion' },
+      { id: 'rentabilidad', label: 'Rentabilidad', sub: 'Margen y costes por evento', href: '/admin/rentabilidad' },
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
     ],
   },
