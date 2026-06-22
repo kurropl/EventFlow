@@ -170,7 +170,7 @@ export default function CocinaAlerts() {
                   <p className={`text-xs font-bold ${item.daysUntilExpiry <= 0 ? 'text-red-600' : ''}`}>
                     {daysLabel(item.daysUntilExpiry)}
                   </p>
-                  <p className="text-[10px] opacity-60">{item.quantity} {item.unit}</p>
+<p className="text-[10px] opacity-60">{item.batchQuantity} {item.unit}</p>
                 </div>
               </div>
             ))
