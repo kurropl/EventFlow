@@ -4,11 +4,10 @@ import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/b2b/AdminLayout';
 import EventDetail from '@/components/b2b/EventDetail';
 
-function EventoContent() {
+function LoadedEvento() {
   const searchParams = useSearchParams();
-  const eventId = searchParams.get('id');
-
-  return <EventDetail eventId={eventId || undefined} />;
+  const eventId = searchParams.get('id') || '';
+  return <EventDetail eventId={eventId} />;
 }
 
 export default function EventoPage() {
