@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import StatusBadge from './StatusBadge';
+import BriefingCamareros from './BriefingCamareros';
 import {
   CalendarDays,
   Users,
@@ -477,6 +478,14 @@ export default function EventDetail({ eventId }: EventDetailProps) {
         <div className="bg-[#F8F3E6] rounded-lg p-4">
           <EmptyMessage text="Sin datos de historial" />
         </div>
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────
+         7. BRIEFING CAMAREROS
+         ────────────────────────────────────────────────────────── */}
+      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+        <SectionHeader icon={Users} title="Briefing Camareros" />
+        <BriefingCamareros eventId={event.id} />
       </section>
     </div>
   );
