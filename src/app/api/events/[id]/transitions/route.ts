@@ -13,7 +13,7 @@ type Ctx = { params: Promise<{ id: string }> };
 const VALID: Record<string, { from: string[]; to: string }> = {
   'FWD-2': { from: ['draft'],     to: 'sent' },
   'FWD-3': { from: ['sent'],      to: 'accepted' },
-  'FWD-4': { from: ['accepted'],  to: 'completed' },
+  'FWD-4': { from: ['accepted', 'presupuestado'],  to: 'completed' },
   'INV-1': { from: ['sent'],      to: 'lost' },
   'INV-2': { from: ['accepted'],  to: 'sent' },
   'INV-3': { from: ['accepted'],  to: 'cancelled' },
@@ -136,6 +136,50 @@ async function fwd4(event: any, motivo?: string) {
   }
 
   const effects: string[] = [];
+
+  // 0. Freeze escandallo — marcar consumos reales como congelados
+  try {
+    const shoppingItems = await queryMany<any>(
+      `SELECT id FROM event_shopping_items WHERE event_id = $1 AND frozen = false`,
+      [event.id]
+    );
+    if (shoppingItems.length > 0) {
+      await querySingle(
+        `UPDATE event_shopping_items SET frozen = true, frozen_at = now() WHERE event_id = $1 AND frozen = false`,
+        [event.id]
+      );
+      effects.push(`escandallo: ${shoppingItems.length} items frozen`);
+    } else {
+      // Generate shopping items from recipe_items if none exist
+      const recipeItems = await queryMany<any>(
+        `SELECT ri.*, r.name as recipe_name FROM recipe_items ri
+         JOIN recipes r ON r.id = ri.recipe_id
+         WHERE r.catalog_item_id IN (
+           SELECT id FROM catalog_items WHERE id IN (
+             SELECT catalog_item_id FROM recipes WHERE id IN (
+               SELECT recipe_id FROM event_menu_items WHERE event_id = $1
+             )
+           )
+         )`,
+        [event.id]
+      );
+      if (recipeItems.length > 0) {
+        for (const ri of recipeItems) {
+          await querySingle(
+            `INSERT INTO event_shopping_items (event_id, ingredient_name, total_grams, total_units, total_ml, theoretical_qty, completed, frozen, frozen_at, recipe_version)
+             SELECT $1, ri.ingredient_name, ri.total_grams, ri.total_units, ri.total_ml, ri.theoretical_qty, true, true, now(), ri.recipe_version
+             FROM recipe_items ri WHERE ri.id = $2`,
+            [event.id, ri.id]
+          );
+        }
+        effects.push(`escandallo: ${recipeItems.length} items generated + frozen`);
+      } else {
+        effects.push('escandallo: no items to freeze');
+      }
+    }
+  } catch (e: any) {
+    effects.push(`escandallo: failed (${e.message})`);
+  }
 
   // 1. Event → completed
   await querySingle(`UPDATE events SET status = 'completed' WHERE id = $1`, [event.id]);
