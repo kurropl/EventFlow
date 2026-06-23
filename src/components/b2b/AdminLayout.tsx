@@ -59,6 +59,7 @@ const GROUPS: MenuGroup[] = [
       { id: 'rentabilidad', label: 'Rentabilidad', sub: 'Margen y costes por evento', href: '/admin/rentabilidad' },
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
       { id: 'confirmacion', label: 'Confirmación', sub: 'Invitados vs mesas', href: '/admin/confirmacion' },
+      { id: 'demo', label: 'Demo', sub: 'Flujo completo ejemplo', href: '/admin/demo' },
     ],
   },
   {
