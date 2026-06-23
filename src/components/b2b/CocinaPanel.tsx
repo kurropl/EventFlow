@@ -36,6 +36,10 @@ const CocinaAlerts = dynamic(() => import('@/components/b2b/CocinaAlerts'), {
   loading: () => <div className="h-32 bg-[#1e1e1e] rounded-xl animate-pulse" />,
 });
 
+const HACCPPanel = dynamic(() => import('@/components/b2b/HACCPPanel'), {
+  loading: () => <div className="h-32 bg-[#1e1e1e] rounded-xl animate-pulse" />,
+});
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -954,6 +958,7 @@ const MAIN_TABS = [
   { id: 'equipamiento', label: 'Equipamiento' },
   { id: 'pases', label: 'Pases' },
   { id: 'hojas', label: 'Hojas operativas' },
+  { id: 'appcc', label: 'APPCC' },
 ];
 
 export default function CocinaPanel() {
@@ -996,6 +1001,11 @@ export default function CocinaPanel() {
           {activeTab === 'equipamiento' && <EquipamientoTab />}
           {activeTab === 'pases' && <PasesTab />}
           {activeTab === 'hojas' && <HojasOperativasTab />}
+          {activeTab === 'appcc' && (
+            <div className="bg-white text-stone-800 rounded-lg p-4">
+              <HACCPPanel />
+            </div>
+          )}
         </div>
       </div>
     </div>
