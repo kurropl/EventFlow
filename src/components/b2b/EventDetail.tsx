@@ -107,6 +107,11 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [calcResult, setCalcResult] = useState<any>(null);
+  const [confirmMsg, setConfirmMsg] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [closeMsg, setCloseMsg] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -309,7 +314,120 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         3. ESCANDALLO
+         3. SEÑAL Y CONFIRMACIÓN
+         ────────────────────────────────────────────────────────── */}
+      {(quote || event.status === 'sent' || event.status === 'draft' || event.status === 'accepted') && (
+      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+        <SectionHeader icon={WalletMinimal} title="Señal y Confirmación" />
+        <div className="bg-[#F8F3E6] rounded-lg p-4 space-y-4">
+          {/* Estado actual */}
+          <div className="flex items-center gap-3">
+            <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+              event.status === 'accepted'
+                ? 'bg-emerald-100 text-emerald-700'
+                : quote?.deposit_paid === true
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : event.status === 'completed' || event.status === 'paid'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-amber-100 text-amber-700'
+            }`}>
+              {event.status === 'accepted' ? '✓ Confirmado'
+                : event.status === 'completed' ? 'Completado'
+                : event.status === 'paid' ? 'Pagado'
+                : quote?.deposit_paid ? 'Señal pagada — pendiente de confirmar'
+                : 'Pendiente de señal'}
+            </div>
+            {quote && (
+              <span className="text-xs text-stone-400">
+                Señal: {money(quote.deposit_amount || (Number(quote.total_pvp || 0) * Number(quote.deposit_pct || 40) / 100))}
+                ({quote.deposit_pct || 40}%)
+              </span>
+            )}
+          </div>
+
+          {/* If not yet confirmed and not already accepted/completed */}
+          {event.status !== 'accepted' && event.status !== 'completed' && event.status !== 'paid' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Signal amount card */}
+              <div className="p-4 bg-white rounded-lg border border-stone-200">
+                <p className="text-xs text-stone-500 mb-2">Importe de la señal</p>
+                <p className="text-xl font-bold font-mono">
+                  {money(quote?.deposit_amount || (Number(event.total_pvp || 0) * Number(quote?.deposit_pct || 40) / 100))}
+                </p>
+                <p className="text-xs text-stone-400 mt-1">
+                  {quote?.deposit_pct || 40}% del total · {money(event.total_pvp || 0)}
+                </p>
+              </div>
+
+              {/* Confirm button */}
+              <div className="p-4 bg-white rounded-lg border border-stone-200 flex flex-col justify-between">
+                <button
+                  onClick={async () => {
+                    setConfirming(true);
+                    setConfirmMsg('');
+                    try {
+                      const res = await fetch(`/api/events/${event.id}/confirm`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ method: 'transferencia' }),
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        setConfirmMsg('✓ Evento confirmado. Enlace de invitados activado.');
+                        fetchAll();
+                      } else {
+                        setConfirmMsg('Error: ' + (data.error || ''));
+                      }
+                    } catch { setConfirmMsg('Error de conexión'); }
+                    setConfirming(false);
+                  }}
+                  disabled={confirming || quote?.deposit_paid}
+                  className="w-full py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {confirming ? 'Confirmando...' : quote?.deposit_paid
+                    ? 'Señal ya registrada'
+                    : '✓ Registrar señal y confirmar evento'}
+                </button>
+                {confirmMsg && (
+                  <p className={`text-xs mt-2 ${confirmMsg.includes('Error') ? 'text-red-600' : 'text-emerald-600'}`}>
+                    {confirmMsg}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Guest invitation link (show when confirmed) */}
+          {(event.status === 'accepted' || event.status === 'completed' || event.status === 'paid') && event.client_token && (
+            <div className="p-4 bg-white rounded-lg border border-emerald-200">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">ACTIVO</span>
+                <span className="text-xs text-stone-500">Enlace para invitados</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-xs bg-stone-50 border border-stone-200 rounded-lg p-2.5 truncate font-mono text-stone-600">
+                  {`${window.location.origin}/invitados/${event.client_token}`}
+                </code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/invitados/${event.client_token}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="px-3 py-2 rounded-lg bg-stone-800 text-white text-xs font-medium hover:bg-stone-700 shrink-0"
+                >
+                  {copied ? '✓ Copiado' : 'Copiar'}
+                </button>
+              </div>
+              <p className="text-[10px] text-stone-400 mt-1">Comparte este enlace con el cliente para que rellene los invitados</p>
+            </div>
+          )}
+        </div>
+      </section>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────
+         4. ESCANDALLO
          ────────────────────────────────────────────────────────── */}
       <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
         <SectionHeader icon={ShoppingBag} title="Escandallo" />
@@ -362,7 +480,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         4. PERSONAL
+         5. PERSONAL
          ────────────────────────────────────────────────────────── */}
       <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
         <SectionHeader icon={Shirt} title="Personal" />
@@ -407,7 +525,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         5. PAGOS
+         6. PAGOS
          ────────────────────────────────────────────────────────── */}
       <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
         <SectionHeader icon={WalletMinimal} title="Pagos" />
@@ -473,7 +591,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         6. HISTORIAL
+         7. HISTORIAL
          ────────────────────────────────────────────────────────── */}
       <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
         <SectionHeader icon={History} title="Historial" />
@@ -483,7 +601,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         7. BRIEFING CAMAREROS
+         8. BRIEFING CAMAREROS
          ────────────────────────────────────────────────────────── */}
       <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
         <SectionHeader icon={Users} title="Briefing Camareros" />
@@ -491,7 +609,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         8. CÁLCULO AUTOMÁTICO
+         9. CÁLCULO AUTOMÁTICO
          ────────────────────────────────────────────────────────── */}
       <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
         <SectionHeader icon={Calculator} title="Cálculos del Evento" />
@@ -565,6 +683,59 @@ export default function EventDetail({ eventId }: EventDetailProps) {
             </div>
           </div>
         )}
+        {event.status === 'accepted' || event.status === 'in_progress' ? (
+          <div className="mt-6 pt-4 border-t border-stone-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={async () => {
+                  setClosing(true);
+                  setCloseMsg('');
+                  try {
+                    const res = await fetch(`/api/events/${event.id}/close`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                      setCloseMsg('✓ ' + (data.data?.results || []).join(', '));
+                      fetchAll();
+                    } else {
+                      setCloseMsg('Error: ' + (data.error || ''));
+                    }
+                  } catch { setCloseMsg('Error de conexión'); }
+                  setClosing(false);
+                }}
+                disabled={closing}
+                className="flex items-center gap-3 p-4 bg-white rounded-lg border border-stone-200 hover:border-red-400 transition-all disabled:opacity-50 col-span-full"
+              >
+                <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="text-left flex-1">
+                  <p className="font-medium text-stone-800">
+                    {closing ? 'Cerrando evento...' : 'Cerrar Evento'}
+                  </p>
+                  <p className="text-xs text-stone-500">
+                    Congela escandallo · Deduce stock · Genera factura · Marca completado
+                  </p>
+                </div>
+              </button>
+            </div>
+            {closeMsg && (
+              <div className={`mt-3 p-3 rounded-lg text-sm ${
+                closeMsg.includes('Error') ? 'bg-red-50 text-red-700 border border-red-200'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              }`}>
+                {closeMsg}
+              </div>
+            )}
+          </div>
+        ) : event.status === 'completed' || event.status === 'paid' ? (
+          <div className="mt-6 pt-4 border-t border-stone-200">
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-sm text-blue-700">
+              Evento cerrado. Escandallo congelado y stock deducido.
+            </div>
+          </div>
+        ) : null}
       </section>
     </div>
   );
