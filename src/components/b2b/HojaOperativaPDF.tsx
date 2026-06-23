@@ -16,9 +16,8 @@
  * - APPCC (temperaturas, trazabilidad)
  */
 
-import { useRef, useState, useEffect } from 'react';
-import { Printer, Download, FileText, AlertTriangle } from 'lucide-react';
-import { useReactToPrint } from 'react-to-print';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { Printer, FileText, AlertTriangle } from 'lucide-react';
 
 interface HojaData {
   event: any;
@@ -62,13 +61,9 @@ export function HojaPDF({ eventId, eventName }: { eventId: string; eventName?: s
   const { data, loading, error } = useHojaOperativa(eventId);
   const printRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Hoja-Operativa-${eventName || eventId}`,
-    pageStyle: `@page { size: A4; margin: 15mm; }
-              @media print { body { -webkit-print-color-adjust: exact; } }
-              .no-print { display: none !important; }`,
-  });
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
 
   if (loading) {
     return (
