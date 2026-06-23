@@ -122,6 +122,15 @@ async function fwd3(event: any, motivo: string | undefined, req: NextRequest) {
   if (!data.success) return NextResponse.json({ success: false, error: data.error }, { status: res.status });
 
   await audit(event.id, 'event', event.id, 'FWD-3', 'sent', 'accepted', 'admin', motivo, { quote_id: quote.id });
+
+  // Auto-generate escandallo from recipe_items
+  try {
+    const { recalcEventEscandallo } = await import('@/lib/recalcEscandallo');
+    await recalcEventEscandallo(event.id);
+  } catch (e: any) {
+    console.warn('[FWD-3] Escandallo recalc skipped:', e.message);
+  }
+
   const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
   return NextResponse.json({ success: true, data: updated, transition: 'FWD-3', stockWarnings: data.stockWarnings });
 }

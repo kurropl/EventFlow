@@ -6,7 +6,7 @@
  * Fetches from: events, quotes, escandallos, staffing, payments APIs.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import StatusBadge from './StatusBadge';
 import BriefingCamareros from './BriefingCamareros';
 import {
@@ -16,6 +16,8 @@ import {
   ShoppingBag,
   Shirt,
   WalletMinimal,
+  Calculator,
+  Table,
   History,
   Mail,
   Phone,
@@ -103,65 +105,65 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [calculating, setCalculating] = useState(false);
+  const [calcResult, setCalcResult] = useState<any>(null);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [eventRes, escRes, staffRes, payRes, quoteRes] = await Promise.allSettled([
+        fetch(`/api/events/${eventId}`),
+        fetch(`/api/stock/escandallos?event_id=${eventId}`),
+        fetch(`/api/staffing/lines?event_id=${eventId}`),
+        fetch(`/api/payments?event_id=${eventId}`),
+        fetch(`/api/quotes?event_id=${eventId}`),
+      ]);
+
+      // Event (required)
+      if (eventRes.status === 'fulfilled' && eventRes.value.ok) {
+        const j = await eventRes.value.json();
+        setEvent(j.data || null);
+      } else {
+        setError('No se pudo cargar el evento');
+        setLoading(false);
+        return;
+      }
+
+      // Escandallo
+      if (escRes.status === 'fulfilled' && escRes.value.ok) {
+        const j = await escRes.value.json();
+        const grouped = j.data || {};
+        const items = grouped[eventId]?.items || [];
+        setEscandalloItems(items);
+      }
+
+      // Staffing
+      if (staffRes.status === 'fulfilled' && staffRes.value.ok) {
+        const j = await staffRes.value.json();
+        setStaffingLines(j.data || []);
+      }
+
+      // Payments
+      if (payRes.status === 'fulfilled' && payRes.value.ok) {
+        const j = await payRes.value.json();
+        setPayments(j.data || []);
+      }
+
+      // Quotes
+      if (quoteRes.status === 'fulfilled' && quoteRes.value.ok) {
+        const j = await quoteRes.value.json();
+        const quotes = j.data || [];
+        setQuote(quotes.length > 0 ? quotes[0] : null);
+      }
+    } catch {
+      setError('Error al cargar los datos');
+    } finally {
+      setLoading(false);
+    }
+  }, [eventId]);
 
   useEffect(() => {
-    if (!eventId) return;
-
-    const fetchAll = async () => {
-      try {
-        const [eventRes, escRes, staffRes, payRes, quoteRes] = await Promise.allSettled([
-          fetch(`/api/events/${eventId}`),
-          fetch(`/api/stock/escandallos?event_id=${eventId}`),
-          fetch(`/api/staffing/lines?event_id=${eventId}`),
-          fetch(`/api/payments?event_id=${eventId}`),
-          fetch(`/api/quotes?event_id=${eventId}`),
-        ]);
-
-        // Event (required)
-        if (eventRes.status === 'fulfilled' && eventRes.value.ok) {
-          const j = await eventRes.value.json();
-          setEvent(j.data || null);
-        } else {
-          setError('No se pudo cargar el evento');
-          setLoading(false);
-          return;
-        }
-
-        // Escandallo
-        if (escRes.status === 'fulfilled' && escRes.value.ok) {
-          const j = await escRes.value.json();
-          const grouped = j.data || {};
-          const items = grouped[eventId]?.items || [];
-          setEscandalloItems(items);
-        }
-
-        // Staffing
-        if (staffRes.status === 'fulfilled' && staffRes.value.ok) {
-          const j = await staffRes.value.json();
-          setStaffingLines(j.data || []);
-        }
-
-        // Payments
-        if (payRes.status === 'fulfilled' && payRes.value.ok) {
-          const j = await payRes.value.json();
-          setPayments(j.data || []);
-        }
-
-        // Quotes
-        if (quoteRes.status === 'fulfilled' && quoteRes.value.ok) {
-          const j = await quoteRes.value.json();
-          const quotes = j.data || [];
-          setQuote(quotes.length > 0 ? quotes[0] : null);
-        }
-      } catch {
-        setError('Error al cargar los datos');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAll();
-  }, [eventId]);
+  }, [fetchAll]);
 
   /* ── Loading ──────────────────────────────────────────────────── */
   if (loading) return <FullSkeleton />;
@@ -486,6 +488,83 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
         <SectionHeader icon={Users} title="Briefing Camareros" />
         <BriefingCamareros eventId={event.id} />
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────
+         8. CÁLCULO AUTOMÁTICO
+         ────────────────────────────────────────────────────────── */}
+      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+        <SectionHeader icon={Calculator} title="Cálculos del Evento" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={async () => {
+              setCalculating(true);
+              try {
+                const res = await fetch(`/api/event-flow/${event.id}/calculate`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                  setCalcResult(data.data);
+                }
+              } catch {}
+              setCalculating(false);
+            }}
+            disabled={calculating}
+            className="flex items-center gap-3 p-4 bg-white rounded-lg border border-stone-200 hover:border-[#C9A86A] transition-all disabled:opacity-50"
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#FBF6E9] flex items-center justify-center">
+              <Table className="w-5 h-5 text-[#C9A86A]" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium text-stone-800">Calcular mesas y camareros</p>
+              <p className="text-xs text-stone-500">{event?.guest_count || 0} invitados → mesas de 10</p>
+            </div>
+          </button>
+
+          <button
+            onClick={async () => {
+              setCalculating(true);
+              try {
+                const res = await fetch(`/api/escandallo/${event.id}/freeze/recalc`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'recalc' }),
+                });
+                const data = await res.json();
+                if (data.success) fetchAll();
+              } catch {}
+              setCalculating(false);
+            }}
+            disabled={calculating}
+            className="flex items-center gap-3 p-4 bg-white rounded-lg border border-stone-200 hover:border-[#C9A86A] transition-all disabled:opacity-50"
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#FBF6E9] flex items-center justify-center">
+              <Calculator className="w-5 h-5 text-[#C9A86A]" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium text-stone-800">Recalcular escandallo</p>
+              <p className="text-xs text-stone-500">Desde recetas activas</p>
+            </div>
+          </button>
+        </div>
+        {calcResult && (
+          <div className="mt-4 p-4 bg-white rounded-lg border border-emerald-200 text-sm">
+            <p className="font-medium text-emerald-800 mb-2">Resultado:</p>
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div>
+                <span className="text-stone-500">Mesas</span>
+                <p className="text-lg font-bold font-mono">{calcResult.tables_needed}</p>
+              </div>
+              <div>
+                <span className="text-stone-500">Camareros</span>
+                <p className="text-lg font-bold font-mono">{calcResult.waiters_needed}</p>
+              </div>
+              <div>
+                <span className="text-stone-500">Ocupación</span>
+                <p className="text-lg font-bold font-mono">{calcResult.capacity_used}%</p>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
