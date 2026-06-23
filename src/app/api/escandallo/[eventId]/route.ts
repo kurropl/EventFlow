@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 
-export const dynamic = \'force-dynamic\';
+export const dynamic = 'force-dynamic';
 
 // ── GET ──
 export async function GET(

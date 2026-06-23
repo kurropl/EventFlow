@@ -30,7 +30,7 @@ export async function POST(
         [eventId]
       );
 
-      // Crear registro en event_costs con los totales
+      // Crear registro en event_cost_deviations con los totales
       const totals = await query(
         `SELECT COALESCE(SUM(estimated_cost), 0) as est, COALESCE(SUM(actual_cost_total), 0) as act
          FROM event_shopping_items WHERE event_id = $1`,
@@ -65,8 +65,11 @@ export async function POST(
       }
 
       const guestCount = Number((event.rows[0] as any).guest_count || 1);
+      if (guestCount <= 0) {
+        return NextResponse.json({ success: false, error: 'Invalid guest count' }, { status: 400 });
+      }
 
-      // Obtener recipe_items del catálogo vinculado
+      // Obtener recipe_items activos
       const recipeItems = await query(
         `SELECT ri.*, i.name as ingredient_name, i.current_price,
                 COALESCE(r.servings, 1) as servings
@@ -74,15 +77,17 @@ export async function POST(
          JOIN ingredients i ON i.id = ri.ingredient_id
          LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
          LEFT JOIN recipes r ON r.catalog_item_id = ci.id
-         WHERE r.active = true AND r.published = true`
+         WHERE r.active = true AND r.published = true`,
+        []
       );
 
       let created = 0;
-      for (const ri of recipeItems.rows || []) {
-        const r = ri as any;
-        const theoreticalQty = Number(r.quantity || 0) * (guestCount / Math.max(Number(r.servings || 1), 1));
+      for (const raw of recipeItems.rows || []) {
+        const ri = raw as any;
+        const factor = guestCount / Math.max(Number(ri.servings || 1), 1);
+        const theoreticalQty = Math.round(Number(ri.quantity || 0) * factor * 100) / 100;
+        const estCost = Math.round(theoreticalQty * Number(ri.current_price || 0) * 100) / 100;
 
-        // Upsert
         await query(
           `INSERT INTO event_shopping_items
            (event_id, ingredient_id, recipe_item_id, ingredient_name,
@@ -95,14 +100,14 @@ export async function POST(
                recipe_version = EXCLUDED.recipe_version`,
           [
             eventId,
-            r.ingredient_id,
-            r.id,
-            r.ingredient_name,
+            ri.ingredient_id,
+            ri.id,
+            ri.ingredient_name,
             theoreticalQty,
-            r.unit || 'g',
-            r.unit_dimension || 'mass',
-            theoreticalQty * Number(r.current_price || 0),
-            r.version || 1,
+            ri.unit || 'g',
+            ri.unit_dimension || 'mass',
+            estCost,
+            ri.version || 1,
           ]
         );
         created++;
