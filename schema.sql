@@ -1244,7 +1244,8 @@ ALTER TABLE event_shopping_items
   ADD COLUMN IF NOT EXISTS actual_cost_total NUMERIC(10,2),
   ADD COLUMN IF NOT EXISTS deviation_qty NUMERIC(10,2),
   ADD COLUMN IF NOT EXISTS deviation_cost NUMERIC(10,2),
-  ADD COLUMN IF NOT EXISTS frozen BOOLEAN NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS frozen BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS frozen_at TIMESTAMPTZ;
 
 -- ============================================================
 -- FK circular events <-> quotes (añadida al final, ambas tablas ya existen)

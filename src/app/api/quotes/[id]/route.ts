@@ -139,60 +139,106 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           [clientToken, quoteRow.event_id]
         );
 
-        // Generate escandallo (shopping items) from catalog ingredients
+        // Generate escandallo (shopping items) — ingrediente ÚNICO por id (FR-S05).
+        // Preferimos la receta (recipe_items, sistema canónico B) con su coste teórico;
+        // si no hay receta, caemos al JSONB del catálogo resolviendo el ingrediente por
+        // nombre contra la tabla `ingredients` para arrastrar id y proveedor.
         const selectedItems = eventRow?.selected_items || [];
+
+        // unidad nativa del ingrediente → factores a las columnas de dimensión (base)
+        const dimsFor = (unit: string) => {
+          const u = (unit || '').toLowerCase();
+          if (u === 'kg') return { grams: 1000, units: 0, ml: 0 };
+          if (u === 'g' || u === 'gr') return { grams: 1, units: 0, ml: 0 };
+          if (u === 'l') return { grams: 0, units: 0, ml: 1000 };
+          if (u === 'ml') return { grams: 0, units: 0, ml: 1 };
+          return { grams: 0, units: 1, ml: 0 }; // ud, docena, caja…
+        };
+
+        const insertShopping = async (p: {
+          ingredientId: string | null; name: string; provider: string | null;
+          unit: string; qtyNative: number; estimatedCost: number | null;
+        }) => {
+          const f = dimsFor(p.unit);
+          const grams = f.grams * p.qtyNative;
+          const units = Math.round(f.units * p.qtyNative);
+          const ml = f.ml * p.qtyNative;
+          const dimension = grams ? 'mass' : ml ? 'volume' : 'count';
+          await client.query(
+            `INSERT INTO event_shopping_items
+              (event_id, order_id, ingredient_id, ingredient_name, provider_name,
+               total_grams, total_units, total_ml, unit_dimension,
+               theoretical_qty, theoretical_unit, estimated_cost, completed)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false)`,
+            [quoteRow.event_id, eventOrder.id, p.ingredientId, p.name, p.provider,
+             grams, units, ml, dimension, p.qtyNative, p.unit, p.estimatedCost]
+          );
+        };
+
         for (const item of selectedItems) {
-          const qty = Number(item.quantity) || 1;
+          const raciones = Number(item.quantity) || 1;
           const itemName = (item.name || '').trim();
 
-          // Look up catalog ingredients
-          const catalog = await client.query(
-            `SELECT ingredients, provider_name FROM catalog_items WHERE name ILIKE $1 AND active = true`,
+          const catItem = (await client.query(
+            `SELECT id, ingredients FROM catalog_items WHERE name ILIKE $1 AND active = true`,
             [itemName]
-          );
-          const catItem = catalog.rows[0];
+          )).rows[0];
 
-          if (catItem?.ingredients) {
+          // 1) Receta canónica (sistema B): recipe_items + ingredients
+          let usedRecipe = false;
+          if (catItem?.id) {
+            const recipe = (await client.query(
+              `SELECT ri.quantity, i.id AS ingredient_id, i.name, i.unit, i.unit_cost, i.supplier
+               FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
+               WHERE ri.catalog_item_id = $1`,
+              [catItem.id]
+            )).rows;
+            if (recipe.length > 0) {
+              usedRecipe = true;
+              for (const r of recipe) {
+                // coste teórico: qty(receta, en unidad del ingrediente) × raciones × coste/unidad
+                const qtyNative = (Number(r.quantity) || 0) * raciones;
+                const estimated = r.unit_cost != null
+                  ? Math.round(qtyNative * Number(r.unit_cost) * 100) / 100
+                  : null;
+                await insertShopping({
+                  ingredientId: r.ingredient_id, name: r.name, provider: r.supplier || null,
+                  unit: r.unit, qtyNative, estimatedCost: estimated,
+                });
+              }
+            }
+          }
+
+          // 2) Fallback: JSONB del catálogo (sistema A) resolviendo por nombre
+          if (!usedRecipe) {
             let ingredients: any[] = [];
-            try {
-              ingredients = typeof catItem.ingredients === 'string'
-                ? JSON.parse(catItem.ingredients) : catItem.ingredients;
-            } catch { /* fall through to fallback */ }
-
+            if (catItem?.ingredients) {
+              try {
+                ingredients = typeof catItem.ingredients === 'string'
+                  ? JSON.parse(catItem.ingredients) : catItem.ingredients;
+              } catch { ingredients = []; }
+            }
             if (ingredients.length > 0) {
               for (const ing of ingredients) {
-                await client.query(
-                  `INSERT INTO event_shopping_items
-                    (event_id, order_id, ingredient_name, provider_name, total_grams, total_units, total_ml, completed)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
-                  [
-                    quoteRow.event_id,
-                    eventOrder.id,
-                    ing.name || 'Sin nombre',
-                    catItem.provider_name || null,
-                    (Number(ing.grams) || 0) * qty,
-                    (Number(ing.count) || 0) * qty,
-                    (Number(ing.ml) || 0) * qty,
-                  ]
-                );
+                const name = (ing.name || 'Sin nombre').trim();
+                const ingRow = (await client.query(
+                  `SELECT id, supplier FROM ingredients WHERE name ILIKE $1 LIMIT 1`, [name]
+                )).rows[0];
+                // El JSONB ya viene en g / ml / count: lo tratamos como unidad base.
+                const g = Number(ing.grams) || 0, mlv = Number(ing.ml) || 0, c = Number(ing.count) || 0;
+                const unit = g > 0 ? 'g' : mlv > 0 ? 'ml' : 'ud';
+                const qtyNative = (g > 0 ? g : mlv > 0 ? mlv : c) * raciones;
+                await insertShopping({
+                  ingredientId: ingRow?.id || null, name, provider: ingRow?.supplier || null,
+                  unit, qtyNative, estimatedCost: null,
+                });
               }
             } else {
-              // Catalog item exists but has no ingredients — create a single entry
-              await client.query(
-                `INSERT INTO event_shopping_items
-                  (event_id, order_id, ingredient_name, provider_name, total_grams, total_units, total_ml, completed)
-                 VALUES ($1, $2, $3, $4, 0, $5, 0, false)`,
-                [quoteRow.event_id, eventOrder.id, itemName, catItem.provider_name || null, qty]
-              );
+              await insertShopping({
+                ingredientId: null, name: itemName, provider: null,
+                unit: 'ud', qtyNative: raciones, estimatedCost: null,
+              });
             }
-          } else {
-            // No catalog match at all — create a single entry with the item name
-            await client.query(
-              `INSERT INTO event_shopping_items
-                (event_id, order_id, ingredient_name, provider_name, total_grams, total_units, total_ml, completed)
-               VALUES ($1, $2, $3, null, 0, $4, 0, false)`,
-              [quoteRow.event_id, eventOrder.id, itemName, qty]
-            );
           }
         }
 
@@ -330,6 +376,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json({ data: quote });
   } catch (error) {
+    console.error('[quotes PUT] error:', error);
     return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

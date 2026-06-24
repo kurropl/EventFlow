@@ -32,7 +32,7 @@ const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning'
 interface EventOrder {
   id: string; event_id: string; client_name: string; client_email: string;
   event_type: string; guest_count: number; kids_count: number;
-  event_date: string; status: string;
+  event_date: string; status: string; service_type?: 'coctel' | 'menu';
   confirmed_price: number; final_price: number;
   tables_suggested: number; tables_confirmed: number;
   waiters_suggested: number; waiters_confirmed: number;

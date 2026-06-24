@@ -98,7 +98,7 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
 
   // 1. Fetch all shopping items for the event
   const shoppingItems = await queryMany<any>(
-    `SELECT id, event_id, ingredient_name, total_grams, total_units, total_ml, completed
+    `SELECT id, event_id, ingredient_id, ingredient_name, total_grams, total_units, total_ml, completed
      FROM event_shopping_items
      WHERE event_id = $1`,
     [eventId]
@@ -113,20 +113,28 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
 
   for (const item of shoppingItems) {
     const ingredientName = item.ingredient_name?.trim();
-    if (!ingredientName) continue;
 
-    // 2. Find matching ingredient by name (ILIKE, exact or partial match)
-    // Try exact match first, then partial
-    let ingredient = await querySingle<any>(
-      `SELECT id, name, unit, quantity
-       FROM ingredients
-       WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
-         AND active = true
-       LIMIT 1`,
-      [ingredientName]
-    );
+    // 2. Find matching ingredient — preferimos el id único (FR-S05); si no, por nombre.
+    let ingredient = null as any;
+    if (item.ingredient_id) {
+      ingredient = await querySingle<any>(
+        `SELECT id, name, unit, quantity FROM ingredients WHERE id = $1 AND active = true LIMIT 1`,
+        [item.ingredient_id]
+      );
+    }
+    if (!ingredient && ingredientName) {
+      // exact match by name
+      ingredient = await querySingle<any>(
+        `SELECT id, name, unit, quantity
+         FROM ingredients
+         WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+           AND active = true
+         LIMIT 1`,
+        [ingredientName]
+      );
+    }
 
-    if (!ingredient) {
+    if (!ingredient && ingredientName) {
       // Fallback: partial match (starts with)
       ingredient = await querySingle<any>(
         `SELECT id, name, unit, quantity
@@ -153,7 +161,7 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
 
     let deductionAmount = 0;
 
-    if (totalGrams > 0 && (unit === 'gr' || unit === 'kg')) {
+    if (totalGrams > 0 && (unit === 'g' || unit === 'gr' || unit === 'kg')) {
       deductionAmount = gramsToUnit(totalGrams, unit);
     } else if (totalUnits > 0 && (unit === 'ud' || unit === 'docena')) {
       deductionAmount = unitsToUnit(totalUnits, unit);

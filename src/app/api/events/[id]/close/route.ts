@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { deductStockForEvent } from '@/app/api/stock/deduct/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,17 +47,10 @@ export async function POST(
       results.push('Escandallo congelado');
     }
 
-    // 2. Deduct stock
+    // 2. Deduct stock — ruta canónica e idempotente (src/app/api/stock/deduct)
     if (!ev.stock_deducted) {
-      await query(
-        `UPDATE ingredients i
-         SET current_stock = GREATEST(0, i.current_stock - COALESCE(esi.actual_qty_used, esi.estimated_qty, 0))
-         FROM event_shopping_items esi
-         WHERE esi.event_id = $1 AND esi.ingredient_id = i.id`,
-        [eventId]
-      );
-      await query(`UPDATE events SET stock_deducted = true WHERE id = $1`, [eventId]);
-      results.push('Stock deducido');
+      const ded = await deductStockForEvent(eventId);
+      results.push(`Stock deducido (${ded?.deducted ?? 0} ingredientes)`);
     }
 
     // 3. Generate invoice
@@ -65,7 +59,15 @@ export async function POST(
       const orderRes = await query(`SELECT * FROM event_orders WHERE event_id = $1 LIMIT 1`, [eventId]);
       const order = orderRes.rows?.[0];
       if (order) {
-        const invNum = `F-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`;
+        // Número de factura SECUENCIAL por año (no aleatorio) — T16/idempotente
+        const year = new Date().getFullYear();
+        const seq = await query(
+          `SELECT COALESCE(MAX(NULLIF(regexp_replace(invoice_number, '^F-[0-9]+-', ''), '')::int), 0) + 1 AS next
+           FROM invoices WHERE invoice_number LIKE $1`,
+          [`F-${year}-%`]
+        );
+        const nextNum = Number(seq.rows?.[0]?.next) || 1;
+        const invNum = `F-${year}-${String(nextNum).padStart(4, '0')}`;
         const clientRes = await query(`SELECT * FROM clients WHERE id = $1`, [ev.client_id]);
         const client = clientRes.rows?.[0];
         const ivaPct = Number(ev.iva_pct || 10);
