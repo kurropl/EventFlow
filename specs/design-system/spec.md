@@ -19,7 +19,16 @@
 Todo panel usa: `PageHeader` (título Playfair + subtítulo + acción), `Card`
 (`rounded-2xl border-divider`), `Button` (variant default = **gold**, no amber),
 `StatStrip`/`DataCard` para KPIs, `DataList` para listas, `EmptyState` y `ErrorState`
-(crear si falta) para vacío/error. Iconos **solo** vía `src/components/shared/Icon.tsx`.
+(crear si falta) para vacío/error.
+
+## 3bis. Iconos = **lucide** (decisión del cliente)
+- **Único sistema: `lucide-react`.** Permitido usarlo **directamente**
+  (`import { Plus } from 'lucide-react'`) **o** vía el wrapper
+  `src/components/shared/Icon.tsx` (que ya mapea nombres → lucide).
+- **Prohibido:** `<svg>` inline propios y **emojis como icono**. Migrar los SVG
+  inline de b2c (wizard, Hero, Features) y cualquier emoji a lucide.
+- El wrapper `Icon` es válido como capa de nombres de marca; ampliar su `MAP`
+  cuando falte un icono en vez de volver a `<svg>`.
 
 ## 4. Patrón de pantalla (todas iguales)
 `<PageHeader/>` → (KPIs `StatStrip`) → contenido en `Card`(s) → estados de
@@ -35,12 +44,13 @@ en todos (o en ninguno) — decidir uno y aplicarlo igual.
 | `StatusBadge` con azul/rojo/morado en vez de marca | CRÍTICO | `StatusBadge.tsx` |
 | 16+ paneles con markup propio en vez de primitivos | ALTO | `HACCPPanel, CocinaPanel, CalendarView, EventDetail, WebhooksPanel, BillingPanel, ClientsCRM, KanbanPipeline` |
 | 43 `fontFamily` inline en vez de `font-heading` | ALTO | `AdminLayout, WebhooksPanel, KanbanPipeline`, b2c wizard |
-| 2 sistemas de iconos (lucide directo vs `Icon`) | MEDIO | 20 ficheros b2b importan lucide directo; b2c con `<svg>` inline |
+| Iconos NO lucide (svg inline / emoji) | MEDIO | b2c (`HeroSection`, `FeaturesSection`, `WizardStep*`) con `<svg>` inline. Lucide directo o vía `Icon` es lo correcto; migrar svg/emoji a lucide |
 | framer‑motion en 14/35 paneles (inconsistente) | MEDIO | añadir/uniformar; unificar skeleton de carga |
 | borde `#ECECF1` hardcodeado 120+ veces | BAJO | usar token `divider` |
 
 ## 6. Criterio de "homogéneo" (Definition of Done de UI)
 - `grep -rE "(stone|gray|blue|red|amber|purple|emerald|indigo)-[0-9]" src/components/b2b` → 0 (salvo acentos de estado justificados).
 - Cero `style={{ fontFamily }}` en `src/components` (usar `font-heading`).
-- Todos los paneles importan de `@/components/ui` y `@/components/shared/Icon`.
+- Todos los paneles importan de `@/components/ui`; los iconos son **lucide**
+  (directo o vía `Icon`). `grep -rn "<svg" src/components` → 0 (salvo logo/ilustración).
 - Cada panel tiene estados de carga, vacío y error visibles.

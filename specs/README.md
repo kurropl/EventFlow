@@ -1,27 +1,36 @@
-# EventFlow — Especificaciones SDD
+# EventFlow — Especificaciones SDD / spec-kit
 
-Artefactos Spec-Driven-Development para estabilizar y homogeneizar EventFlow.
+Artefactos para estabilizar y ampliar EventFlow (catering de eventos).
 
-## Estructura
-- `lifecycle-16-fases/spec.md` — **fuente de verdad**: modelo, máquina de estados
-  (español), fórmulas, las 16 fases con criterios de aceptación, invariantes.
-- `lifecycle-16-fases/tasks.md` — **plan ejecutable** (Fase 0 fundamentos + T1–T16
-  intercalando lógica y UI + QA). Una tarea = un commit.
-- `design-system/spec.md` — patrón de diseño canónico + inventario de infractores.
-
-## Cómo ejecutar con Sonnet (en este mismo chat)
-1. Cambia el modelo a Sonnet.
-2. Pídele, por bloques:
-   > «Lee `specs/lifecycle-16-fases/spec.md` y `tasks.md`. Implementa **Fase 0**
-   > completa (F0.1→F0.6), una tarea por commit, probando cada criterio de
-   > aceptación. No empieces T1–T16 hasta que Fase 0 esté verde (`npm run build`).»
-3. Luego, fase a fase: «Implementa T5 (señal→FWD‑2 atómica) según el spec».
-   Prioriza las marcadas ★ (T5, T8, T13): son las que hoy impiden completar el flujo.
-4. Cierra con el bloque **QA** (E2E + auditoría de diseño + build + migración limpia).
+## Índice (orden de lectura)
+1. **`constitution.md`** — principios no negociables (pegar en `/speckit.constitution`).
+2. **`MASTER-PLAN.md`** — plan maestro integrado: orden autoritativo (ramas 001–010),
+   estado actual por requisito, decisiones reconciliadas y clarificaciones abiertas.
+   **Empieza aquí.**
+3. **`cocina/`** — documentos del usuario (fuente de verdad de requisitos):
+   `speceventflowcocina.md` (FR-A/C/R/S) + `speckitspecifyprompts.md` (prompts
+   `/speckit.specify` de las ramas 001–010). *Guardarlos aquí para versionar.*
+4. **`design-system/spec.md`** — diseño homogéneo (paleta, primitivos, **iconos lucide**).
+5. **`lifecycle-16-fases/`** — el flujo extremo-a-extremo (16 fases) como **checklist
+   de aceptación/QA**; sus piezas se implementan dentro de las ramas del MASTER-PLAN.
 
 ## Decisiones bloqueadas (no re-preguntar)
-- Estados en **español** (BD+API+UI), set único del spec §2.
-- Mesas `ceil(adultos/10)`, camareros `ceil(mesas×1.5)` — módulo `src/lib/operations.ts`.
-- Señal **40%** / saldo **60%**.
-- Escandallo canónico = sistema **B** (`recipe_items` + `frozen`); `/api/shopping` fallback.
-- FWD‑2 y FWD‑4 **atómicas e idempotentes**; una sola ruta de cierre y de aceptación.
+- **Estados en español**, set único (constitución §8). Workflow comercial:
+  `borrador → contacto → aceptado → realizado` (+ `rechazado`).
+- **Camareros por tipo de servicio** (FR-A05, **supersede** el `ceil(mesas×1.5)` previo):
+  cóctel `ceil(pax/12)`; menú `ceil(pax/10)+floor(pax/25)`. Mesas `ceil(pax_adultos/10)`.
+  Ratios editables en `settings`.
+- **Iconos = lucide** (constitución §9) — directo o vía `Icon` (ya es wrapper de lucide).
+- **Ingrediente único por `id`** (FR-S05); deprecar `catalog_items.ingredients` JSONB y nombres sueltos.
+- **Costing y unidades** centralizados (`src/lib/costing.ts`, `src/lib/units.ts`).
+- **Transacciones atómicas** en aceptar/cerrar; **migraciones idempotentes**.
+
+## Cómo ejecutar (spec-kit, en este chat con Sonnet)
+1. `/speckit.constitution` ← pega `constitution.md`.
+2. Por rama y **en orden** (Fase 0 = 001+002 primero):
+   `git checkout -b 00N-<slug>` → `/speckit.specify` (pega el bloque de
+   `speckitspecifyprompts.md`) → `/speckit.clarify` (responde los
+   `[NEEDS CLARIFICATION]` del MASTER-PLAN §5) → `checklist → plan → tasks →
+   analyze → implement`.
+3. Aplica `design-system/spec.md` en la UI de **cada** rama (no al final).
+4. Tras cada rama, pasa el **QA E2E** de `lifecycle-16-fases/tasks.md`.

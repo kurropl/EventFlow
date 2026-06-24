@@ -12,10 +12,13 @@
 
 1. **Idioma de estados: ESPAÑOL en toda la app** (BD, API, zod, UI). Se elimina el
    set inglés y se migran los datos.
-2. **Fórmula de operaciones (única fuente):**
-   - `mesas = ceil(comensales_adultos / 10)`
-   - `camareros = ceil(mesas × 1.5)`
-   - (kids no cuentan para mesas de adultos; mesa infantil opcional = `ceil(kids/8)`)
+2. **Fórmula de operaciones (única fuente).** ⚠️ **ACTUALIZADO por FR-A05** (ver
+   `../MASTER-PLAN.md §3.1`) — depende del **tipo de servicio** y supersede el
+   `ceil(mesas×1.5)` previo:
+   - `mesas = ceil(comensales_adultos / 10)` (sin cambio; mesa infantil opc. `ceil(kids/8)`)
+   - **cóctel:** `camareros = ceil(pax / 12)`
+   - **menú sentado:** `camareros = ceil(pax / 10) + floor(pax / 25)`
+   - Ratios **editables en `settings`** (no hardcodear).
 3. **Pagos:** `señal = 40%` del PVP total al aceptar; `saldo = 60%` con vencimiento
    = fecha del evento.
 4. **Plan de implementación intercalado por fase** (lógica + UI homogénea juntas),

@@ -1,5 +1,14 @@
 # EventFlow — Plan de tareas (ejecutar con Sonnet)
 
+> ⚠️ **RECONCILIADO con `../MASTER-PLAN.md`** (incorpora los documentos de Cocina,
+> RBAC y Saneamiento aportados). Cambios respecto a la versión inicial:
+> - **Antes que esta Fase 0 va el SANEAMIENTO** (ramas spec-kit 001+002: unidades
+>   base, `costing.ts`, ingrediente único, tests). Esa es la Fase 0 real.
+> - **Camareros por tipo de servicio** (FR-A05), no `ceil(mesas×1.5)`. Ver MASTER-PLAN.
+> - **Iconos = lucide** (directo o vía `Icon`).
+> - **Ingrediente único por `id`** (deprecar JSONB embebido / nombres sueltos).
+> Este fichero queda como **checklist de aceptación E2E** del flujo borrador→realizado.
+>
 > Deriva de `spec.md`. **Orden: intercalado por fase**, precedido de **Fase 0**
 > (fundamentos transversales que todo lo demás necesita).
 >
@@ -24,11 +33,12 @@
 - **CA:** no queda ningún literal `'draft'|'sent'|'accepted'|'in_progress'|'completed'|'paid'|'nuevo'|'propuesta_enviada'|'confirmado'` en `src/`. `grep` limpio.
 - **Prueba:** crear evento por configurador → estado `borrador`; aceptar → `aceptado`; pipeline y dashboard muestran etiquetas correctas.
 
-### F0.2 · Módulo único de operaciones (fórmula mesas/camareros)
-- **Objetivo:** una sola fuente para la fórmula (spec §0.2).
-- **Archivos:** nuevo `src/lib/operations.ts` con `calcMesas(adultos)`, `calcCamareros(mesas)`, `calcOperaciones(adultos,kids)`; **reemplazar** los 6 cálculos dispersos (`api/quotes/[id]`, `api/events/[id]`, `specs.ts` OPERATIONAL_RATIOS, `EventStaffingPanel`, transitions FWD‑3/4).
-- **CA:** `grep -rn "ceil(.*gu" src` solo aparece dentro de `operations.ts`. 100 adultos ⇒ 10 mesas / 15 camareros en todos los puntos.
-- **Prueba:** unit test `operations.test.ts` (10/15 para 100; 1/2 para 1).
+### F0.2 · Módulo único de operaciones (fórmula mesas/camareros) — por tipo de servicio
+- **Objetivo:** una sola fuente para la fórmula (spec §0.2, **FR-A05**), parametrizada por `service_type` y con ratios en `settings`.
+- **Archivos:** nuevo `src/lib/operations.ts` con `calcMesas(adultos)`, `calcCamareros(pax, serviceType, ratios)`, `calcOperaciones(...)`; **reemplazar** los 6 cálculos dispersos (`api/quotes/[id]`, `api/events/[id]`, `specs.ts` OPERATIONAL_RATIOS, `EventStaffingPanel`, transitions). Requiere `events.service_type`.
+- **Fórmula:** mesas `ceil(adultos/10)`; cóctel `ceil(pax/12)`; menú `ceil(pax/10)+floor(pax/25)`.
+- **CA:** `grep -rn "ceil(.*gu\|/ 1[025]\|/12" src` solo dentro de `operations.ts`. 120 menú ⇒ 16 camareros; 120 cóctel ⇒ 10.
+- **Prueba:** unit `operations.test.ts` (120 menú→16, 120 cóctel→10, 12 mesas para 120).
 
 ### F0.3 · Transacciones atómicas en FWD‑2 y FWD‑4
 - **Objetivo:** I2 del spec. Envolver toda la lógica multi‑escritura en `transaction()` con rollback.
@@ -78,9 +88,9 @@
 - **[L]** `/api/payments/signal` dispara la transacción FWD‑2 completa del spec §2.3 (idempotente). Usar `src/lib/operations.ts` y constantes 40/60. **CA:** aceptar crea event_order + 2 payments + escandallo + staffing + lead=convertido, todo o nada; repetir no duplica.
 - **[UI]** Botón "Registrar señal" en pipeline/ficha con feedback y estado resultante.
 
-### T6 · Mesas y camareros (fórmula única)
-- **[L]** Sustituir todos los cálculos por `src/lib/operations.ts` (F0.2). **CA:** 100 adultos ⇒ 10/15 en quote, event_order, staffing y UI.
-- **[UI]** `EventStaffingPanel`/operaciones muestran los mismos números.
+### T6 · Mesas y camareros (fórmula única por servicio)
+- **[L]** Sustituir todos los cálculos por `src/lib/operations.ts` (F0.2), según `service_type`. **CA:** 120 menú ⇒ 16 camareros / 12 mesas; 120 cóctel ⇒ 10; iguales en quote, event_order, staffing y UI.
+- **[UI]** `EventStaffingPanel`/operaciones muestran los mismos números y el tipo de servicio.
 
 ### T7 · Enlace invitados
 - **[L]** `/invitados/[token]` + `/api/admin/guest-forms` (GET/PATCH). **CA:** token único por evento; guardar invitados persiste.
