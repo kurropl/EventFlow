@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS proposed_menus (
 CREATE TABLE IF NOT EXISTS events (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     menu_id         TEXT, -- menu1, menu2, etc. or UUID
-    quote_id        UUID REFERENCES quotes(id) ON DELETE SET NULL,
+    quote_id        UUID,  -- FK a quotes(id) añadida tras crear quotes (ref. circular); ver final del fichero
     client_name     TEXT NOT NULL,
     client_email    TEXT NOT NULL,
     client_phone    TEXT,
@@ -669,21 +669,65 @@ CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
 ALTER TABLE invoices DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- 20. INGREDIENTS (Materias primas para escandallos)
+-- 20. INGREDIENTS (Materias primas — ENTIDAD ÚNICA)
 -- ============================================================
+-- Tabla canónica única de ingredientes (FR-S05). Antes existían DOS
+-- definiciones `ingredients` en este fichero (drift de esquema) que
+-- chocaban con `CREATE TABLE IF NOT EXISTS`. Esta es la única válida.
+--
+-- Coste único (FR-S02): tres subsistemas históricos escriben el coste con
+-- nombres distintos — stock usa `cost_per_unit`, escandallo/OCR usan
+-- `current_price`, costing usa `unit_cost`. El trigger `sync_ingredient_cost`
+-- mantiene las tres columnas en lockstep para que toda lectura vea el mismo
+-- número. `unit_cost` es la columna canónica.
 CREATE TABLE IF NOT EXISTS ingredients (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            TEXT NOT NULL UNIQUE,
-    unit            TEXT NOT NULL DEFAULT 'gr' CHECK (unit IN ('gr','kg','ml','l','ud','docena','caja','bote')),
-    cost_per_unit   NUMERIC(10,4) NOT NULL DEFAULT 0,
+    category        TEXT NOT NULL DEFAULT 'general',
+    unit            TEXT NOT NULL DEFAULT 'g',
+    unit_cost       NUMERIC(12,4) NOT NULL DEFAULT 0,   -- canónica (€/unidad base)
+    cost_per_unit   NUMERIC(12,4) NOT NULL DEFAULT 0,   -- alias legacy (stock)
+    current_price   NUMERIC(12,4) NOT NULL DEFAULT 0,   -- alias legacy (escandallo/OCR)
+    pvp_ratio       NUMERIC(5,4)  NOT NULL DEFAULT 1.0,
+    stock_unit      TEXT NOT NULL DEFAULT 'g',
+    packaging_size  NUMERIC(10,2),
+    quantity        NUMERIC(12,2) NOT NULL DEFAULT 0,   -- stock actual
+    min_stock       NUMERIC(12,2) NOT NULL DEFAULT 0,
     supplier        TEXT,
+    supplier_id     UUID,
     active          BOOLEAN NOT NULL DEFAULT true,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS idx_ingredients_name ON ingredients(name);
 ALTER TABLE ingredients DISABLE ROW LEVEL SECURITY;
 DROP TRIGGER IF EXISTS trg_ingredients_updated ON ingredients;
 CREATE TRIGGER trg_ingredients_updated BEFORE UPDATE ON ingredients FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Coste único: mantiene unit_cost = cost_per_unit = current_price (FR-S02)
+CREATE OR REPLACE FUNCTION sync_ingredient_cost() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.unit_cost := COALESCE(NULLIF(NEW.unit_cost, 0), NULLIF(NEW.cost_per_unit, 0), NULLIF(NEW.current_price, 0), 0);
+  ELSE
+    -- En UPDATE, propaga la columna que haya cambiado a la canónica.
+    IF NEW.unit_cost IS DISTINCT FROM OLD.unit_cost THEN
+      NEW.unit_cost := NEW.unit_cost;
+    ELSIF NEW.cost_per_unit IS DISTINCT FROM OLD.cost_per_unit THEN
+      NEW.unit_cost := NEW.cost_per_unit;
+    ELSIF NEW.current_price IS DISTINCT FROM OLD.current_price THEN
+      NEW.unit_cost := NEW.current_price;
+    END IF;
+  END IF;
+  NEW.cost_per_unit := NEW.unit_cost;
+  NEW.current_price := NEW.unit_cost;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_ingredients_sync_cost ON ingredients;
+CREATE TRIGGER trg_ingredients_sync_cost BEFORE INSERT OR UPDATE ON ingredients
+    FOR EACH ROW EXECUTE FUNCTION sync_ingredient_cost();
+
 
 -- ============================================================
 -- 21. RECIPE ITEMS (Relación plato-ingrediente con cantidad)
@@ -1014,23 +1058,10 @@ CREATE TRIGGER trg_shopping_updated BEFORE UPDATE ON event_shopping_items
 ALTER TABLE event_shopping_items ADD COLUMN IF NOT EXISTS ingredient_id UUID;
 
 -- ============================================================
--- 31b. INGREDIENTS (Entidad única de ingredientes)
+-- 31b. INGREDIENTS — definición ÚNICA arriba (sección 20). Se eliminó el
+-- duplicado que aquí redefinía la tabla (drift de esquema + FK a `suppliers`
+-- inexistente). Toda columna usada por el código vive en la tabla canónica.
 -- ============================================================
-CREATE TABLE IF NOT EXISTS ingredients (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL UNIQUE,
-    category TEXT NOT NULL DEFAULT 'general',
-    unit TEXT NOT NULL DEFAULT 'g',
-    unit_cost NUMERIC(8,4) NOT NULL DEFAULT 0,
-    pvp_ratio NUMERIC(5,4) NOT NULL DEFAULT 1.0,
-    stock_unit TEXT NOT NULL DEFAULT 'g',
-    packaging_size NUMERIC(10,2),
-    supplier_id UUID REFERENCES suppliers(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_ingredients_name ON ingredients(name);
-ALTER TABLE ingredients DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- 31c. EVENT COSTS (Coste centralizado por evento)
@@ -1214,3 +1245,17 @@ ALTER TABLE event_shopping_items
   ADD COLUMN IF NOT EXISTS deviation_qty NUMERIC(10,2),
   ADD COLUMN IF NOT EXISTS deviation_cost NUMERIC(10,2),
   ADD COLUMN IF NOT EXISTS frozen BOOLEAN NOT NULL DEFAULT false;
+
+-- ============================================================
+-- FK circular events <-> quotes (añadida al final, ambas tablas ya existen)
+-- ============================================================
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'events_quote_id_fkey' AND table_name = 'events'
+  ) THEN
+    ALTER TABLE events
+      ADD CONSTRAINT events_quote_id_fkey
+      FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL;
+  END IF;
+END $$;
