@@ -184,6 +184,12 @@ describe('formatCantidadConUnidad', () => {
     const result = formatCantidadConUnidad(24, 'ud');
     expect(result).toMatch(/ud$/);
   });
+
+  it('respeta la unidad solicitada, no la unidad base de su dimensión (1.5 kg → "1,5 kg", no "1500 g")', () => {
+    expect(formatCantidadConUnidad(1.5, 'kg')).toBe('1,5 kg');
+    expect(formatCantidadConUnidad(0.75, 'l')).toBe('0,75 L');
+    expect(formatCantidadConUnidad(2, 'doc')).toBe('2 doc');
+  });
 });
 
 // ================================================================

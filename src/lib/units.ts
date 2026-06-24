@@ -187,8 +187,7 @@ export function formatCantidadConUnidad(value: number, unit: string): string {
     useGrouping: true,
   });
 
-  const label = info.dimension === 'mass' ? 'g' : info.dimension === 'volume' ? 'ml' : info.dimension === 'count' ? 'ud' : '€';
-  return `${fmt.format(displayValue)} ${label}`;
+  return `${fmt.format(displayValue)} ${info.label}`;
 }
 
 /**
