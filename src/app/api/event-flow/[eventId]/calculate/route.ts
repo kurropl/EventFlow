@@ -1,14 +1,13 @@
 /**
  * POST /api/event-flow/[eventId]/calculate — Cálculos automáticos
  *
- * Calcula:
- * - Mesas necesarias: ceil(guest_count / 10)
- * - Camareros necesarios: ceil(mesas * 1.5)
- * - Actualiza event_orders con los valores
+ * Calcula mesas y camareros vía src/lib/operations.ts (fuente única, FR-A05)
+ * y actualiza event_orders con los valores.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +25,9 @@ export async function POST(
     }
 
     const guestCount = Number((ev.rows[0] as any).guest_count) || 1;
-    const tablesNeeded = Math.ceil(guestCount / 10);
-    const waitersNeeded = Math.ceil(tablesNeeded * 1.5);
+    const serviceType: ServiceType = (ev.rows[0] as any).service_type === 'coctel' ? 'coctel' : 'menu';
+    const tablesNeeded = calcMesas(guestCount);
+    const waitersNeeded = calcCamareros(guestCount, serviceType);
 
     // Check existing event_orders
     const existingOrder = await query(

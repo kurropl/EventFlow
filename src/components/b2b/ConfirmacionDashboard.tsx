@@ -14,6 +14,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Table, CalendarDays, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { calcMesas } from '@/lib/operations';
 
 export default function ConfirmacionDashboard() {
   const [events, setEvents] = useState<any[]>([]);
@@ -55,7 +56,7 @@ export default function ConfirmacionDashboard() {
         const totalGuests = Number(ev.guest_count || 0);
         const totalTables = Number(ev.total_tables || 0);
         const totalCapacity = Number(ev.total_capacity || 0);
-        const tablesNeeded = Math.ceil(totalGuests / 10);
+        const tablesNeeded = calcMesas(totalGuests);
         const tablesDiff = totalTables - tablesNeeded;
         const capacityPercent = totalGuests > 0 ? Math.round((confirmed / totalGuests) * 100) : 0;
         const enoughTables = tablesDiff >= 0;

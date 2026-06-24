@@ -4,12 +4,12 @@
  *
  * When a budget is accepted, auto-generate:
  * - Guests (guest_count + kids_count placeholder entries)
- * - Table distribution (ceil(guest/10) tables, distribute evenly)
- * - Staff suggestions (tables_suggested = ceil(guest/10), waiters_suggested = ceil(guest/15))
+ * - Table distribution + staff suggestions vía src/lib/operations.ts (fuente única, FR-A05)
  * - Escandallo (shopping_list from catalog ingredients, linked to providers)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
+import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 
 export async function POST(
   _request: NextRequest,
@@ -146,7 +146,7 @@ export async function POST(
     }
 
     // 3. Calculate table distribution
-    const tablesNeeded = Math.ceil(guestCount / 10);
+    const tablesNeeded = calcMesas(guestCount);
     const tables: any[] = [];
     const guestsPerTable = Math.floor(guestCount / tablesNeeded);
     const remainder = guestCount % tablesNeeded;
@@ -164,7 +164,8 @@ export async function POST(
     }
 
     // Calculate staff
-    const waitersNeeded = Math.ceil(guestCount / 15);
+    const serviceType: ServiceType = event.service_type === 'coctel' ? 'coctel' : 'menu';
+    const waitersNeeded = calcCamareros(guestCount, serviceType);
 
     // Execute all inserts in a single transaction for atomicity
     const result = await transaction(async (client) => {
