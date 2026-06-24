@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Icon from '../shared/Icon';
+import { calcCamareros, type ServiceType } from '@/lib/operations';
 
 interface StaffingLine {
   id: string;
@@ -29,6 +30,7 @@ interface Props {
   eventDate: string;
   guestCount: number;
   waitersSuggested?: number;
+  serviceType?: ServiceType;
   canEdit?: boolean;
 }
 
@@ -42,7 +44,7 @@ const fmtTime = (d: string | null) => {
   return isNaN(date.getTime()) ? null : date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 };
 
-export default function EventStaffingPanel({ eventId, eventDate, guestCount, waitersSuggested, canEdit = true }: Props) {
+export default function EventStaffingPanel({ eventId, eventDate, guestCount, waitersSuggested, serviceType = 'menu', canEdit = true }: Props) {
   const [lines, setLines] = useState<StaffingLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export default function EventStaffingPanel({ eventId, eventDate, guestCount, wai
   const autoGenerate = async () => {
     setBusy('generate');
     const dateOnly = (eventDate || '').slice(0, 10);
-    const camareros = Math.max(1, waitersSuggested || Math.ceil(guestCount / 15));
+    const camareros = Math.max(1, waitersSuggested || calcCamareros(guestCount, serviceType));
     const azafatas = guestCount > 100 ? 2 : 1;
     const barman = Math.max(1, Math.ceil(guestCount / 75));
     const defs = [

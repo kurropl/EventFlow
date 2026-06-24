@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS events (
     kids_count      INT NOT NULL DEFAULT 0,
     event_date      DATE NOT NULL,
     status          TEXT NOT NULL DEFAULT 'nuevo' CHECK (status IN ('nuevo','propuesta_enviada','confirmado','cancelado','en_curso','completado')),
+    service_type    TEXT NOT NULL DEFAULT 'menu' CHECK (service_type IN ('coctel','menu')),
     selected_items  JSONB NOT NULL DEFAULT '[]'::jsonb,
     total_pvp       NUMERIC(12,2) NOT NULL DEFAULT 0,
     total_cost      NUMERIC(12,2) NOT NULL DEFAULT 0,

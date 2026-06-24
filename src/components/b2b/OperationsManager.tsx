@@ -808,6 +808,7 @@ export default function OperationsManager() {
         eventDate={selected.event_date}
         guestCount={selected.guest_count}
         waitersSuggested={selected.waiters_suggested}
+        serviceType={selected.service_type === 'coctel' ? 'coctel' : 'menu'}
         canEdit={canComplete}
       />
 

@@ -10,6 +10,7 @@
  */
 
 import { z } from 'zod';
+import { calcMesas, calcCamareros } from '@/lib/operations';
 
 // ============================================================
 // CATALOG ITEM
@@ -283,7 +284,8 @@ export const OPERATIONAL_RATIOS = {
 export const BAR_PRICES = { 0: 0, 1: 10, 2: 16, 3: 18 } as const;
 
 export function calculateStaff(guestCount: number): OperationalNeeds['staff'] {
-  const camareros = Math.ceil(guestCount / OPERATIONAL_RATIOS.CAMARERO_POR_PAX);
+  // Camareros: fuente única src/lib/operations.ts (FR-A05).
+  const camareros = calcCamareros(guestCount, 'menu');
   const cocineros = Math.max(
     OPERATIONAL_RATIOS.COCINERO_BASE,
     Math.ceil(guestCount / OPERATIONAL_RATIOS.COCINERO_POR_80)
@@ -303,7 +305,7 @@ export function calculateStaff(guestCount: number): OperationalNeeds['staff'] {
 }
 
 export function calculateTables(guestCount: number): OperationalNeeds['tables'] {
-  const count = Math.ceil(guestCount / OPERATIONAL_RATIOS.ASIENTOS_POR_MESA);
+  const count = calcMesas(guestCount);
   return { count, seats_per_table: OPERATIONAL_RATIOS.ASIENTOS_POR_MESA };
 }
 

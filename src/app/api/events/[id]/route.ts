@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { deductStockForEvent } from '@/app/api/stock/deduct/route';
+import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 
 const BAR_PRICE_PER_HOUR = 15; // € per person per hour
 
@@ -285,8 +286,9 @@ export async function PUT(
 
         if (!existing) {
           const guests = Number(event.guest_count) || 0;
-          const tablesSuggested = Math.max(1, Math.ceil(guests / 10));
-          const waitersSuggested = Math.max(1, Math.ceil(guests / 15));
+          const serviceType: ServiceType = event.service_type === 'coctel' ? 'coctel' : 'menu';
+          const tablesSuggested = Math.max(1, calcMesas(guests));
+          const waitersSuggested = Math.max(1, calcCamareros(guests, serviceType));
           const pvpTotal = Number(event.total_pvp) || 0;
           const costTotal = Number(event.total_cost) || 0;
           const marginPct = pvpTotal > 0 ? Math.round(((pvpTotal - costTotal) / pvpTotal) * 100 * 100) / 100 : 0;

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -48,7 +49,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       const result = await transaction(async (client) => {
         // Get the quote with event data
         const quoteRow = (await client.query(
-          `SELECT q.*, e.guest_count, e.event_date, e.total_pvp, e.bar_price, e.iva_pct
+          `SELECT q.*, e.guest_count, e.event_date, e.total_pvp, e.bar_price, e.iva_pct, e.service_type
            FROM quotes q JOIN events e ON e.id = q.event_id
            WHERE q.id = $1`, [params.id]
         )).rows[0];
@@ -84,8 +85,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         const guests = Number(quoteRow.guest_count) || 0;
         const pvpTotal = Number(updatedQuote.total_pvp) || 0;
         const costTotal = Number(updatedQuote.total_cost) || 0;
-        const tablesSuggested = Math.max(1, Math.ceil(guests / 10));
-        const waitersSuggested = Math.max(1, Math.ceil(guests / 15));
+        const serviceType: ServiceType = quoteRow.service_type === 'coctel' ? 'coctel' : 'menu';
+        const tablesSuggested = Math.max(1, calcMesas(guests));
+        const waitersSuggested = Math.max(1, calcCamareros(guests, serviceType));
 
         // Get client_id + selected_items from event
         const eventRow = (await client.query(
@@ -200,7 +202,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         )).rows[0];
 
         if (!existingStaffing && guests > 0) {
-          const camareros = Math.ceil(guests / 12);
+          const camareros = calcCamareros(guests, serviceType);
           const cocineros = Math.ceil(guests / 30);
           const metres = Math.max(1, Math.ceil(guests / 40));
 
