@@ -1,106 +1,182 @@
 /**
- * EventFlow — Importar recetas desde Excel
- * POST /api/cocina/recipes/import
+ * EventFlow — Importar recetas desde Excel/CSV → recipe_items  ·  FR-C10
+ *
+ * GET  /api/cocina/recipes/import        → descarga la plantilla vacía (CSV)
+ * POST /api/cocina/recipes/import        → previsualización (no escribe)
+ * POST /api/cocina/recipes/import?commit=1 → confirma: upsert catalog_items + recipe_items
+ *
+ * El ingrediente se resuelve por nombre contra `ingredients` (entidad única,
+ * FR-S05); si no existe se crea. La cantidad se ajusta por merma (bruto vs neto).
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { sanitizeError } from '@/lib/security';
 import * as XLSX from 'xlsx';
+import {
+  detectColumns, parseRows, normalizeCategory, CATALOG_CATEGORIES,
+  type ParsedRecipe,
+} from '@/lib/recipeImport';
+
+const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+// €/unidad-de-receta: unit_cost está por unidad base; aproximamos por unidad dada.
+const lineCost = (qty: number, unitCost: number) => round2((Number(qty) || 0) * (Number(unitCost) || 0));
+
+// Plantilla descargable
+export async function GET() {
+  const header = 'plato,categoria,ingrediente,cantidad,unidad,merma_%,notas';
+  const ejemplo = [
+    'Solomillo al foie,carne,Solomillo de ternera,200,g,15,Limpio de grasa',
+    'Solomillo al foie,carne,Foie micuit,30,g,0,',
+    'Solomillo al foie,carne,Sal en escamas,2,g,0,',
+  ].join('\n');
+  const csv = `${header}\n${ejemplo}\n`;
+  return new NextResponse(csv, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="plantilla-recetas.csv"',
+    },
+  });
+}
+
+async function readRows(req: NextRequest): Promise<{ rows: Record<string, any>[]; headers: string[] } | null> {
+  const formData = await req.formData();
+  const file = formData.get('file') as File | null;
+  if (!file) return null;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet) as Record<string, any>[];
+  const headers = rows.length ? Object.keys(rows[0]) : [];
+  return { rows, headers };
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File | null;
+    const commit = req.nextUrl.searchParams.get('commit') === '1';
+    const parsed = await readRows(req);
+    if (!parsed) return NextResponse.json({ success: false, error: 'No se ha enviado ningún archivo' }, { status: 400 });
+    if (!parsed.rows.length) return NextResponse.json({ success: false, error: 'El archivo está vacío' }, { status: 400 });
 
-    if (!file) {
-      return NextResponse.json({ error: 'No se ha enviado ningún archivo' }, { status: 400 });
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(sheet) as Record<string, any>[];
-
-    if (!data.length) {
-      return NextResponse.json({ error: 'El archivo Excel está vacío' }, { status: 400 });
-    }
-
-    // Mapear columnas esperadas (flexible con nombres)
-    const colMap: Record<string, string> = {};
-    const headers = Object.keys(data[0]);
-    const expected = {
-      nombre: ['nombre', 'name', 'plato', 'receta'],
-      ingrediente: ['ingrediente', 'ingredient', 'ingrediente'],
-      cantidad: ['cantidad', 'quantity', 'qty', 'cant'],
-      unidad: ['unidad', 'unit', 'ud'],
-      categoria: ['categoria', 'category', 'cat'],
-      tiempo: ['tiempo', 'time', 'prep_time', 'minutos'],
-    };
-
-    for (const header of headers) {
-      const hl = header.toLowerCase().trim();
-      for (const [key, aliases] of Object.entries(expected)) {
-        if (aliases.some(a => hl.includes(a))) {
-          colMap[key] = header;
-          break;
-        }
-      }
-    }
-
-    if (!colMap.nombre || !colMap.ingrediente) {
+    const cols = detectColumns(parsed.headers);
+    if (!cols.plato || !cols.ingrediente) {
       return NextResponse.json({
-        error: 'El Excel debe tener al menos columnas "Nombre" e "Ingrediente"',
-        headers_detectadas: headers,
-        mapeo: colMap,
+        success: false,
+        error: 'El archivo debe tener al menos columnas "plato" e "ingrediente"',
+        cabeceras: parsed.headers,
+        mapeo: cols,
       }, { status: 400 });
     }
 
+    const recetas = parseRows(parsed.rows, cols);
     const pool = getPool();
-    const recipes: Record<string, any> = {};
-    const order: string[] = [];
 
-    for (const row of data) {
-      const name = String(row[colMap.nombre]).trim();
-      if (!name) continue;
+    // ── Resolver ingredientes contra la BD (preview y commit) ──
+    const resumen = await buildSummary(pool, recetas);
 
-      if (!recipes[name]) {
-        recipes[name] = {
-          name,
-          category: colMap.categoria ? String(row[colMap.categoria] || '').trim() : '',
-          prep_time: colMap.tiempo ? Number(row[colMap.tiempo]) || null : null,
-          ingredients: [],
-        };
-        order.push(name);
-      }
-
-      const ingredient = {
-        name: String(row[colMap.ingrediente]).trim(),
-        quantity: colMap.cantidad ? Number(row[colMap.cantidad]) || 0 : 0,
-        unit: colMap.unidad ? String(row[colMap.unidad] || 'g').trim() : 'g',
-      };
-      recipes[name].ingredients.push(ingredient);
+    if (!commit) {
+      return NextResponse.json({
+        success: true,
+        mode: 'preview',
+        categorias_validas: CATALOG_CATEGORIES,
+        ...resumen,
+      });
     }
 
-    // Insertar recetas
-    const created: string[] = [];
-    for (const name of order) {
-      const r = recipes[name];
-      const result = await pool.query(
-        `INSERT INTO recipes (name, category, prep_time, servings, source, ingredients, active)
-         VALUES ($1, NULLIF($2,''), $3, 1, 'excel', $4::jsonb, true)
-         RETURNING id, name`,
-        [r.name, r.category, r.prep_time, JSON.stringify(r.ingredients)]
-      );
-      created.push(result.rows[0].name);
+    // ── COMMIT: upsert catalog_items + recipe_items ──
+    let platosCreados = 0, platosActualizados = 0, ingredientesCreados = 0;
+    for (const r of recetas) {
+      const category = normalizeCategory(r.categoria);
+
+      // catalog_item (por nombre)
+      const existing = (await pool.query(
+        `SELECT id FROM catalog_items WHERE name ILIKE $1 LIMIT 1`, [r.plato]
+      )).rows[0];
+      let catalogId: string;
+      if (existing) {
+        catalogId = existing.id;
+        platosActualizados++;
+        await pool.query(`DELETE FROM recipe_items WHERE catalog_item_id = $1`, [catalogId]);
+      } else {
+        catalogId = (await pool.query(
+          `INSERT INTO catalog_items (name, category, pvp, cost, ingredients, active)
+           VALUES ($1, $2, 0, 0, '[]'::jsonb, true) RETURNING id`,
+          [r.plato, category]
+        )).rows[0].id;
+        platosCreados++;
+      }
+
+      let costePlato = 0;
+      for (const line of r.lineas) {
+        if (line.errores.length || !line.unidad) continue;
+        // ingrediente único por id (crea si no existe)
+        let ing = (await pool.query(
+          `SELECT id, unit_cost FROM ingredients WHERE name ILIKE $1 LIMIT 1`, [line.ingrediente]
+        )).rows[0];
+        if (!ing) {
+          ing = (await pool.query(
+            `INSERT INTO ingredients (name, unit, unit_cost) VALUES ($1, $2, 0)
+             RETURNING id, unit_cost`,
+            [line.ingrediente, line.unidad]
+          )).rows[0];
+          ingredientesCreados++;
+        }
+        await pool.query(
+          `INSERT INTO recipe_items (catalog_item_id, ingredient_id, quantity, unit, notes)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [catalogId, ing.id, line.cantidad_bruta, line.unidad, line.notas]
+        );
+        costePlato += lineCost(line.cantidad_bruta, ing.unit_cost);
+      }
+      // coste del plato = Σ ingredientes (FR-S03)
+      await pool.query(`UPDATE catalog_items SET cost = $2 WHERE id = $1`, [catalogId, round2(costePlato)]);
     }
 
     return NextResponse.json({
       success: true,
-      imported: created.length,
-      recipes: created,
+      mode: 'commit',
+      platos_creados: platosCreados,
+      platos_actualizados: platosActualizados,
+      ingredientes_creados: ingredientesCreados,
+      recetas: recetas.length,
     });
-  } catch (error: any) {
-    console.error('Error importing recipes:', error);
-    return NextResponse.json({ error: error.message || 'Error al importar recetas' }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
   }
+}
+
+/** Resuelve ingredientes existentes/nuevos y calcula coste estimado (sin escribir). */
+async function buildSummary(pool: ReturnType<typeof getPool>, recetas: ParsedRecipe[]) {
+  const preview = [];
+  let ingredientesNuevos = 0, filasConError = 0;
+  for (const r of recetas) {
+    const lineas = [];
+    let coste = 0;
+    for (const line of r.lineas) {
+      const ing = (await pool.query(
+        `SELECT id, unit_cost FROM ingredients WHERE name ILIKE $1 LIMIT 1`, [line.ingrediente]
+      )).rows[0];
+      const esNuevo = !ing;
+      if (esNuevo) ingredientesNuevos++;
+      if (line.errores.length) filasConError++;
+      const costeLinea = ing ? lineCost(line.cantidad_bruta, ing.unit_cost) : null;
+      if (costeLinea) coste += costeLinea;
+      lineas.push({
+        ingrediente: line.ingrediente,
+        cantidad_neta: line.cantidad_neta,
+        cantidad_bruta: line.cantidad_bruta,
+        merma_pct: line.merma_pct,
+        unidad: line.unidad,
+        ingrediente_nuevo: esNuevo,
+        coste_estimado: costeLinea,
+        errores: line.errores,
+      });
+    }
+    preview.push({ plato: r.plato, categoria: normalizeCategory(r.categoria), coste_estimado: round2(coste), lineas });
+  }
+  return {
+    recetas: preview.length,
+    ingredientes_nuevos: ingredientesNuevos,
+    filas_con_error: filasConError,
+    preview,
+  };
 }

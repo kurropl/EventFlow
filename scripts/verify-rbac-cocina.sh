@@ -108,6 +108,20 @@ check_code "escandallo → cerrado"              "$(curl -s "$BASE/api/escandall
 check_code "event_cost_deviations persistido"  "$(q "SELECT count(*) FROM event_cost_deviations WHERE event_id='$EVENT'")" "1"
 check_code "desviación total = 40 (real 1000+0.24 vs est 960.24)" "$(q "SELECT deviation_amount FROM event_cost_deviations WHERE event_id='$EVENT'")" "40.00"
 
+# ── Import de recetas Excel/CSV con merma (FR-C10) ──────────
+echo "▸ Import de recetas (preview + commit)…"
+CSV=/tmp/recetas-verify.csv
+printf 'plato,categoria,ingrediente,cantidad,unidad,merma_%%,notas\nPaella VERIFY,arroz,Arroz VERIFY,100,g,0,\nPaella VERIFY,arroz,Azafran VERIFY,1,g,0,\n' > "$CSV"
+PV=$(curl -s -X POST "$BASE/api/cocina/recipes/import" $AC -F "file=@$CSV")
+check_code "preview: 1 receta"            "$(echo "$PV" | jget 'recetas')" "1"
+check_code "preview: 2 ingredientes nuevos" "$(echo "$PV" | jget 'ingredientes_nuevos')" "2"
+CM=$(curl -s -X POST "$BASE/api/cocina/recipes/import?commit=1" $AC -F "file=@$CSV")
+check_code "commit: 1 plato creado"       "$(echo "$CM" | jget 'platos_creados')" "1"
+check_code "commit: 2 ingredientes creados" "$(echo "$CM" | jget 'ingredientes_creados')" "2"
+check_code "recipe_items creados (2)"     "$(q "SELECT count(*) FROM recipe_items ri JOIN catalog_items ci ON ci.id=ri.catalog_item_id WHERE ci.name='Paella VERIFY'")" "2"
+# merma: 100 g netos con 0% = 100 g; comprobamos que la cantidad se guardó
+check_code "cantidad receta arroz = 100"  "$(q "SELECT ri.quantity::int FROM recipe_items ri JOIN ingredients i ON i.id=ri.ingredient_id WHERE i.name='Arroz VERIFY'")" "100"
+
 echo "─────────────────────────────────────────────"
 echo "RESULTADO:  $PASS OK  ·  $FAIL FALLOS"
 [ "$FAIL" -eq 0 ] && echo "✅ RBAC + Guía de Cocina correctos." || echo "❌ Hay fallos que corregir."
