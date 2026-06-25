@@ -1037,6 +1037,28 @@ DROP TRIGGER IF EXISTS trg_providers_updated ON providers;
 CREATE TRIGGER trg_providers_updated BEFORE UPDATE ON providers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- Facturas/deuda de proveedores (FR-A10): cuentas a pagar con vencimientos y justificante.
+CREATE TABLE IF NOT EXISTS provider_invoices (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider_id  UUID REFERENCES providers(id) ON DELETE CASCADE,
+    concept      TEXT,
+    amount       NUMERIC(12,2) NOT NULL DEFAULT 0,
+    issue_date   DATE NOT NULL DEFAULT CURRENT_DATE,
+    due_date     DATE,
+    status       TEXT NOT NULL DEFAULT 'pendiente' CHECK (status IN ('pendiente','pagado','vencido')),
+    proof_url    TEXT,                       -- justificante (PDF/imagen)
+    paid_at      TIMESTAMPTZ,
+    notes        TEXT,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_provider_invoices_provider ON provider_invoices(provider_id);
+CREATE INDEX IF NOT EXISTS idx_provider_invoices_status ON provider_invoices(status);
+ALTER TABLE provider_invoices DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_provider_invoices_updated ON provider_invoices;
+CREATE TRIGGER trg_provider_invoices_updated BEFORE UPDATE ON provider_invoices
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
 -- ============================================================
 -- 29. GUEST FORMS (Formularios de lista de invitados)
 -- ============================================================
@@ -1215,6 +1237,31 @@ CREATE INDEX IF NOT EXISTS idx_staffing_assignments_line ON staffing_assignments
 CREATE INDEX IF NOT EXISTS idx_staffing_assignments_worker ON staffing_assignments (worker_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_staffing_assignments_unique ON staffing_assignments (staffing_line_id, worker_id);
 ALTER TABLE staffing_assignments DISABLE ROW LEVEL SECURITY;
+
+-- Pago por trabajador y evento (nómina) — antes solo referenciada por el código.
+-- FR-A09: pago TOTAL por trabajador + firma tras el pago (signature_url/signed_*).
+CREATE TABLE IF NOT EXISTS worker_event_pay (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    worker_id     UUID NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+    event_id      UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    hours         NUMERIC(6,2) NOT NULL DEFAULT 0,
+    hourly_rate   NUMERIC(8,2) NOT NULL DEFAULT 0,
+    total_pay     NUMERIC(10,2) NOT NULL DEFAULT 0,
+    status        TEXT NOT NULL DEFAULT 'pending',  -- pending | paid
+    paid_at       TIMESTAMPTZ,
+    signature_url TEXT,        -- firma del trabajador (tras el pago)
+    signed_at     TIMESTAMPTZ,
+    signed_by     TEXT,
+    notes         TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_worker_event_pay_event ON worker_event_pay(event_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_worker_event_pay_unique ON worker_event_pay(worker_id, event_id);
+ALTER TABLE worker_event_pay DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_worker_event_pay_updated ON worker_event_pay;
+CREATE TRIGGER trg_worker_event_pay_updated BEFORE UPDATE ON worker_event_pay
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================================
 -- 28. ESCANDALLO — Receta como fuente de verdad

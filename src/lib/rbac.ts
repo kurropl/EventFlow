@@ -76,6 +76,7 @@ const API_RULES: ApiRule[] = [
   { prefix: '/api/plans', roles: ['camareros'] },
   { prefix: '/api/guests', roles: ['camareros', 'clientes'] },
   { prefix: '/api/guest-forms', roles: ['camareros', 'clientes'] },
+  { prefix: '/api/briefing', roles: ['camareros'] },
 
   // Compartidos (lectura/datos del evento) — todos los perfiles internos
   { prefix: '/api/catalog', roles: ['cocina', 'clientes'] },

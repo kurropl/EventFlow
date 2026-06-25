@@ -29,6 +29,9 @@ DELETE FROM admins  WHERE email = 'chef@verify.test';  -- usuario RBAC de prueba
 DELETE FROM recipe_items WHERE catalog_item_id IN (SELECT id FROM catalog_items WHERE name = 'Paella VERIFY');
 DELETE FROM catalog_items WHERE name = 'Paella VERIFY';
 DELETE FROM ingredients WHERE name IN ('Arroz VERIFY', 'Azafran VERIFY');
+-- Operativos (rama 010): proveedores/trabajadores de prueba (cascada borra sus deudas/pagos)
+DELETE FROM providers WHERE name = 'Prov VERIFY';
+DELETE FROM workers   WHERE name = 'Worker VERIFY';
 DELETE FROM recipe_items WHERE catalog_item_id IN (SELECT id FROM catalog_items WHERE name = 'Solomillo VERIFY');
 DELETE FROM catalog_items WHERE name = 'Solomillo VERIFY';
 DELETE FROM ingredients WHERE name IN ('Solomillo VERIFY', 'Sal fina VERIFY');
