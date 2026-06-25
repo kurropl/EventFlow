@@ -251,6 +251,10 @@ export async function PUT(
       pushIfInBody('event_date', 'event_date');
       pushIfInBody('linen_type', 'linen_type');
       pushIfInBody('centerpiece', 'centerpiece');
+      pushIfInBody('service_type', 'service_type');
+      pushIfInBody('venue_type', 'venue_type');
+      pushIfInBody('location', 'location');
+      pushIfInBody('venue_pdf_url', 'venue_pdf_url');
 
       if (calculatedPvp !== undefined) {
         fields.push(`total_pvp = $${p++}`);

@@ -950,10 +950,156 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
 }
 
 /* ------------------------------------------------------------------ */
+/*  Guía del evento (venue-aware) — punto de entrada del módulo        */
+/* ------------------------------------------------------------------ */
+
+const ESTADO_META: Record<string, { label: string; cls: string; dot: string }> = {
+  listo:      { label: 'Listo',      cls: 'text-emerald-300 border-emerald-700/50 bg-emerald-900/20', dot: 'bg-emerald-400' },
+  pendiente:  { label: 'Pendiente',  cls: 'text-amber-300 border-amber-700/50 bg-amber-900/20',       dot: 'bg-amber-400' },
+  bloqueado:  { label: 'Bloqueado',  cls: 'text-gray-400 border-gray-700/50 bg-gray-800/30',          dot: 'bg-gray-500' },
+  no_aplica:  { label: 'No aplica',  cls: 'text-gray-500 border-gray-800 bg-transparent',             dot: 'bg-gray-700' },
+};
+const MOMENTO_LABEL: Record<string, string> = { pre: 'Antes del evento', dia: 'Día del evento', post: 'Después del evento' };
+
+function GuiaTab() {
+  const [events, setEvents] = useState<AppEvent[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const [guia, setGuia] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [savingVenue, setSavingVenue] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/events?limit=100').then(r => r.json())
+      .then(d => { if (d.success) setEvents(d.data || []); }).catch(() => {});
+  }, []);
+
+  const loadGuia = useCallback(async (eventId: string) => {
+    if (!eventId) return;
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/cocina/guia/${eventId}`);
+      const d = await r.json();
+      setGuia(d.success ? d.data : null);
+    } catch { setGuia(null); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { if (selectedEventId) loadGuia(selectedEventId); }, [selectedEventId, loadGuia]);
+
+  const setVenue = async (venue_type: string) => {
+    if (!selectedEventId) return;
+    setSavingVenue(true);
+    try {
+      await fetch(`/api/events/${selectedEventId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ venue_type }),
+      });
+      await loadGuia(selectedEventId);
+    } finally { setSavingVenue(false); }
+  };
+
+  const momentos: Array<'pre' | 'dia' | 'post'> = ['pre', 'dia', 'post'];
+
+  return (
+    <div>
+      {/* Selector de evento */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+        <select
+          value={selectedEventId}
+          onChange={(e) => setSelectedEventId(e.target.value)}
+          className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white min-w-[260px]"
+        >
+          <option value="">Selecciona un evento…</option>
+          {events.map(ev => (
+            <option key={ev.id} value={ev.id}>
+              {ev.client_name} · {ev.event_date ? new Date(ev.event_date).toLocaleDateString('es-ES') : 's/f'} · {ev.status}
+            </option>
+          ))}
+        </select>
+        {guia && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-gray-500">Ubicación:</span>
+            {(['benitez', 'externo'] as const).map(v => (
+              <button key={v} disabled={savingVenue} onClick={() => setVenue(v)}
+                className={`px-3 py-1.5 rounded-md border transition-all ${
+                  guia.venue.tipo === v ? 'bg-gold text-black border-gold font-medium' : 'text-gray-300 border-[#2a2a2a] hover:border-gold/50'
+                }`}>
+                {v === 'benitez' ? 'En el local (Benítez)' : 'Ubicación externa'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {loading && <p className="text-sm text-gray-500">Cargando guía…</p>}
+      {!loading && !selectedEventId && (
+        <p className="text-sm text-gray-500">Elige un evento para ver su guía de cocina completa, antes y después del evento.</p>
+      )}
+
+      {guia && !loading && (
+        <>
+          {/* Cabecera: venue + progreso */}
+          <div className="rounded-xl border border-[#1e1e1e] bg-[#0a0a0a] p-4 mb-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-white">{guia.evento.nombre}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {guia.evento.pax} pax · {guia.evento.serviceType === 'coctel' ? 'cóctel' : 'menú'} ·{' '}
+                  <span className="text-gold">{guia.venue.etiqueta}</span>
+                  {guia.venue.ubicacion ? ` · ${guia.venue.ubicacion}` : ''}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-gold">{guia.progreso.pct}%</p>
+                <p className="text-[11px] text-gray-500">{guia.progreso.completadas}/{guia.progreso.aplicables} fases</p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-start gap-2 text-xs text-gray-400 bg-[#111] rounded-lg px-3 py-2 border border-[#1e1e1e]">
+              <Icon name="info" className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" />
+              <span>{guia.venue.nota}</span>
+            </div>
+          </div>
+
+          {/* Fases agrupadas por momento */}
+          {momentos.map(m => {
+            const fases = guia.fases.filter((f: any) => f.momento === m);
+            if (fases.length === 0) return null;
+            return (
+              <div key={m} className="mb-5">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{MOMENTO_LABEL[m]}</h3>
+                <div className="space-y-2">
+                  {fases.map((f: any) => {
+                    const meta = ESTADO_META[f.estado] || ESTADO_META.bloqueado;
+                    return (
+                      <div key={f.key}
+                        className={`rounded-lg border p-3 ${f.aplica ? 'border-[#1e1e1e] bg-[#0f0f0f]' : 'border-[#161616] bg-transparent opacity-60'}`}>
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium text-white">{f.titulo}</p>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${meta.cls}`}>{meta.label}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">{f.resumen}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main Panel                                                        */
 /* ------------------------------------------------------------------ */
 
 const MAIN_TABS = [
+  { id: 'guia', label: 'Guía del evento' },
   { id: 'recetas', label: 'Recetas' },
   { id: 'equipamiento', label: 'Equipamiento' },
   { id: 'pases', label: 'Pases' },
@@ -962,7 +1108,7 @@ const MAIN_TABS = [
 ];
 
 export default function CocinaPanel() {
-  const [activeTab, setActiveTab] = useState('recetas');
+  const [activeTab, setActiveTab] = useState('guia');
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
@@ -997,6 +1143,7 @@ export default function CocinaPanel() {
 
         {/* Tab Content */}
         <div className="rounded-xl border border-[#1e1e1e] bg-[#0f0f0f] p-4 sm:p-6">
+          {activeTab === 'guia' && <GuiaTab />}
           {activeTab === 'recetas' && <RecetasTab />}
           {activeTab === 'equipamiento' && <EquipamientoTab />}
           {activeTab === 'pases' && <PasesTab />}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Icon from '../shared/Icon';
+import { canSeeNav, normalizeRole, type Role } from '@/lib/rbac';
 
 // ── Menu structure ──────────────────────────────────────────
 type MenuItem = {
@@ -60,6 +61,13 @@ const GROUPS: MenuGroup[] = [
       { id: 'invitados', label: 'Invitados', sub: 'RSVP y dietas', href: '/admin/invitados' },
       { id: 'confirmacion', label: 'Confirmación', sub: 'Invitados vs mesas', href: '/admin/confirmacion' },
       { id: 'demo', label: 'Demo', sub: 'Flujo completo ejemplo', href: '/admin/demo' },
+    ],
+  },
+  {
+    id: 'cocina',
+    label: 'Cocina & Catering',
+    items: [
+      { id: 'cocina', label: 'Cocina', sub: 'Guía del evento: producción, carga, logística, APPCC', href: '/admin/cocina' },
     ],
   },
   {
@@ -139,6 +147,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     evento: true,
   });
   const [showBanner, setShowBanner] = useState(false);
+  const [role, setRole] = useState<Role>('admin');
+
+  // Perfil del usuario (RBAC) — define qué módulos del menú se muestran.
+  useEffect(() => {
+    let active = true;
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(j => { if (active && j?.user?.role) setRole(normalizeRole(j.user.role)); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  // Menú filtrado por perfil: cada usuario ve solo sus módulos (FR-R02).
+  const visibleGroups = GROUPS
+    .map(g => ({
+      ...g,
+      items: g.items
+        .filter(i => canSeeNav(role, i.id))
+        .map(i => ({ ...i, children: i.children?.filter(c => canSeeNav(role, c.id)) })),
+    }))
+    .filter(g => g.items.length > 0);
 
   const drawerRef = useRef<HTMLElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -246,7 +275,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   // ── NavList ──
   const NavList = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => (
     <>
-      {GROUPS.map(group => {
+      {visibleGroups.map(group => {
         const hasActiveDescendant = group.items.some(i => {
           if (i.id === currentItem?.id) return true;
           if (i.children) return i.children.some(c => c.id === currentItem?.id);

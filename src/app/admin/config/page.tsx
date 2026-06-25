@@ -5,6 +5,7 @@
  */
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/b2b/AdminLayout';
+import UsersManager from '@/components/b2b/UsersManager';
 
 interface Settings {
   business_name: string;
@@ -413,6 +414,9 @@ export default function ConfigPage() {
 
         {/* Configuración de Eventos — Jobs */}
         <EventJobsPanel />
+
+        {/* Usuarios y perfiles (RBAC) — solo admin */}
+        <UsersManager />
 
         {/* Save button bottom */}
         <div className="flex justify-end pb-8">

@@ -8,6 +8,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getJWTSecret } from '@/lib/config';
+import { canAccessApi, normalizeRole, type Role } from '@/lib/rbac';
+
+/** Lee el claim `role` del payload del JWT (ya verificado por verifyJWT). */
+function roleFromToken(token: string): Role {
+  try {
+    const payloadB64 = token.split('.')[1];
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+    return normalizeRole(payload?.role);
+  } catch {
+    return 'admin';
+  }
+}
 
 // ============================================================
 // JWT verification (Edge Runtime compatible — uses Web Crypto)
@@ -139,6 +151,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
+      );
+    }
+
+    // RBAC (FR-R02): el perfil debe tener acceso a este módulo/endpoint.
+    const role = roleFromToken(token);
+    if (!canAccessApi(role, pathname)) {
+      return NextResponse.json(
+        { success: false, error: 'Acceso denegado para tu perfil' },
+        { status: 403 }
       );
     }
 

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateToken, hashPassword, setAuthCookie } from '@/lib/auth';
+import { generateToken, setAuthCookie, authenticateAdmin } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
 
 export async function POST(request: NextRequest) {
@@ -19,42 +19,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Read credentials from environment (no hardcoded defaults in source)
+    // 1) Admin "maestro" por entorno (rol admin).
     const adminUsername = process.env.ADMIN_USERNAME;
     const adminPassword = process.env.ADMIN_PASSWORD;
-
-    if (!adminUsername || !adminPassword) {
-      console.error('[auth] ADMIN_USERNAME or ADMIN_PASSWORD not configured in environment');
-      return NextResponse.json(
-        { success: false, error: 'Error de configuración del servidor' },
-        { status: 500 }
-      );
+    if (adminUsername && adminPassword && username === adminUsername && password === adminPassword) {
+      const token = generateToken({ id: 'admin-1', email: adminUsername, name: 'Administrador', role: 'admin' });
+      await setAuthCookie(token);
+      return NextResponse.json({
+        success: true,
+        user: { username: adminUsername, role: 'admin' },
+        token,
+      });
     }
 
-    // Constant-time comparison to prevent timing attacks
-    if (username !== adminUsername || password !== adminPassword) {
-      return NextResponse.json(
-        { success: false, error: 'Credenciales inválidas' },
-        { status: 401 }
-      );
+    // 2) Usuarios de la tabla `admins` (RBAC por perfil: cocina/camareros/clientes/admin).
+    //    `username` se interpreta como email.
+    const auth = await authenticateAdmin(username, password);
+    if (auth.success && auth.user) {
+      const token = generateToken(auth.user);
+      await setAuthCookie(token);
+      return NextResponse.json({
+        success: true,
+        user: { username: auth.user.email, name: auth.user.name, role: auth.user.role },
+        token,
+      });
     }
 
-    // Generate JWT token
-    const token = generateToken({
-      id: 'admin-1',
-      email: adminUsername,
-      name: 'Administrador',
-      role: 'admin',
-    });
-
-    // Set JWT cookie
-    await setAuthCookie(token);
-
-    return NextResponse.json({
-      success: true,
-      user: { username: adminUsername, role: 'admin' },
-      token,
-    });
+    return NextResponse.json(
+      { success: false, error: 'Credenciales inválidas' },
+      { status: 401 }
+    );
   } catch (error) {
     console.error('[auth] Login error:', error);
     return NextResponse.json(

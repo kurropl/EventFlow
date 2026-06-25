@@ -428,6 +428,16 @@ CREATE TABLE IF NOT EXISTS admins (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- RBAC (FR-R01): el rol controla qué módulos ve/usa cada usuario.
+-- 4 perfiles: admin (todo), cocina, camareros (maître/sala), clientes (comercial).
+UPDATE admins SET role = 'admin'
+  WHERE role IS NULL OR role NOT IN ('admin','cocina','camareros','clientes');
+ALTER TABLE admins DROP CONSTRAINT IF EXISTS admins_role_check;
+ALTER TABLE admins ADD CONSTRAINT admins_role_check
+  CHECK (role IN ('admin','cocina','camareros','clientes'));
+-- Vínculo opcional a un trabajador (cocinero/maître con login propio) — FR-R04
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS worker_id UUID;
+
 -- Seed default admin (password: admin123)
 INSERT INTO admins (email, name, password_hash, role)
 VALUES ('admin@eventflow.app', 'Admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin')
@@ -569,12 +579,24 @@ CREATE TABLE IF NOT EXISTS event_menu_items (
 );
 CREATE INDEX IF NOT EXISTS idx_event_menu_items_event ON event_menu_items(event_id);
 ALTER TABLE event_menu_items DISABLE ROW LEVEL SECURITY;
+-- Menú seleccionado vs sugerencia (FR-A08) + pase/service_round (FR-C06)
+ALTER TABLE event_menu_items
+  ADD COLUMN IF NOT EXISTS kind          TEXT NOT NULL DEFAULT 'seleccionado'
+    CHECK (kind IN ('seleccionado','sugerencia')),
+  ADD COLUMN IF NOT EXISTS service_round INT NOT NULL DEFAULT 1;
 
 -- Add operations_generated_at to events table
 ALTER TABLE events ADD COLUMN IF NOT EXISTS operations_generated_at TIMESTAMPTZ;
 -- stock_deducted: idempotency flag for /api/stock/deduct (was referenced by the
 -- deduct route but never defined → 500 on a clean DB).
 ALTER TABLE events ADD COLUMN IF NOT EXISTS stock_deducted BOOLEAN NOT NULL DEFAULT false;
+-- Ubicación del evento (FR-A07/A11): condiciona el módulo Cocina (carga/logística)
+-- y el mapa de mesas (plano propio vs PDF del venue externo).
+ALTER TABLE events
+  ADD COLUMN IF NOT EXISTS venue_type    TEXT NOT NULL DEFAULT 'benitez'
+    CHECK (venue_type IN ('benitez','externo')),
+  ADD COLUMN IF NOT EXISTS location      TEXT,
+  ADD COLUMN IF NOT EXISTS venue_pdf_url TEXT;
 -- ============================================================
 -- 17. QUOTES (Presupuestos) — ciclo de vida del precio
 -- ============================================================
@@ -701,6 +723,11 @@ CREATE TABLE IF NOT EXISTS ingredients (
 );
 CREATE INDEX IF NOT EXISTS idx_ingredients_name ON ingredients(name);
 ALTER TABLE ingredients DISABLE ROW LEVEL SECURITY;
+-- Clasificación para la Hoja Logística (FR-C07): equipamiento (se transporta,
+-- no se compra) y producto seco/no perecedero, separados de los perecederos.
+ALTER TABLE ingredients
+  ADD COLUMN IF NOT EXISTS is_equipment BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS is_dry       BOOLEAN NOT NULL DEFAULT false;
 DROP TRIGGER IF EXISTS trg_ingredients_updated ON ingredients;
 CREATE TRIGGER trg_ingredients_updated BEFORE UPDATE ON ingredients FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
@@ -1245,7 +1272,10 @@ ALTER TABLE event_shopping_items
   ADD COLUMN IF NOT EXISTS deviation_qty NUMERIC(10,2),
   ADD COLUMN IF NOT EXISTS deviation_cost NUMERIC(10,2),
   ADD COLUMN IF NOT EXISTS frozen BOOLEAN NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS frozen_at TIMESTAMPTZ;
+  ADD COLUMN IF NOT EXISTS frozen_at TIMESTAMPTZ,
+  -- Lado "real" del escandallo teórico↔real (FR-C01): consumo registrado el día.
+  ADD COLUMN IF NOT EXISTS actual_quantity NUMERIC(12,3),
+  ADD COLUMN IF NOT EXISTS actual_unit TEXT;
 
 -- ============================================================
 -- FK circular events <-> quotes (añadida al final, ambas tablas ya existen)
@@ -1260,3 +1290,40 @@ DO $$ BEGIN
       FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL;
   END IF;
 END $$;
+
+-- ============================================================
+-- Trazabilidad sanitaria (APPCC) — recepción de lotes y consumo por evento.
+-- Antes vivían solo en migraciones (drift). `supplier_order_id` se deja como
+-- UUID sin FK para no acoplar con la cadena de supplier_orders.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS receiving_log (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    supplier_order_id UUID,
+    ingredient_id     UUID REFERENCES ingredients(id) ON DELETE CASCADE,
+    lot_number        TEXT NOT NULL,
+    batch_quantity    NUMERIC(12,3) NOT NULL DEFAULT 0,
+    unit              TEXT NOT NULL DEFAULT 'g',
+    received_date     DATE NOT NULL DEFAULT CURRENT_DATE,
+    received_by       TEXT,
+    expiry_date       DATE,
+    temperature       NUMERIC(5,2),
+    supplier          TEXT,
+    condition_ok      BOOLEAN DEFAULT true,
+    source            TEXT DEFAULT 'manual' CHECK (source IN ('manual','scan','api')),
+    qr_code           TEXT,
+    notes             TEXT,
+    created_at        TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_receiving_ingredient ON receiving_log(ingredient_id);
+ALTER TABLE receiving_log DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS lot_consumption (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    receiving_log_id  UUID NOT NULL REFERENCES receiving_log(id) ON DELETE CASCADE,
+    event_id          UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    quantity_consumed NUMERIC(12,3) NOT NULL DEFAULT 0,
+    unit              TEXT NOT NULL DEFAULT 'g',
+    consumed_at       TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_lot_consumption_event ON lot_consumption(event_id);
+ALTER TABLE lot_consumption DISABLE ROW LEVEL SECURITY;
