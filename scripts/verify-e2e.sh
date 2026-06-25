@@ -28,6 +28,12 @@ echo "▸ Estado inicial del ejemplo…"
 check "evento en borrador (draft)" "$(q "SELECT status FROM events WHERE id='$EVENT'")" "draft"
 check "quote en sent"              "$(q "SELECT status FROM quotes WHERE id='$QUOTE'")" "sent"
 
+# ── 1bis. Workflow de presupuestos (FR-A03/A04) — no destructivo ────
+echo "▸ Workflow presupuestos · reglas de cancelación…"
+RC=$(curl -s -X PUT "$BASE/api/quotes/$QUOTE" $CK -H 'Content-Type: application/json' -d '{"status":"cancelled"}')
+echo "$RC" | grep -qi "motivo" && ok "cancelar sin motivo → rechazado (FR-A03)" || ko "cancelar sin motivo: $RC"
+check "quote sigue en sent (no se canceló)" "$(q "SELECT status FROM quotes WHERE id='$QUOTE'")" "sent"
+
 # ── 2. FWD-2: aceptar presupuesto (señal) ───────────────────
 echo "▸ FWD-2 · aceptar presupuesto (PUT /api/quotes/$QUOTE status=accepted)…"
 RESP=$(curl -s -X PUT "$BASE/api/quotes/$QUOTE" $CK -H 'Content-Type: application/json' -d '{"status":"accepted"}')
@@ -59,6 +65,11 @@ echo "▸ Idempotencia · re-aceptar no debe duplicar…"
 curl -s -X PUT "$BASE/api/quotes/$QUOTE" $CK -H 'Content-Type: application/json' -d '{"status":"accepted"}' >/dev/null
 check "sigue 1 event_order"         "$(q "SELECT count(*) FROM event_orders WHERE event_id='$EVENT'")" "1"
 check "siguen 2 pagos"              "$(q "SELECT count(*) FROM payments WHERE event_id='$EVENT'")" "2"
+
+# ── 3bis. FR-A04: un presupuesto aceptado no se puede cancelar ──
+RC=$(curl -s -X PUT "$BASE/api/quotes/$QUOTE" $CK -H 'Content-Type: application/json' -d '{"status":"cancelled","cancel_reason":"prueba"}')
+echo "$RC" | grep -qi "aceptado" && ok "cancelar aceptado → rechazado (FR-A04)" || ko "cancelar aceptado: $RC"
+check "quote sigue accepted"        "$(q "SELECT status FROM quotes WHERE id='$QUOTE'")" "accepted"
 
 # ── 4. Coste único (FR-S02): ingrediente sincronizado ───────
 echo "▸ Coste único · trigger sync_ingredient_cost…"

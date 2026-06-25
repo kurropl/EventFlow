@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
+import { isCancellation, canCancel, canEditOnlyPriceAndGuests, toPhase, PHASE_LABEL } from '@/lib/quoteWorkflow';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -18,7 +19,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
        WHERE q.id = $1`, [params.id]
     );
     if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
-    return NextResponse.json({ data: quote });
+    return NextResponse.json({
+      data: quote,
+      workflow: {
+        phase: toPhase(quote.status),
+        phase_label: PHASE_LABEL[toPhase(quote.status)],
+        can_cancel: canCancel(quote.status),                          // FR-A04
+        edit_only_price_and_guests: canEditOnlyPriceAndGuests(quote.status), // FR-A02
+      },
+    });
   } catch (error) {
     return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
@@ -27,7 +36,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const { base_pvp, bar_price, extras_pvp, extras_cost, iva_pct, status, notes } = body;
+    const { base_pvp, bar_price, extras_pvp, extras_cost, iva_pct, status, notes, cancel_reason } = body;
+
+    // Reglas del workflow de presupuestos (FR-A03/A04).
+    if (isCancellation(status)) {
+      const current = await querySingle<any>(`SELECT status FROM quotes WHERE id = $1`, [params.id]);
+      if (!current) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+      // FR-A04: un presupuesto aceptado no se cancela (se gestiona por incidencia/realizado).
+      if (!canCancel(current.status)) {
+        return NextResponse.json({ error: 'No se puede cancelar un presupuesto aceptado' }, { status: 400 });
+      }
+      // FR-A03: cancelar exige indicar motivo.
+      if (!cancel_reason || !String(cancel_reason).trim()) {
+        return NextResponse.json({ error: 'Debes indicar el motivo de la cancelación' }, { status: 400 });
+      }
+    }
 
     // When accepting, create event_order + payments in a transaction
     if (status === 'accepted') {
@@ -330,11 +353,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         iva_pct = COALESCE($5, iva_pct),
         status = COALESCE($6, status),
         notes = COALESCE($7, notes),
+        cancel_reason = COALESCE($9, cancel_reason),
         sent_at = CASE WHEN $6 = 'sent' AND sent_at IS NULL THEN now() ELSE sent_at END,
         accepted_at = CASE WHEN $6 = 'accepted' AND accepted_at IS NULL THEN now() ELSE accepted_at END
        WHERE id = $8 RETURNING *`,
       [base_pvp ?? null, bar_price ?? null, extras_pvp ?? null, extras_cost ?? null,
-       iva_pct ?? null, status || null, notes !== undefined ? notes : null, params.id]
+       iva_pct ?? null, status || null, notes !== undefined ? notes : null, params.id,
+       cancel_reason ?? null]
     );
     if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
 

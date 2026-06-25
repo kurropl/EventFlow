@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BudgetEditor from './BudgetEditor';
+import { toPhase } from '@/lib/quoteWorkflow';
 
 type EventStatus = 'draft' | 'sent' | 'accepted' | 'in_progress' | 'completed' | 'paid' | 'cancelled' | 'lost' | 'reopened';
 
@@ -27,14 +28,16 @@ interface KanbanEvent {
   total_payments: number;
 }
 
+// Workflow único de 4 fases visibles + descartados (FR-A01). El `status` de cada
+// columna es su estado técnico representativo (usado por los botones de acción);
+// los eventos se agrupan por FASE (toPhase), consolidando completed/paid→Realizado
+// y cancelled/lost/reopened/rejected→Descartados.
 const COLUMNS: { status: EventStatus; label: string; dot: string; tint: string; soft: string }[] = [
   { status: 'draft', label: 'Borrador', dot: '#3B82F6', tint: '#EFF4FF', soft: '#DCE7FF' },
-  { status: 'sent', label: 'Enviado', dot: '#D9920B', tint: '#FFF8EC', soft: '#FBE8C4' },
+  { status: 'sent', label: '1º contacto', dot: '#D9920B', tint: '#FFF8EC', soft: '#FBE8C4' },
   { status: 'accepted', label: 'Aceptado', dot: '#16A34A', tint: '#EFFAF2', soft: '#CDEBD6' },
   { status: 'completed', label: 'Realizado', dot: '#7C3AED', tint: '#F3F0FF', soft: '#DDD6FE' },
-  { status: 'reopened', label: 'Reabierto', dot: '#F59E0B', tint: '#FFFBEB', soft: '#FDE68A' },
-  { status: 'lost', label: 'Perdido', dot: '#9CA3AF', tint: '#F9FAFB', soft: '#E5E7EB' },
-  { status: 'cancelled', label: 'Cancelado', dot: '#DC2626', tint: '#FEF3F3', soft: '#F6D6D6' },
+  { status: 'cancelled', label: 'Descartados', dot: '#DC2626', tint: '#FEF3F3', soft: '#F6D6D6' },
 ];
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -478,7 +481,9 @@ export default function KanbanPipeline() {
     }
   }, []);
 
-  const getEventsByStatus = (status: EventStatus) => events.filter((e) => e.status === status);
+  // Agrupa por FASE visible (no por estado técnico): 4 columnas + descartados.
+  const getEventsByStatus = (status: EventStatus) =>
+    events.filter((e) => toPhase(e.status) === toPhase(status));
 
   const totalGuests = events.filter((e) => e.status !== 'cancelled').reduce((s, e) => s + (e.guest_count || 0), 0);
   const confirmedCount = getEventsByStatus('accepted').length;

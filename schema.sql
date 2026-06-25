@@ -627,6 +627,8 @@ CREATE TABLE IF NOT EXISTS quotes (
 CREATE INDEX IF NOT EXISTS idx_quotes_event ON quotes(event_id);
 CREATE INDEX IF NOT EXISTS idx_quotes_lead ON quotes(lead_id);
 CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status);
+-- Motivo obligatorio al cancelar/rechazar un presupuesto (FR-A03)
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
 ALTER TABLE quotes DISABLE ROW LEVEL SECURITY;
 DROP TRIGGER IF EXISTS trg_quotes_updated ON quotes;
 CREATE TRIGGER trg_quotes_updated BEFORE UPDATE ON quotes FOR EACH ROW EXECUTE FUNCTION update_updated_at();
