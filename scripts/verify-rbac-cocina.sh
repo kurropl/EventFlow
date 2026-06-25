@@ -108,6 +108,17 @@ check_code "escandallo → cerrado"              "$(curl -s "$BASE/api/escandall
 check_code "event_cost_deviations persistido"  "$(q "SELECT count(*) FROM event_cost_deviations WHERE event_id='$EVENT'")" "1"
 check_code "desviación total = 40 (real 1000+0.24 vs est 960.24)" "$(q "SELECT deviation_amount FROM event_cost_deviations WHERE event_id='$EVENT'")" "40.00"
 
+# ── APPCC · recepción escaneada → stock (FR-C09) ────────────
+echo "▸ APPCC · recepción de lote incrementa el stock canónico…"
+ING=11111111-1111-1111-1111-111111111111
+QB=$(q "SELECT quantity::int FROM ingredients WHERE id='$ING'")
+RR=$(curl -s -X POST "$BASE/api/trazabilidad/receiving" $AC -H 'Content-Type: application/json' \
+  -d "{\"ingredient_id\":\"$ING\",\"lot_number\":\"LOTE-V1\",\"batch_quantity\":5000,\"unit\":\"g\",\"supplier\":\"Prov VERIFY\"}")
+echo "$RR" | grep -q '"success":true' && ok "recepción registrada" || ko "recepción: $RR"
+check_code "stock += 5000 (cierre del círculo)" "$(q "SELECT quantity::int FROM ingredients WHERE id='$ING'")" "$((QB+5000))"
+check_code "movimiento stock_entries (compra_prevision)" "$(q "SELECT count(*) FROM stock_entries WHERE ingredient_id='$ING' AND movement_reason='compra_prevision'")" "1"
+check_code "lote en receiving_log" "$(q "SELECT count(*) FROM receiving_log WHERE lot_number='LOTE-V1'")" "1"
+
 # ── Import de recetas Excel/CSV con merma (FR-C10) ──────────
 echo "▸ Import de recetas (preview + commit)…"
 CSV=/tmp/recetas-verify.csv

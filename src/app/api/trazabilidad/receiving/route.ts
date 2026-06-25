@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool, queryMany, querySingle } from '@/lib/db';
 import { sanitizeError, isValidUUID, sanitizeText } from '@/lib/security';
+import { convertUnit, areSameDimension } from '@/lib/units';
 
 // ── GET: Listar recepciones ──
 
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
 
       // 1. Verificar ingrediente
       const ingredient = await client.query(
-        'SELECT id, name, unit FROM ingredients WHERE id = $1',
+        'SELECT id, name, unit, quantity FROM ingredients WHERE id = $1',
         [ingredient_id]
       );
       if (ingredient.rows.length === 0) {
@@ -150,6 +151,15 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
+      const ingUnit = ingredient.rows[0].unit || 'g';
+      const previousStock = Number(ingredient.rows[0].quantity) || 0;
+      // Convertir lo recibido a la unidad de stock del ingrediente (misma dimensión).
+      let addQty = finalQuantity;
+      try {
+        if (finalUnit !== ingUnit && areSameDimension(finalUnit, ingUnit)) {
+          addQty = convertUnit(finalQuantity, finalUnit, ingUnit);
+        }
+      } catch { /* unidades incompatibles → se suma tal cual */ }
 
       // 2. Insertar receiving_log
       const receivingResult = await client.query(
@@ -177,34 +187,24 @@ export async function POST(request: NextRequest) {
       );
       const receivingRecord = receivingResult.rows[0];
 
-      // 3. Upsert inventory: incrementar quantity
-      const inventoryResult = await client.query(
-        `INSERT INTO inventory (ingredient_id, quantity, unit, last_movement_at)
-         VALUES ($1, $2, $3, now())
-         ON CONFLICT (ingredient_id)
-         DO UPDATE SET
-           quantity = inventory.quantity + $2,
-           last_movement_at = now()
-         RETURNING *`,
-        [ingredient_id, finalQuantity, finalUnit]
+      // 3. Cierre del círculo (FR-C09): incrementar el stock CANÓNICO del
+      //    ingrediente (ingredients.quantity), el mismo que consume el escandallo.
+      const updIng = await client.query(
+        `UPDATE ingredients SET quantity = COALESCE(quantity, 0) + $2 WHERE id = $1
+         RETURNING quantity`,
+        [ingredient_id, addQty]
       );
-      const invRecord = inventoryResult.rows[0];
-      const previousStock = Number(invRecord.quantity) - finalQuantity;
+      const newStock = Number(updIng.rows[0].quantity) || 0;
 
-      // 4. Insertar inventory_movements
+      // 4. Movimiento de stock (log canónico en stock_entries).
       await client.query(
-        `INSERT INTO inventory_movements
-           (inventory_id, movement_type, quantity, unit, reference_type, reference_id,
-            previous_stock, new_stock, notes)
-         VALUES ($1, 'receipt', $2, $3, 'receiving_log', $4, $5, $6, $7)`,
+        `INSERT INTO stock_entries (ingredient_id, quantity, unit, movement_reason, notes)
+         VALUES ($1, $2, $3, 'compra_prevision', $4)`,
         [
-          invRecord.id,
-          finalQuantity,
-          finalUnit,
-          receivingRecord.id,
-          previousStock,
-          Number(invRecord.quantity),
-          notes ? `Recepción: ${notes}` : `Recepción lote ${lot_number}`,
+          ingredient_id,
+          addQty,
+          ingUnit,
+          notes ? `Recepción lote ${lot_number}: ${notes}` : `Recepción lote ${lot_number}`,
         ]
       );
 
@@ -216,10 +216,11 @@ export async function POST(request: NextRequest) {
           data: {
             receiving: receivingRecord,
             inventory: {
-              id: invRecord.id,
-              ingredient_id: invRecord.ingredient_id,
-              quantity: Number(invRecord.quantity),
-              unit: invRecord.unit,
+              ingredient_id,
+              previous_stock: previousStock,
+              added: addQty,
+              quantity: newStock,
+              unit: ingUnit,
             },
             temp_alert: temperature !== null && temperature !== undefined && Number(temperature) > 8,
           },
