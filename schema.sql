@@ -590,6 +590,8 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS operations_generated_at TIMESTAMPTZ;
 -- stock_deducted: idempotency flag for /api/stock/deduct (was referenced by the
 -- deduct route but never defined → 500 on a clean DB).
 ALTER TABLE events ADD COLUMN IF NOT EXISTS stock_deducted BOOLEAN NOT NULL DEFAULT false;
+-- Orden de pases personalizado por evento (hojas de cocina) — estaba en migraciones.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS custom_pass_order JSONB;
 -- Ubicación del evento (FR-A07/A11): condiciona el módulo Cocina (carga/logística)
 -- y el mapa de mesas (plano propio vs PDF del venue externo).
 ALTER TABLE events
@@ -1232,6 +1234,8 @@ CREATE TABLE IF NOT EXISTS event_cost_deviations (
     closed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     notes TEXT
 );
+-- Un único snapshot de desviación por evento (para upsert en el cierre, FR-C03)
+CREATE UNIQUE INDEX IF NOT EXISTS ux_event_cost_deviations_event ON event_cost_deviations(event_id);
 
 -- ============================================================
 -- 28c. RECIPE ITEM VERSIONS (Histórico de versiones)
@@ -1275,7 +1279,9 @@ ALTER TABLE event_shopping_items
   ADD COLUMN IF NOT EXISTS frozen_at TIMESTAMPTZ,
   -- Lado "real" del escandallo teórico↔real (FR-C01): consumo registrado el día.
   ADD COLUMN IF NOT EXISTS actual_quantity NUMERIC(12,3),
-  ADD COLUMN IF NOT EXISTS actual_unit TEXT;
+  ADD COLUMN IF NOT EXISTS actual_unit TEXT,
+  -- Categoría del plato de origen (para agrupar por pase en las hojas de cocina).
+  ADD COLUMN IF NOT EXISTS category TEXT;
 
 -- ============================================================
 -- FK circular events <-> quotes (añadida al final, ambas tablas ya existen)

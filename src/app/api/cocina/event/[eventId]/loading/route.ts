@@ -12,7 +12,7 @@ export async function GET(
 
     // Verify event exists
     const eventResult = await pool.query(
-      `SELECT id, name, status FROM events WHERE id = $1`,
+      `SELECT id, client_name AS name, status FROM events WHERE id = $1`,
       [eventId]
     );
 

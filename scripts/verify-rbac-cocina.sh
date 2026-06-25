@@ -75,6 +75,39 @@ check_code "logística incluye transporte de equipamiento" "$LOG_EQ" "true"
 UBI=$(echo "$G" | jget 'data.venue.ubicacion')
 check_code "ubicación registrada" "$UBI" "Finca La Pradera"
 
+# ── Escandallo teórico↔real (FR-C01/C03) ────────────────────
+echo "▸ Escandallo teórico↔real…"
+E=$(curl -s "$BASE/api/escandallo/$EVENT" $AC)
+check_code "estado escandallo = activo"        "$(echo "$E" | jget 'escandallo.estado')" "activo"
+check_code "coste estimado = 960.24"           "$(echo "$E" | jget 'escandallo.totales.coste_estimado')" "960.24"
+# Registrar consumo real del solomillo (id de la línea)
+LINE=$(echo "$E" | jget "escandallo.lineas.find(l=>l.ingrediente=='Solomillo VERIFY').id")
+curl -s -X PUT "$BASE/api/escandallo/$EVENT" $AC -H 'Content-Type: application/json' \
+  -d "{\"items\":[{\"id\":\"$LINE\",\"actual_quantity\":25000}]}" >/dev/null
+E2=$(curl -s "$BASE/api/escandallo/$EVENT" $AC)
+check_code "coste real solomillo = 1000 (25000×0,04)" "$(echo "$E2" | jget "escandallo.lineas.find(l=>l.ingrediente=='Solomillo VERIFY').coste_real")" "1000"
+check_code "desviación solomillo = +40"        "$(echo "$E2" | jget "escandallo.lineas.find(l=>l.ingrediente=='Solomillo VERIFY').desviacion_coste")" "40"
+
+# ── Hojas venue-aware (FR-C06/C07) ──────────────────────────
+echo "▸ Hojas de carga/logística según ubicación…"
+curl -s -X PUT "$BASE/api/events/$EVENT" $AC -H 'Content-Type: application/json' -d '{"venue_type":"benitez"}' >/dev/null
+LB=$(curl -s "$BASE/api/cocina/event/$EVENT/loading" $AC)
+check_code "carga NO aplica en local"          "$(echo "$LB" | jget 'sheet.applies')" "false"
+GB=$(curl -s "$BASE/api/cocina/event/$EVENT/logistics" $AC)
+check_code "logística sin transporte equip. en local" "$(echo "$GB" | jget 'sheet.includesEquipmentTransport')" "false"
+curl -s -X PUT "$BASE/api/events/$EVENT" $AC -H 'Content-Type: application/json' -d '{"venue_type":"externo"}' >/dev/null
+LX=$(curl -s "$BASE/api/cocina/event/$EVENT/loading" $AC)
+check_code "carga SÍ aplica en externo"        "$(echo "$LX" | jget 'sheet.applies')" "true"
+GX=$(curl -s "$BASE/api/cocina/event/$EVENT/logistics" $AC)
+check_code "logística CON transporte equip. en externo" "$(echo "$GX" | jget 'sheet.includesEquipmentTransport')" "true"
+
+# ── Cierre: escandallo cerrado + desviación persistida ──────
+echo "▸ Cierre · snapshot de desviación…"
+curl -s -X POST "$BASE/api/events/$EVENT/close" $AC -H 'Content-Type: application/json' -d '{}' >/dev/null
+check_code "escandallo → cerrado"              "$(curl -s "$BASE/api/escandallo/$EVENT" $AC | jget 'escandallo.estado')" "cerrado"
+check_code "event_cost_deviations persistido"  "$(q "SELECT count(*) FROM event_cost_deviations WHERE event_id='$EVENT'")" "1"
+check_code "desviación total = 40 (real 1000+0.24 vs est 960.24)" "$(q "SELECT deviation_amount FROM event_cost_deviations WHERE event_id='$EVENT'")" "40.00"
+
 echo "─────────────────────────────────────────────"
 echo "RESULTADO:  $PASS OK  ·  $FAIL FALLOS"
 [ "$FAIL" -eq 0 ] && echo "✅ RBAC + Guía de Cocina correctos." || echo "❌ Hay fallos que corregir."

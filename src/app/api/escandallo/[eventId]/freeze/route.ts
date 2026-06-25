@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { freezeEscandallo } from '@/lib/escandallo';
 
 export async function POST(
   req: NextRequest,
@@ -20,38 +21,11 @@ export async function POST(
     const action = url.endsWith('/freeze') ? 'freeze' : 'recalc';
 
     if (action === 'freeze') {
-      // Congelar escandallo: calcular deviation y marcar frozen
-      await query(
-        `UPDATE event_shopping_items
-         SET frozen = true,
-             deviation_qty = COALESCE(NULLIF(actual_quantity, 0), 0) - COALESCE(NULLIF(theoretical_qty, 0), 0),
-             deviation_cost = COALESCE(NULLIF(actual_cost_total, 0), 0) - COALESCE(NULLIF(estimated_cost, 0), 0)
-         WHERE event_id = $1`,
-        [eventId]
-      );
-
-      // Crear registro en event_cost_deviations con los totales
-      const totals = await query(
-        `SELECT COALESCE(SUM(estimated_cost), 0) as est, COALESCE(SUM(actual_cost_total), 0) as act
-         FROM event_shopping_items WHERE event_id = $1`,
-        [eventId]
-      );
-
-      const r = totals.rows[0] as any;
-      const estCost = Number(r?.est || 0);
-      const actCost = Number(r?.act || 0);
-
-      await query(
-        `INSERT INTO event_cost_deviations (event_id, estimated_cost, actual_cost, deviation, deviation_pct)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (event_id) DO UPDATE
-         SET estimated_cost = $2, actual_cost = $3, deviation = $4, deviation_pct = $5`,
-        [eventId, estCost, actCost, actCost - estCost, estCost > 0 ? Math.round(((actCost - estCost) / estCost) * 100 * 100) / 100 : 0]
-      );
-
+      // Congela el escandallo y persiste el snapshot de desviación (fuente única).
+      const { estimado, real, desviacion } = await freezeEscandallo(eventId);
       return NextResponse.json({
         success: true,
-        data: { estimatedCost: estCost, actualCost: actCost, deviation: actCost - estCost },
+        data: { estimatedCost: estimado, actualCost: real, deviation: desviacion },
       });
     } else {
       // recalc: escalar recipe_items por guest_count y crear/actualizar event_shopping_items

@@ -17,6 +17,7 @@
  */
 import { queryMany, querySingle } from '@/lib/db';
 import { calcOperaciones, type ServiceType } from '@/lib/operations';
+import { computeEscandallo } from '@/lib/escandallo';
 
 export type VenueType = 'benitez' | 'externo';
 export type FaseEstado = 'pendiente' | 'listo' | 'no_aplica' | 'bloqueado';
@@ -59,6 +60,8 @@ export interface CocinaGuia {
     coste_estimado: number;
     coste_real: number;
     congelado: boolean;
+    estado: string;
+    version: number;
   };
   fases: GuiaFase[];
   progreso: { aplicables: number; completadas: number; pct: number };
@@ -69,7 +72,7 @@ const VENUE_LABEL: Record<VenueType, string> = {
   externo: 'Ubicación externa (catering desplazado)',
 };
 
-const money = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+const money = (n: number | undefined | null) => Math.round((Number(n) || 0) * 100) / 100;
 
 /**
  * Construye la guía de cocina de un evento, condicionada por su ubicación.
@@ -93,19 +96,14 @@ export async function buildCocinaGuia(eventId: string): Promise<CocinaGuia | nul
   const ops = calcOperaciones(adultos, ninos, serviceType);
   const completado = ['completed', 'completado', 'paid', 'pagado'].includes(ev.status);
 
-  // ── Escandallo (fuente de verdad) ───────────────────────────────────────
-  const esc = await querySingle<any>(
-    `SELECT COUNT(*)::int AS lineas,
-            COALESCE(SUM(estimated_cost),0)    AS coste_estimado,
-            COALESCE(SUM(actual_cost_total),0) AS coste_real,
-            bool_or(frozen)                    AS congelado
-     FROM event_shopping_items WHERE event_id = $1`,
-    [eventId]
-  );
-  const lineas = Number(esc?.lineas) || 0;
-  const costeEst = money(esc?.coste_estimado);
-  const costeReal = money(esc?.coste_real);
-  const congelado = !!esc?.congelado;
+  // ── Escandallo (fuente de verdad, teórico↔real) ─────────────────────────
+  const escandallo = await computeEscandallo(eventId);
+  const lineas = escandallo?.lineas.length || 0;
+  const costeEst = money(escandallo?.totales.coste_estimado);
+  const costeReal = money(escandallo?.totales.coste_real);
+  const congelado = !!escandallo?.congelado;
+  const escEstado = escandallo?.estado || 'borrador';
+  const escVersion = escandallo?.version || 1;
   const hayEscandallo = lineas > 0;
 
   // ── Compras: déficit de stock para cubrir el escandallo ─────────────────
@@ -290,7 +288,7 @@ export async function buildCocinaGuia(eventId: string): Promise<CocinaGuia | nul
         ? 'Catering desplazado: añade Hoja de Carga, transporte de equipamiento y sitting sobre el plano del venue.'
         : 'Evento en el local: sin transporte de comida; el equipamiento ya está en cocina.',
     },
-    escandallo: { lineas, coste_estimado: costeEst, coste_real: costeReal, congelado },
+    escandallo: { lineas, coste_estimado: costeEst, coste_real: costeReal, congelado, estado: escEstado, version: escVersion },
     fases,
     progreso: {
       aplicables: aplicables.length,

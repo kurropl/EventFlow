@@ -14,6 +14,19 @@ import { getPool } from '@/lib/db';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Query resiliente: si una tabla OPCIONAL del módulo cocina (equipment,
+ * service_passes…) no existe en este despliegue, degradamos a filas vacías en
+ * lugar de romper la hoja. En producción esas tablas existen (migraciones).
+ */
+async function softQuery(sql: string, params: any[] = []): Promise<{ rows: any[] }> {
+  try {
+    return await getPool().query(sql, params);
+  } catch {
+    return { rows: [] };
+  }
+}
+
 // ── Interfaces ───────────────────────────────────────────────
 
 interface PassInfo {
@@ -119,16 +132,17 @@ async function getPassForCategory(
     if (manual?.pass_number) return manual.pass_number;
   }
 
-  // Mapeo por defecto desde la BD
+  // Mapeo por defecto desde la BD (si las tablas de pases no existen, caemos al hardcode)
   const pool = getPool();
-  const result = await pool.query(
-    `SELECT sp.pass_number FROM category_pass_mapping cpm
-     JOIN service_passes sp ON sp.id = cpm.pass_id
-     WHERE cpm.category = $1`,
-    [category]
-  );
-
-  if (result.rows.length) return result.rows[0].pass_number;
+  try {
+    const result = await pool.query(
+      `SELECT sp.pass_number FROM category_pass_mapping cpm
+       JOIN service_passes sp ON sp.id = cpm.pass_id
+       WHERE cpm.category = $1`,
+      [category]
+    );
+    if (result.rows.length) return result.rows[0].pass_number;
+  } catch { /* sin tablas de pases → hardcode */ }
 
   // Fallback hardcode
   const passMap: Record<string, number> = {
@@ -195,7 +209,7 @@ export async function generateProductionSheet(
   }
 
   // Obtener nombres de pases
-  const passesResult = await pool.query('SELECT * FROM service_passes ORDER BY sort_order');
+  const passesResult = await softQuery('SELECT * FROM service_passes ORDER BY sort_order');
   const passNames = new Map(passesResult.rows.map((p: any) => [p.pass_number, { name: p.name, icon: p.icon }]));
 
   const passes: ProductionByPass[] = [];
@@ -238,6 +252,9 @@ export async function generateLoadingSheet(
 ): Promise<{
   eventName: string;
   guestCount: number;
+  venueType: string;
+  applies: boolean;
+  reason?: string;
   perecedero: LoadingItem[];
   noPerecedero: LoadingItem[];
   perecederoPasses: { pass: PassInfo; items: LoadingItem[] }[];
@@ -246,7 +263,9 @@ export async function generateLoadingSheet(
   const pool = getPool();
 
   const event = await pool.query(
-    `SELECT id, client_name, guest_count, event_date, custom_pass_order FROM events WHERE id = $1`,
+    `SELECT id, client_name, guest_count, event_date, custom_pass_order,
+            COALESCE(venue_type,'benitez') AS venue_type
+     FROM events WHERE id = $1`,
     [eventId]
   );
   if (!event.rows.length) throw new Error('Evento no encontrado');
@@ -254,6 +273,22 @@ export async function generateLoadingSheet(
   const ev = event.rows[0];
   const guestCount = Number(ev.guest_count) || 1;
   const customPassOrder = ev.custom_pass_order;
+  const venueType = ev.venue_type === 'externo' ? 'externo' : 'benitez';
+
+  // FR-A07/C06: en el local (Benítez) no hay transporte → la Hoja de Carga no aplica.
+  if (venueType !== 'externo') {
+    return {
+      eventName: ev.client_name,
+      guestCount,
+      venueType,
+      applies: false,
+      reason: 'El evento es en el local (Salones Benítez): no hay carga de furgoneta.',
+      perecedero: [],
+      noPerecedero: [],
+      perecederoPasses: [],
+      noPerecederoPasses: [],
+    };
+  }
 
   const items = await pool.query(
     `SELECT esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit, esi.category, esi.id,
@@ -298,12 +333,14 @@ export async function generateLoadingSheet(
     }
   }
 
-  const passesResult = await pool.query('SELECT * FROM service_passes ORDER BY sort_order');
+  const passesResult = await softQuery('SELECT * FROM service_passes ORDER BY sort_order');
   const passNames = new Map(passesResult.rows.map((p: any) => [p.pass_number, p.name]));
 
   return {
     eventName: ev.client_name,
     guestCount,
+    venueType,
+    applies: true,
     perecedero,
     noPerecedero,
     perecederoPasses: [],
@@ -318,6 +355,8 @@ export async function generateLogisticsSheet(
 ): Promise<{
   eventName: string;
   eventDate: string;
+  venueType: string;
+  includesEquipmentTransport: boolean;
   equipment: LogisticsEquipment[];
   dryGoods: LogisticsGoods[];
   perishableGoods: LogisticsGoods[];
@@ -327,13 +366,18 @@ export async function generateLogisticsSheet(
   const pool = getPool();
 
   const event = await pool.query(
-    `SELECT id, client_name, event_date, guest_count FROM events WHERE id = $1`,
+    `SELECT id, client_name, event_date, guest_count,
+            COALESCE(venue_type,'benitez') AS venue_type
+     FROM events WHERE id = $1`,
     [eventId]
   );
   if (!event.rows.length) throw new Error('Evento no encontrado');
 
   const ev = event.rows[0];
   const eventDate = ev.event_date;
+  // FR-C07: en externo hay que TRANSPORTAR el equipamiento; en el local ya está in situ.
+  const venueType = ev.venue_type === 'externo' ? 'externo' : 'benitez';
+  const includesEquipmentTransport = venueType === 'externo';
 
   // 1. Equipamiento: calcular needed desde equipment_rules + DEFAULT_EQUIPMENT_MAP
   const items = await pool.query(
@@ -348,7 +392,7 @@ export async function generateLogisticsSheet(
 
   // Buscar reglas en equipment_rules
   for (const cat of categories) {
-    const rules = await pool.query(
+    const rules = await softQuery(
       `SELECT e.name, e.stock_quantity, er.quantity_per_use, er.per_guest
        FROM equipment_rules er
        JOIN equipment e ON e.id = er.equipment_id
@@ -366,7 +410,7 @@ export async function generateLogisticsSheet(
     } else if (DEFAULT_EQUIPMENT_MAP[cat]) {
       // Fallback a mapeo hardcodeado
       for (const def of DEFAULT_EQUIPMENT_MAP[cat]) {
-        const eqResult = await pool.query(
+        const eqResult = await softQuery(
           'SELECT id, name, stock_quantity FROM equipment WHERE name = $1 AND active = true LIMIT 1',
           [def.equipmentName]
         );
@@ -389,7 +433,7 @@ export async function generateLogisticsSheet(
   );
 
   // 3. Obtener stock disponible de equipment
-  const equipmentList = await pool.query(
+  const equipmentList = await softQuery(
     'SELECT id, name, stock_quantity, unit, category FROM equipment WHERE active = true'
   );
   const stockMap = new Map(equipmentList.rows.map((r: any) => [r.name, { qty: Number(r.stock_quantity), unit: r.unit, category: r.category }]));
@@ -443,7 +487,10 @@ export async function generateLogisticsSheet(
   return {
     eventName: ev.client_name,
     eventDate,
-    equipment,
+    venueType,
+    includesEquipmentTransport,
+    // En el local el equipamiento ya está in situ: no es lista de transporte.
+    equipment: includesEquipmentTransport ? equipment : [],
     dryGoods,
     perishableGoods,
     disposables,

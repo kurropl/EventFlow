@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { deductStockForEvent } from '@/app/api/stock/deduct/route';
+import { freezeEscandallo } from '@/lib/escandallo';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,17 +35,14 @@ export async function POST(
 
     const results: string[] = [];
 
-    // 1. Freeze escandallo
+    // 1. Congelar escandallo + persistir desviación teórico↔real (FR-C01/C03).
     const frozenRes = await query(
       `SELECT frozen FROM event_shopping_items WHERE event_id = $1 AND frozen = true LIMIT 1`,
       [eventId]
     );
     if (!frozenRes.rows?.[0]) {
-      await query(
-        `UPDATE event_shopping_items SET frozen = true, frozen_at = now() WHERE event_id = $1`,
-        [eventId]
-      );
-      results.push('Escandallo congelado');
+      const dev = await freezeEscandallo(eventId);
+      results.push(`Escandallo congelado (real ${dev.real.toFixed(2)} € vs estimado ${dev.estimado.toFixed(2)} €, desv. ${dev.desviacion.toFixed(2)} €)`);
     }
 
     // 2. Deduct stock — ruta canónica e idempotente (src/app/api/stock/deduct)

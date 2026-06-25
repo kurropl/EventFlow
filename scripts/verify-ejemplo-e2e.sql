@@ -24,6 +24,7 @@ DELETE FROM staffing_lines      WHERE event_id  = '55555555-5555-5555-5555-55555
 DELETE FROM event_orders        WHERE event_id  = '55555555-5555-5555-5555-555555555555';
 DELETE FROM events  WHERE client_email = 'verify@eventflow.test';
 DELETE FROM clients WHERE email = 'verify@eventflow.test';
+DELETE FROM admins  WHERE email = 'chef@verify.test';  -- usuario RBAC de prueba
 DELETE FROM recipe_items WHERE catalog_item_id IN (SELECT id FROM catalog_items WHERE name = 'Solomillo VERIFY');
 DELETE FROM catalog_items WHERE name = 'Solomillo VERIFY';
 DELETE FROM ingredients WHERE name IN ('Solomillo VERIFY', 'Sal fina VERIFY');

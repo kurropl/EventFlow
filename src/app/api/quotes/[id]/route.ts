@@ -157,7 +157,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         const insertShopping = async (p: {
           ingredientId: string | null; name: string; provider: string | null;
-          unit: string; qtyNative: number; estimatedCost: number | null;
+          unit: string; qtyNative: number; estimatedCost: number | null; category: string | null;
         }) => {
           const f = dimsFor(p.unit);
           const grams = f.grams * p.qtyNative;
@@ -168,10 +168,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             `INSERT INTO event_shopping_items
               (event_id, order_id, ingredient_id, ingredient_name, provider_name,
                total_grams, total_units, total_ml, unit_dimension,
-               theoretical_qty, theoretical_unit, estimated_cost, completed)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false)`,
+               theoretical_qty, theoretical_unit, estimated_cost, category, completed)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,false)`,
             [quoteRow.event_id, eventOrder.id, p.ingredientId, p.name, p.provider,
-             grams, units, ml, dimension, p.qtyNative, p.unit, p.estimatedCost]
+             grams, units, ml, dimension, p.qtyNative, p.unit, p.estimatedCost, p.category]
           );
         };
 
@@ -180,9 +180,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           const itemName = (item.name || '').trim();
 
           const catItem = (await client.query(
-            `SELECT id, ingredients FROM catalog_items WHERE name ILIKE $1 AND active = true`,
+            `SELECT id, ingredients, category FROM catalog_items WHERE name ILIKE $1 AND active = true`,
             [itemName]
           )).rows[0];
+          const dishCategory = catItem?.category || item.category || null;
 
           // 1) Receta canónica (sistema B): recipe_items + ingredients
           let usedRecipe = false;
@@ -203,7 +204,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                   : null;
                 await insertShopping({
                   ingredientId: r.ingredient_id, name: r.name, provider: r.supplier || null,
-                  unit: r.unit, qtyNative, estimatedCost: estimated,
+                  unit: r.unit, qtyNative, estimatedCost: estimated, category: dishCategory,
                 });
               }
             }
@@ -230,13 +231,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                 const qtyNative = (g > 0 ? g : mlv > 0 ? mlv : c) * raciones;
                 await insertShopping({
                   ingredientId: ingRow?.id || null, name, provider: ingRow?.supplier || null,
-                  unit, qtyNative, estimatedCost: null,
+                  unit, qtyNative, estimatedCost: null, category: dishCategory,
                 });
               }
             } else {
               await insertShopping({
                 ingredientId: null, name: itemName, provider: null,
-                unit: 'ud', qtyNative: raciones, estimatedCost: null,
+                unit: 'ud', qtyNative: raciones, estimatedCost: null, category: dishCategory,
               });
             }
           }
