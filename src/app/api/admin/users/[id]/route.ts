@@ -8,9 +8,11 @@ import { querySingle } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
 import { isRole } from '@/lib/rbac';
+import { hasRole } from '@/lib/authz';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    if (!hasRole(request, 'admin')) return NextResponse.json({ success: false, error: 'Solo Administración' }, { status: 403 });
     const { name, role, active, password, worker_id } = await request.json();
     const sets: string[] = [];
     const vals: any[] = [];
@@ -37,8 +39,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    if (!hasRole(request, 'admin')) return NextResponse.json({ success: false, error: 'Solo Administración' }, { status: 403 });
     const user = await querySingle<any>(
       `UPDATE admins SET active = false WHERE id = $1 RETURNING id, email, active`, [params.id]
     );

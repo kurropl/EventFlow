@@ -107,8 +107,9 @@ export async function computeEscandallo(eventId: string): Promise<EscandalloResu
           desviacion_qty: round2((qtyR != null ? qtyR : qtyT) - qtyT),
         }
       : lineCost(qtyT, qtyR, unitCost);
-    // Sin coste de ingrediente vivo, cae al estimado almacenado.
-    const estimado = c.estimado || round2(r.estimated_cost);
+    // Solo cae al estimado almacenado cuando NO hay coste vivo del ingrediente;
+    // un coste vivo legítimamente 0 (ingrediente sin precio o qty 0) se respeta.
+    const estimado = unitCost > 0 ? c.estimado : round2(r.estimated_cost);
 
     return {
       id: r.id,
@@ -211,7 +212,8 @@ export async function freezeEscandallo(eventId: string): Promise<{ estimado: num
   const est = round2(t?.est);
   const act = round2(t?.act);
   const dev = round2(act - est);
-  const pct = est > 0 ? round2((dev / est) * 100) : 0;
+  // deviation_pct es NUMERIC(5,2): clamp a ±999.99 para no desbordar y romper el cierre.
+  const pct = est > 0 ? Math.max(-999.99, Math.min(999.99, round2((dev / est) * 100))) : 0;
 
   await query(
     `INSERT INTO event_cost_deviations

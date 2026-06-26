@@ -10,9 +10,13 @@ import { queryMany, querySingle } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
 import { isRole, ROLES } from '@/lib/rbac';
+import { hasRole } from '@/lib/authz';
 
-export async function GET() {
+const FORBIDDEN = { success: false, error: 'Solo Administración' };
+
+export async function GET(request: NextRequest) {
   try {
+    if (!hasRole(request, 'admin')) return NextResponse.json(FORBIDDEN, { status: 403 });
     const users = await queryMany<any>(
       `SELECT id, email, name, role, active, worker_id, last_login, created_at
        FROM admins ORDER BY created_at ASC`
@@ -25,6 +29,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!hasRole(request, 'admin')) return NextResponse.json(FORBIDDEN, { status: 403 });
     const { email, name, password, role, worker_id } = await request.json();
     if (!email || !name || !password || !role) {
       return NextResponse.json(

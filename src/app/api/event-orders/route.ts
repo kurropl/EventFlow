@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
+import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,16 +64,17 @@ export async function POST(request: NextRequest) {
 
     // Get the quote with event data
     const quote = await querySingle<any>(
-      `SELECT q.*, e.id as eid, e.guest_count, e.kids_count
+      `SELECT q.*, e.id as eid, e.guest_count, e.kids_count, e.service_type
        FROM quotes q JOIN events e ON e.id = q.event_id WHERE q.id = $1`,
       [quote_id]
     );
     if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
 
-    // Auto-calculate tables and waiters
+    // Mesas/camareros: fuente ÚNICA src/lib/operations.ts (FR-A05), por tipo de servicio.
     const guests = quote.guest_count || 1;
-    const tables_suggested = Math.ceil(guests / 8);
-    const waiters_suggested = Math.max(1, Math.round(guests / 12));
+    const serviceType: ServiceType = quote.service_type === 'coctel' ? 'coctel' : 'menu';
+    const tables_suggested = Math.max(1, calcMesas(guests));
+    const waiters_suggested = Math.max(1, calcCamareros(guests, serviceType));
 
     const order = await querySingle<any>(
       `INSERT INTO event_orders (event_id, quote_id, client_id, confirmed_price, status, tables_suggested, waiters_suggested)

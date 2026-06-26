@@ -18,7 +18,8 @@ import {
 } from '@/lib/recipeImport';
 
 const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
-// €/unidad-de-receta: unit_cost está por unidad base; aproximamos por unidad dada.
+// Convención canónica: ingredients.unit_cost es €/unidad-del-ingrediente (la misma
+// unidad en que se expresa la cantidad de receta). coste_línea = qty × unit_cost.
 const lineCost = (qty: number, unitCost: number) => round2((Number(qty) || 0) * (Number(unitCost) || 0));
 
 // Plantilla descargable

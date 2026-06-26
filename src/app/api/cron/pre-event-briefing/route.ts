@@ -7,9 +7,10 @@
  * apoya en la infraestructura existente (best-effort); este cron es el disparador.
  * Ruta pública (cron) — ver middleware isPublicRoute('/api/cron/').
  */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { queryMany } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { isCronAuthorized } from '@/lib/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,8 +37,11 @@ async function run() {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    if (!isCronAuthorized(request)) {
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+    }
     return NextResponse.json(await run());
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });

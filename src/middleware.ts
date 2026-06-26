@@ -8,16 +8,20 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getJWTSecret } from '@/lib/config';
-import { canAccessApi, normalizeRole, type Role } from '@/lib/rbac';
+import { canAccessApi, isRole, type Role } from '@/lib/rbac';
 
-/** Lee el claim `role` del payload del JWT (ya verificado por verifyJWT). */
-function roleFromToken(token: string): Role {
+/**
+ * Lee el claim `role` del payload de un JWT YA verificado (verifyJWT pasó antes).
+ * Fail-closed: si el rol no es válido/está ausente devuelve null → el llamador
+ * deniega. NUNCA asume admin.
+ */
+function roleFromToken(token: string): Role | null {
   try {
     const payloadB64 = token.split('.')[1];
     const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
-    return normalizeRole(payload?.role);
+    return isRole(payload?.role) ? payload.role : null;
   } catch {
-    return 'admin';
+    return null;
   }
 }
 
@@ -155,8 +159,9 @@ export async function middleware(request: NextRequest) {
     }
 
     // RBAC (FR-R02): el perfil debe tener acceso a este módulo/endpoint.
+    // Fail-closed: sin rol válido en el token → denegar.
     const role = roleFromToken(token);
-    if (!canAccessApi(role, pathname)) {
+    if (!role || !canAccessApi(role, pathname)) {
       return NextResponse.json(
         { success: false, error: 'Acceso denegado para tu perfil' },
         { status: 403 }

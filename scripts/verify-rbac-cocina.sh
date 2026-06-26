@@ -43,6 +43,9 @@ check_code(){ local d="$1" got="$2" exp="$3"; [ "$got" = "$exp" ] && ok "$d ($go
 check_code "cocina → /api/quotes = 403"        "$(code $CC "$BASE/api/quotes/$QUOTE")" "403"
 check_code "cocina → /api/staffing/pay = 403"  "$(code $CC -X POST "$BASE/api/staffing/pay")" "403"
 check_code "cocina → /api/clients = 403"       "$(code $CC "$BASE/api/clients")" "403"
+# Sub-ruta finanzas bajo /api/events/:id (segmento dinámico) → cocina denegado
+check_code "cocina → gastos-previos = 403"     "$(code $CC -X POST "$BASE/api/events/$EVENT/gastos-previos")" "403"
+check_code "admin → gastos-previos != 403"     "$([ "$(code $AC -X POST "$BASE/api/events/$EVENT/gastos-previos" -H 'Content-Type: application/json' -d '{"concept":"x","amount":1}')" != "403" ] && echo ok || echo no)" "ok"
 # cocina SÍ puede su módulo
 check_code "cocina → /api/cocina/guia = 200"   "$(code $CC "$BASE/api/cocina/guia/$EVENT")" "200"
 check_code "cocina → /api/escandallo = 200"    "$(code $CC "$BASE/api/escandallo/event/$EVENT")" "200"

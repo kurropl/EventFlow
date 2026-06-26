@@ -2,8 +2,9 @@
  * EventFlow — RBAC (control de acceso por perfil)  ·  FR-R01…R04
  *
  * Fuente ÚNICA de la matriz de permisos. La consumen:
- *   - `middleware.ts` (enforcement en servidor: 403 en API, redirect en /admin)
- *   - los route handlers (doble verificación con `assertRole`)
+ *   - `middleware.ts` (enforcement en servidor: 403 en API) — capa principal
+ *   - las rutas más sensibles (admin/users…) verifican además con `@/lib/authz`
+ *     (defensa en profundidad)
  *   - `AdminLayout` (construye el menú según el perfil)
  *
  * Módulo puro (sin dependencias de Node) para poder ejecutarse en el Edge runtime.
@@ -86,17 +87,34 @@ const API_RULES: ApiRule[] = [
   { prefix: '/api/generate-operations', roles: ['cocina', 'camareros'] },
   { prefix: '/api/hoja-operacion', roles: ['cocina', 'camareros'] },
 
+  // Sub-rutas finanzas/comercial bajo /api/events/:id (gana al prefijo /api/events).
+  { prefix: '/api/events/:id/gastos-previos', roles: ['clientes'] },
+
+  // Falsos bloqueos detectados (nav los muestra a no-admin) → reglas explícitas.
+  { prefix: '/api/checklist', roles: ['camareros'] },        // checklist día D
+  { prefix: '/api/shopping', roles: ['cocina'] },            // lista de la compra
+  { prefix: '/api/waiters', roles: ['camareros'] },          // alta/listado camareros
+  { prefix: '/api/guest-menus', roles: ['camareros', 'clientes'] },
+
   // Solo admin
   { prefix: '/api/admin/users', roles: [] },
 ];
 
+/** Normaliza segmentos dinámicos (UUID/numéricos) a `:id` para casar reglas. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function normalizePath(pathname: string): string {
+  const clean = pathname.split('?')[0];
+  return clean.split('/').map((seg) => (UUID_RE.test(seg) || /^\d+$/.test(seg) ? ':id' : seg)).join('/');
+}
+
 /** ¿Puede `role` invocar este endpoint? `admin` siempre sí. */
 export function canAccessApi(role: Role, pathname: string): boolean {
   if (role === 'admin') return true;
-  // prefijo más largo que casa
+  const path = normalizePath(pathname);
+  // prefijo (normalizado) más largo que casa
   let best: ApiRule | null = null;
   for (const r of API_RULES) {
-    if (pathname === r.prefix || pathname.startsWith(r.prefix + '/') || pathname.startsWith(r.prefix + '?')) {
+    if (path === r.prefix || path.startsWith(r.prefix + '/')) {
       if (!best || r.prefix.length > best.prefix.length) best = r;
     }
   }

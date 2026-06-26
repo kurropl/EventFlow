@@ -76,6 +76,7 @@ export interface DeductionResult {
   success: boolean;
   deducted: number;
   details: Array<{ ingredient_name: string; deducted_qty: number; unit: string }>;
+  skipped?: string[];   // líneas con cantidad pero unidad/dimensión incompatible
   already_deducted?: boolean;
   error?: string;
 }
@@ -110,6 +111,7 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
 
   const details: DeductionResult['details'] = [];
   let deductedCount = 0;
+  const skipped: string[] = [];  // líneas con cantidad pero unidad/dimensión que no casa
 
   for (const item of shoppingItems) {
     const ingredientName = item.ingredient_name?.trim();
@@ -169,7 +171,15 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
       deductionAmount = mlToUnit(totalMl, unit);
     }
 
-    if (deductionAmount <= 0) continue;
+    if (deductionAmount <= 0) {
+      // Hay cantidad en la línea pero su dimensión no casa con la unidad del
+      // ingrediente: no se dedujo nada. Se registra para no ocultar la divergencia.
+      if (totalGrams > 0 || totalUnits > 0 || totalMl > 0) {
+        skipped.push(`${ingredient.name} (unidad ${unit})`);
+        console.warn(`[stock/deduct] línea no deducida (dimensión no casa): ${ingredient.name} unit=${unit}`);
+      }
+      continue;
+    }
 
     // 4. Idempotent: never go negative
     const newQty = Math.max(0, currentQty - deductionAmount);
@@ -201,7 +211,7 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
     [eventId]
   );
 
-  return { success: true, deducted: deductedCount, details };
+  return { success: true, deducted: deductedCount, details, skipped: skipped.length ? skipped : undefined };
 }
 
 // ── POST: Deduct stock for event ───────────────────────────────────────
