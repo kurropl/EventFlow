@@ -17,9 +17,9 @@ export async function GET(
     const pool = getPool();
     const { eventId } = await params;
 
-    // Get event with custom_pass_order
+    // Get event with custom_pass_order (events usa client_name, no name)
     const eventResult = await pool.query(
-      `SELECT id, name, custom_pass_order
+      `SELECT id, client_name AS name, custom_pass_order
        FROM events WHERE id = $1`,
       [eventId]
     );
@@ -33,16 +33,16 @@ export async function GET(
 
     // Get category_pass_mapping to resolve categories -> passes
     const mappingResult = await pool.query(
-      `SELECT cpm.category, cpm.pass_id, p.name AS pass_name, p.display_order
+      `SELECT cpm.category, cpm.pass_id, p.name AS pass_name, p.sort_order AS display_order
        FROM category_pass_mapping cpm
-       JOIN passes p ON p.id = cpm.pass_id
-       ORDER BY p.display_order ASC`
+       JOIN service_passes p ON p.id = cpm.pass_id
+       ORDER BY p.sort_order ASC`
     );
 
     // Get all menu items from the event
     const itemsResult = await pool.query(
       `SELECT mi.name, mi.category
-       FROM menu_items mi
+       FROM event_menu_items mi
        WHERE mi.event_id = $1
        ORDER BY mi.name ASC`,
       [eventId]

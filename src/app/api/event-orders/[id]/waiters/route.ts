@@ -11,18 +11,24 @@ export async function GET(
 ) {
   try {
     const { id: orderId } = await params;
-    
+
+    // Camareros confirmados para el evento de este pedido. El modelo actual es
+    // staffing_lines (por evento + rol) → staffing_assignments → workers;
+    // la antigua tabla staff_assignments fue eliminada (ver schema.sql §23).
     const rows = await queryMany<any>(
-      `SELECT id, role, quantity, hourly_cost
-       FROM staff_assignments
-       WHERE event_order_id = $1 AND role = 'camarero'`,
+      `SELECT sa.id, sl.role, w.name
+       FROM event_orders eo
+       JOIN staffing_lines sl ON sl.event_id = eo.event_id AND sl.role = 'camarero'
+       JOIN staffing_assignments sa ON sa.staffing_line_id = sl.id
+       JOIN workers w ON w.id = sa.worker_id
+       WHERE eo.id = $1`,
       [orderId]
     );
 
     // If no staff assigned, generate default waiters based on order
     let waiters = rows.map(r => ({
       id: r.id,
-      name: `Camarero ${r.id.slice(0, 4)}`,
+      name: r.name || `Camarero ${r.id.slice(0, 4)}`,
       role: r.role,
     }));
 

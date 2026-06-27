@@ -24,17 +24,17 @@ export async function GET(_req: NextRequest) {
     const pool = getPool();
 
     const result = await pool.query(
-      `SELECT p.id, p.name, p.display_order, p.created_at,
+      `SELECT p.id, p.name, p.sort_order AS display_order, p.created_at,
               json_agg(
                 json_build_object(
                   'category', cpm.category,
                   'pass_id', cpm.pass_id
                 )
               ) AS category_mappings
-       FROM passes p
+       FROM service_passes p
        LEFT JOIN category_pass_mapping cpm ON cpm.pass_id = p.id
-       GROUP BY p.id, p.name, p.display_order, p.created_at
-       ORDER BY p.display_order ASC`
+       GROUP BY p.id, p.name, p.sort_order, p.created_at
+       ORDER BY p.sort_order ASC`
     );
 
     return NextResponse.json({ items: result.rows, total: result.rowCount });
@@ -71,18 +71,13 @@ export async function PUT(req: NextRequest) {
         [categories]
       );
 
-      // Upsert each mapping
+      // Upsert each mapping. category_pass_mapping.category es UNIQUE (una
+      // categoría → un pase), así que el conflicto se resuelve por (category).
       for (const mapping of parsed.data.mappings) {
-        // First ensure the category exists in categories table
-        await client.query(
-          `INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`,
-          [mapping.category]
-        );
-
         await client.query(
           `INSERT INTO category_pass_mapping (category, pass_id)
            VALUES ($1, $2)
-           ON CONFLICT (category, pass_id) DO UPDATE SET pass_id = EXCLUDED.pass_id`,
+           ON CONFLICT (category) DO UPDATE SET pass_id = EXCLUDED.pass_id`,
           [mapping.category, mapping.pass_id]
         );
       }

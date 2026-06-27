@@ -630,6 +630,19 @@ ALTER TABLE events
     CHECK (venue_type IN ('benitez','externo')),
   ADD COLUMN IF NOT EXISTS location      TEXT,
   ADD COLUMN IF NOT EXISTS venue_pdf_url TEXT;
+-- Máquina de estados de transiciones (scripts/2026-operativa-migration.sql):
+-- las usa src/app/api/events/[id]/transitions (INV-1..INV-5). Sin ellas ese
+-- endpoint da 500 al cancelar/perder/reabrir un evento.
+ALTER TABLE events
+  ADD COLUMN IF NOT EXISTS cancelled_at    TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS cancelled_by    TEXT,
+  ADD COLUMN IF NOT EXISTS cancel_reason   TEXT,
+  ADD COLUMN IF NOT EXISTS lost_at         TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS lost_reason     TEXT,
+  ADD COLUMN IF NOT EXISTS reopened_at     TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS reopened_by     TEXT,
+  ADD COLUMN IF NOT EXISTS reopen_reason   TEXT,
+  ADD COLUMN IF NOT EXISTS snapshot_previo JSONB;
 -- ============================================================
 -- 17. QUOTES (Presupuestos) — ciclo de vida del precio
 -- ============================================================
@@ -676,7 +689,7 @@ CREATE TABLE IF NOT EXISTS event_orders (
     client_id           UUID REFERENCES clients(id) ON DELETE SET NULL,
     confirmed_price     NUMERIC(12,2) NOT NULL DEFAULT 0,
     final_price         NUMERIC(12,2) NOT NULL DEFAULT 0,  -- incluye consumos extra
-    status              TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress','completed','cancelled')),
+    status              TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress','completed','cancelled','reopened')),
     extra_consumptions  JSONB NOT NULL DEFAULT '[]'::jsonb,
     tables_suggested    INT NOT NULL DEFAULT 0,
     tables_confirmed    INT NOT NULL DEFAULT 0,
@@ -723,6 +736,9 @@ CREATE INDEX IF NOT EXISTS idx_invoices_order ON invoices(event_order_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_client ON invoices(client_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+-- Factura rectificativa → factura original (scripts/2026-operativa-migration.sql).
+-- La usa la transición INV-4 (reabrir evento) al emitir rectificativa.
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS rectificativa_of UUID REFERENCES invoices(id);
 ALTER TABLE invoices DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
@@ -921,6 +937,50 @@ CREATE TABLE IF NOT EXISTS recipe_template_items (
 );
 CREATE INDEX IF NOT EXISTS idx_recipe_template_items_recipe ON recipe_template_items(recipe_id);
 CREATE INDEX IF NOT EXISTS idx_recipe_templates_category ON recipe_templates(category);
+
+-- 20b.5 AUDIT LOG — scripts/2026-operativa-migration.sql.
+-- Toda transición de estado (FR-A03/A04...) se registra aquí de forma atómica.
+-- La usa src/app/api/events/[id]/transitions; sin esta tabla ese endpoint da 500
+-- en una BD recién creada.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id      UUID REFERENCES events(id) ON DELETE SET NULL,
+  lead_id       UUID REFERENCES leads(id) ON DELETE SET NULL,
+  entity_type   TEXT NOT NULL,          -- 'event', 'lead', 'quote', 'payment', 'invoice'
+  entity_id     UUID NOT NULL,
+  action        TEXT NOT NULL,          -- 'FWD-1', 'INV-3', etc.
+  from_status   TEXT,
+  to_status     TEXT,
+  actor         TEXT,                   -- username or 'system'
+  actor_role    TEXT,                   -- 'admin', 'client', 'system'
+  motivo        TEXT,                   -- reason for inverse transitions
+  metadata      JSONB DEFAULT '{}',     -- extra data (amounts, diffs, etc.)
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_event ON audit_log(event_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
+ALTER TABLE audit_log DISABLE ROW LEVEL SECURITY;
+
+-- 20b.6 UNITS OF MEASURE — scripts/migration-escandallos-v2.sql.
+-- Catálogo de unidades + factor a la base (peso/volumen/unidad). La usa
+-- src/app/api/stock/uom; sin ella ese endpoint da 500 en una BD nueva.
+CREATE TABLE IF NOT EXISTS units_of_measure (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name           VARCHAR(20) NOT NULL UNIQUE,
+  category       VARCHAR(20) NOT NULL,  -- weight, volume, unit
+  factor_to_base NUMERIC(10,4) NOT NULL DEFAULT 1,
+  symbol         VARCHAR(10),
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO units_of_measure (name, category, factor_to_base, symbol) VALUES
+  ('kg', 'weight', 1, 'kg'),
+  ('g', 'weight', 0.001, 'g'),
+  ('l', 'volume', 1, 'L'),
+  ('ml', 'volume', 0.001, 'ml'),
+  ('ud', 'unit', 1, 'ud')
+ON CONFLICT (name) DO NOTHING;
+ALTER TABLE units_of_measure DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- 21. RECIPE ITEMS (Relación plato-ingrediente con cantidad)
@@ -1149,8 +1209,10 @@ UPDATE events SET status = 'cancelled' WHERE status = 'cancelado';
 -- Paso 4: Eliminar el CHECK temporal y aplicar el definitivo
 ALTER TABLE events DROP CONSTRAINT IF EXISTS events_status_check_temp;
 ALTER TABLE events DROP CONSTRAINT IF EXISTS events_status_check;
+-- Incluye 'lost' y 'reopened' (scripts/2026-operativa-migration.sql): la máquina
+-- de transiciones INV-1 (→lost) e INV-4 (→reopened) los necesita.
 ALTER TABLE events ADD CONSTRAINT events_status_check
-    CHECK (status IN ('draft','sent','accepted','in_progress','completed','paid','cancelled'));
+    CHECK (status IN ('draft','sent','accepted','in_progress','completed','paid','cancelled','lost','reopened'));
 
 -- ============================================================
 -- 24. EXTEND client TABLE con datos fiscales
@@ -1715,7 +1777,8 @@ ALTER TABLE recipe_items
   ADD COLUMN IF NOT EXISTS version_note TEXT,
   ADD COLUMN IF NOT EXISTS unit VARCHAR(10) DEFAULT 'g',
   ADD COLUMN IF NOT EXISTS unit_dimension TEXT CHECK (unit_dimension IN ('mass','volume','count')),
-  ADD COLUMN IF NOT EXISTS quantity_override NUMERIC(10,2);
+  ADD COLUMN IF NOT EXISTS quantity_override NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 ALTER TABLE event_shopping_items
   ADD COLUMN IF NOT EXISTS recipe_item_id UUID REFERENCES recipe_items(id) ON DELETE SET NULL,
@@ -1733,7 +1796,11 @@ ALTER TABLE event_shopping_items
   ADD COLUMN IF NOT EXISTS actual_quantity NUMERIC(12,3),
   ADD COLUMN IF NOT EXISTS actual_unit TEXT,
   -- Categoría del plato de origen (para agrupar por pase en las hojas de cocina).
-  ADD COLUMN IF NOT EXISTS category TEXT;
+  ADD COLUMN IF NOT EXISTS category TEXT,
+  -- Coste unitario y notas (scripts/migration-escandallos-v2.sql); notes lo usa
+  -- /api/shopping y /api/stock/escandallos.
+  ADD COLUMN IF NOT EXISTS cost_per_unit NUMERIC(10,4),
+  ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- ============================================================
 -- FK circular events <-> quotes (añadida al final, ambas tablas ya existen)
