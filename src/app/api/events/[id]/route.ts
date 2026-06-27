@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
-import { deductStockForEvent } from '@/app/api/stock/deduct/route';
+import { deductStockForEvent } from '@/lib/stockDeduct';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 
 const BAR_PRICE_PER_HOUR = 15; // € per person per hour

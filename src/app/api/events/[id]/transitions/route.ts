@@ -231,7 +231,7 @@ async function fwd4(event: any, motivo?: string) {
 
   // 5. Deduct stock
   try {
-    const { deductStockForEvent } = await import('@/app/api/stock/deduct/route');
+    const { deductStockForEvent } = await import('@/lib/stockDeduct');
     const r = await deductStockForEvent(event.id);
     if (r.deducted > 0) effects.push(`stock: ${r.deducted} items`);
   } catch (e: any) {

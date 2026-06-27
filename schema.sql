@@ -565,6 +565,37 @@ CREATE INDEX IF NOT EXISTS idx_tables_event ON tables(event_id);
 ALTER TABLE tables DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
+-- 16b-2. MAPA DE MESAS — floorplans persistidos + auto-asignación
+-- (antes solo en scripts/2026-06-22-mapa-mesas-migrate.sql, drift de esquema)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_floorplans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT 'Salón de Celebraciones',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(event_id)
+);
+CREATE INDEX IF NOT EXISTS idx_floorplans_event ON event_floorplans(event_id);
+ALTER TABLE event_floorplans DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS table_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  table_id TEXT NOT NULL,
+  guest_id UUID REFERENCES guests(id) ON DELETE SET NULL,
+  guest_name TEXT NOT NULL,
+  seat_number INT NOT NULL DEFAULT 0,
+  dietary_notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(event_id, table_id, guest_id)
+);
+CREATE INDEX IF NOT EXISTS idx_table_assignments_event ON table_assignments(event_id);
+CREATE INDEX IF NOT EXISTS idx_table_assignments_table ON table_assignments(table_id);
+ALTER TABLE table_assignments DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
 -- 16c. EVENT MENU ITEMS (escandallo por evento)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS event_menu_items (
@@ -732,6 +763,8 @@ ALTER TABLE ingredients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE ingredients
   ADD COLUMN IF NOT EXISTS is_equipment BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS is_dry       BOOLEAN NOT NULL DEFAULT false;
+-- Marca de última reposición manual de stock (usada por /api/stock GET/PUT).
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS last_restocked TIMESTAMPTZ;
 DROP TRIGGER IF EXISTS trg_ingredients_updated ON ingredients;
 CREATE TRIGGER trg_ingredients_updated BEFORE UPDATE ON ingredients FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
@@ -759,6 +792,135 @@ DROP TRIGGER IF EXISTS trg_ingredients_sync_cost ON ingredients;
 CREATE TRIGGER trg_ingredients_sync_cost BEFORE INSERT OR UPDATE ON ingredients
     FOR EACH ROW EXECUTE FUNCTION sync_ingredient_cost();
 
+-- ============================================================
+-- 20b. Tablas operativas adicionales (cocina, trazabilidad, mapa-mesas,
+--      briefings, APPCC) — antes vivían solo en scripts/*.sql (drift).
+-- ============================================================
+
+-- 20b.1 SUPPLIER ORDERS (Pedidos a proveedor) — autoría desde código vivo,
+-- no existía CREATE TABLE en ningún migration script. Columnas inferidas de
+-- src/app/api/stock/supplier-orders, generate-order, auto-orders, ocr/apply
+-- y src/app/api/trazabilidad/receiving/from-order.
+CREATE TABLE IF NOT EXISTS supplier_orders (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id        UUID REFERENCES events(id) ON DELETE SET NULL,
+    supplier        TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending','approved','delivered','received','partial','cancelled')),
+    total_cost      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    origin          TEXT DEFAULT 'manual',
+    notes           TEXT,
+    expected_date   DATE,
+    delivered_date  DATE,
+    ordered_at      TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_supplier_orders_status ON supplier_orders(status);
+CREATE INDEX IF NOT EXISTS idx_supplier_orders_event ON supplier_orders(event_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_orders_supplier ON supplier_orders(supplier);
+ALTER TABLE supplier_orders DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_supplier_orders_updated ON supplier_orders;
+CREATE TRIGGER trg_supplier_orders_updated BEFORE UPDATE ON supplier_orders
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TABLE IF NOT EXISTS supplier_order_items (
+    id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id           UUID NOT NULL REFERENCES supplier_orders(id) ON DELETE CASCADE,
+    ingredient_id      UUID REFERENCES ingredients(id) ON DELETE SET NULL,
+    ingredient_name    TEXT NOT NULL,
+    quantity           NUMERIC(12,3) NOT NULL DEFAULT 0,
+    unit               TEXT NOT NULL DEFAULT 'ud',
+    unit_cost          NUMERIC(10,4) NOT NULL DEFAULT 0,
+    cost_per_unit       NUMERIC(10,4) NOT NULL DEFAULT 0,  -- alias usado por /api/stock/generate-order
+    received_quantity  NUMERIC(12,3) NOT NULL DEFAULT 0,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_supplier_order_items_order ON supplier_order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_order_items_ingredient ON supplier_order_items(ingredient_id);
+ALTER TABLE supplier_order_items DISABLE ROW LEVEL SECURITY;
+
+-- 20b.2 INVENTORY / INVENTORY MOVEMENTS — scripts/2026-06-22-trazabilidad-migrate-v1.sql
+CREATE TABLE IF NOT EXISTS inventory (
+    id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ingredient_id     UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+    quantity          NUMERIC(12,3) NOT NULL DEFAULT 0,
+    unit              TEXT NOT NULL DEFAULT 'g',
+    min_stock         NUMERIC(12,3) DEFAULT 0,
+    last_movement_at TIMESTAMPTZ,
+    notes             TEXT,
+    created_at        TIMESTAMPTZ DEFAULT now(),
+    updated_at        TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(ingredient_id)
+);
+CREATE INDEX IF NOT EXISTS idx_inventory_ingredient ON inventory(ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_min ON inventory(min_stock);
+
+CREATE TABLE IF NOT EXISTS inventory_movements (
+    id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    inventory_id      UUID NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+    movement_type     TEXT NOT NULL CHECK (movement_type IN ('receipt','consumption','adjustment','expiry','transfer')),
+    quantity          NUMERIC(12,3) NOT NULL,
+    unit              TEXT NOT NULL DEFAULT 'g',
+    reference_type    TEXT,
+    reference_id      UUID,
+    previous_stock    NUMERIC(12,3) NOT NULL,
+    new_stock         NUMERIC(12,3) NOT NULL,
+    notes             TEXT,
+    created_at        TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_movements_inventory ON inventory_movements(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_movements_type ON inventory_movements(movement_type);
+CREATE INDEX IF NOT EXISTS idx_movements_date ON inventory_movements(created_at);
+
+CREATE OR REPLACE FUNCTION update_inventory_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_inventory_updated ON inventory;
+CREATE TRIGGER trg_inventory_updated
+    BEFORE UPDATE ON inventory
+    FOR EACH ROW EXECUTE FUNCTION update_inventory_timestamp();
+
+-- 20b.3 INGREDIENT PRICE HISTORY — scripts/migration-escandallos-v2.sql (E3)
+CREATE TABLE IF NOT EXISTS ingredient_price_history (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ingredient_id   UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  old_price       NUMERIC(10,4),
+  new_price       NUMERIC(10,4) NOT NULL,
+  changed_by      VARCHAR(100) DEFAULT 'system',
+  recorded_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_price_history_ingredient ON ingredient_price_history(ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_price_history_date ON ingredient_price_history(recorded_at DESC);
+
+-- 20b.4 RECIPE TEMPLATES — scripts/migration-escandallos-v2.sql (E1)
+CREATE TABLE IF NOT EXISTS recipe_templates (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        VARCHAR(200) NOT NULL,
+  category    VARCHAR(50) NOT NULL DEFAULT 'general',
+  base_pax    INTEGER NOT NULL DEFAULT 50,
+  description TEXT,
+  is_active   BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS recipe_template_items (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipe_id        UUID NOT NULL REFERENCES recipe_templates(id) ON DELETE CASCADE,
+  ingredient_name  VARCHAR(200) NOT NULL,
+  quantity_per_pax NUMERIC(10,3) NOT NULL DEFAULT 0,
+  unit             VARCHAR(20) NOT NULL DEFAULT 'g',
+  provider_name    VARCHAR(200),
+  sort_order       INTEGER NOT NULL DEFAULT 0,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_recipe_template_items_recipe ON recipe_template_items(recipe_id);
+CREATE INDEX IF NOT EXISTS idx_recipe_templates_category ON recipe_templates(category);
 
 -- ============================================================
 -- 21. RECIPE ITEMS (Relación plato-ingrediente con cantidad)
@@ -774,6 +936,132 @@ CREATE TABLE IF NOT EXISTS recipe_items (
 CREATE INDEX IF NOT EXISTS idx_recipe_catalog ON recipe_items(catalog_item_id);
 CREATE INDEX IF NOT EXISTS idx_recipe_ingredient ON recipe_items(ingredient_id);
 ALTER TABLE recipe_items DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 21b. COCINA — pases de servicio, equipamiento y recetas
+-- (antes solo en scripts/2026-06-22-cocina-migrate-v1.sql, drift de esquema)
+-- ============================================================
+
+-- service_passes — Pases de servicio por defecto
+CREATE TABLE IF NOT EXISTS service_passes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    pass_number INT NOT NULL,
+    name TEXT NOT NULL,
+    icon VARCHAR(10) DEFAULT '🍽️',
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO service_passes (pass_number, name, icon, sort_order)
+SELECT * FROM (VALUES
+    (1, 'Aperitivos y entrantes', '🥟', 1),
+    (2, 'Mesas y compartidos', '🥘', 2),
+    (3, 'Principal', '🥩', 3),
+    (4, 'Dulce y final', '🍰', 4),
+    (5, 'Bebidas', '🥂', 5),
+    (99, 'Complementos', '🧂', 99)
+) AS v(pass_number, name, icon, sort_order)
+WHERE NOT EXISTS (SELECT 1 FROM service_passes);
+
+-- category_pass_mapping — Mapeo categoría de plato → pase por defecto
+CREATE TABLE IF NOT EXISTS category_pass_mapping (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    category TEXT NOT NULL UNIQUE,
+    pass_id UUID NOT NULL REFERENCES service_passes(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO category_pass_mapping (category, pass_id) VALUES
+    ('aperitivo-frio',    (SELECT id FROM service_passes WHERE pass_number = 1)),
+    ('aperitivo-caliente',(SELECT id FROM service_passes WHERE pass_number = 1)),
+    ('compartir-mesa',    (SELECT id FROM service_passes WHERE pass_number = 2)),
+    ('arroz',             (SELECT id FROM service_passes WHERE pass_number = 3)),
+    ('carne',             (SELECT id FROM service_passes WHERE pass_number = 3)),
+    ('pescado',           (SELECT id FROM service_passes WHERE pass_number = 3)),
+    ('sorbete',           (SELECT id FROM service_passes WHERE pass_number = 4)),
+    ('postre',            (SELECT id FROM service_passes WHERE pass_number = 4)),
+    ('bebida',            (SELECT id FROM service_passes WHERE pass_number = 5)),
+    ('complemento',       (SELECT id FROM service_passes WHERE pass_number = 99))
+ON CONFLICT (category) DO NOTHING;
+
+-- equipment — Catálogo de equipamiento con stock
+CREATE TABLE IF NOT EXISTS equipment (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    category TEXT NOT NULL CHECK (category IN ('utensilio','vajilla','maquinaria','textil','mobiliario','descartable')),
+    unit TEXT NOT NULL DEFAULT 'ud',
+    stock_quantity NUMERIC(10,2) NOT NULL DEFAULT 0,
+    min_stock NUMERIC(10,2) DEFAULT 0,
+    notes TEXT,
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_equipment_category ON equipment(category);
+CREATE INDEX IF NOT EXISTS idx_equipment_active ON equipment(active);
+
+-- equipment_rules — Qué equipamiento necesita cada plato/categoría
+CREATE TABLE IF NOT EXISTS equipment_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    category TEXT,
+    catalog_item_id UUID REFERENCES catalog_items(id) ON DELETE CASCADE,
+    equipment_id UUID NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+    quantity_per_use NUMERIC(10,2) NOT NULL DEFAULT 1,
+    per_guest BOOLEAN DEFAULT false,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_eq_rules_category ON equipment_rules(category);
+CREATE INDEX IF NOT EXISTS idx_eq_rules_catalog ON equipment_rules(catalog_item_id);
+
+-- recipes — Recetas subidas (vinculadas a catálogo)
+CREATE TABLE IF NOT EXISTS recipes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    description TEXT,
+    source TEXT DEFAULT 'manual' CHECK (source IN ('manual','excel','pdf','scanned')),
+    source_file TEXT,
+    servings INT DEFAULT 1,
+    category TEXT,
+    catalog_item_id UUID REFERENCES catalog_items(id) ON DELETE SET NULL,
+    published BOOLEAN NOT NULL DEFAULT false,
+    ingredients JSONB DEFAULT '[]'::jsonb,
+    instructions TEXT,
+    prep_time INT,
+    cook_time INT,
+    difficulty TEXT DEFAULT 'media' CHECK (difficulty IN ('facil','media','dificil')),
+    version INT NOT NULL DEFAULT 1,
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_recipes_name ON recipes(name);
+CREATE INDEX IF NOT EXISTS idx_recipes_active ON recipes(active);
+CREATE INDEX IF NOT EXISTS idx_recipes_catalog ON recipes(catalog_item_id);
+
+CREATE OR REPLACE FUNCTION update_equipment_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_equipment_updated ON equipment;
+CREATE TRIGGER trg_equipment_updated
+    BEFORE UPDATE ON equipment
+    FOR EACH ROW EXECUTE FUNCTION update_equipment_timestamp();
+
+CREATE OR REPLACE FUNCTION update_recipes_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_recipes_updated ON recipes;
+CREATE TRIGGER trg_recipes_updated
+    BEFORE UPDATE ON recipes
+    FOR EACH ROW EXECUTE FUNCTION update_recipes_timestamp();
 
 -- ============================================================
 -- 22. AUTOMATION RULES (triggered by webhook events)
@@ -1167,6 +1455,121 @@ CREATE TABLE IF NOT EXISTS waiters (
 ALTER TABLE waiters DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
+-- 32b. BRIEFINGS DE CAMAREROS — documento operativo previo al evento
+-- (antes en scripts/2026-06-23-briefings-migrate.sql y -briefings.sql;
+--  se usa la forma final extendida, drift de esquema)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_briefings (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id      UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  generated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  generated_by  TEXT,
+  version       INT NOT NULL DEFAULT 1,
+  status        TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','sent','archived')),
+  sent_at       TIMESTAMPTZ,
+  content       JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_briefings_event ON event_briefings(event_id);
+CREATE INDEX IF NOT EXISTS idx_briefings_status ON event_briefings(status);
+ALTER TABLE event_briefings DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 32c. ORPHAN TABLES — referenciadas por código vivo pero sin DDL en
+-- ningún script (autoría desde uso real, ver código citado en cada una).
+-- ============================================================
+
+-- email_queue — src/lib/email.ts, src/app/api/cron/post-event-followup,
+-- src/app/api/cron/pre-event-reminders
+CREATE TABLE IF NOT EXISTS email_queue (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id        UUID REFERENCES events(id) ON DELETE SET NULL,
+    recipient_email TEXT NOT NULL,
+    recipient_name  TEXT,
+    subject         TEXT NOT NULL,
+    body            TEXT NOT NULL,
+    email_type      TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','sent','failed')),
+    message_id      TEXT,
+    error_message   TEXT,
+    scheduled_for   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at         TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_email_queue_status ON email_queue(status);
+CREATE INDEX IF NOT EXISTS idx_email_queue_event ON email_queue(event_id);
+CREATE INDEX IF NOT EXISTS idx_email_queue_scheduled ON email_queue(scheduled_for) WHERE status = 'pending';
+ALTER TABLE email_queue DISABLE ROW LEVEL SECURITY;
+
+-- checklist_templates / checklist_tasks — src/app/api/checklist/route.ts,
+-- src/app/api/checklist/init/route.ts, src/app/api/hoja-operacion/[eventId];
+-- ver también scripts/seed-checklist-templates.sql para el shape esperado.
+CREATE TABLE IF NOT EXISTS checklist_templates (
+    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_type   TEXT NOT NULL,
+    sort_order   INT NOT NULL DEFAULT 0,
+    title        TEXT NOT NULL,
+    description  TEXT,
+    hours_before INT,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_checklist_templates_type ON checklist_templates(event_type);
+ALTER TABLE checklist_templates DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS checklist_tasks (
+    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id     UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    template_id  UUID REFERENCES checklist_templates(id) ON DELETE SET NULL,
+    title        TEXT NOT NULL,
+    description  TEXT,
+    hours_before INT,
+    sort_order   INT NOT NULL DEFAULT 0,
+    completed    BOOLEAN NOT NULL DEFAULT false,
+    completed_at TIMESTAMPTZ,
+    custom       BOOLEAN NOT NULL DEFAULT false,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_checklist_tasks_event ON checklist_tasks(event_id);
+ALTER TABLE checklist_tasks DISABLE ROW LEVEL SECURITY;
+
+-- business_settings — src/app/api/settings/route.ts, src/lib/email.ts
+CREATE TABLE IF NOT EXISTS business_settings (
+    id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_name      TEXT NOT NULL DEFAULT 'J.Benitez',
+    address            TEXT,
+    cif                TEXT,
+    phone              TEXT,
+    email              TEXT,
+    logo_url           TEXT,
+    bar_price_per_hour NUMERIC(10,2) NOT NULL DEFAULT 0,
+    iva_pct            NUMERIC(5,2) NOT NULL DEFAULT 10,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE business_settings DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_business_settings_updated ON business_settings;
+CREATE TRIGGER trg_business_settings_updated BEFORE UPDATE ON business_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+-- Fila única de configuración (GET/PUT siempre operan sobre "LIMIT 1").
+INSERT INTO business_settings (business_name, address)
+SELECT 'J.Benitez', 'Sevilla'
+WHERE NOT EXISTS (SELECT 1 FROM business_settings);
+
+-- uniform_catalog — src/app/api/staffing/uniforms/route.ts
+CREATE TABLE IF NOT EXISTS uniform_catalog (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name        TEXT NOT NULL,
+    description TEXT,
+    color       TEXT,
+    gender      TEXT NOT NULL DEFAULT 'unisex',
+    active      BOOLEAN NOT NULL DEFAULT true,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_uniform_catalog_active ON uniform_catalog(active);
+ALTER TABLE uniform_catalog DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
 -- 33. PERFORMANCE INDEXES (P1 audit)
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at DESC);
@@ -1348,12 +1751,13 @@ END $$;
 
 -- ============================================================
 -- Trazabilidad sanitaria (APPCC) — recepción de lotes y consumo por evento.
--- Antes vivían solo en migraciones (drift). `supplier_order_id` se deja como
--- UUID sin FK para no acoplar con la cadena de supplier_orders.
+-- Antes vivían solo en migraciones (drift). `supplier_order_id` ahora tiene
+-- FK real a supplier_orders (definida arriba, sección 20b.1); en una versión
+-- anterior de este fichero se dejaba sin FK porque supplier_orders no existía.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS receiving_log (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    supplier_order_id UUID,
+    supplier_order_id UUID REFERENCES supplier_orders(id) ON DELETE SET NULL,
     ingredient_id     UUID REFERENCES ingredients(id) ON DELETE CASCADE,
     lot_number        TEXT NOT NULL,
     batch_quantity    NUMERIC(12,3) NOT NULL DEFAULT 0,
@@ -1370,6 +1774,10 @@ CREATE TABLE IF NOT EXISTS receiving_log (
     created_at        TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_receiving_ingredient ON receiving_log(ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_receiving_lot ON receiving_log(lot_number);
+CREATE INDEX IF NOT EXISTS idx_receiving_supplier ON receiving_log(supplier);
+CREATE INDEX IF NOT EXISTS idx_receiving_date ON receiving_log(received_date);
+CREATE INDEX IF NOT EXISTS idx_receiving_order ON receiving_log(supplier_order_id);
 ALTER TABLE receiving_log DISABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS lot_consumption (
@@ -1381,4 +1789,152 @@ CREATE TABLE IF NOT EXISTS lot_consumption (
     consumed_at       TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_lot_consumption_event ON lot_consumption(event_id);
+CREATE INDEX IF NOT EXISTS idx_lot_consumption_receiving ON lot_consumption(receiving_log_id);
 ALTER TABLE lot_consumption DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- APPCC — Análisis de Peligros y Puntos Críticos de Control
+-- (antes solo en scripts/2026-06-22-appcc-migrate.sql, drift de esquema)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS haccp_plans (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id    UUID REFERENCES events(id) ON DELETE CASCADE,
+  plan_type   TEXT NOT NULL CHECK (plan_type IN ('general','catering','specific')),
+  version     INT NOT NULL DEFAULT 1,
+  approved_by TEXT,
+  approval_date DATE,
+  valid_until DATE,
+  status      TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','active','expired','archived')),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_haccp_plans_event ON haccp_plans(event_id);
+CREATE INDEX IF NOT EXISTS idx_haccp_plans_status ON haccp_plans(status);
+
+CREATE TABLE IF NOT EXISTS haccp_critical_limits (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  plan_id           UUID NOT NULL REFERENCES haccp_plans(id) ON DELETE CASCADE,
+  parameter         TEXT NOT NULL CHECK (parameter IN (
+                      'temp_fridge','temp_freezer','temp_cold_room',
+                      'temp_cook','temp_reheat','temp_hold',
+                      'ph','aw','time_room_temp','time_shelf_life','storage')),
+  name              TEXT NOT NULL,
+  description       TEXT,
+  min_value         NUMERIC(6,2),
+  max_value         NUMERIC(6,2),
+  unit              TEXT NOT NULL DEFAULT '°C',
+  corrective_action TEXT,
+  frequency         TEXT CHECK (frequency IN ('cada_30min','por_lote','cada_hora','diario','semanal')),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_haccp_limits_plan ON haccp_critical_limits(plan_id);
+
+CREATE TABLE IF NOT EXISTS haccp_monitoring (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  limit_id    UUID NOT NULL REFERENCES haccp_critical_limits(id) ON DELETE CASCADE,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  recorded_by TEXT NOT NULL,
+  value       NUMERIC(6,2) NOT NULL,
+  unit        TEXT NOT NULL DEFAULT '°C',
+  status      TEXT NOT NULL CHECK (status IN ('ok','warning','critical')),
+  notes       TEXT,
+  is_corrected BOOLEAN DEFAULT false,
+  corrected_at TIMESTAMPTZ,
+  corrected_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_haccp_monitoring_limit ON haccp_monitoring(limit_id);
+CREATE INDEX IF NOT EXISTS idx_haccp_monitoring_date ON haccp_monitoring(recorded_at DESC);
+
+CREATE TABLE IF NOT EXISTS fridge_temperature_log (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id     UUID REFERENCES events(id) ON DELETE SET NULL,
+  fridge_name  TEXT NOT NULL,
+  fridge_type  TEXT NOT NULL DEFAULT 'fridge' CHECK (fridge_type IN ('fridge','freezer','cold_room')),
+  recorded_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  temperature  NUMERIC(5,2) NOT NULL,
+  target_min   NUMERIC(5,2),
+  target_max   NUMERIC(5,2),
+  status       TEXT CHECK (status IN ('ok','warning','critical')),
+  recorded_by  TEXT NOT NULL,
+  notes        TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_fridge_temp_date ON fridge_temperature_log(recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_fridge_temp_name ON fridge_temperature_log(fridge_name);
+CREATE INDEX IF NOT EXISTS idx_fridge_temp_event ON fridge_temperature_log(event_id);
+
+CREATE TABLE IF NOT EXISTS cleaning_log (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id      UUID REFERENCES events(id) ON DELETE SET NULL,
+  area          TEXT NOT NULL,
+  schedule      TEXT NOT NULL CHECK (schedule IN ('diario','semanal','mensual','pre-evento','post-evento')),
+  performed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  performed_by  TEXT NOT NULL,
+  verified_by   TEXT,
+  verified_at   TIMESTAMPTZ,
+  products_used TEXT[],
+  notes         TEXT,
+  checklist     JSONB DEFAULT '[]'::jsonb
+);
+CREATE INDEX IF NOT EXISTS idx_cleaning_area ON cleaning_log(area);
+CREATE INDEX IF NOT EXISTS idx_cleaning_date ON cleaning_log(performed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cleaning_event ON cleaning_log(event_id);
+
+CREATE TABLE IF NOT EXISTS supplier_approval (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_id     UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+  approved_at     DATE NOT NULL DEFAULT CURRENT_DATE,
+  expires_at      DATE,
+  approved_by     TEXT NOT NULL,
+  criteria_met    TEXT[] DEFAULT '{}',
+  status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','expired','suspended','revoked')),
+  document_url    TEXT,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_approval_provider ON supplier_approval(provider_id) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_supplier_approval_status ON supplier_approval(status);
+
+CREATE TABLE IF NOT EXISTS traceability_log (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id        UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  ingredient_id   UUID REFERENCES ingredients(id) ON DELETE SET NULL,
+  recipe_id       UUID REFERENCES recipes(id) ON DELETE SET NULL,
+  lot_number      TEXT NOT NULL,
+  receiving_id    UUID REFERENCES receiving_log(id) ON DELETE SET NULL,
+  quantity_used   NUMERIC(10,3) NOT NULL,
+  unit            TEXT NOT NULL DEFAULT 'g',
+  used_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  used_by         TEXT,
+  guest_served    INT,
+  is_critical     BOOLEAN DEFAULT false,
+  notes           TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_traceability_event ON traceability_log(event_id);
+CREATE INDEX IF NOT EXISTS idx_traceability_ingredient ON traceability_log(ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_traceability_lot ON traceability_log(lot_number);
+CREATE INDEX IF NOT EXISTS idx_traceability_date ON traceability_log(used_at DESC);
+
+CREATE TABLE IF NOT EXISTS haccp_equipment_calibration (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  equipment_id    UUID REFERENCES equipment(id) ON DELETE CASCADE,
+  calibration_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  calibrated_by   TEXT NOT NULL,
+  result          TEXT NOT NULL CHECK (result IN ('pass','fail','adjusted')),
+  next_calibration DATE,
+  certificate_url TEXT,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_haccp_calibration_equip ON haccp_equipment_calibration(equipment_id DESC);
+
+CREATE OR REPLACE FUNCTION update_haccp_timestamp()
+RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_haccp_plans_updated ON haccp_plans;
+CREATE TRIGGER trg_haccp_plans_updated BEFORE UPDATE ON haccp_plans
+  FOR EACH ROW EXECUTE FUNCTION update_haccp_timestamp();
+
+DROP TRIGGER IF EXISTS trg_supplier_approval_updated ON supplier_approval;
+CREATE TRIGGER trg_supplier_approval_updated BEFORE UPDATE ON supplier_approval
+  FOR EACH ROW EXECUTE FUNCTION update_haccp_timestamp();

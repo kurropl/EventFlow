@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
-import { deductStockForEvent } from '@/app/api/stock/deduct/route';
+import { deductStockForEvent } from '@/lib/stockDeduct';
 import { freezeEscandallo } from '@/lib/escandallo';
 
 export const dynamic = 'force-dynamic';
