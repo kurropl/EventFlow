@@ -40,9 +40,11 @@ export async function GET(_req: NextRequest) {
           [eventId]
         );
 
-        // Escandallo real costes de ingredientes
-        const escandalloResult = await query(
-          `SELECT COALESCE(SUM(estimated_cost), 0) as escandallo_total
+        // Coste real congelado (AC2.4): desviación del escandallo tras el cierre.
+        // No sustituye a events.total_cost como fuente del margen (R2/Opción B);
+        // es solo un indicador de desviación estimado→real.
+        const frozenCostResult = await query(
+          `SELECT COALESCE(SUM(estimated_cost), 0) as frozen_total
            FROM event_shopping_items WHERE event_id = $1 AND frozen = true`,
           [eventId]
         );
@@ -53,7 +55,7 @@ export async function GET(_req: NextRequest) {
         const paid = Number(paymentsResult.rows[0]?.total_paid || 0);
         const paymentCount = Number(paymentsResult.rows[0]?.payment_count || 0);
         const paidCount = Number(paymentsResult.rows[0]?.paid_count || 0);
-        const escandalloCost = Number(escandalloResult.rows[0]?.escandallo_total || 0);
+        const frozenRealCost = Number(frozenCostResult.rows[0]?.frozen_total || 0);
 
         const grossMargin = pvp - cost;
         const marginPct = pvp > 0 ? (grossMargin / pvp) * 100 : 0;
@@ -91,8 +93,8 @@ export async function GET(_req: NextRequest) {
           unpaidCount: paymentCount - paidCount,
           isFullyPaid: Number(paid) >= pvp,
 
-          // Escandallo real
-          escandalloTotal: escandalloCost,
+          // Coste real congelado (AC2.4) — desviación, no fuente del margen
+          costeRealCongelado: frozenRealCost,
 
           // Desglose
           costBreakdown,

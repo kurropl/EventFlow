@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
+import { recalcEventCost } from '@/lib/domain/recalcEventCost';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -280,8 +281,10 @@ async function inv2(event: any, motivo?: string) {
   // 4. Delete staffing lines for this event
   await querySingle(`DELETE FROM staffing_lines WHERE event_id = $1`, [event.id]);
 
-  // 5. Event back to sent
-  await querySingle(`UPDATE events SET status = 'sent', total_pvp = 0, total_cost = 0 WHERE id = $1`, [event.id]);
+  // 5. Event back to sent — total_cost se recalcula vía la fuente única (R2):
+  // sin escandallo queda en Σ gastos previos (no se pierden al revertir).
+  await querySingle(`UPDATE events SET status = 'sent', total_pvp = 0 WHERE id = $1`, [event.id]);
+  await recalcEventCost(event.id);
 
   // 6. Lead back to presupuestado (linked via client_name matching)
   await querySingle(

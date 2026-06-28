@@ -8,6 +8,7 @@
  */
 
 import { getPool } from '@/lib/db';
+import { recalcEventCost } from '@/lib/domain/recalcEventCost';
 
 /**
  * Recalcula el escandallo de un evento completo
@@ -37,6 +38,10 @@ export async function recalcEventEscandallo(
      WHERE esi.event_id = $2 AND esi.frozen = false AND esi.recipe_item_id IS NOT NULL`,
     [gc, eventId]
   );
+
+  // R2/Opción B: tras rescalar el escandallo, events.total_cost debe seguir
+  // siendo Σ estimated_cost (recalcEventCost es la única fuente de escritura).
+  await recalcEventCost(eventId);
 }
 
 /**

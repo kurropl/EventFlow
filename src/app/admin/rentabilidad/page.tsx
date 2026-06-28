@@ -34,7 +34,7 @@ interface EventProfitability {
   paidCount: number;
   unpaidCount: number;
   isFullyPaid: boolean;
-  escandalloTotal: number;
+  costeRealCongelado: number;
   costBreakdown: CostBreakdown;
   breakdownTypes: string[];
 }
@@ -260,10 +260,10 @@ export default function RentabilidadPage() {
                   </div>
                 )}
 
-                {/* Escandallo */}
-                {ev.escandalloTotal > 0 && (
+                {/* Coste real congelado (AC2.4): desviación del escandallo tras el cierre */}
+                {ev.costeRealCongelado > 0 && (
                   <div className="mt-2 text-[10px] text-stone-400 text-right">
-                    Escandallo real: {ev.escandalloTotal.toFixed(2)}€
+                    Coste real congelado: {ev.costeRealCongelado.toFixed(2)}€
                   </div>
                 )}
               </div>

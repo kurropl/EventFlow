@@ -59,7 +59,9 @@ VALUES
 INSERT INTO clients (id, name, email, phone)
 VALUES ('44444444-4444-4444-4444-444444444444', 'Cliente VERIFY', 'verify@eventflow.test', '600000000');
 
--- Evento (draft), 120 adultos, menú
+-- Evento (draft), 120 adultos, menú.
+-- total_cost = 0: sin escandallo todavía no hay coste (R2/Opción B); lo fija
+-- recalcEventCost al aceptar (generateEscandallo -> 960.00 vía recipe_items).
 INSERT INTO events (
   id, client_id, client_name, client_email, client_phone, event_type,
   guest_count, kids_count, event_date, status, service_type, selected_items,
@@ -70,7 +72,7 @@ INSERT INTO events (
   'Cliente VERIFY', 'verify@eventflow.test', '600000000', 'boda',
   120, 0, (now() + interval '60 days')::date, 'draft', 'menu',
   '[{"name":"Solomillo VERIFY","quantity":120,"pvp":25,"cost":8}]'::jsonb,
-  3000.00, 960.00, 10
+  3000.00, 0.00, 10
 );
 
 -- Quote en 'sent' (listo para aceptar vía API)

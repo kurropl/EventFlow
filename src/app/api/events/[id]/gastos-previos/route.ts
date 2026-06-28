@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle, transaction } from '@/lib/db';
 import { sanitizeError, isValidUUID } from '@/lib/security';
+import { recalcEventCost } from '@/lib/domain/recalcEventCost';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,14 +59,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         [params.id, `${PREFIX} ${String(concept).trim()}`, qty, unit, total]
       )).rows[0];
 
-      // Suma al coste total del evento (FR-A06).
-      const updated = (await client.query(
-        `UPDATE events SET total_cost = COALESCE(total_cost, 0) + $2 WHERE id = $1
-         RETURNING total_cost`,
-        [params.id, total]
-      )).rows[0];
+      // Suma al coste total del evento (FR-A06) vía la fuente única (R2/Opción B).
+      const totalCost = await recalcEventCost(client, params.id);
 
-      return { line, total_cost: Number(updated.total_cost) };
+      return { line, total_cost: totalCost };
     });
 
     return NextResponse.json({ success: true, data: result.line, total_cost: result.total_cost }, { status: 201 });

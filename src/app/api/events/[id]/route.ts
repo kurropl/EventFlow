@@ -111,13 +111,15 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, notes, total_pvp, total_cost, bar_hours, selected_items,
+    const { status, notes, total_pvp, bar_hours, selected_items,
             client_name, client_email, event_type, guest_count, kids_count, event_date,
             linen_type, centerpiece } = body;
 
-    // If selected_items provided, recalculate totals from catalog
+    // If selected_items provided, recalculate total_pvp from catalog.
+    // total_cost NO se calcula aquí: antes de la aceptación no existe escandallo
+    // y, tras ella, su única fuente es recalcEventCost (R2/Opción B) — GET ya
+    // sirve una estimación en vivo (events/[id] GET) sin persistirla.
     let calculatedPvp = total_pvp;
-    let calculatedCost = total_cost;
     if (selected_items && Array.isArray(selected_items)) {
       const catalogItems = await queryMany<any>(
         `SELECT id, name, pvp, cost, category FROM catalog_items WHERE active = true`,
@@ -132,7 +134,6 @@ export async function PUT(
         catArr.push(ci);
       }
       let pvpSum = 0;
-      let costSum = 0;
       for (const item of selected_items) {
         const itemName = (item.name || '').toLowerCase().trim();
         const itemCat = (item.category || '').toLowerCase().trim();
@@ -149,11 +150,9 @@ export async function PUT(
         if (catItem) {
           const qty = Number(item.quantity) || 1;
           pvpSum += (Number(catItem.pvp) || 0) * qty;
-          costSum += (Number(catItem.cost) || 0) * qty;
         }
       }
       calculatedPvp = pvpSum;
-      calculatedCost = costSum;
     }
 
     const result = await transaction(async (client) => {
@@ -193,10 +192,6 @@ export async function PUT(
       if (calculatedPvp !== undefined) {
         fields.push(`total_pvp = $${p++}`);
         vals.push(calculatedPvp);
-      }
-      if (calculatedCost !== undefined) {
-        fields.push(`total_cost = $${p++}`);
-        vals.push(calculatedCost);
       }
       if (selected_items !== undefined) {
         fields.push(`selected_items = $${p++}::jsonb`);
@@ -260,6 +255,17 @@ export async function PUT(
           return NextResponse.json({ success: false, error: err.message }, { status: err.status });
         }
         throw err;
+      }
+    }
+
+    // ── R2/AC2.2: cambiar guest_count rescala el escandallo y total_cost ──
+    if ('guest_count' in body && !result.acceptQuoteId) {
+      try {
+        const { recalcEventEscandallo } = await import('@/lib/recalcEscandallo');
+        await recalcEventEscandallo(id, Number(guest_count) || undefined);
+        result.event = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [id]);
+      } catch (e) {
+        console.error('[events PUT] recalcEventEscandallo failed (non-fatal):', e);
       }
     }
 

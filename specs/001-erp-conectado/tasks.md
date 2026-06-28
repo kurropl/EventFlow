@@ -41,13 +41,13 @@ demuestra hecha.
   **DoD:** confirm no duplica order/pagos; E2E verde.
 
 ## FASE 2 · Fuente única de coste — Opción B (P0 · R2)
-- [ ] **T2.1** Invocar `recalcEventCost` en: aceptación (ya en T1.3), cambio de
+- [x] **T2.1** Invocar `recalcEventCost` en: aceptación (ya en T1.3), cambio de
   `guest_count` (`events/[id]` PUT y donde se edite pax), y tras `recalcEscandallo`
   (`src/lib/recalcEscandallo.ts`). **DoD:** AC2.2 (cambiar pax recalcula coste).
-- [ ] **T2.2** Garantizar que **solo** `recalcEventCost` escribe `events.total_cost`
+- [x] **T2.2** Garantizar que **solo** `recalcEventCost` escribe `events.total_cost`
   (quitar el set desde el quote en `quotes/[id]:104-106`, dejar solo total_pvp).
   **DoD:** grep: `total_cost =` solo en `domain/recalcEventCost.ts` (+triggers schema).
-- [ ] **T2.3** `rentabilidad/route.ts`: el margen ya usa `events.total_cost`
+- [x] **T2.3** `rentabilidad/route.ts`: el margen ya usa `events.total_cost`
   (correcto tras T2.2); renombrar/aclarar la métrica "escandallo" a "coste real
   congelado". **DoD:** AC2.3 (coste mostrado = coste del margen).
 
