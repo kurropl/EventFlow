@@ -121,15 +121,15 @@ const DEFAULT_EQUIPMENT_MAP: Record<string, { equipmentName: string; qtyPerUse: 
 
 async function getPassForCategory(
   category: string,
-  customPassOrder: any[] | null,
+  customPassOrder: Record<string, number> | null,
   catalogItemName: string
 ): Promise<number> {
-  // Si hay reasignación manual, priorizar
-  if (customPassOrder && Array.isArray(customPassOrder)) {
-    const manual = customPassOrder.find(
-      (p: any) => p.item_name === catalogItemName || p.category === category
-    );
-    if (manual?.pass_number) return manual.pass_number;
+  // Si hay reasignación manual, priorizar (T5.3: forma única JSON
+  // { item_name: pass_number }, la misma que escribe/lee
+  // api/cocina/event/[eventId]/passes/route.ts).
+  if (customPassOrder && typeof customPassOrder === 'object' && !Array.isArray(customPassOrder)) {
+    const manual = customPassOrder[catalogItemName];
+    if (manual) return manual;
   }
 
   // Mapeo por defecto desde la BD (si las tablas de pases no existen, caemos al hardcode)

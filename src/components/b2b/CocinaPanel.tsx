@@ -624,15 +624,14 @@ function EquipamientoTab() {
 /*  Pases Tab                                                         */
 /* ------------------------------------------------------------------ */
 
-const PASS_OPTIONS = [
-  { value: 'pass_a', label: 'Pase A' },
-  { value: 'pass_b', label: 'Pase B' },
-  { value: 'pass_c', label: 'Pase C' },
-  { value: 'pass_d', label: 'Pase D' },
-];
+interface ServicePass {
+  id: string;
+  name: string;
+}
 
 function PasesTab() {
   const [mappings, setMappings] = useState<CategoryPass[]>([]);
+  const [passOptions, setPassOptions] = useState<ServicePass[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -640,9 +639,14 @@ function PasesTab() {
   const fetchMappings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/cocina/passes');
-      const data = await res.json();
-      if (data.success) setMappings(data.data || []);
+      const [mapRes, passRes] = await Promise.all([
+        fetch('/api/cocina/passes'),
+        fetch('/api/cocina/service-passes'),
+      ]);
+      const mapData = await mapRes.json();
+      if (mapData.success) setMappings(mapData.data || []);
+      const passData = await passRes.json();
+      if (passData.success) setPassOptions(passData.data || []);
     } catch {
       /* silent */
     }
@@ -666,7 +670,7 @@ function PasesTab() {
       if (data.success) {
         setMappings((prev) =>
           prev.map((m) =>
-            m.id === mapping.id ? { ...m, pass_id: newPassId, pass_name: PASS_OPTIONS.find(p => p.value === newPassId)?.label || newPassId } : m
+            m.id === mapping.id ? { ...m, pass_id: newPassId, pass_name: passOptions.find(p => p.id === newPassId)?.name || newPassId } : m
           )
         );
       }
@@ -730,13 +734,13 @@ function PasesTab() {
                     <SelectValue placeholder="Seleccionar pase" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a] text-white">
-                    {PASS_OPTIONS.map((p) => (
+                    {passOptions.map((p) => (
                       <SelectItem
-                        key={p.value}
-                        value={p.value}
+                        key={p.id}
+                        value={p.id}
                         className="hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] focus:text-white cursor-pointer"
                       >
-                        {p.label}
+                        {p.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -782,15 +786,56 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
       .catch(() => setLoadingEvents(false));
   }, []);
 
+  const SHEET_ROUTE: Record<string, string> = {
+    produccion: 'production',
+    carga: 'loading',
+    logistica: 'logistics',
+  };
+
+  function flattenSheet(tab: string, sheet: any): HojaRow[] {
+    if (!sheet) return [];
+    if (tab === 'produccion') {
+      return (sheet.passes || []).flatMap((p: any) =>
+        (p.totalIngredients || []).map((ing: any) => ({
+          pase: p.pass?.passName,
+          ingrediente: ing.ingredientName,
+          cantidad: ing.totalQty,
+          unidad: ing.unit,
+        }))
+      );
+    }
+    if (tab === 'carga') {
+      if (!sheet.applies) return [{ aviso: sheet.reason || 'No aplica' }];
+      return [...(sheet.perecedero || []), ...(sheet.noPerecedero || [])].map((it: any) => ({
+        producto: it.productName,
+        cantidad: it.quantity,
+        unidad: it.unit,
+        perecedero: it.perishable ? 'Sí' : 'No',
+      }));
+    }
+    if (tab === 'logistica') {
+      return (sheet.equipment || []).map((eq: any) => ({
+        equipo: eq.name,
+        categoria: eq.category,
+        necesario: eq.needed,
+        disponible: eq.available,
+        falta: eq.short,
+        unidad: eq.unit,
+      }));
+    }
+    return [];
+  }
+
   const fetchSheet = useCallback(async (eventId: string, tab: string) => {
     if (!eventId) return;
     setLoadingSheet(true);
     setSheetError('');
     try {
-      const res = await fetch(`/api/cocina/event/${eventId}/${tab}`);
+      const route = SHEET_ROUTE[tab] || tab;
+      const res = await fetch(`/api/cocina/event/${eventId}/${route}`);
       const data = await res.json();
       if (data.success) {
-        setSheetData(data.data || []);
+        setSheetData(flattenSheet(tab, data.data?.sheet));
       } else {
         setSheetError(data.error || 'Error al cargar');
         setSheetData([]);

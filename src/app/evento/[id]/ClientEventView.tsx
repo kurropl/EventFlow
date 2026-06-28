@@ -29,12 +29,15 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  nuevo: { label: 'Recibido', color: 'bg-amber-100 text-amber-800' },
-  propuesta_enviada: { label: 'Propuesta enviada', color: 'bg-blue-100 text-blue-800' },
-  confirmado: { label: 'Confirmado', color: 'bg-emerald-100 text-emerald-800' },
-  cancelado: { label: 'Cancelado', color: 'bg-red-100 text-red-800' },
-  en_curso: { label: 'En curso', color: 'bg-purple-100 text-purple-800' },
-  completado: { label: 'Completado', color: 'bg-stone-100 text-stone-800' },
+  draft: { label: 'Recibido', color: 'bg-amber-100 text-amber-800' },
+  sent: { label: 'Propuesta enviada', color: 'bg-blue-100 text-blue-800' },
+  accepted: { label: 'Confirmado', color: 'bg-emerald-100 text-emerald-800' },
+  in_progress: { label: 'En curso', color: 'bg-purple-100 text-purple-800' },
+  completed: { label: 'Completado', color: 'bg-stone-100 text-stone-800' },
+  paid: { label: 'Completado', color: 'bg-stone-100 text-stone-800' },
+  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800' },
+  lost: { label: 'Rechazado', color: 'bg-red-100 text-red-800' },
+  reopened: { label: 'En curso', color: 'bg-purple-100 text-purple-800' },
 };
 
 function formatDate(dateStr: string) {
@@ -47,7 +50,7 @@ export default function ClientEventView({
   clientName, eventType, eventDate, guestCount, kidsCount,
   status, menuName, items, notes, createdAt,
 }: ClientEventViewProps) {
-  const statusInfo = STATUS_LABELS[status] || STATUS_LABELS.nuevo;
+  const statusInfo = STATUS_LABELS[status] || STATUS_LABELS.draft;
 
   return (
     <div className="min-h-screen" style={{ background: '#f6f1e7', fontFamily: "'Inter', sans-serif" }}>

@@ -192,6 +192,7 @@ export const WebhookTopicSchema = z.enum([
   'STATUS_CHANGED',
   'BUDGET_CONFIRMED',
   'BUDGET_CANCELLED',
+  'LEAD_CREATED',
 ]);
 
 export const WebhookPayloadSchema = z.object({

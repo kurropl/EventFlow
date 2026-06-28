@@ -23,25 +23,19 @@ export async function GET(_req: NextRequest) {
   try {
     const pool = getPool();
 
+    // AC5.1: lista los mapeos categoría → pase (forma consumida por PasesTab).
     const result = await pool.query(
-      `SELECT p.id, p.name, p.sort_order AS display_order, p.created_at,
-              json_agg(
-                json_build_object(
-                  'category', cpm.category,
-                  'pass_id', cpm.pass_id
-                )
-              ) AS category_mappings
-       FROM service_passes p
-       LEFT JOIN category_pass_mapping cpm ON cpm.pass_id = p.id
-       GROUP BY p.id, p.name, p.sort_order, p.created_at
-       ORDER BY p.sort_order ASC`
+      `SELECT cpm.id, cpm.category, cpm.pass_id, sp.name AS pass_name
+       FROM category_pass_mapping cpm
+       JOIN service_passes sp ON sp.id = cpm.pass_id
+       ORDER BY sp.sort_order ASC, cpm.category ASC`
     );
 
-    return NextResponse.json({ items: result.rows, total: result.rowCount });
+    return NextResponse.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Error listing passes:', error);
     return NextResponse.json(
-      { error: 'Error al listar pases' },
+      { success: false, error: 'Error al listar pases' },
       { status: 500 }
     );
   }

@@ -165,13 +165,39 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create event: no data returned');
     }
 
+    // Auto-crear/vincular lead (R4/T4.1): el configurador es la entrada del
+    // funnel comercial — todo evento creado aquí debe ser visible en el CRM.
+    let leadId: string | undefined;
+    try {
+      const existingLead = await querySingle<any>(
+        `SELECT id FROM leads WHERE lower(email) = lower($1) ORDER BY created_at DESC LIMIT 1`,
+        [validated.client_email]
+      );
+      if (existingLead?.id) {
+        leadId = existingLead.id;
+      } else {
+        const lead = await querySingle<any>(
+          `INSERT INTO leads (name, email, source, event_type, guest_count, event_date)
+           VALUES ($1, $2, 'configurador', $3, $4, $5)
+           RETURNING id`,
+          [validated.client_name, validated.client_email, validated.event_type, validated.guest_count, validated.event_date]
+        );
+        leadId = lead?.id;
+      }
+      if (leadId) {
+        await emitWebhook('LEAD_CREATED', event, {});
+      }
+    } catch (leadError) {
+      console.error('[events POST] lead creation/link skipped (non-fatal):', leadError);
+    }
+
     // Auto-crear quote implícito (presupuesto raíz) para el evento
     try {
       const quote = await querySingle<any>(
-        `INSERT INTO quotes (event_id, status, items, base_pvp, base_cost, total_pvp, total_cost, notes)
-         VALUES ($1, 'historical', $2::jsonb, $3, $4, $3, $4, 'Presupuesto implícito del configurador web')
+        `INSERT INTO quotes (event_id, status, items, base_pvp, base_cost, total_pvp, total_cost, notes, lead_id)
+         VALUES ($1, 'historical', $2::jsonb, $3, $4, $3, $4, 'Presupuesto implícito del configurador web', $5)
          RETURNING id`,
-        [event.id, JSON.stringify(validated.selected_items || []), validated.total_pvp || 0, validated.total_cost || 0]
+        [event.id, JSON.stringify(validated.selected_items || []), validated.total_pvp || 0, validated.total_cost || 0, leadId || null]
       );
       if (quote?.id) {
         await querySingle(

@@ -21,15 +21,18 @@ export async function GET(
     }
 
     const sheet = await generateLoadingSheet(eventId);
+    const event = eventResult.rows[0];
 
     return NextResponse.json({
-      event: eventResult.rows[0],
+      success: true,
+      event,
       sheet,
+      data: { event, sheet },
     });
   } catch (error) {
     console.error('Error generating loading sheet:', error);
     return NextResponse.json(
-      { error: 'Error al generar hoja de carga' },
+      { success: false, error: 'Error al generar hoja de carga' },
       { status: 500 }
     );
   }

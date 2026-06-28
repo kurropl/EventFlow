@@ -3,7 +3,7 @@
  * GET /api/quotes/public/[id]
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { querySingle } from '@/lib/db';
+import { querySingle, queryMany } from '@/lib/db';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -35,7 +35,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: false, error: 'Presupuesto no encontrado' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: quote });
+    // AC4.4: señal/saldo (40/60) y estado de pago, visibles tras la aceptación.
+    const payments = await queryMany<any>(
+      `SELECT concept, amount, paid, paid_date, due_date FROM payments WHERE event_id = $1 ORDER BY due_date ASC`,
+      [quote.event_id]
+    );
+
+    return NextResponse.json({ success: true, data: { ...quote, payments } });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ success: false, error: message }, { status: 500 });

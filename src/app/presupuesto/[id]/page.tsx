@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 
 interface QuoteData {
   id: string;
+  event_id: string;
   status: string;
   total_pvp: number;
   base_pvp: number;
@@ -27,6 +28,7 @@ interface QuoteData {
     guest_count: number;
     selected_items: any[];
   };
+  payments?: { concept: string; amount: number; paid: boolean; paid_date: string | null; due_date: string }[];
 }
 
 const EVENT_TYPE: Record<string, string> = {
@@ -58,6 +60,8 @@ export default function PresupuestoPage({ params }: { params: { id: string } }) 
   const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejected, setRejected] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -67,6 +71,7 @@ export default function PresupuestoPage({ params }: { params: { id: string } }) 
         if (data.success) {
           setQuote(data.data);
           if (data.data.status === 'accepted') setAccepted(true);
+          if (data.data.status === 'rejected') setRejected(true);
         } else {
           setError(data.error || 'Presupuesto no encontrado');
         }
@@ -98,6 +103,26 @@ export default function PresupuestoPage({ params }: { params: { id: string } }) 
     setAccepting(false);
   };
 
+  const handleReject = async () => {
+    if (!quote || rejecting || accepting) return;
+    setRejecting(true);
+    try {
+      const res = await fetch(`/api/quotes/public/${params.id}/reject`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRejected(true);
+        setQuote((prev) => prev ? { ...prev, status: 'rejected' } : prev);
+      } else {
+        setError(data.error || 'No se pudo rechazar');
+      }
+    } catch {
+      setError('Error al rechazar el presupuesto');
+    }
+    setRejecting(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAF8F5' }}>
@@ -121,7 +146,7 @@ export default function PresupuestoPage({ params }: { params: { id: string } }) 
 
   const items = quote.event?.selected_items || [];
   const isExpired = quote.valid_until && new Date(quote.valid_until) < new Date();
-  const canAccept = quote.status === 'sent' && !isExpired && !accepted;
+  const canAccept = quote.status === 'sent' && !isExpired && !accepted && !rejected;
 
   return (
     <div className="min-h-screen py-8 px-4" style={{ background: '#FAF8F5' }}>
@@ -143,6 +168,15 @@ export default function PresupuestoPage({ params }: { params: { id: string } }) 
               <p className="text-green-600 text-sm mt-1">
                 {quote.accepted_at && `Aceptado el ${fmtDate(quote.accepted_at.slice(0, 10))}`}
               </p>
+              {quote.event_id && (
+                <a href={`/evento/${quote.event_id}`} className="inline-block mt-2 text-sm font-semibold text-green-700 underline">
+                  Ver mi evento
+                </a>
+              )}
+            </div>
+          ) : rejected ? (
+            <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 text-center">
+              <p className="text-gray-700 font-semibold">Presupuesto rechazado</p>
             </div>
           ) : isExpired ? (
             <div className="bg-red-50 border-b border-red-200 px-6 py-4 text-center">
@@ -224,6 +258,29 @@ export default function PresupuestoPage({ params }: { params: { id: string } }) 
               </div>
             </div>
 
+            {/* Señal/saldo y estado de pago (AC4.4) */}
+            {quote.payments && quote.payments.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-3">Pagos</h3>
+                <div className="space-y-2">
+                  {quote.payments.map((p, i) => (
+                    <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                      <div>
+                        <p className="text-sm text-[#1A1A1A]">{p.concept}</p>
+                        <p className="text-xs text-[#9CA3AF]">Vence {fmtDate(p.due_date.slice(0, 10))}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-[#1A1A1A]">{fmtEUR(p.amount)}</p>
+                        <span className={`text-xs font-semibold ${p.paid ? 'text-green-600' : 'text-amber-600'}`}>
+                          {p.paid ? 'Pagado' : 'Pendiente'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Notes */}
             {quote.notes && (
               <div className="mt-4 p-3 bg-blue-50 rounded-xl">
@@ -232,12 +289,12 @@ export default function PresupuestoPage({ params }: { params: { id: string } }) 
               </div>
             )}
 
-            {/* Accept button */}
+            {/* Accept / Reject buttons */}
             {canAccept && (
-              <div className="mt-6">
+              <div className="mt-6 space-y-2">
                 <button
                   onClick={handleAccept}
-                  disabled={accepting}
+                  disabled={accepting || rejecting}
                   className="w-full py-3 px-6 rounded-xl text-white font-semibold text-base transition-colors disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #C9A84C, #D4B85C)' }}
                 >
@@ -249,6 +306,13 @@ export default function PresupuestoPage({ params }: { params: { id: string } }) 
                   ) : (
                     'Aceptar presupuesto'
                   )}
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={accepting || rejecting}
+                  className="w-full py-3 px-6 rounded-xl text-[#6B7280] font-semibold text-base border border-gray-200 transition-colors disabled:opacity-50 hover:bg-gray-50"
+                >
+                  {rejecting ? 'Procesando...' : 'Rechazar presupuesto'}
                 </button>
                 <p className="text-center text-xs text-[#9CA3AF] mt-2">
                   Al aceptar, confirmaras el servicio de catering para tu evento.

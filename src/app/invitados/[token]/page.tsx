@@ -144,10 +144,10 @@ export default function PublicGuestForm() {
   const saveDecoration = async (field: 'linen_type' | 'centerpiece', value: string) => {
     if (!eventInfo) return;
     try {
-      await fetch(`/api/events/${eventInfo.id}`, {
-        method: 'PUT',
+      await fetch(`/api/guest-forms/decor`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
+        body: JSON.stringify({ event_token: token, [field]: value }),
       });
       if (field === 'linen_type') setDecorLinen(value);
       if (field === 'centerpiece') setDecorCenterpiece(value);

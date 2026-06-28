@@ -23,13 +23,13 @@ export async function GET(
     const sheet = await generateProductionSheet(eventId);
 
     return NextResponse.json({
-      event: eventResult.rows[0],
-      sheet,
+      success: true,
+      data: { event: eventResult.rows[0], sheet },
     });
   } catch (error) {
     console.error('Error generating production sheet:', error);
     return NextResponse.json(
-      { error: 'Error al generar hoja de producción' },
+      { success: false, error: 'Error al generar hoja de producción' },
       { status: 500 }
     );
   }
