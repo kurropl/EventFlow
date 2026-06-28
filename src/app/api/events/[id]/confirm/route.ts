@@ -2,13 +2,16 @@
  * EventFlow — Confirm Event API
  * POST /api/events/[id]/confirm
  *
- * Registra la señal como pagada, confirma el evento,
- * activa el enlace de invitados.
+ * Acepta el presupuesto del evento (delegando en el dominio, idempotente)
+ * y registra la señal como pagada (p.ej. cobrada por transferencia/efectivo
+ * antes de que el cliente acepte online). Ya NO re-crea order/quote/status
+ * de forma ad-hoc: ese fan-out vive única y exclusivamente en acceptQuote.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { query, querySingle } from '@/lib/db';
+import { querySingle, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { acceptQuote, AcceptQuoteError } from '@/lib/domain/acceptQuote';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,68 +26,59 @@ export async function POST(
     }
 
     const body = await req.json().catch(() => ({}));
-
-    // Get event + quote
-    const evRes = await query(
-      `SELECT e.*, q.id as quote_id, q.deposit_pct, q.deposit_amount, q.deposit_paid,
-              q.total_pvp as quote_total, q.status as quote_status, q.lead_id
-       FROM events e
-       LEFT JOIN quotes q ON q.id = e.quote_id
-       WHERE e.id = $1`,
-      [eventId]
-    );
-    if (!evRes.rows?.[0]) {
-      return NextResponse.json({ success: false, error: 'Evento no encontrado' }, { status: 404 });
-    }
-    const ev = evRes.rows[0] as any;
-
-    // 1. Register signal payment
-    const depositAmount = body.amount
-      || Number(ev.deposit_amount)
-      || (Number(ev.quote_total || 0) * Number(ev.deposit_pct || 40) / 100);
-
     const method = body.method || null;
     const paidDate = body.paid_date || new Date().toISOString().slice(0, 10);
 
-    const payment = await querySingle(
-      `INSERT INTO payments (event_id, concept, amount, paid, paid_date, method)
-       VALUES ($1, $2, $3, true, $4, $5) RETURNING *`,
-      [eventId, `Señal (${ev.deposit_pct || 40}%)`, depositAmount, paidDate, method]
+    const event = await querySingle<any>(`SELECT id FROM events WHERE id = $1`, [eventId]);
+    if (!event) {
+      return NextResponse.json({ success: false, error: 'Evento no encontrado' }, { status: 404 });
+    }
+
+    // 1) Asegurar quote + aceptación completa (idempotente vía acceptQuote).
+    const quoteId = await transaction(async (client) => {
+      const quote = (await client.query(
+        `SELECT id FROM quotes WHERE event_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [eventId]
+      )).rows[0];
+      if (quote) return quote.id;
+
+      const ev = (await client.query(`SELECT total_pvp, total_cost, bar_price, iva_pct FROM events WHERE id = $1`, [eventId])).rows[0];
+      const created = (await client.query(
+        `INSERT INTO quotes (event_id, status, base_pvp, base_cost, total_pvp, total_cost, bar_price, iva_pct, sent_at)
+         VALUES ($1, 'sent', $2, $3, $2, $3, $4, $5, now())
+         RETURNING id`,
+        [eventId, Number(ev.total_pvp) || 0, Number(ev.total_cost) || 0, Number(ev.bar_price) || 0, Number(ev.iva_pct) || 10]
+      )).rows[0];
+      return created.id;
+    });
+
+    let accepted;
+    try {
+      accepted = await acceptQuote(quoteId);
+    } catch (err) {
+      if (err instanceof AcceptQuoteError) {
+        return NextResponse.json({ success: false, error: err.message }, { status: err.status });
+      }
+      throw err;
+    }
+
+    // 2) Registrar la señal (40%) como pagada — el pago ya existe (creado por
+    // acceptQuote); aquí solo lo marcamos como cobrado. Idempotente.
+    const depositConcept = 'Señal (40% del presupuesto)';
+    const payment = await querySingle<any>(
+      `UPDATE payments SET paid = true, paid_date = COALESCE(paid_date, $2::date), method = COALESCE(method, $3)
+       WHERE event_id = $1 AND concept = $4
+       RETURNING *`,
+      [eventId, paidDate, method, depositConcept]
     );
 
-    // 2. Mark quote deposit as paid
-    if (ev.quote_id) {
-      await query(
-        `UPDATE quotes SET deposit_paid = true, deposit_amount = $1 WHERE id = $2`,
-        [depositAmount, ev.quote_id]
-      );
-    }
-
-    // 3. Update event status
-    await query(
-      `UPDATE events SET status = 'accepted' WHERE id = $1 AND status NOT IN ('completed','paid','cancelled','lost')`,
-      [eventId]
-    );
-
-    // 4. Update quote + lead
-    if (ev.quote_id) {
-      await query(
-        `UPDATE quotes SET status = 'accepted', accepted_at = now() WHERE id = $1 AND status != 'accepted'`,
-        [ev.quote_id]
-      );
-    }
-    if (ev.lead_id) {
-      await query(`UPDATE leads SET status = 'convertido' WHERE id = $1`, [ev.lead_id]);
-    }
-
-    // 5. Guest invitation link
-    const guestLink = ev.client_token
-      ? `${req.nextUrl.origin}/invitados/${ev.client_token}`
+    const guestLink = accepted.clientToken
+      ? `${req.nextUrl.origin}/invitados/${accepted.clientToken}`
       : null;
 
     return NextResponse.json({
       success: true,
-      data: { payment, deposit_amount: depositAmount, guest_link: guestLink, client_token: ev.client_token },
+      data: { payment, guest_link: guestLink, client_token: accepted.clientToken },
       message: 'Evento confirmado. Señal registrada + enlace invitados activado.',
     });
   } catch (e: unknown) {

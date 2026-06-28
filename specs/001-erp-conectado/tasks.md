@@ -20,23 +20,23 @@ demuestra hecha.
   corre; documenta cuáles fallan hoy.
 
 ## FASE 1 · Capa de dominio + aceptación única (P0 · R1)
-- [ ] **T1.1** Crear `src/lib/domain/generateEscandallo.ts` extrayendo la lógica de
+- [x] **T1.1** Crear `src/lib/domain/generateEscandallo.ts` extrayendo la lógica de
   `quotes/[id]/route.ts:165-260` SIN cambiar comportamiento, **añadiendo**
   `recipe_item_id` al INSERT (R6.2). **DoD:** quotes/[id] usa la función; E2E verde.
-- [ ] **T1.2** Crear `src/lib/domain/recalcEventCost.ts` (D2). **DoD:** unit test:
+- [x] **T1.2** Crear `src/lib/domain/recalcEventCost.ts` (D2). **DoD:** unit test:
   tras generar escandallo, `events.total_cost == Σ estimated_cost`.
-- [ ] **T1.3** Crear `src/lib/domain/acceptQuote.ts` (D1) reutilizando T1.1/T1.2 +
+- [x] **T1.3** Crear `src/lib/domain/acceptQuote.ts` (D1) reutilizando T1.1/T1.2 +
   pagos 40/60 + client_token + sugerencia staffing, **idempotente**. **DoD:** unit
   test de idempotencia (llamar 2× no duplica).
-- [ ] **T1.4** `quotes/[id]/route.ts` (admin) delega en `acceptQuote`; borrar la
+- [x] **T1.4** `quotes/[id]/route.ts` (admin) delega en `acceptQuote`; borrar la
   lógica duplicada. **DoD:** `verify-e2e.sh` 32/32.
-- [ ] **T1.5** `quotes/public/[id]/accept/route.ts` (cliente) delega en
+- [x] **T1.5** `quotes/public/[id]/accept/route.ts` (cliente) delega en
   `acceptQuote`. **DoD:** `verify-erp-conectado.sh` empieza a pasar la parte de
   aceptación-cliente (R1.1).
-- [ ] **T1.6** `events/[id]/route.ts` PUT: eliminar el bloque duplicado
+- [x] **T1.6** `events/[id]/route.ts` PUT: eliminar el bloque duplicado
   (`:287-340`) y delegar/llamar `acceptQuote` cuando proceda. **DoD:** ningún
   `INSERT INTO event_orders` fuera de `domain/` (grep en verde). Invariante #6.
-- [ ] **T1.7** `events/[id]/confirm/route.ts`: reducir a "registrar pago de señal"
+- [x] **T1.7** `events/[id]/confirm/route.ts`: reducir a "registrar pago de señal"
   vía `recordPayment` (sin re-crear order/status ad-hoc) o deprecar si redundante.
   **DoD:** confirm no duplica order/pagos; E2E verde.
 

@@ -13,75 +13,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { deductStockForEvent } from '@/lib/stockDeduct';
-import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
+import { acceptQuote, AcceptQuoteError } from '@/lib/domain/acceptQuote';
 
 const BAR_PRICE_PER_HOUR = 15; // € per person per hour
-
-/**
- * Generate an invoice immediately when a budget is accepted.
- * Creates invoice_number, calculates IVA, and links to the event_order.
- */
-async function generateInvoiceFromAccepted(client: any, eventId: string, event: any, quoteId: string) {
-  // Find the event_order that was just created for this quote
-  const order = (await client.query(
-    `SELECT id, confirmed_price, extra_consumptions FROM event_orders WHERE quote_id = $1 LIMIT 1`,
-    [quoteId]
-  )).rows[0];
-  if (!order) return;
-
-  // Check if invoice already exists
-  const existingInvoice = (await client.query(
-    `SELECT id FROM invoices WHERE event_order_id = $1 LIMIT 1`,
-    [order.id]
-  )).rows[0];
-  if (existingInvoice) return;
-
-  // Try to find a client with fiscal data linked to this event
-  let fiscalName = event.client_name;
-  let fiscalNif = 'PENDIENTE';
-  let clientId = null;
-  const clientRecord = (await client.query(
-    `SELECT id, fiscal_name, fiscal_nif, name FROM clients WHERE id IN (
-      SELECT client_id FROM event_orders WHERE event_id = $1 AND client_id IS NOT NULL LIMIT 1
-    ) OR id IN (
-      SELECT e.client_id FROM events e LEFT JOIN leads l ON l.converted_to_client_id = e.client_id WHERE e.id = $2 LIMIT 1
-    ) LIMIT 1`,
-    [eventId, eventId]
-  )).rows[0];
-  if (clientRecord) {
-    fiscalName = clientRecord.fiscal_name || clientRecord.name;
-    fiscalNif = clientRecord.fiscal_nif || 'PENDIENTE';
-    clientId = clientRecord.id;
-  }
-
-  // Generate invoice number
-  const year = new Date().getFullYear();
-  let invoiceNumber = `FE-${year}-${Math.floor(Math.random() * 9000) + 1000}`;
-  for (let attempts = 0; attempts < 5; attempts++) {
-    invoiceNumber = `FE-${year}-${Math.floor(Math.random() * 9000) + 1000}`;
-    const exists = (await client.query(
-      `SELECT id FROM invoices WHERE invoice_number = $1`, [invoiceNumber]
-    )).rows[0];
-    if (!exists) break;
-  }
-
-  const extrasTotal = (order.extra_consumptions || []).reduce((s: number, ex: any) => s + (ex.amount || 0), 0);
-  const subtotal = Number(order.confirmed_price) || 0;
-  const ivaPct = Number(event.iva_pct) || 10;
-  const ivaAmount = Math.round((subtotal + extrasTotal) * ivaPct / 100 * 100) / 100;
-  const total = subtotal + extrasTotal + ivaAmount;
-
-  await client.query(
-    `INSERT INTO invoices (event_order_id, event_id, client_id, invoice_number,
-      fiscal_name, fiscal_nif, subtotal, iva_pct, iva_amount, total,
-      extras_pvp, payments_total, balance_due, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0, $10, 'pending')`,
-    [order.id, eventId, clientId, invoiceNumber, fiscalName, fiscalNif,
-     subtotal, ivaPct, ivaAmount, total, extrasTotal]
-  );
-
-  console.log(`[invoice] Auto-generated ${invoiceNumber} for event ${eventId}`);
-}
 
 export async function GET(
   _request: NextRequest,
@@ -281,64 +215,32 @@ export async function PUT(
 
       if (!event) return { event: null };
 
-      // If status just changed to 'accepted', create quote + order + payments
+      // Si el status pasa a 'accepted', necesitamos un quoteId para delegar
+      // en acceptQuote (fuera de esta transacción: domain/acceptQuote abre
+      // la suya propia). Buscamos o creamos el quote aquí dentro.
+      let acceptQuoteId: string | null = null;
       if (status === 'accepted') {
-        const existing = (await client.query(
-          `SELECT id FROM quotes WHERE event_id = $1 AND status = 'accepted' LIMIT 1`,
+        let quote = (await client.query(
+          `SELECT id FROM quotes WHERE event_id = $1 ORDER BY created_at DESC LIMIT 1`,
           [id]
         )).rows[0];
 
-        if (!existing) {
-          const guests = Number(event.guest_count) || 0;
-          const serviceType: ServiceType = event.service_type === 'coctel' ? 'coctel' : 'menu';
-          const tablesSuggested = Math.max(1, calcMesas(guests));
-          const waitersSuggested = Math.max(1, calcCamareros(guests, serviceType));
+        if (!quote) {
           const pvpTotal = Number(event.total_pvp) || 0;
           const costTotal = Number(event.total_cost) || 0;
           const marginPct = pvpTotal > 0 ? Math.round(((pvpTotal - costTotal) / pvpTotal) * 100 * 100) / 100 : 0;
-
-          const quote = (await client.query(
+          quote = (await client.query(
             `INSERT INTO quotes (event_id, status, base_pvp, base_cost, total_pvp, total_cost,
-              bar_price, iva_pct, margin_pct, accepted_at)
-             VALUES ($1, 'accepted', $2, $3, $2, $3, $4, $5, $6, now())
+              bar_price, iva_pct, margin_pct, sent_at)
+             VALUES ($1, 'sent', $2, $3, $2, $3, $4, $5, $6, now())
              RETURNING id`,
             [id, pvpTotal, costTotal, Number(event.bar_price) || 0, Number(event.iva_pct) || 10, marginPct]
           )).rows[0];
-
-          await client.query(
-            `INSERT INTO event_orders (event_id, quote_id, client_id, confirmed_price, status,
-              tables_suggested, tables_confirmed, waiters_suggested, waiters_confirmed)
-             VALUES ($1, $2, $3, $4, 'in_progress', $5, $5, $6, $6)`,
-            [id, quote.id, event.client_id || null, pvpTotal, tablesSuggested, waitersSuggested]
-          );
-
-          // 40% deposit (due 7 days from now)
-          const depositAmount = Math.round(pvpTotal * 0.4 * 100) / 100;
-          const depositDue = new Date();
-          depositDue.setDate(depositDue.getDate() + 7);
-          await client.query(
-            `INSERT INTO payments (event_id, concept, amount, due_date, paid)
-             VALUES ($1, 'Señal (40% del presupuesto)', $2, $3::date, false)`,
-            [id, depositAmount, depositDue.toISOString().split('T')[0]]
-          );
-
-          // 60% final (due on event date)
-          const finalAmount = Math.round(pvpTotal * 0.6 * 100) / 100;
-          const eventDateStr = event.event_date
-            ? new Date(event.event_date).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0];
-          await client.query(
-            `INSERT INTO payments (event_id, concept, amount, due_date, paid)
-             VALUES ($1, 'Saldo final (60% del presupuesto)', $2, $3::date, false)`,
-            [id, finalAmount, eventDateStr]
-          );
-
-          // AUTO-GENERATE INVOICE immediately
-          await generateInvoiceFromAccepted(client, id, event, quote.id);
         }
+        acceptQuoteId = quote.id;
       }
 
-      return { event };
+      return { event, acceptQuoteId };
     });
 
     if (!result.event) {
@@ -346,6 +248,19 @@ export async function PUT(
         { success: false, error: 'Event not found' },
         { status: 404 }
       );
+    }
+
+    // ── Aceptación: delegar en el dominio (única implementación, R1/D1) ──
+    if (result.acceptQuoteId) {
+      try {
+        const accepted = await acceptQuote(result.acceptQuoteId);
+        result.event = accepted.event;
+      } catch (err) {
+        if (err instanceof AcceptQuoteError) {
+          return NextResponse.json({ success: false, error: err.message }, { status: err.status });
+        }
+        throw err;
+      }
     }
 
     // ── Auto-deduct stock when event moves to 'completed' or 'paid' ──
