@@ -14,6 +14,7 @@ import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { deductStockForEvent } from '@/lib/stockDeduct';
 import { acceptQuote, AcceptQuoteError } from '@/lib/domain/acceptQuote';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 const BAR_PRICE_PER_HOUR = 15; // € per person per hour
 
@@ -172,7 +173,7 @@ export async function PUT(
         }
       };
 
-      pushIfInBody('status', 'status');
+      // status se gestiona aparte vía domain/eventState (R3, única escritura)
       pushIfInBody('notes', 'notes');
       pushIfInBody('bar_hours', 'bar_hours');
       pushIfInBody('bar_price', 'bar_price');
@@ -198,15 +199,21 @@ export async function PUT(
         vals.push(JSON.stringify(selected_items));
       }
 
-      if (fields.length === 0) {
+      if (fields.length === 0 && status === undefined) {
         return { event: null };
       }
 
-      vals.push(id);
-      const event = (await client.query(
-        `UPDATE events SET ${fields.join(', ')} WHERE id = $${p} RETURNING *`,
-        vals
-      )).rows[0];
+      let event: any = null;
+      if (status !== undefined) {
+        event = await setEventStatus(client, id, status);
+      }
+      if (fields.length > 0) {
+        vals.push(id);
+        event = (await client.query(
+          `UPDATE events SET ${fields.join(', ')} WHERE id = $${p} RETURNING *`,
+          vals
+        )).rows[0];
+      }
 
       if (!event) return { event: null };
 

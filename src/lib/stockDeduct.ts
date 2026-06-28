@@ -7,6 +7,7 @@
  * rompe `next build` ("no es un export de Route válido").
  */
 import { querySingle, queryMany } from '@/lib/db';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 function gramsToUnit(grams: number, ingredientUnit: string): number {
   const u = ingredientUnit.toLowerCase().trim();
@@ -155,10 +156,10 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
   }
 
   // 5. Mark event as stock_deducted and update status
-  await querySingle(
-    `UPDATE events SET stock_deducted = true, status = 'completed' WHERE id = $1 AND status != 'completed' RETURNING id`,
-    [eventId]
-  );
+  await setEventStatus(eventId, 'completed', {
+    extra: { stock_deducted: true },
+    extraWhereSql: `AND status != 'completed'`,
+  });
   // If already completed, just mark as deducted
   await querySingle(
     `UPDATE events SET stock_deducted = true WHERE id = $1 AND stock_deducted = false`,

@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -53,7 +54,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // If paid, also update event status to 'paid'
     if (status === 'paid') {
-      await querySingle(`UPDATE events SET status = 'paid' WHERE id = $1`, [invoice.event_id]);
+      await setEventStatus(invoice.event_id, 'paid');
     }
 
     return NextResponse.json({ data: invoice });

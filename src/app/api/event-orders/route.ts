@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Update event status to in_progress
-    await querySingle(`UPDATE events SET status = 'in_progress' WHERE id = $1`, [quote.eid]);
+    await setEventStatus(quote.eid, 'in_progress');
 
     // Update quote status to accepted
     await querySingle(`UPDATE quotes SET status = 'accepted', accepted_at = now() WHERE id = $1`, [quote_id]);

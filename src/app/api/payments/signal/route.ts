@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 export async function POST(_req: NextRequest) {
   try {
@@ -37,10 +38,7 @@ export async function POST(_req: NextRequest) {
     );
 
     // 3. Set event status to 'presupuestado' (señal pagada)
-    await query(
-      `UPDATE events SET status = 'presupuestado' WHERE id = $1 AND status = 'accepted'`,
-      [eventId]
-    );
+    await setEventStatus(eventId, 'presupuestado', { extraWhereSql: `AND status = 'accepted'` });
 
     // 4. Send notification
     const event = await query(`SELECT client_email, client_name FROM events WHERE id = $1`, [eventId]);

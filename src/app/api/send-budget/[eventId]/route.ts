@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle } from '@/lib/db';
 import { emitWebhook } from '@/lib/webhooks';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 export async function POST(
   _request: NextRequest,
@@ -42,10 +43,7 @@ export async function POST(
     }
 
     // Update status to 'sent'
-    const updated = await querySingle<any>(
-      `UPDATE events SET status = 'sent', updated_at = now() WHERE id = $1 RETURNING *`,
-      [eventId]
-    );
+    const updated = await setEventStatus(eventId, 'sent');
 
     if (!updated) {
       return NextResponse.json(

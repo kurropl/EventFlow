@@ -52,10 +52,10 @@ demuestra hecha.
   congelado". **DoD:** AC2.3 (coste mostrado = coste del margen).
 
 ## FASE 3 · Máquina de estados única (P1 · R3)
-- [ ] **T3.1** Extraer `src/lib/domain/eventState.ts` desde
+- [x] **T3.1** Extraer `src/lib/domain/eventState.ts` desde
   `events/[id]/transitions/route.ts` (mapa VALID + efectos). **DoD:** transitions
   delega; `verify-operativos.sh` 14/14.
-- [ ] **T3.2** Auditar los 18 `UPDATE events SET status`: reemplazar por
+- [x] **T3.2** Auditar los 18 `UPDATE events SET status`: reemplazar por
   `eventState.setStatus/applyTransition` o eliminar si son bypass ilegítimos.
   **DoD:** grep: `UPDATE events SET ... status` solo en `domain/eventState.ts`.
   Invariante #4.

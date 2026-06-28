@@ -16,6 +16,7 @@ import { transaction } from '@/lib/db';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 import { generateEscandallo } from './generateEscandallo';
 import { recalcEventCost } from './recalcEventCost';
+import { setEventStatus } from './eventState';
 
 export interface AcceptQuoteResult {
   quote: any;
@@ -172,13 +173,8 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
       }
     }
 
-    // 8) Transición de estado a 'accepted'.
-    // NOTA: la máquina de estados única se extrae en FASE 3 (eventState.ts);
-    // por ahora replicamos el único UPDATE legítimo que hacía esta transición.
-    event = (await client.query(
-      `UPDATE events SET status = 'accepted' WHERE id = $1 RETURNING *`,
-      [eventId]
-    )).rows[0];
+    // 8) Transición de estado a 'accepted' (R3, única vía: domain/eventState).
+    event = await setEventStatus(client, eventId, 'accepted');
 
     // 9) Sincronizar lead → 'convertido' (fix T4.2: quotes.lead_id es la
     // relación real; events NO tiene lead_id, leads NO tiene event_id).

@@ -8,44 +8,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
 import { recalcEventCost } from '@/lib/domain/recalcEventCost';
+import { VALID_TRANSITIONS, assertTransition, EventStateError, setEventStatus, NOW } from '@/lib/domain/eventState';
 
 type Ctx = { params: Promise<{ id: string }> };
-
-const VALID: Record<string, { from: string[]; to: string }> = {
-  'FWD-2': { from: ['draft'],     to: 'sent' },
-  'FWD-3': { from: ['sent'],      to: 'accepted' },
-  'FWD-4': { from: ['accepted', 'presupuestado'],  to: 'completed' },
-  'INV-1': { from: ['sent'],      to: 'lost' },
-  'INV-2': { from: ['accepted'],  to: 'sent' },
-  'INV-3': { from: ['accepted'],  to: 'cancelled' },
-  'INV-4': { from: ['completed'], to: 'reopened' },
-  'INV-5': { from: ['reopened'],  to: 'completed' },
-};
 
 export async function POST(req: NextRequest, ctx: Ctx) {
   const { id: eventId } = await ctx.params;
   const body = await req.json().catch(() => ({}));
   const { transition, motivo } = body;
 
-  if (!transition || !VALID[transition]) {
+  if (!transition || !VALID_TRANSITIONS[transition]) {
     return NextResponse.json(
-      { success: false, error: `Invalid transition: ${transition}. Valid: ${Object.keys(VALID).join(', ')}` },
+      { success: false, error: `Invalid transition: ${transition}. Valid: ${Object.keys(VALID_TRANSITIONS).join(', ')}` },
       { status: 400 }
     );
   }
-
-  const spec = VALID[transition];
 
   try {
     const event = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [eventId]);
     if (!event) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 
-    if (!spec.from.includes(event.status)) {
-      return NextResponse.json(
-        { success: false, error: `Cannot apply ${transition}: event is '${event.status}', expected ${spec.from.join(' or ')}` },
-        { status: 409 }
-      );
-    }
+    assertTransition(event.status, transition);
 
     switch (transition) {
       case 'FWD-2': return await fwd2(event, motivo);
@@ -60,6 +43,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         return NextResponse.json({ success: false, error: 'Not implemented' }, { status: 501 });
     }
   } catch (error: any) {
+    if (error instanceof EventStateError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     console.error(`[transition ${transition}] Error:`, error);
     return NextResponse.json({ success: false, error: error.message || 'Transition failed' }, { status: 500 });
   }
@@ -91,7 +77,7 @@ async function fwd2(event: any, motivo?: string) {
   );
   if (!quote) return NextResponse.json({ success: false, error: 'No draft quote found' }, { status: 400 });
 
-  await querySingle(`UPDATE events SET status = 'sent' WHERE id = $1`, [event.id]);
+  await setEventStatus(event.id, 'sent');
   await querySingle(`UPDATE quotes SET status = 'sent', sent_at = now() WHERE id = $1 AND status = 'draft'`, [quote.id]);
   await querySingle(
     `UPDATE leads SET status = 'presupuestado' WHERE LOWER(name) = LOWER($1) AND status = 'nuevo'`,
@@ -192,7 +178,7 @@ async function fwd4(event: any, motivo?: string) {
   }
 
   // 1. Event → completed
-  await querySingle(`UPDATE events SET status = 'completed' WHERE id = $1`, [event.id]);
+  await setEventStatus(event.id, 'completed');
   effects.push('event→completed');
 
   // 2. Close operations
@@ -250,7 +236,7 @@ async function fwd4(event: any, motivo?: string) {
 async function inv1(event: any, motivo?: string) {
   if (!motivo) return NextResponse.json({ success: false, error: 'motivo required' }, { status: 400 });
 
-  await querySingle(`UPDATE events SET status = 'lost', lost_at = now(), lost_reason = $2 WHERE id = $1`, [event.id, motivo]);
+  await setEventStatus(event.id, 'lost', { extra: { lost_at: NOW, lost_reason: motivo } });
   await querySingle(
     `UPDATE leads SET status = 'perdido' WHERE LOWER(name) = LOWER($1) AND status IN ('nuevo','presupuestado')`,
     [event.client_name]
@@ -283,7 +269,7 @@ async function inv2(event: any, motivo?: string) {
 
   // 5. Event back to sent — total_cost se recalcula vía la fuente única (R2):
   // sin escandallo queda en Σ gastos previos (no se pierden al revertir).
-  await querySingle(`UPDATE events SET status = 'sent', total_pvp = 0 WHERE id = $1`, [event.id]);
+  await setEventStatus(event.id, 'sent', { extra: { total_pvp: 0 } });
   await recalcEventCost(event.id);
 
   // 6. Lead back to presupuestado (linked via client_name matching)
@@ -319,10 +305,9 @@ async function inv3(event: any, motivo?: string) {
   await querySingle(`UPDATE events SET client_token = NULL WHERE id = $1`, [event.id]);
 
   // 3. Event → cancelled
-  await querySingle(
-    `UPDATE events SET status = 'cancelled', cancelled_at = now(), cancelled_by = 'admin', cancel_reason = $2 WHERE id = $1`,
-    [event.id, motivo]
-  );
+  await setEventStatus(event.id, 'cancelled', {
+    extra: { cancelled_at: NOW, cancelled_by: 'admin', cancel_reason: motivo },
+  });
 
   // Lead stays as 'convertido' for cancelled events (they are still a client)
   await audit(event.id, 'event', event.id, 'INV-3', 'accepted', 'cancelled', 'admin', motivo);
@@ -345,10 +330,9 @@ async function inv4(event: any, motivo?: string) {
   );
   const snapshot = { order, shopping_items: shoppingItems, captured_at: new Date().toISOString() };
 
-  await querySingle(
-    `UPDATE events SET status = 'reopened', reopened_at = now(), reopened_by = 'admin', reopen_reason = $2, snapshot_previo = $3 WHERE id = $1`,
-    [event.id, motivo, JSON.stringify(snapshot)]
-  );
+  await setEventStatus(event.id, 'reopened', {
+    extra: { reopened_at: NOW, reopened_by: 'admin', reopen_reason: motivo, snapshot_previo: JSON.stringify(snapshot) },
+  });
 
   // Block new invoice generation
   await querySingle(`UPDATE event_orders SET status = 'reopened' WHERE event_id = $1`, [event.id]);
@@ -412,12 +396,9 @@ async function inv5(event: any, motivo?: string) {
   // 1. Close operations again
   await querySingle(`UPDATE event_orders SET status = 'completed' WHERE event_id = $1`, [event.id]);
 
-  // 2. Event → completed
-  await querySingle(`UPDATE events SET status = 'completed' WHERE id = $1`, [event.id]);
+  // 2. Event → completed (y limpia el snapshot a la vez)
+  await setEventStatus(event.id, 'completed', { extra: { snapshot_previo: null } });
   effects.push('event→completed');
-
-  // 3. Clear snapshot
-  await querySingle(`UPDATE events SET snapshot_previo = NULL WHERE id = $1`, [event.id]);
 
   await audit(event.id, 'event', event.id, 'INV-5', 'reopened', 'completed', 'admin', motivo, { effects, diff_amount: diffAmount });
   const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);

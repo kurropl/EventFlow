@@ -6,6 +6,7 @@
  */
 
 import { queryMany, querySingle } from '@/lib/db';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 // ============================================================
 // Types
@@ -269,10 +270,7 @@ async function executeAction(
       const newStatus = String(action.config.status ?? '');
       const eventId = context.event.id as string;
       if (eventId && newStatus) {
-        await querySingle(
-          `UPDATE events SET status = $1, updated_at = now() WHERE id = $2`,
-          [newStatus, eventId]
-        );
+        await setEventStatus(eventId, newStatus);
       }
       break;
     }

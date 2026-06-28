@@ -14,6 +14,7 @@ import { query } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { deductStockForEvent } from '@/lib/stockDeduct';
 import { freezeEscandallo } from '@/lib/escandallo';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,10 +86,9 @@ export async function POST(
     }
 
     // 4. Mark event completed
-    await query(
-      `UPDATE events SET status = 'completed' WHERE id = $1 AND status NOT IN ('paid','cancelled','lost')`,
-      [eventId]
-    );
+    await setEventStatus(eventId, 'completed', {
+      extraWhereSql: `AND status NOT IN ('paid','cancelled','lost')`,
+    });
     results.push('Evento cerrado');
 
     return NextResponse.json({

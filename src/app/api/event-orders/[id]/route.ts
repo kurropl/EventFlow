@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle } from '@/lib/db';
+import { setEventStatus } from '@/lib/domain/eventState';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -34,7 +35,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // If completed, also update the event status
     if (status === 'completed') {
-      await querySingle(`UPDATE events SET status = 'completed' WHERE id = $1`, [order.event_id]);
+      await setEventStatus(order.event_id, 'completed');
     }
 
     return NextResponse.json({ data: order });
