@@ -5,8 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle } from '@/lib/db';
+import { queryMany, getPool } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { recordPayment } from '@/lib/domain/recordPayment';
 import { z } from 'zod';
 
 // ── Types ───────────────────────────────────────────────────────
@@ -82,20 +83,16 @@ export async function POST(request: NextRequest) {
 
     const { event_id, amount, concept, due_date, paid, paid_date, method, notes } = parsed.data;
 
-    const created = await querySingle<Payment>(
-      `INSERT INTO payments (event_id, concept, amount, due_date, paid, paid_date, method, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [
-        event_id,
-        (concept ?? 'Pago').trim() || 'Pago',
-        amount,
-        due_date || null,
-        Boolean(paid),
-        paid ? (paid_date || new Date().toISOString().slice(0, 10)) : null,
-        method || null,
-        notes ?? null,
-      ]
-    );
+    const created = await recordPayment(getPool() as any, {
+      eventId: event_id,
+      concept: (concept ?? 'Pago').trim() || 'Pago',
+      amount,
+      dueDate: due_date || null,
+      paid: Boolean(paid),
+      paidDate: paid ? (paid_date || new Date().toISOString().slice(0, 10)) : null,
+      method: method || null,
+      notes: notes ?? null,
+    });
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
     const message = sanitizeError(error);

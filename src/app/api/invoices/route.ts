@@ -5,22 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle } from '@/lib/db';
-
-function generateInvoiceNumber(): string {
-  const year = new Date().getFullYear();
-  const rand = Math.floor(Math.random() * 9000) + 1000;
-  return `FE-${year}-${rand}`;
-}
-
-/** Atomic invoice number via DB sequence — no collisions */
-async function nextInvoiceNumber(): Promise<string> {
-  const year = new Date().getFullYear();
-  const row = await querySingle<{ seq: number }>(
-    `SELECT nextval('invoice_number_seq') as seq`
-  );
-  return `FE-${year}-${String(row?.seq ?? 0).padStart(4, '0')}`;
-}
+import { queryMany, querySingle, getPool } from '@/lib/db';
+import { createInvoice } from '@/lib/domain/createInvoice';
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,8 +69,6 @@ export async function POST(request: NextRequest) {
     const extrasTotal = (order.extra_consumptions || []).reduce((s: number, ex: any) => s + (ex.amount || 0), 0);
     const subtotal = Number(order.confirmed_price) || 0;
     const ivaPct = Number(order.iva_pct) || 10;
-    const ivaAmount = Math.round((subtotal + extrasTotal) * ivaPct / 100 * 100) / 100;
-    const total = subtotal + extrasTotal + ivaAmount;
 
     // Get client total payments
     const paymentsRes = await queryMany<any>(
@@ -93,22 +77,18 @@ export async function POST(request: NextRequest) {
     );
     const paidTotal = Number(paymentsRes[0]?.paid || 0);
 
-    // Generate atomic invoice number
-    const invoiceNumber = await nextInvoiceNumber();
-
-    const invoice = await querySingle<any>(
-      `INSERT INTO invoices (event_order_id, event_id, client_id, invoice_number,
-        fiscal_name, fiscal_nif, fiscal_address, subtotal, iva_pct, iva_amount, total,
-        extras_pvp, payments_total, balance_due, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending')
-       RETURNING *`,
-      [
-        event_order_id, order.event_id, order.client_id, invoiceNumber,
-        order.fiscal_name, order.fiscal_nif, order.fiscal_address,
-        subtotal, ivaPct, ivaAmount, total,
-        extrasTotal, 0, total, // payments_total = 0 initially
-      ]
-    );
+    const invoice = await createInvoice(getPool() as any, {
+      orderId: event_order_id,
+      eventId: order.event_id,
+      clientId: order.client_id,
+      fiscalName: order.fiscal_name,
+      fiscalNif: order.fiscal_nif,
+      fiscalAddress: order.fiscal_address,
+      subtotal,
+      ivaPct,
+      extrasPvp: extrasTotal,
+      paymentsTotal: paidTotal,
+    });
 
     // Update order status to completed (if not already)
     if (order.status !== 'completed') {

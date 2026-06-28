@@ -10,11 +10,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getPool } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { deductStockForEvent } from '@/lib/stockDeduct';
 import { freezeEscandallo } from '@/lib/escandallo';
 import { setEventStatus } from '@/lib/domain/eventState';
+import { createInvoice } from '@/lib/domain/createInvoice';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,32 +57,25 @@ export async function POST(
     const invRes = await query(`SELECT id FROM invoices WHERE event_id = $1 LIMIT 1`, [eventId]);
     if (!invRes.rows?.[0]) {
       const orderRes = await query(`SELECT * FROM event_orders WHERE event_id = $1 LIMIT 1`, [eventId]);
-      const order = orderRes.rows?.[0];
+      const order = orderRes.rows?.[0] as any;
       if (order) {
-        // Número de factura SECUENCIAL por año (no aleatorio) — T16/idempotente
-        const year = new Date().getFullYear();
-        const seq = await query(
-          `SELECT COALESCE(MAX(NULLIF(regexp_replace(invoice_number, '^F-[0-9]+-', ''), '')::int), 0) + 1 AS next
-           FROM invoices WHERE invoice_number LIKE $1`,
-          [`F-${year}-%`]
-        );
-        const nextNum = Number(seq.rows?.[0]?.next) || 1;
-        const invNum = `F-${year}-${String(nextNum).padStart(4, '0')}`;
         const clientRes = await query(`SELECT * FROM clients WHERE id = $1`, [ev.client_id]);
-        const client = clientRes.rows?.[0];
-        const ivaPct = Number(ev.iva_pct || 10);
-        const subtotal = Number(ev.total_pvp || 0);
-        const ivaAmt = subtotal * ivaPct / 100;
-
-        await query(
-          `INSERT INTO invoices (event_order_id, event_id, client_id, invoice_number,
-             fiscal_name, fiscal_nif, subtotal, iva_pct, iva_amount, total, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')`,
-          [order.id, eventId, ev.client_id, invNum,
-           client?.name || ev.client_name || 'Cliente', client?.nif || '',
-           subtotal, ivaPct, ivaAmt, subtotal + ivaAmt]
+        const client = clientRes.rows?.[0] as any;
+        const paidRes = await query(
+          `SELECT COALESCE(SUM(amount), 0) AS paid FROM payments WHERE event_id = $1 AND paid = true`,
+          [eventId]
         );
-        results.push(`Factura ${invNum} generada`);
+        const invoice = await createInvoice(getPool() as any, {
+          orderId: order.id,
+          eventId,
+          clientId: ev.client_id,
+          fiscalName: client?.name || ev.client_name || 'Cliente',
+          fiscalNif: client?.nif || '',
+          subtotal: Number(ev.total_pvp || 0),
+          ivaPct: Number(ev.iva_pct || 10),
+          paymentsTotal: Number(paidRes.rows?.[0]?.paid || 0),
+        });
+        results.push(`Factura ${invoice.invoice_number} generada`);
       }
     }
 

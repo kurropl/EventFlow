@@ -1,6 +1,6 @@
 # Spec 001 — EventFlow como ERP conectado
 
-**Estado:** Draft para ejecución · **Autor:** auditoría (opus) · **Fecha:** 2026-06-28
+**Estado:** Implementada · **Autor:** auditoría (opus) · **Fecha:** 2026-06-28
 **Metodología:** SDD (Spec-Driven Development). Este documento describe el QUÉ y el
 PORQUÉ. El CÓMO está en `plan.md`; el desglose ejecutable en `tasks.md`.
 

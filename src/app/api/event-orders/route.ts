@@ -5,9 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle } from '@/lib/db';
-import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
-import { setEventStatus } from '@/lib/domain/eventState';
+import { queryMany } from '@/lib/db';
+import { acceptQuote, AcceptQuoteError } from '@/lib/domain/acceptQuote';
 
 export async function GET(request: NextRequest) {
   try {
@@ -60,37 +59,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { quote_id, client_id } = body;
+    const { quote_id } = body;
     if (!quote_id) return NextResponse.json({ error: 'quote_id required' }, { status: 400 });
 
-    // Get the quote with event data
-    const quote = await querySingle<any>(
-      `SELECT q.*, e.id as eid, e.guest_count, e.kids_count, e.service_type
-       FROM quotes q JOIN events e ON e.id = q.event_id WHERE q.id = $1`,
-      [quote_id]
-    );
-    if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+    // Delega en la única fuente canónica de "aceptar presupuesto" (domain/acceptQuote),
+    // que crea event_order + pagos 40/60 + escandallo + staffing de forma idempotente.
+    const result = await acceptQuote(quote_id);
 
-    // Mesas/camareros: fuente ÚNICA src/lib/operations.ts (FR-A05), por tipo de servicio.
-    const guests = quote.guest_count || 1;
-    const serviceType: ServiceType = quote.service_type === 'coctel' ? 'coctel' : 'menu';
-    const tables_suggested = Math.max(1, calcMesas(guests));
-    const waiters_suggested = Math.max(1, calcCamareros(guests, serviceType));
-
-    const order = await querySingle<any>(
-      `INSERT INTO event_orders (event_id, quote_id, client_id, confirmed_price, status, tables_suggested, waiters_suggested)
-       VALUES ($1, $2, $3, $4, 'in_progress', $5, $6) RETURNING *`,
-      [quote.eid, quote_id, client_id || null, quote.total_pvp, tables_suggested, waiters_suggested]
-    );
-
-    // Update event status to in_progress
-    await setEventStatus(quote.eid, 'in_progress');
-
-    // Update quote status to accepted
-    await querySingle(`UPDATE quotes SET status = 'accepted', accepted_at = now() WHERE id = $1`, [quote_id]);
-
-    return NextResponse.json({ data: order }, { status: 201 });
+    return NextResponse.json({ data: result.eventOrder }, { status: 201 });
   } catch (error) {
+    if (error instanceof AcceptQuoteError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

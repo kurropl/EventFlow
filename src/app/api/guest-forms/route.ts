@@ -157,24 +157,42 @@ export async function POST(request: NextRequest) {
       [event.id]
     );
 
+    let result: GuestForm | null;
     if (existing) {
-      const updated = await querySingle<GuestForm>(
+      result = await querySingle<GuestForm>(
         `UPDATE guest_forms
          SET client_name = $2, email = $3, guests = $4, updated_at = now()
          WHERE event_id = $1
          RETURNING *`,
         [event.id, clientName, sanitizedEmail, JSON.stringify(guests)]
       );
-      return NextResponse.json({ success: true, data: updated }, { headers: securityHeaders() });
     } else {
-      const created = await querySingle<GuestForm>(
+      result = await querySingle<GuestForm>(
         `INSERT INTO guest_forms (event_id, client_name, email, guests)
          VALUES ($1, $2, $3, $4)
          RETURNING *`,
         [event.id, clientName, sanitizedEmail, JSON.stringify(guests)]
       );
-      return NextResponse.json({ success: true, data: created }, { status: 201, headers: securityHeaders() });
     }
+
+    // T6.3: sincronizar con la tabla relacional `guests` — es la que consume
+    // el mapa de mesas (table_assignments) para la asignación automática.
+    // El envío del formulario público ES la confirmación, así que cada
+    // invitado nombrado entra como rsvp='confirmado'.
+    await querySingle(`DELETE FROM guests WHERE event_id = $1`, [event.id]);
+    for (const g of guests as Array<Record<string, unknown>>) {
+      if (!g.name) continue;
+      await querySingle(
+        `INSERT INTO guests (event_id, name, group_name, rsvp, menu_type, dietary, notes)
+         VALUES ($1, $2, $3, 'confirmado', $4, $5, $6)`,
+        [event.id, g.name, g.group_name || null, g.menu_type || 'adulto', JSON.stringify(g.dietary || []), g.notes || null]
+      );
+    }
+
+    return NextResponse.json(
+      { success: true, data: result },
+      { status: existing ? 200 : 201, headers: securityHeaders() }
+    );
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500, headers: securityHeaders() });
   }

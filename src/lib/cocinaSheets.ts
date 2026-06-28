@@ -292,9 +292,10 @@ export async function generateLoadingSheet(
 
   const items = await pool.query(
     `SELECT esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit, esi.category, esi.id,
-            ri.quantity AS recipe_qty
+            ri.quantity AS recipe_qty, i.is_dry, i.is_equipment
      FROM event_shopping_items esi
      LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
+     LEFT JOIN ingredients i ON i.id = esi.ingredient_id
      WHERE esi.event_id = $1 AND esi.frozen = false`,
     [eventId]
   );
@@ -318,12 +319,11 @@ export async function generateLoadingSheet(
       catalogItemName: row.ingredient_name,
     };
 
-    // Determinar si es perecedero por la categoría del ingrediente
-    const ingResult = await getPool().query(
-      'SELECT id, name FROM ingredients WHERE name ILIKE $1',
-      [row.ingredient_name.length > 3 ? `%${row.ingredient_name.substring(0, 10)}%` : row.ingredient_name]
-    );
-    const isPerishable = PERISHABLE_INGREDIENTS.has(row.category?.toLowerCase() || '');
+    // is_dry/is_equipment (ingredients) es la fuente canónica cuando el ingrediente
+    // resuelve; si no, cae al heurístico por categoría (sistema legacy).
+    const isPerishable = row.is_dry != null
+      ? !row.is_dry && !row.is_equipment
+      : PERISHABLE_INGREDIENTS.has(row.category?.toLowerCase() || '');
 
     if (isPerishable) {
       item.perishable = true;
@@ -452,10 +452,15 @@ export async function generateLogisticsSheet(
     });
   }
 
-  // 4. Producto seco y perecedero desde escandallo
+  // 4. Producto seco, perecedero y equipamiento-ingrediente desde escandallo.
+  // Fuente canónica (AC6.3): ingredients.is_equipment/is_dry cuando el
+  // ingrediente resuelve; heurístico por nombre/categoría como fallback
+  // (ingredientes legacy sin fila resuelta en `ingredients`).
   const shoppingItems = await pool.query(
-    `SELECT esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit, esi.category
+    `SELECT esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit, esi.category,
+            i.is_dry, i.is_equipment
      FROM event_shopping_items esi
+     LEFT JOIN ingredients i ON i.id = esi.ingredient_id
      WHERE esi.event_id = $1 AND esi.frozen = false`,
     [eventId]
   );
@@ -463,24 +468,36 @@ export async function generateLogisticsSheet(
   const dryGoods: LogisticsGoods[] = [];
   const perishableGoods: LogisticsGoods[] = [];
   const disposables: LogisticsGoods[] = [];
+  const ingredientEquipment: LogisticsEquipment[] = [];
 
   for (const row of shoppingItems.rows) {
     const qty = Number(row.theoretical_qty) || 0;
     const unit = row.theoretical_unit || 'g';
     const cat = (row.category || '').toLowerCase();
+    const name = row.ingredient_name;
 
-    const isPerishable = PERISHABLE_INGREDIENTS.has(cat) ||
-      ['carne', 'carrillera', 'pescado', 'pollo', 'huevo', 'leche', 'nata', 'mantequilla', 'verdura', 'fruta']
-        .some(k => row.ingredient_name.toLowerCase().includes(k));
+    if (row.is_equipment) {
+      ingredientEquipment.push({ name, category: cat || 'utensilio', needed: Math.ceil(qty), available: 0, short: Math.ceil(qty), unit });
+      continue;
+    }
+
     const isDisposable = ['papel', 'film', 'bolsa', 'guante', 'servilleta', 'bandeja de cartón']
-      .some(k => row.ingredient_name.toLowerCase().includes(k));
-
+      .some(k => name.toLowerCase().includes(k));
     if (isDisposable) {
-      disposables.push({ productName: row.ingredient_name, quantity: qty, unit, category: cat });
-    } else if (isPerishable) {
-      perishableGoods.push({ productName: row.ingredient_name, quantity: qty, unit, category: cat });
+      disposables.push({ productName: name, quantity: qty, unit, category: cat });
+      continue;
+    }
+
+    const isDry = row.is_dry != null ? row.is_dry : !(
+      PERISHABLE_INGREDIENTS.has(cat) ||
+      ['carne', 'carrillera', 'pescado', 'pollo', 'huevo', 'leche', 'nata', 'mantequilla', 'verdura', 'fruta']
+        .some(k => name.toLowerCase().includes(k))
+    );
+
+    if (isDry) {
+      dryGoods.push({ productName: name, quantity: qty, unit, category: cat });
     } else {
-      dryGoods.push({ productName: row.ingredient_name, quantity: qty, unit, category: cat });
+      perishableGoods.push({ productName: name, quantity: qty, unit, category: cat });
     }
   }
 
@@ -490,7 +507,7 @@ export async function generateLogisticsSheet(
     venueType,
     includesEquipmentTransport,
     // En el local el equipamiento ya está in situ: no es lista de transporte.
-    equipment: includesEquipmentTransport ? equipment : [],
+    equipment: includesEquipmentTransport ? [...equipment, ...ingredientEquipment] : [],
     dryGoods,
     perishableGoods,
     disposables,

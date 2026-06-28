@@ -9,9 +9,10 @@
  * 4. Envía notificación por email de confirmación
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getPool } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { setEventStatus } from '@/lib/domain/eventState';
+import { recordPayment } from '@/lib/domain/recordPayment';
 
 export async function POST(_req: NextRequest) {
   try {
@@ -24,12 +25,15 @@ export async function POST(_req: NextRequest) {
     }
 
     // 1. Insert payment
-    const payment = await query(
-      `INSERT INTO payments (event_id, concept, amount, paid, paid_date, method, notes)
-       VALUES ($1, $2, $3, true, NOW(), $4, $5)
-       RETURNING *`,
-      [eventId, 'Señal presupuesto', amount, method || 'transferencia', `Señal ${deposit_pct || 40}%`]
-    );
+    const payment = await recordPayment(getPool() as any, {
+      eventId,
+      concept: 'Señal presupuesto',
+      amount,
+      paid: true,
+      paidDate: new Date(),
+      method: method || 'transferencia',
+      notes: `Señal ${deposit_pct || 40}%`,
+    });
 
     // 2. Update quote deposit status
     await query(
@@ -60,7 +64,7 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        payment: payment.rows?.[0],
+        payment,
         status: 'presupuestado',
         deposit_pct: deposit_pct || 40,
         message: `Señal de ${amount}€ registrada correctamente`,

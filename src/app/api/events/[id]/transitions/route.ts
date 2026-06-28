@@ -6,8 +6,11 @@
  * Every transition is ATOMIC. Every transition is logged to audit_log.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { querySingle, queryMany } from '@/lib/db';
+import { querySingle, queryMany, getPool } from '@/lib/db';
 import { recalcEventCost } from '@/lib/domain/recalcEventCost';
+import { generateEscandallo } from '@/lib/domain/generateEscandallo';
+import { createInvoice } from '@/lib/domain/createInvoice';
+import { recordPayment } from '@/lib/domain/recordPayment';
 import { VALID_TRANSITIONS, assertTransition, EventStateError, setEventStatus, NOW } from '@/lib/domain/eventState';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -61,11 +64,6 @@ async function audit(eventId: string | null, entity: string, entityId: string, a
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
     [eventId, entity, entityId, action, from, to, actor, motivo || null, JSON.stringify(meta)]
   );
-}
-
-async function nextInvoiceNumber(): Promise<string> {
-  const row = await querySingle<any>(`SELECT nextval('invoice_number_seq') as seq`);
-  return `FE-${new Date().getFullYear()}-${String(row.seq).padStart(4, '0')}`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -146,29 +144,16 @@ async function fwd4(event: any, motivo?: string) {
       );
       effects.push(`escandallo: ${shoppingItems.length} items frozen`);
     } else {
-      // Generate shopping items from recipe_items if none exist
-      const recipeItems = await queryMany<any>(
-        `SELECT ri.*, r.name as recipe_name FROM recipe_items ri
-         JOIN recipes r ON r.id = ri.recipe_id
-         WHERE r.catalog_item_id IN (
-           SELECT id FROM catalog_items WHERE id IN (
-             SELECT catalog_item_id FROM recipes WHERE id IN (
-               SELECT recipe_id FROM event_menu_items WHERE event_id = $1
-             )
-           )
-         )`,
-        [event.id]
-      );
-      if (recipeItems.length > 0) {
-        for (const ri of recipeItems) {
-          await querySingle(
-            `INSERT INTO event_shopping_items (event_id, ingredient_name, total_grams, total_units, total_ml, theoretical_qty, completed, frozen, frozen_at, recipe_version)
-             SELECT $1, ri.ingredient_name, ri.total_grams, ri.total_units, ri.total_ml, ri.theoretical_qty, true, true, now(), ri.recipe_version
-             FROM recipe_items ri WHERE ri.id = $2`,
-            [event.id, ri.id]
-          );
-        }
-        effects.push(`escandallo: ${recipeItems.length} items generated + frozen`);
+      // Sin filas previas: generar vía la única fuente canónica (domain/generateEscandallo,
+      // misma usada por acceptQuote) y congelar el resultado.
+      const order = await querySingle<any>(`SELECT id FROM event_orders WHERE event_id = $1 LIMIT 1`, [event.id]);
+      const { created } = await generateEscandallo(getPool() as any, event.id, order?.id ?? null);
+      if (created > 0) {
+        await querySingle(
+          `UPDATE event_shopping_items SET frozen = true, frozen_at = now() WHERE event_id = $1 AND frozen = false`,
+          [event.id]
+        );
+        effects.push(`escandallo: ${created} items generated + frozen`);
       } else {
         effects.push('escandallo: no items to freeze');
       }
@@ -197,22 +182,21 @@ async function fwd4(event: any, motivo?: string) {
   if (!existingInv) {
     const order = await querySingle<any>(`SELECT * FROM event_orders WHERE event_id = $1 LIMIT 1`, [event.id]);
     if (order) {
-      const invoiceNum = await nextInvoiceNumber();
       const client = await querySingle<any>(`SELECT * FROM clients WHERE id = $1`, [order.client_id]);
       const totalPaid = payments.filter(p => p.paid).reduce((s, p) => s + Number(p.amount || 0), 0);
-      const price = Number(order.confirmed_price || event.total_pvp || 0);
-      const iva = 10;
-      const subtotal = price;
-      const ivaAmt = Math.round(subtotal * iva) / 100;
-      const total = Math.round((subtotal + ivaAmt) * 100) / 100;
+      const subtotal = Number(order.confirmed_price || event.total_pvp || 0);
 
-      await querySingle(
-        `INSERT INTO invoices (event_order_id,event_id,client_id,invoice_number,fiscal_name,fiscal_nif,fiscal_address,subtotal,iva_pct,iva_amount,total,payments_total,balance_due,status,paid_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
-        [order.id, event.id, order.client_id, invoiceNum, client?.name || event.client_name, client?.nif || '', client?.address || '',
-         subtotal, iva, ivaAmt, total, totalPaid, Math.max(0, total - totalPaid), totalPaid >= total ? 'paid' : 'pending', totalPaid >= total ? new Date() : null]
-      );
-      effects.push(`invoice ${invoiceNum}`);
+      const invoice = await createInvoice(getPool() as any, {
+        orderId: order.id,
+        eventId: event.id,
+        clientId: order.client_id,
+        fiscalName: client?.name || event.client_name,
+        fiscalNif: client?.nif || '',
+        fiscalAddress: client?.address || '',
+        subtotal,
+        paymentsTotal: totalPaid,
+      });
+      effects.push(`invoice ${invoice.invoice_number}`);
     }
   }
 
@@ -369,26 +353,25 @@ async function inv5(event: any, motivo?: string) {
     const originalInv = await querySingle<any>(
       `SELECT * FROM invoices WHERE event_id = $1 ORDER BY created_at DESC LIMIT 1`, [event.id]
     );
-    if (originalInv) {
-      const rectNum = await nextInvoiceNumber();
-      const iva = 10;
-      const ivaAmt = Math.round(Math.abs(diffAmount) * iva) / 100;
-      const total = Math.round((Math.abs(diffAmount) + ivaAmt) * 100) / 100;
-
-      await querySingle(
-        `INSERT INTO invoices (event_order_id,event_id,client_id,invoice_number,fiscal_name,fiscal_nif,subtotal,iva_pct,iva_amount,total,status,rectificativa_of)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',$11)`,
-        [currentOrder?.id, event.id, originalInv.client_id, rectNum, originalInv.fiscal_name, originalInv.fiscal_nif,
-         Math.abs(diffAmount), iva, ivaAmt, total, originalInv.id]
-      );
-      effects.push(`rectificativa ${rectNum}: ${diffAmount > 0 ? '+' : ''}${diffAmount}€`);
+    if (originalInv && currentOrder) {
+      const rectificativa = await createInvoice(getPool() as any, {
+        orderId: currentOrder.id,
+        eventId: event.id,
+        clientId: originalInv.client_id,
+        fiscalName: originalInv.fiscal_name,
+        fiscalNif: originalInv.fiscal_nif,
+        subtotal: Math.abs(diffAmount),
+        rectificativaOf: originalInv.id,
+      });
+      effects.push(`rectificativa ${rectificativa.invoice_number}: ${diffAmount > 0 ? '+' : ''}${diffAmount}€`);
 
       // Adjust payment
       if (diffAmount > 0) {
-        await querySingle(
-          `INSERT INTO payments (event_id, concept, amount, due_date, paid) VALUES ($1, 'ajuste_rectificativa', $2, now(), false)`,
-          [event.id, diffAmount]
-        );
+        await recordPayment(getPool() as any, {
+          eventId: event.id,
+          concept: 'ajuste_rectificativa',
+          amount: diffAmount,
+        });
       }
     }
   }

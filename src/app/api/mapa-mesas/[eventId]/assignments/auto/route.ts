@@ -11,10 +11,10 @@ export async function POST(
   { params }: { params: { eventId: string } }
 ) {
   try {
-    // Obtener invitados confirmados
+    // Obtener invitados confirmados (columna real: rsvp, no `status` — T6.3)
     const guestsResult = await query(
       `SELECT id, name FROM guests
-       WHERE event_id = $1 AND status = 'confirmed'
+       WHERE event_id = $1 AND rsvp = 'confirmado'
        ORDER BY random()`,
       [params.eventId]
     );

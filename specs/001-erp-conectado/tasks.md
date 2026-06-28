@@ -93,16 +93,38 @@ demuestra hecha.
   (`cocinaSheets.ts:128-132`). **DoD:** AC5.3.
 
 ## FASE 6 · Limpieza huérfanos (P2 · R6)
-- [ ] **T6.1** Eliminar/reescribir fallback escandallo FWD-4 (`transitions:163-183`).
-- [ ] **T6.2** Hojas logística usan `is_equipment`/`is_dry` (`cocinaSheets.ts`).
-- [ ] **T6.3** Verificar/conectar invitados→`table_assignments` o documentar gap.
+- [x] **T6.1** Eliminar/reescribir fallback escandallo FWD-4 (`transitions:163-183`).
+  Reemplazado el SQL ad-hoc (fuente `event_menu_items`, divergente de
+  `events.selected_items`) por una llamada a la única fuente canónica
+  `domain/generateEscandallo.ts` (la misma que usa `acceptQuote`).
+- [x] **T6.2** Hojas logística usan `is_equipment`/`is_dry` (`cocinaSheets.ts`).
+  `generateLoadingSheet`/`generateLogisticsSheet` ahora hacen `LEFT JOIN
+  ingredients` por `ingredient_id` y usan esos flags como fuente primaria
+  (perecedero/seco/equipamiento), con el heurístico por nombre/categoría
+  como fallback solo cuando el ingrediente no resuelve.
+- [x] **T6.3** Verificar/conectar invitados→`table_assignments` o documentar gap.
+  Gap real encontrado y corregido: (a) `assignments/auto/route.ts` filtraba
+  `guests.status='confirmed'` — esa columna no existe (es `rsvp`, valores en
+  español) — el auto-asignado fallaba siempre; corregido a `rsvp =
+  'confirmado'`. (b) el formulario público (`guest_forms`, JSONB) nunca
+  sincronizaba con la tabla relacional `guests` que consume el mapa de
+  mesas; `guest-forms/route.ts` POST ahora también upsert-ea `guests` (uno
+  por invitado nombrado, `rsvp='confirmado'`) en cada envío del cliente.
 
 ## CIERRE
-- [ ] **TZ.1** `verify-erp-conectado.sh` 100% verde + 6 invariantes verdes.
-- [ ] **TZ.2** Los 3 E2E existentes verdes + build producción exit 0.
-- [ ] **TZ.3** Grep de duplicación en cero: `INSERT INTO {event_orders,payments,
+- [x] **TZ.1** `verify-erp-conectado.sh` 100% verde + 6 invariantes verdes (17/17).
+- [x] **TZ.2** Los 3 E2E existentes verdes (32/32, 41/41, 14/14) + build producción exit 0.
+- [x] **TZ.3** Grep de duplicación en cero: `INSERT INTO {event_orders,payments,
   invoices}` y `UPDATE events SET status` solo bajo `src/lib/domain/`.
-- [ ] **TZ.4** Actualizar `spec.md` §Estado → "Implementada"; commit + push `main`.
+  Consolidados los 4 handlers restantes que violaban INV6:
+  `payments/route.ts` y `payments/signal/route.ts` ahora llaman a
+  `domain/recordPayment.ts`; `event-orders/route.ts` (creación de event_order
+  desde quote_id) delega íntegramente en `domain/acceptQuote.ts` en vez de
+  duplicar su lógica de mesas/camareros/INSERT; `event-flow/[eventId]/calculate
+  /route.ts` (recalcular sugerencia de mesas/camareros sin presupuesto previo)
+  usa la nueva `domain/upsertEventOrderStaffing.ts`. Grep final: 0 coincidencias
+  en ambos patrones.
+- [x] **TZ.4** Actualizar `spec.md` §Estado → "Implementada"; commit + push `main`.
 
 ---
 ### Orden de ejecución recomendado para sonnet

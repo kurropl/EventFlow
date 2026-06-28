@@ -5,9 +5,10 @@
  * y actualiza event_orders con los valores.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getPool } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
+import { upsertEventOrderStaffing } from '@/lib/domain/upsertEventOrderStaffing';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,27 +30,12 @@ export async function POST(
     const tablesNeeded = calcMesas(guestCount);
     const waitersNeeded = calcCamareros(guestCount, serviceType);
 
-    // Check existing event_orders
-    const existingOrder = await query(
-      `SELECT id FROM event_orders WHERE event_id = $1 LIMIT 1`,
-      [eventId]
-    );
-
-    if (existingOrder.rows?.[0]) {
-      await query(
-        `UPDATE event_orders
-         SET tables_suggested = $1, waiters_suggested = $2,
-             guest_count = $3, updated_at = now()
-         WHERE event_id = $4`,
-        [tablesNeeded, waitersNeeded, guestCount, eventId]
-      );
-    } else {
-      await query(
-        `INSERT INTO event_orders (event_id, tables_suggested, waiters_suggested, guest_count, status)
-         VALUES ($1, $2, $3, $4, 'pending')`,
-        [eventId, tablesNeeded, waitersNeeded, guestCount]
-      );
-    }
+    await upsertEventOrderStaffing(getPool(), {
+      eventId,
+      tablesSuggested: tablesNeeded,
+      waitersSuggested: waitersNeeded,
+      guestCount,
+    });
 
     // Auto-create staffing lines for waiters
     await query(
