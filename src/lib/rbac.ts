@@ -146,7 +146,6 @@ export const NAV_ROLES: Record<string, Role[]> = {
   rentabilidad: ['admin'],                         // margen/coste comercial
   invitados: ['admin', 'camareros', 'clientes'],
   confirmacion: ['admin', 'camareros'],
-  demo: ['admin'],
   // Cocina
   cocina: ['admin', 'cocina'],
   // Staffing
