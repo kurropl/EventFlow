@@ -26,6 +26,7 @@ const MAP: Record<string, LucideIcon> = {
   catalog: Lucide.UtensilsCrossed,
   operations: Lucide.ClipboardList,
   mapa: Lucide.Table,
+  'mapa-mesas': Lucide.Table,
   webhooks: Lucide.GitBranch,
   proveedores: Lucide.Truck,
   stock: Lucide.Package,
@@ -36,6 +37,10 @@ const MAP: Record<string, LucideIcon> = {
   close: Lucide.X,
   config: Lucide.Settings,
   chevronRight: Lucide.ChevronRight,
+  ocupacion: Lucide.Map,
+  rentabilidad: Lucide.TrendingUp,
+  confirmacion: Lucide.UserCheck,
+  cocina: Lucide.CookingPot,
 
   // Actions
   trash: Lucide.Trash2,

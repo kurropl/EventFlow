@@ -452,9 +452,9 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
       </header>
 
       {/* ── Main ── */}
-      <main className="flex-1 grid grid-cols-[280px_1fr_280px] overflow-hidden">
+      <main className="flex-1 grid grid-cols-[280px_1fr_280px] max-md:grid-cols-[1fr] overflow-hidden">
         {/* ── Left sidebar: Templates & Stats ── */}
-        <aside className="bg-[#FBF8F1] border-r border-[#C9A84C]/20 p-5 overflow-y-auto">
+        <aside className="bg-[#FBF8F1] border-r border-[#C9A84C]/20 p-5 overflow-y-auto max-md:hidden">
           <h2 className="font-serif text-base text-[#6B2737] font-semibold mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
             Mobiliario
           </h2>
@@ -612,7 +612,7 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
         </div>
 
         {/* ── Right sidebar: Properties ── */}
-        <aside className="bg-[#FBF8F1] border-l border-[#C9A84C]/20 p-5 overflow-y-auto">
+        <aside className="bg-[#FBF8F1] border-l border-[#C9A84C]/20 p-5 overflow-y-auto max-md:hidden">
           {selectedTable ? (
             <>
               <h2 className="font-serif text-base text-[#6B2737] font-semibold mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>

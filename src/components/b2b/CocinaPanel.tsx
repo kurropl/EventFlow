@@ -29,15 +29,15 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import dynamic from 'next/dynamic';
 
 const OCRScanner = dynamic(() => import('@/components/b2b/OCRScanner'), {
-  loading: () => <div className="h-48 bg-[#1e1e1e] rounded-xl animate-pulse" />,
+  loading: () => <div className="h-48 bg-[#F8F3E6] rounded-xl animate-pulse" />,
 });
 
 const CocinaAlerts = dynamic(() => import('@/components/b2b/CocinaAlerts'), {
-  loading: () => <div className="h-32 bg-[#1e1e1e] rounded-xl animate-pulse" />,
+  loading: () => <div className="h-32 bg-[#F8F3E6] rounded-xl animate-pulse" />,
 });
 
 const HACCPPanel = dynamic(() => import('@/components/b2b/HACCPPanel'), {
-  loading: () => <div className="h-32 bg-[#1e1e1e] rounded-xl animate-pulse" />,
+  loading: () => <div className="h-32 bg-[#F8F3E6] rounded-xl animate-pulse" />,
 });
 
 /* ------------------------------------------------------------------ */
@@ -99,10 +99,10 @@ function ConfirmDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
-      <DialogContent className="sm:max-w-md bg-[#0a0a0a] border border-[#1e1e1e] text-white">
+      <DialogContent className="sm:max-w-md bg-white border border-[#C9A86A]/20 text-[#0a0a0a]">
         <DialogHeader>
-          <DialogTitle className="text-gold">{title}</DialogTitle>
-          <DialogDescription className="text-gray-400">
+          <DialogTitle className="text-[#C9A86A]">{title}</DialogTitle>
+          <DialogDescription className="text-[#9CA3AF]">
             {message}
           </DialogDescription>
         </DialogHeader>
@@ -110,7 +110,7 @@ function ConfirmDialog({
           <Button
             variant="ghost"
             onClick={onCancel}
-            className="text-gray-300 hover:text-white hover:bg-[#1e1e1e]"
+            className="text-[#6B7280] hover:text-[#0a0a0a] hover:bg-[#F8F3E6]"
           >
             Cancelar
           </Button>
@@ -186,7 +186,7 @@ function RecetasTab() {
     return (
       <div className="animate-pulse space-y-3 p-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-10 bg-[#1e1e1e] rounded" />
+          <div key={i} className="h-10 bg-[#F8F3E6] rounded" />
         ))}
       </div>
     );
@@ -206,7 +206,7 @@ function RecetasTab() {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#1e1e1e] text-gray-400 uppercase text-xs tracking-wider">
+          <tr className="border-b border-[#C9A86A]/20 text-[#6B7280] uppercase text-xs tracking-wider">
             <th className="text-left py-3 px-3 font-medium">Nombre</th>
             <th className="text-left py-3 px-3 font-medium">Categoría</th>
             <th className="text-center py-3 px-3 font-medium">Versión</th>
@@ -218,26 +218,26 @@ function RecetasTab() {
           {recipes.map((recipe) => (
             <tr
               key={recipe.id}
-              className="border-b border-[#141414] hover:bg-[#141414] transition-colors"
+              className="border-b border-[#C9A86A]/10 hover:bg-white transition-colors"
             >
-              <td className="py-3 px-3 text-white font-medium">
+              <td className="py-3 px-3 text-[#0a0a0a] font-medium">
                 {recipe.name}
               </td>
-              <td className="py-3 px-3 text-gray-300">{recipe.category}</td>
-              <td className="py-3 px-3 text-center text-gray-300">
+              <td className="py-3 px-3 text-[#5A4A38]">{recipe.category}</td>
+              <td className="py-3 px-3 text-center text-[#5A4A38]">
                 v{recipe.version}
               </td>
               <td className="py-3 px-3 text-center">
                 <span
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                     recipe.published
-                      ? 'bg-green-900/40 text-green-400'
-                      : 'bg-gray-800 text-gray-400'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-[#F8F3E6] text-[#6B7280]'
                   }`}
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      recipe.published ? 'bg-green-400' : 'bg-gray-500'
+                      recipe.published ? 'bg-emerald-500' : 'bg-[#9CA3AF]'
                     }`}
                   />
                   {recipe.published ? 'Sí' : 'No'}
@@ -248,7 +248,7 @@ function RecetasTab() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-gray-300 hover:text-white hover:bg-[#1e1e1e] h-8 px-2 text-xs"
+                    className="text-[#6B7280] hover:text-[#0a0a0a] hover:bg-[#F8F3E6] h-8 px-2 text-xs"
                     title="Editar"
                   >
                     <Icon name="edit" className="w-3.5 h-3.5 mr-1" />
@@ -257,7 +257,7 @@ function RecetasTab() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-gray-300 hover:text-white hover:bg-[#1e1e1e] h-8 px-2 text-xs"
+                    className="text-[#6B7280] hover:text-[#0a0a0a] hover:bg-[#F8F3E6] h-8 px-2 text-xs"
                     title="Ver detalle"
                   >
                     <Icon name="search" className="w-3.5 h-3.5 mr-1" />
@@ -267,7 +267,7 @@ function RecetasTab() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handlePublish(recipe)}
-                    className="text-green-400 hover:text-green-300 hover:bg-green-900/20 h-8 px-2 text-xs"
+                    className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 h-8 px-2 text-xs"
                     title={
                       recipe.published
                         ? 'Retirar del catálogo'
@@ -281,7 +281,7 @@ function RecetasTab() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setDeleteTarget(recipe)}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-8 px-2 text-xs"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 px-2 text-xs"
                     title="Eliminar"
                   >
                     <Icon name="trash" className="w-3.5 h-3.5 mr-1" />
@@ -403,7 +403,7 @@ function EquipamientoTab() {
     return (
       <div className="animate-pulse space-y-3 p-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-10 bg-[#1e1e1e] rounded" />
+          <div key={i} className="h-10 bg-[#F8F3E6] rounded" />
         ))}
       </div>
     );
@@ -412,13 +412,13 @@ function EquipamientoTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-300">
+        <h3 className="text-sm font-medium text-[#6B7280]">
           {items.length} equipos registrados
         </h3>
         <Button
           size="sm"
           onClick={() => setShowNew(!showNew)}
-          className="bg-gold hover:bg-gold-dark text-black font-medium text-xs h-8"
+          className="bg-[#C9A86A] hover:bg-[#B8922E] text-white font-medium text-xs h-8"
         >
           <Icon name="plus" className="w-3.5 h-3.5 mr-1" />
           Nuevo equipo
@@ -426,33 +426,33 @@ function EquipamientoTab() {
       </div>
 
       {showNew && (
-        <div className="mb-4 p-3 rounded-lg border border-[#1e1e1e] bg-[#0f0f0f] space-y-2">
+        <div className="mb-4 p-3 rounded-lg border border-[#C9A86A]/20 bg-white space-y-2">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Input
               placeholder="Nombre"
               value={newForm.name}
               onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
-              className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-gray-500 h-9 text-sm"
+              className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] placeholder:text-[#9CA3AF] h-9 text-sm"
             />
             <Input
               placeholder="Categoría"
               value={newForm.category}
               onChange={(e) => setNewForm({ ...newForm, category: e.target.value })}
-              className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-gray-500 h-9 text-sm"
+              className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] placeholder:text-[#9CA3AF] h-9 text-sm"
             />
             <Input
               type="number"
               placeholder="Stock"
               value={newForm.stock}
               onChange={(e) => setNewForm({ ...newForm, stock: Number(e.target.value) })}
-              className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-gray-500 h-9 text-sm"
+              className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] placeholder:text-[#9CA3AF] h-9 text-sm"
             />
             <Input
               type="number"
               placeholder="Stock mínimo"
               value={newForm.min_stock}
               onChange={(e) => setNewForm({ ...newForm, min_stock: Number(e.target.value) })}
-              className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-gray-500 h-9 text-sm"
+              className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] placeholder:text-[#9CA3AF] h-9 text-sm"
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -460,7 +460,7 @@ function EquipamientoTab() {
               variant="ghost"
               size="sm"
               onClick={() => { setShowNew(false); setNewForm({ name: '', category: '', stock: 0, min_stock: 0 }); }}
-              className="text-gray-400 hover:text-white h-8 text-xs"
+              className="text-[#6B7280] hover:text-[#0a0a0a] h-8 text-xs"
             >
               Cancelar
             </Button>
@@ -468,7 +468,7 @@ function EquipamientoTab() {
               size="sm"
               onClick={saveNew}
               disabled={saving || !newForm.name}
-              className="bg-gold hover:bg-gold-dark text-black h-8 text-xs font-medium"
+              className="bg-[#C9A86A] hover:bg-[#B8922E] text-white h-8 text-xs font-medium"
             >
               {saving ? 'Guardando…' : 'Guardar'}
             </Button>
@@ -486,7 +486,7 @@ function EquipamientoTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1e1e1e] text-gray-400 uppercase text-xs tracking-wider">
+              <tr className="border-b border-[#C9A86A]/20 text-[#6B7280] uppercase text-xs tracking-wider">
                 <th className="text-left py-3 px-3 font-medium">Nombre</th>
                 <th className="text-left py-3 px-3 font-medium">Categoría</th>
                 <th className="text-center py-3 px-3 font-medium">Stock</th>
@@ -498,7 +498,7 @@ function EquipamientoTab() {
               {items.map((eq) => (
                 <tr
                   key={eq.id}
-                  className="border-b border-[#141414] hover:bg-[#141414] transition-colors"
+                  className="border-b border-[#C9A86A]/10 hover:bg-white transition-colors"
                 >
                   {editId === eq.id ? (
                     <>
@@ -506,14 +506,14 @@ function EquipamientoTab() {
                         <Input
                           value={editForm.name}
                           onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                          className="bg-[#1a1a1a] border-[#2a2a2a] text-white h-8 text-sm"
+                          className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-8 text-sm"
                         />
                       </td>
                       <td className="py-2 px-3">
                         <Input
                           value={editForm.category}
                           onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                          className="bg-[#1a1a1a] border-[#2a2a2a] text-white h-8 text-sm"
+                          className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-8 text-sm"
                         />
                       </td>
                       <td className="py-2 px-3 text-center">
@@ -521,7 +521,7 @@ function EquipamientoTab() {
                           type="number"
                           value={editForm.stock}
                           onChange={(e) => setEditForm({ ...editForm, stock: Number(e.target.value) })}
-                          className="bg-[#1a1a1a] border-[#2a2a2a] text-white h-8 text-sm w-20 mx-auto text-center"
+                          className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-8 text-sm w-20 mx-auto text-center"
                         />
                       </td>
                       <td className="py-2 px-3 text-center">
@@ -529,7 +529,7 @@ function EquipamientoTab() {
                           type="number"
                           value={editForm.min_stock}
                           onChange={(e) => setEditForm({ ...editForm, min_stock: Number(e.target.value) })}
-                          className="bg-[#1a1a1a] border-[#2a2a2a] text-white h-8 text-sm w-20 mx-auto text-center"
+                          className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-8 text-sm w-20 mx-auto text-center"
                         />
                       </td>
                       <td className="py-2 px-3 text-right">
@@ -538,7 +538,7 @@ function EquipamientoTab() {
                             size="sm"
                             onClick={saveEdit}
                             disabled={saving}
-                            className="bg-gold hover:bg-gold-dark text-black h-7 text-xs px-2"
+                            className="bg-[#C9A86A] hover:bg-[#B8922E] text-white h-7 text-xs px-2"
                           >
                             {saving ? '…' : 'OK'}
                           </Button>
@@ -546,7 +546,7 @@ function EquipamientoTab() {
                             variant="ghost"
                             size="sm"
                             onClick={cancelEdit}
-                            className="text-gray-400 hover:text-white h-7 text-xs px-2"
+                            className="text-[#6B7280] hover:text-[#0a0a0a] h-7 text-xs px-2"
                           >
                             X
                           </Button>
@@ -555,10 +555,10 @@ function EquipamientoTab() {
                     </>
                   ) : (
                     <>
-                      <td className="py-3 px-3 text-white font-medium">
+                      <td className="py-3 px-3 text-[#0a0a0a] font-medium">
                         {eq.name}
                       </td>
-                      <td className="py-3 px-3 text-gray-300">{eq.category}</td>
+                      <td className="py-3 px-3 text-[#5A4A38]">{eq.category}</td>
                       <td className="py-3 px-3 text-center">
                         <span
                           className={`font-mono text-sm ${
@@ -572,7 +572,7 @@ function EquipamientoTab() {
                           {eq.stock}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-center text-gray-400 font-mono">
+                      <td className="py-3 px-3 text-center text-[#6B7280] font-mono">
                         {eq.min_stock}
                       </td>
                       <td className="py-3 px-3 text-right">
@@ -581,7 +581,7 @@ function EquipamientoTab() {
                             variant="ghost"
                             size="sm"
                             onClick={() => startEdit(eq)}
-                            className="text-gray-300 hover:text-white hover:bg-[#1e1e1e] h-7 px-2 text-xs"
+                            className="text-[#6B7280] hover:text-[#0a0a0a] hover:bg-[#F8F3E6] h-7 px-2 text-xs"
                             title="Editar"
                           >
                             <Icon name="edit" className="w-3 h-3 mr-1" />
@@ -685,7 +685,7 @@ function PasesTab() {
     return (
       <div className="animate-pulse space-y-3 p-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-10 bg-[#1e1e1e] rounded" />
+          <div key={i} className="h-10 bg-[#F8F3E6] rounded" />
         ))}
       </div>
     );
@@ -705,7 +705,7 @@ function PasesTab() {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#1e1e1e] text-gray-400 uppercase text-xs tracking-wider">
+          <tr className="border-b border-[#C9A86A]/20 text-[#6B7280] uppercase text-xs tracking-wider">
             <th className="text-left py-3 px-3 font-medium">Categoría</th>
             <th className="text-left py-3 px-3 font-medium">Pase asignado</th>
             <th className="text-right py-3 px-3 font-medium">Acción</th>
@@ -715,7 +715,7 @@ function PasesTab() {
           {mappings.map((m) => (
             <tr
               key={m.id}
-              className="border-b border-[#141414] hover:bg-[#141414] transition-colors"
+              className="border-b border-[#C9A86A]/10 hover:bg-white transition-colors"
             >
               <td className="py-3 px-3 text-white font-medium">
                 {m.category}
@@ -727,7 +727,7 @@ function PasesTab() {
                   disabled={editingId === m.id && saving}
                 >
                   <SelectTrigger
-                    className={`w-44 bg-[#1a1a1a] border-[#2a2a2a] text-white h-9 text-sm ${
+                    className={`w-44 bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-9 text-sm ${
                       editingId === m.id ? 'opacity-70' : ''
                     }`}
                   >
@@ -748,9 +748,9 @@ function PasesTab() {
               </td>
               <td className="py-3 px-3 text-right">
                 {editingId === m.id && saving ? (
-                  <span className="text-xs text-gold">Guardando…</span>
+                  <span className="text-xs text-[#C9A86A]">Guardando…</span>
                 ) : (
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-[#9CA3AF]">
                     {m.pass_name}
                   </span>
                 )}
@@ -871,26 +871,26 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
     <div>
       {/* Event Selector */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-400 mb-1.5">
+        <label className="block text-sm font-medium text-[#9CA3AF] mb-1.5">
           Seleccionar evento
         </label>
         {loadingEvents ? (
-          <div className="h-10 w-full max-w-md bg-[#1e1e1e] rounded animate-pulse" />
+          <div className="h-10 w-full max-w-md bg-[#F8F3E6] rounded animate-pulse" />
         ) : (
           <Select value={selectedEventId} onValueChange={handleEventChange}>
-            <SelectTrigger className="w-full max-w-md bg-[#1a1a1a] border-[#2a2a2a] text-white h-10">
+            <SelectTrigger className="w-full max-w-md bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-10">
               <SelectValue placeholder="Elige un evento…" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a] text-white max-h-72">
+            <SelectContent className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] max-h-72">
               {events.map((ev) => (
                 <SelectItem
                   key={ev.id}
                   value={ev.id}
-                  className="hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] focus:text-white cursor-pointer"
+                  className="hover:bg-[#F8F3E6] focus:bg-[#F8F3E6] focus:text-[#0a0a0a] cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
                     <span>{ev.client_name}</span>
-                    <span className="text-gray-500 text-xs">
+                    <span className="text-[#9CA3AF] text-xs">
                       {ev.event_date?.slice(0, 10)}
                     </span>
                   </span>
@@ -910,7 +910,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
       ) : (
         <>
           {/* Sub-tabs: Producción / Carga / Logística */}
-          <div className="flex gap-1 mb-4 p-1 rounded-lg bg-[#111111] border border-[#1e1e1e] w-fit">
+          <div className="flex gap-1 mb-4 p-1 rounded-lg bg-[#F8F3E6] border border-[#C9A86A]/20 w-fit">
             {SHEET_TABS.map((t) => (
               <button
                 key={t.id}
@@ -918,7 +918,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
                   sheetTab === t.id
                     ? 'bg-gold text-black shadow-sm'
-                    : 'text-gray-400 hover:text-white hover:bg-[#1e1e1e]'
+                    : 'text-[#6B7280] hover:text-[#0a0a0a] hover:bg-white'
                 }`}
               >
                 {t.label}
@@ -938,7 +938,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
           ) : loadingSheet ? (
             <div className="animate-pulse space-y-3 p-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-8 bg-[#1e1e1e] rounded" />
+                <div key={i} className="h-8 bg-[#F8F3E6] rounded" />
               ))}
             </div>
           ) : sheetError ? (
@@ -955,7 +955,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#1e1e1e] text-gray-400 uppercase text-xs tracking-wider">
+                  <tr className="border-b border-[#C9A86A]/20 text-[#6B7280] uppercase text-xs tracking-wider">
                     {Object.keys(sheetData[0]).map((key) => (
                       <th
                         key={key}
@@ -970,7 +970,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
                   {sheetData.map((row, idx) => (
                     <tr
                       key={idx}
-                      className="border-b border-[#141414] hover:bg-[#141414] transition-colors"
+                      className="border-b border-[#C9A86A]/10 hover:bg-white transition-colors"
                     >
                       {Object.values(row).map((val, ci) => (
                         <td
@@ -1156,29 +1156,29 @@ export default function CocinaPanel() {
   const [activeTab, setActiveTab] = useState('guia');
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#0a0a0a]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-xl font-semibold text-gold flex items-center gap-2">
-            <Icon name="food" className="w-5 h-5 text-gold" />
+          <h1 className="text-xl font-bold text-[#C9A86A] flex items-center gap-2 font-serif">
+            <Icon name="food" className="w-5 h-5 text-[#C9A86A]" />
             Cocina
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-[#9CA3AF] mt-1">
             Gestión de recetas, equipamiento, pases y hojas operativas
           </p>
         </div>
 
         {/* Main Tabs */}
-        <div className="flex gap-1 mb-6 p-1 rounded-lg bg-[#111111] border border-[#1e1e1e] w-fit">
+        <div className="flex gap-1 mb-6 p-1 rounded-lg bg-[#F8F3E6] border border-[#C9A86A]/20 w-fit">
           {MAIN_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'bg-gold text-black shadow-sm'
-                  : 'text-gray-400 hover:text-white hover:bg-[#1e1e1e]'
+                  ? 'bg-[#C9A86A] text-white shadow-sm'
+                  : 'text-[#6B7280] hover:text-[#0a0a0a] hover:bg-white'
               }`}
             >
               {tab.label}
@@ -1193,11 +1193,7 @@ export default function CocinaPanel() {
           {activeTab === 'equipamiento' && <EquipamientoTab />}
           {activeTab === 'pases' && <PasesTab />}
           {activeTab === 'hojas' && <HojasOperativasTab />}
-          {activeTab === 'appcc' && (
-            <div className="bg-white text-stone-800 rounded-lg p-4">
-              <HACCPPanel />
-            </div>
-          )}
+          {activeTab === 'appcc' && <HACCPPanel />}
         </div>
       </div>
     </div>
