@@ -63,9 +63,15 @@ demuestra hecha.
 ## FASE 4 · Camino del cliente conectado (P0/P1 · R4)
 - [ ] **T4.1** `events/route.ts` (configurador): crear/vincular `lead` + webhook
   `LEAD_CREATED`. **DoD:** AC4.1 (lead visible en CRM).
-- [ ] **T4.2** Corregir `leads.status='confirmado'`→`'convertido'` en
-  `quotes/public/[id]/accept:59` y `quotes/[id]:387` (y revisar otros). **DoD:**
-  AC4.6 (sin violación de CHECK; el UPDATE ya no cae en catch).
+- [ ] **T4.2** Reparar la sincronización lead↔evento, **doblemente rota**:
+  (a) la query `SELECT lead_id FROM events` referencia una columna inexistente
+  (`events` no tiene `lead_id` y `leads` no tiene `event_id`; la relación real
+  es `quotes.lead_id → leads.id`), por lo que lanza y se traga en catch —
+  `quotes/public/[id]/accept:56`, `quotes/[id]:384`; (b) el valor
+  `leads.status='confirmado'` viola el CHECK (`schema.sql:535` admite
+  `convertido`) — `accept:59`, `quotes/[id]:387`. Arreglar ambos: tomar el lead
+  desde `quote.lead_id` (ya cargado) y usar `'convertido'`.
+  **DoD:** AC4.6 (lead sincronizado, sin excepción ni violación de CHECK).
 - [ ] **T4.3** `client_token` garantizado por `acceptQuote` (T1.3) → `/invitados/
   [token]` accesible tras aceptación cliente. **DoD:** AC4.2.
 - [ ] **T4.4** `POST /api/quotes/public/[id]/reject` + botón rechazar en
