@@ -49,6 +49,15 @@ export async function GET(_req: NextRequest) {
           [eventId]
         );
 
+        // G3 (Sprint 1): coste de personal. D4 → el margen cuenta SOLO las
+        // nóminas pagadas; el total asignado (pagado+pendiente) se refleja aparte.
+        const laborResult = await query(
+          `SELECT COALESCE(SUM(total_pay) FILTER (WHERE status = 'paid'), 0) AS paid,
+                  COALESCE(SUM(total_pay), 0) AS total
+           FROM worker_event_pay WHERE event_id = $1`,
+          [eventId]
+        );
+
         const pvp = Number(row.total_pvp) || 0;
         const cost = Number(row.total_cost) || 0;
         const guests = Number(row.guest_count) || 1;
@@ -56,10 +65,14 @@ export async function GET(_req: NextRequest) {
         const paymentCount = Number(paymentsResult.rows[0]?.payment_count || 0);
         const paidCount = Number(paymentsResult.rows[0]?.paid_count || 0);
         const frozenRealCost = Number(frozenCostResult.rows[0]?.frozen_total || 0);
+        const laborCostPaid = Number(laborResult.rows[0]?.paid || 0);   // base del margen (D4)
+        const laborCostTotal = Number(laborResult.rows[0]?.total || 0); // informativo
 
-        const grossMargin = pvp - cost;
+        // Coste total REAL = comida+extras (events.total_cost) + personal pagado.
+        const totalCostFull = cost + laborCostPaid;
+        const grossMargin = pvp - totalCostFull;          // ← margen real (antes pvp - cost)
         const marginPct = pvp > 0 ? (grossMargin / pvp) * 100 : 0;
-        const costPerGuest = cost / guests;
+        const costPerGuest = totalCostFull / guests;       // ← coste/comensal real
         const revenuePerGuest = pvp / guests;
 
         const costBreakdown: Record<string, number> = {};
@@ -77,8 +90,12 @@ export async function GET(_req: NextRequest) {
 
           // Finanzas
           totalPvp: pvp,
-          totalCost: cost,
-          grossMargin,
+          totalCost: cost,                 // comida+extras (sin cambio de semántica, R2)
+          laborCostPaid,                   // G3: personal pagado (base del margen)
+          laborCostTotal,                  // G3: personal asignado total (informativo)
+          laborCostPending: Math.round((laborCostTotal - laborCostPaid) * 100) / 100,
+          totalCostFull,                   // G3: coste total real (= base del margen)
+          grossMargin,                     // ahora descuenta personal pagado
           marginPct: Math.round(marginPct * 10) / 10,
 
           // Por comensal
@@ -112,6 +129,8 @@ export async function GET(_req: NextRequest) {
       totalEvents: events.length,
       totalPvp: events.reduce((s: number, e: any) => s + e.totalPvp, 0),
       totalCost: events.reduce((s: number, e: any) => s + e.totalCost, 0),
+      totalLaborCost: events.reduce((s: number, e: any) => s + (e.laborCostPaid || 0), 0),
+      totalCostFull: events.reduce((s: number, e: any) => s + (e.totalCostFull || 0), 0),
       totalMargin: events.reduce((s: number, e: any) => s + e.grossMargin, 0),
       totalPaid: events.reduce((s: number, e: any) => s + e.totalPaid, 0),
       averageMarginPct: 0,

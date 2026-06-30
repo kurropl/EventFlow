@@ -1,9 +1,52 @@
 ## Último agente: Claude Code
-## Fecha: 28/06/2026 19:37
+## Fecha: 30/06/2026
 ## Rama: main
-## Último commit: 4596278 (ver `git log -1`, tras este handoff)
+## Último commit: (ver `git log -1`, tras este handoff)
 
-### Qué se hizo
+### Qué se hizo (30/06 · Auditoría ERP + Sprint 1 Core Business)
+- [x] **Auditoría ERP/CRM completa** → `docs/auditoria-erp-2026-06.md` (Gap
+  Analysis con doble óptica operaciones+arquitectura; 5 ejes auditados en
+  paralelo). Veredicto: back-office sólido, faltan los lazos del medio
+  operativo (compromiso de inventario, compra auto, coste de personal en
+  margen, disponibilidad de salón, lote→consumo APPCC) + la ruta del dinero.
+- [x] **Rama huérfana `claude/event-venue-redesign-JAUif`**: analizada (sin
+  ancestro común, superada por `main` en todo). El usuario aprobó borrarla,
+  pero el push de borrado da **403 por política de red** del entorno → debe
+  borrarla el usuario desde GitHub web / su CLI. Sigue existiendo en remoto.
+- [x] **SPEC-Sprint1-CoreBusiness.md** (SDD): especificación de G1+G3,
+  aprobada por el usuario (D1–D4) e **implementada**.
+- [x] **G1 · Doble reserva de salón imposible a nivel BD.** Tres ubicaciones:
+  Salón de Arriba, Salón de Abajo (exclusivos) y "fuera de los salones"
+  (externo, no reserva). DDL nuevo en `schema.sql`: `CREATE EXTENSION
+  btree_gist`, tabla `venues` (+seed 2 salones), `events.venue_id`, tabla
+  `venue_bookings` con `EXCLUDE USING gist (venue_id WITH =, daterange(...)
+  WITH &&)`. Dominio nuevo `domain/venueBooking.ts` (`reserveVenue`/
+  `releaseVenue`/`resolveVenueId`, traduce 23P01 → 409). Interceptación:
+  `acceptQuote` (rollback transaccional si choca), PUT `events/[id]` (bloqueo
+  temprano al asignar `venue`), INV-1/INV-3 liberan (INV-2 mantiene hold, D1).
+- [x] **G3 · Coste de personal en el P&L.** Dominio nuevo
+  `domain/recalcEventLaborCost.ts`: mantiene 1 línea `cost_desglose('personal')`
+  = Σ `worker_event_pay` **pagadas** (D4), idempotente. Invocado desde
+  `staffing/pay` (POST/PUT/DELETE). `rentabilidad` recompone el margen real
+  = `pvp − (total_cost + personal_pagado)` y expone `laborCostPaid`/
+  `laborCostTotal`/`laborCostPending`/`totalCostFull`. **`events.total_cost`
+  NO cambia** (sigue comida+extras, R2/Opción B → AC2.1 intacto).
+- [x] Verificación: nuevo `scripts/verify-sprint1.sh` **26/26**; sin regresión
+  (E2E 32/32 · RBAC 41/41 · Operativos 14/14 · ERP 17/17); build exit 0.
+
+### Pendiente / próximos pasos sugeridos (del Gap Analysis)
+- [ ] Borrar la rama remota `claude/event-venue-redesign-JAUif` (el usuario,
+  por política de red del entorno).
+- [ ] **UI de rentabilidad** (`rentabilidad/page.tsx`) y ficha de evento:
+  mostrar la línea de personal y el margen real (el dato ya viaja en la API).
+- [ ] Selector de salón (Arriba/Abajo/Externo) en la UI de evento (el backend
+  `PUT {venue}` ya lo soporta).
+- [ ] Siguientes gaps P0/P1 del Gap Analysis: G2 (compromiso inventario +
+  compra auto), G5 (FEFO + lote→consumo en cierre), G6 (unificar doble ledger
+  de stock), G8 (contrato/firma cliente), G9 (Facturae/Verifactu). G4/G15
+  (TPV/KDS/pasarela) EXCLUIDOS por mandato del usuario.
+
+### Histórico (28/06 · spec 001 cierre + sidebar)
 - [x] **FASE 6 (R6) del spec 001 — limpieza de huérfanos** (commit `9ea9e24`):
   - T6.1: el fallback de escandallo en FWD-4 (`events/[id]/transitions.ts`)
     ya no hace su propio SQL ad-hoc contra `event_menu_items` (divergente de

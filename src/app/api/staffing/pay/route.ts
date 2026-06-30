@@ -6,9 +6,10 @@
  * DELETE /api/staffing/pay?id=X                — Delete pay entry
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle } from '@/lib/db';
+import { queryMany, querySingle, getPool } from '@/lib/db';
 import { sanitizeError, isValidUUID, toSafeFloat, sanitizeText } from '@/lib/security';
 import { verifyToken } from '@/lib/auth';
+import { recalcEventLaborCost } from '@/lib/domain/recalcEventLaborCost';
 
 function requireAuth(request: NextRequest): { authenticated: boolean; error?: string } {
   const token = request.cookies.get('admin_session')?.value || request.cookies.get('eventflow_token')?.value;
@@ -85,6 +86,9 @@ export async function POST(request: NextRequest) {
       [worker_id, event_id, h, rate, totalPay, notes || null]
     );
 
+    // G3: resincroniza el coste de personal del evento (línea cost_desglose).
+    await recalcEventLaborCost(getPool(), event_id);
+
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
@@ -153,6 +157,9 @@ export async function PUT(request: NextRequest) {
       vals
     );
 
+    // G3: cambiar importe o estado (pagado/pendiente) recalcula el coste de personal.
+    if (updated?.event_id) await recalcEventLaborCost(getPool(), updated.event_id);
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
@@ -171,7 +178,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'id válido es obligatorio' }, { status: 422 });
     }
 
+    // Capturar el event_id antes de borrar para poder recalcular después (G3).
+    const row = await querySingle<any>(`SELECT event_id FROM worker_event_pay WHERE id = $1`, [id]);
     await querySingle<any>(`DELETE FROM worker_event_pay WHERE id = $1`, [id]);
+    if (row?.event_id) await recalcEventLaborCost(getPool(), row.event_id);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });

@@ -15,6 +15,7 @@ import { sanitizeError } from '@/lib/security';
 import { deductStockForEvent } from '@/lib/stockDeduct';
 import { acceptQuote, AcceptQuoteError } from '@/lib/domain/acceptQuote';
 import { setEventStatus } from '@/lib/domain/eventState';
+import { reserveVenue, resolveVenueId, VenueConflictError, toDateStr } from '@/lib/domain/venueBooking';
 
 const BAR_PRICE_PER_HOUR = 15; // € per person per hour
 
@@ -186,9 +187,24 @@ export async function PUT(
       pushIfInBody('linen_type', 'linen_type');
       pushIfInBody('centerpiece', 'centerpiece');
       pushIfInBody('service_type', 'service_type');
-      pushIfInBody('venue_type', 'venue_type');
+      // venue_type explícito solo si NO se envía `venue`/`venue_id` (que lo
+      // derivan abajo) — evita doble asignación de la misma columna en el SET.
+      if (!('venue' in body) && !('venue_id' in body)) pushIfInBody('venue_type', 'venue_type');
       pushIfInBody('location', 'location');
       pushIfInBody('venue_pdf_url', 'venue_pdf_url');
+
+      // G1 (Sprint 1): asignación de salón por slug (`venue`: 'salon-arriba'|
+      // 'salon-abajo'|'externo') o por `venue_id`. Deriva venue_type coherente
+      // para Cocina (con salón → 'benitez'; sin salón → 'externo').
+      let venueOrDateTouched = ('event_date' in body);
+      if ('venue' in body || 'venue_id' in body) {
+        const venueId = 'venue_id' in body
+          ? (body.venue_id ?? null)
+          : await resolveVenueId(client, body.venue);
+        push('venue_id', venueId);
+        push('venue_type', venueId ? 'benitez' : 'externo');
+        venueOrDateTouched = true;
+      }
 
       if (calculatedPvp !== undefined) {
         fields.push(`total_pvp = $${p++}`);
@@ -216,6 +232,13 @@ export async function PUT(
       }
 
       if (!event) return { event: null };
+
+      // G1: tras asignar salón o cambiar fecha, re-sincroniza la reserva en la
+      // MISMA transacción (atómico). Externo (venue_id NULL) → libera. Conflicto
+      // de salón+día → VenueConflictError revierte el UPDATE completo.
+      if (venueOrDateTouched) {
+        await reserveVenue(client, id, event.venue_id ?? null, toDateStr(event.event_date));
+      }
 
       // Si el status pasa a 'accepted', necesitamos un quoteId para delegar
       // en acceptQuote (fuera de esta transacción: domain/acceptQuote abre
@@ -305,6 +328,9 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: result.event });
   } catch (error) {
+    if (error instanceof VenueConflictError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 409 });
+    }
     return NextResponse.json(
       { success: false, error: sanitizeError(error) },
       { status: 500 }

@@ -2005,3 +2005,54 @@ CREATE TRIGGER trg_haccp_plans_updated BEFORE UPDATE ON haccp_plans
 DROP TRIGGER IF EXISTS trg_supplier_approval_updated ON supplier_approval;
 CREATE TRIGGER trg_supplier_approval_updated BEFORE UPDATE ON supplier_approval
   FOR EACH ROW EXECUTE FUNCTION update_haccp_timestamp();
+
+-- ============================================================
+-- SPRINT 1 · G1 — Reserva de salón con exclusión a nivel BD
+-- (SPEC-Sprint1-CoreBusiness.md). Tres ubicaciones: Salón de Arriba,
+-- Salón de Abajo (recursos exclusivos) y "fuera de los salones" (externo,
+-- sin recurso → venue_id NULL → sin reserva). Granularidad: día completo.
+-- ============================================================
+
+-- btree_gist habilita el operador de igualdad (=) sobre uuid dentro de un
+-- índice GiST, necesario para combinar `venue_id WITH =` y `daterange WITH &&`.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+-- Catálogo de espacios reservables. Solo los salones físicos viven aquí;
+-- "fuera de los salones" NO tiene fila (el evento externo lleva venue_id NULL).
+CREATE TABLE IF NOT EXISTS venues (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug        TEXT NOT NULL UNIQUE,          -- 'salon-arriba' | 'salon-abajo'
+    name        TEXT NOT NULL,
+    capacity    INT,
+    active      BOOLEAN NOT NULL DEFAULT true,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO venues (slug, name, capacity) VALUES
+    ('salon-arriba', 'Salón de Arriba', 180),
+    ('salon-abajo',  'Salón de Abajo',  120)
+ON CONFLICT (slug) DO NOTHING;
+
+-- Vínculo evento → salón concreto. NULL = evento externo (sin recurso exclusivo).
+-- Se conserva venue_type (benitez/externo) para el módulo Cocina; venue_id lo refina.
+ALTER TABLE events
+    ADD COLUMN IF NOT EXISTS venue_id UUID REFERENCES venues(id) ON DELETE SET NULL;
+
+-- Reservas: 1 fila por evento con salón asignado. La exclusión impide que dos
+-- reservas del MISMO salón solapen el MISMO día. El rango [fecha, fecha+1) deja
+-- la puerta abierta a granularidad horaria futura sin cambiar el constraint.
+CREATE TABLE IF NOT EXISTS venue_bookings (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    venue_id    UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+    event_id    UUID NOT NULL UNIQUE REFERENCES events(id) ON DELETE CASCADE,
+    event_date  DATE NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT venue_bookings_no_overlap
+        EXCLUDE USING gist (
+            venue_id WITH =,
+            daterange(event_date, event_date + 1) WITH &&
+        )
+);
+
+CREATE INDEX IF NOT EXISTS idx_venue_bookings_event ON venue_bookings(event_id);
+CREATE INDEX IF NOT EXISTS idx_venue_bookings_venue_date ON venue_bookings(venue_id, event_date);

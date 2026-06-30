@@ -17,6 +17,7 @@ import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 import { generateEscandallo } from './generateEscandallo';
 import { recalcEventCost } from './recalcEventCost';
 import { setEventStatus } from './eventState';
+import { reserveVenue, toDateStr, VenueConflictError } from './venueBooking';
 
 export interface AcceptQuoteResult {
   quote: any;
@@ -171,6 +172,20 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
           [eventId, r.role, r.slots]
         );
       }
+    }
+
+    // 7.5) G1 (Sprint 1): al confirmar el evento, su salón queda reservado.
+    // Externo (venue_id NULL) → no-op. Si el salón ya está ocupado ese día,
+    // reserveVenue lanza VenueConflictError (409) y, al estar dentro de la
+    // transacción, revierte TODO (orden, pagos, escandallo…): no se confirma
+    // un evento que no puede ocupar su salón.
+    try {
+      await reserveVenue(client, eventId, event.venue_id ?? null, toDateStr(event.event_date));
+    } catch (e) {
+      // Unifica el 409 bajo AcceptQuoteError para que los callers existentes
+      // (que ya mapean AcceptQuoteError.status) devuelvan 409 sin cambios.
+      if (e instanceof VenueConflictError) throw new AcceptQuoteError(e.message, 409);
+      throw e;
     }
 
     // 8) Transición de estado a 'accepted' (R3, única vía: domain/eventState).

@@ -12,6 +12,7 @@ import { generateEscandallo } from '@/lib/domain/generateEscandallo';
 import { createInvoice } from '@/lib/domain/createInvoice';
 import { recordPayment } from '@/lib/domain/recordPayment';
 import { VALID_TRANSITIONS, assertTransition, EventStateError, setEventStatus, NOW } from '@/lib/domain/eventState';
+import { releaseVenue } from '@/lib/domain/venueBooking';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -221,6 +222,7 @@ async function inv1(event: any, motivo?: string) {
   if (!motivo) return NextResponse.json({ success: false, error: 'motivo required' }, { status: 400 });
 
   await setEventStatus(event.id, 'lost', { extra: { lost_at: NOW, lost_reason: motivo } });
+  await releaseVenue(getPool(), event.id);  // G1: el salón vuelve a estar libre
   await querySingle(
     `UPDATE leads SET status = 'perdido' WHERE LOWER(name) = LOWER($1) AND status IN ('nuevo','presupuestado')`,
     [event.client_name]
@@ -292,6 +294,7 @@ async function inv3(event: any, motivo?: string) {
   await setEventStatus(event.id, 'cancelled', {
     extra: { cancelled_at: NOW, cancelled_by: 'admin', cancel_reason: motivo },
   });
+  await releaseVenue(getPool(), event.id);  // G1: el salón cancelado vuelve a estar libre
 
   // Lead stays as 'convertido' for cancelled events (they are still a client)
   await audit(event.id, 'event', event.id, 'INV-3', 'accepted', 'cancelled', 'admin', motivo);
