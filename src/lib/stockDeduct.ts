@@ -6,8 +6,10 @@
  * campos especiales — exportar una función auxiliar directamente desde ahí
  * rompe `next build` ("no es un export de Route válido").
  */
-import { querySingle, queryMany } from '@/lib/db';
+import { querySingle, queryMany, getPool } from '@/lib/db';
 import { setEventStatus } from '@/lib/domain/eventState';
+import { adjustIngredientStock } from '@/lib/domain/stockLedger';
+import { releaseInventoryCommitments } from '@/lib/domain/inventoryCommitment';
 
 function gramsToUnit(grams: number, ingredientUnit: string): number {
   const u = ingredientUnit.toLowerCase().trim();
@@ -136,21 +138,25 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
       continue;
     }
 
-    // 4. Idempotent: never go negative
-    const newQty = Math.max(0, currentQty - deductionAmount);
-
-    // Round to avoid floating point noise
-    const roundedQty = Math.round(newQty * 10000) / 10000;
-
-    await querySingle(
-      `UPDATE ingredients SET quantity = $1 WHERE id = $2 RETURNING id`,
-      [roundedQty, ingredient.id]
-    );
+    // 4. G6: deducción vía el ledger único — actualiza ingredients.quantity
+    // (canónico, nunca negativo) y refleja inventory/inventory_movements en
+    // la misma operación (antes esta deducción real era invisible para los
+    // ledgers de movimiento).
+    const adj = await adjustIngredientStock(getPool() as any, {
+      ingredientId: ingredient.id,
+      delta: -deductionAmount,
+      reason: 'operativo',
+      movementType: 'consumption',
+      eventId,
+      referenceType: 'event',
+      referenceId: eventId,
+      notes: `Deducción de cierre de evento`,
+    });
 
     deductedCount++;
     details.push({
       ingredient_name: ingredient.name,
-      deducted_qty: Math.round(deductionAmount * 10000) / 10000,
+      deducted_qty: Math.round((adj.previousQty - adj.newQty) * 10000) / 10000,
       unit: ingredient.unit,
     });
   }
@@ -165,6 +171,11 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
     `UPDATE events SET stock_deducted = true WHERE id = $1 AND stock_deducted = false`,
     [eventId]
   );
+
+  // G2: el consumo ya es real (se acaba de deducir) — el compromiso de
+  // inventario (una promesa sobre stock futuro) deja de tener sentido.
+  // Cubre tanto close/route.ts como transitions::fwd4 (ambos llaman aquí).
+  await releaseInventoryCommitments(getPool() as any, eventId);
 
   return { success: true, deducted: deductedCount, details, skipped: skipped.length ? skipped : undefined };
 }

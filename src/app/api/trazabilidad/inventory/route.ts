@@ -5,8 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPool, queryMany, querySingle } from '@/lib/db';
+import { getPool, queryMany, querySingle, transaction } from '@/lib/db';
 import { sanitizeError, isValidUUID } from '@/lib/security';
+import { adjustIngredientStock } from '@/lib/domain/stockLedger';
 
 // ── GET: Listar inventario actual ──
 
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar que el ingrediente existe
     const ingredient = await querySingle<any>(
-      'SELECT id, name, unit FROM ingredients WHERE id = $1',
+      'SELECT id, name, unit, quantity FROM ingredients WHERE id = $1',
       [ingredient_id]
     );
     if (!ingredient) {
@@ -71,28 +72,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar que no exista ya inventario para este ingrediente
-    const existing = await querySingle<any>(
-      'SELECT id FROM inventory WHERE ingredient_id = $1',
-      [ingredient_id]
-    );
-    if (existing) {
-      return NextResponse.json(
-        { success: false, error: 'Ya existe una fila de inventario para este ingrediente. Use PUT para ajustar stock.' },
-        { status: 409 }
-      );
-    }
-
     const finalUnit = unit || ingredient.unit || 'g';
     const finalQuantity = quantity !== undefined ? Number(quantity) : 0;
     const finalMinStock = min_stock !== undefined ? Number(min_stock) : null;
 
-    const inventory = await querySingle<any>(
-      `INSERT INTO inventory (ingredient_id, quantity, unit, min_stock, notes)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [ingredient_id, finalQuantity, finalUnit, finalMinStock, notes || null]
-    );
+    // G6: ingredients.quantity es la fuente canónica — "declarar inventario"
+    // ahora significa ajustarla a la cantidad indicada (vía el ledger único,
+    // que refleja el espejo en `inventory` automáticamente). Es idempotente:
+    // declarar la misma cantidad dos veces no genera movimiento adicional.
+    const inventory = await transaction(async (client) => {
+      if (finalMinStock !== null) {
+        await client.query(`UPDATE ingredients SET min_stock = $1 WHERE id = $2`, [finalMinStock, ingredient_id]);
+      }
+      const currentQty = Number(ingredient.quantity) || 0;
+      const delta = finalQuantity - currentQty;
+      if (delta !== 0) {
+        await adjustIngredientStock(client, {
+          ingredientId: ingredient_id,
+          delta,
+          reason: 'inventario_inicial',
+          movementType: 'adjustment',
+          notes: notes || 'Declaración de inventario',
+        });
+      } else {
+        // Garantiza que exista el espejo aunque no haya cambio de cantidad.
+        await client.query(
+          `INSERT INTO inventory (ingredient_id, quantity, unit, min_stock, notes)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (ingredient_id) DO UPDATE SET notes = $5`,
+          [ingredient_id, currentQty, finalUnit, finalMinStock, notes || null]
+        );
+      }
+      return (await client.query(`SELECT * FROM inventory WHERE ingredient_id = $1`, [ingredient_id])).rows[0];
+    });
 
     return NextResponse.json({ success: true, data: inventory }, { status: 201 });
   } catch (error) {

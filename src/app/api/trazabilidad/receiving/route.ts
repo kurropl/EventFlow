@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool, queryMany, querySingle } from '@/lib/db';
 import { sanitizeError, isValidUUID, sanitizeText } from '@/lib/security';
 import { convertUnit, areSameDimension } from '@/lib/units';
+import { adjustIngredientStock } from '@/lib/domain/stockLedger';
 
 // ── GET: Listar recepciones ──
 
@@ -187,26 +188,19 @@ export async function POST(request: NextRequest) {
       );
       const receivingRecord = receivingResult.rows[0];
 
-      // 3. Cierre del círculo (FR-C09): incrementar el stock CANÓNICO del
-      //    ingrediente (ingredients.quantity), el mismo que consume el escandallo.
-      const updIng = await client.query(
-        `UPDATE ingredients SET quantity = COALESCE(quantity, 0) + $2 WHERE id = $1
-         RETURNING quantity`,
-        [ingredient_id, addQty]
-      );
-      const newStock = Number(updIng.rows[0].quantity) || 0;
-
-      // 4. Movimiento de stock (log canónico en stock_entries).
-      await client.query(
-        `INSERT INTO stock_entries (ingredient_id, quantity, unit, movement_reason, notes)
-         VALUES ($1, $2, $3, 'compra_prevision', $4)`,
-        [
-          ingredient_id,
-          addQty,
-          ingUnit,
-          notes ? `Recepción lote ${lot_number}: ${notes}` : `Recepción lote ${lot_number}`,
-        ]
-      );
+      // 3. Cierre del círculo (FR-C09) vía el ledger único (G6): actualiza
+      //    ingredients.quantity (canónico) Y refleja inventory/inventory_movements
+      //    (pantallas de Trazabilidad) en la misma transacción.
+      const adj = await adjustIngredientStock(client, {
+        ingredientId: ingredient_id,
+        delta: addQty,
+        reason: 'compra_prevision',
+        movementType: 'receipt',
+        referenceType: 'receiving_log',
+        referenceId: receivingRecord.id,
+        notes: notes ? `Recepción lote ${lot_number}: ${notes}` : `Recepción lote ${lot_number}`,
+      });
+      const newStock = adj.newQty;
 
       await client.query('COMMIT');
 

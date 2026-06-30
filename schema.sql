@@ -2056,3 +2056,100 @@ CREATE TABLE IF NOT EXISTS venue_bookings (
 
 CREATE INDEX IF NOT EXISTS idx_venue_bookings_event ON venue_bookings(event_id);
 CREATE INDEX IF NOT EXISTS idx_venue_bookings_venue_date ON venue_bookings(venue_id, event_date);
+
+-- ============================================================
+-- SPRINT 2 · G2 — Compromiso de inventario al aceptar presupuesto
+-- (SPEC-Sprint2-Inventory.md). Tras G1 (salón) y G3 (personal), G2 cierra la
+-- tercera brecha de la bisagra acceptQuote: que dos eventos no se prometan
+-- el mismo stock sin avisar.
+-- ============================================================
+
+-- Función de conversión de unidades — referenciada por
+-- /api/stock/generate-order pero NUNCA se cargaba en schema.sql (bug real,
+-- confirmado empíricamente: la ruta fallaba con "function convert_uom does
+-- not exist" contra cualquier BD limpia). Solo vivía en
+-- scripts/migration-escandallos-v2.sql, que no se ejecuta nunca.
+CREATE OR REPLACE FUNCTION convert_uom(amount NUMERIC, from_unit VARCHAR, to_unit VARCHAR)
+RETURNS NUMERIC AS $$
+DECLARE
+  from_factor NUMERIC;
+  to_factor NUMERIC;
+BEGIN
+  SELECT factor_to_base INTO from_factor FROM units_of_measure WHERE name = from_unit;
+  SELECT factor_to_base INTO to_factor FROM units_of_measure WHERE name = to_unit;
+  IF from_factor IS NULL OR to_factor IS NULL THEN RETURN amount; END IF;
+  RETURN ROUND((amount * from_factor / to_factor)::numeric, 4);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- Una fila por (evento, ingrediente): cuánto de ese ingrediente "promete"
+-- consumir este evento, en la unidad de stock del ingrediente. Se
+-- crea/actualiza al aceptar presupuesto y se borra al revertir/cancelar/
+-- cerrar (una vez el stock real refleja el consumo, el compromiso ya no
+-- tiene sentido).
+CREATE TABLE IF NOT EXISTS inventory_commitments (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id      UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+    qty_committed NUMERIC(12,3) NOT NULL DEFAULT 0,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (event_id, ingredient_id)
+);
+CREATE INDEX IF NOT EXISTS idx_inv_commitments_ingredient ON inventory_commitments(ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_inv_commitments_event ON inventory_commitments(event_id);
+
+-- E1 (decisión usuario): bloqueo opcional. Por defecto false (no bloqueante,
+-- el comportamiento descrito en el spec); el negocio puede activarlo para
+-- que aceptar un presupuesto con faltante de stock falle con 409 en vez de
+-- solo avisar. Sin UI propia todavía (se añadirá en el rediseño del admin);
+-- se gestiona vía PUT /api/settings.
+ALTER TABLE business_settings
+  ADD COLUMN IF NOT EXISTS block_accept_on_stock_shortage BOOLEAN NOT NULL DEFAULT false;
+
+-- ============================================================
+-- SPRINT 2 · G6 — Unificación del doble ledger de stock (a petición
+-- explícita del usuario, adelantado desde "Sprint 3"). `ingredients.quantity`
+-- pasa a ser la ÚNICA fuente de verdad (la que ya usan escandallo,
+-- stockDeduct y los nuevos inventory_commitments); `inventory`/
+-- `inventory_movements` (consumidos por las pantallas de Trazabilidad) se
+-- convierten en un ESPEJO de solo lectura, mantenido por trigger + por la
+-- nueva función de dominio domain/stockLedger.ts (única vía de escritura).
+--
+-- Bug real confirmado leyendo el código: /api/trazabilidad/receiving/
+-- from-order/[orderId] y /api/trazabilidad/lot-consumption/[eventId]
+-- escribían SOLO en `inventory.quantity`, nunca en `ingredients.quantity`
+-- — exactamente la divergencia silenciosa que describía la auditoría.
+-- ============================================================
+
+-- Backfill: toda fila de ingredients debe tener su espejo en inventory
+-- (idempotente — solo inserta lo que falte).
+INSERT INTO inventory (ingredient_id, quantity, unit, min_stock)
+SELECT id, quantity, unit, min_stock FROM ingredients i
+WHERE NOT EXISTS (SELECT 1 FROM inventory inv WHERE inv.ingredient_id = i.id);
+
+-- Trigger de seguridad (defensa en profundidad): cualquier UPDATE de
+-- ingredients.quantity/min_stock — pase o no por domain/stockLedger.ts —
+-- mantiene inventory.quantity/min_stock sincronizados. min_stock tenía la
+-- MISMA duplicación que quantity (vivía en ambas tablas sin sincronizar;
+-- auto-orders lee ingredients.min_stock, la pantalla de Trazabilidad lee
+-- inventory.min_stock). domain/stockLedger.ts hace además el registro
+-- detallado en inventory_movements/stock_entries; este trigger solo
+-- garantiza que los SALDOS nunca divergen.
+CREATE OR REPLACE FUNCTION sync_inventory_quantity()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO inventory (ingredient_id, quantity, unit, min_stock, last_movement_at)
+  VALUES (NEW.id, NEW.quantity, NEW.unit, NEW.min_stock, now())
+  ON CONFLICT (ingredient_id)
+  DO UPDATE SET quantity = NEW.quantity, unit = NEW.unit, min_stock = NEW.min_stock, last_movement_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_inventory_quantity ON ingredients;
+CREATE TRIGGER trg_sync_inventory_quantity
+  AFTER UPDATE OF quantity, min_stock ON ingredients
+  FOR EACH ROW
+  WHEN (NEW.quantity IS DISTINCT FROM OLD.quantity OR NEW.min_stock IS DISTINCT FROM OLD.min_stock)
+  EXECUTE FUNCTION sync_inventory_quantity();

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool, queryMany, querySingle } from '@/lib/db';
 import { sanitizeError, isValidUUID } from '@/lib/security';
+import { adjustIngredientStock } from '@/lib/domain/stockLedger';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -155,44 +156,24 @@ export async function POST(
       );
       const consumptionRecord = consumptionResult.rows[0];
 
-      // 4. Obtener o crear inventory para el ingrediente
-      const inventoryResult = await client.query(
-        `SELECT * FROM inventory WHERE ingredient_id = $1 FOR UPDATE`,
-        [receivingRecord.ingredient_id]
-      );
-
-      let invRecord;
-      if (inventoryResult.rows.length > 0) {
-        invRecord = inventoryResult.rows[0];
-        const newStock = Number(invRecord.quantity) - finalQty;
-        const finalNewStock = Math.max(0, newStock); // No permitir stock negativo
-
-        await client.query(
-          `UPDATE inventory
-           SET quantity = $1, last_movement_at = now()
-           WHERE id = $2`,
-          [finalNewStock, invRecord.id]
-        );
-
-        // 5. Insertar inventory_movements
-        await client.query(
-          `INSERT INTO inventory_movements
-             (inventory_id, movement_type, quantity, unit, reference_type, reference_id,
-              previous_stock, new_stock, notes)
-           VALUES ($1, 'consumption', $2, $3, 'event', $4, $5, $6, $7)`,
-          [
-            invRecord.id,
-            -finalQty, // Negativo porque es salida
-            finalUnit,
-            eventId,
-            Number(invRecord.quantity),
-            finalNewStock,
-            `Consumo para evento ${eventResult.rows[0].client_name} - ${receivingRecord.ingredient_name}`,
-          ]
-        );
-
-        invRecord.quantity = finalNewStock;
-      }
+      // 4. G6: deducir el stock CANÓNICO (ingredients.quantity) — antes esto
+      // solo tocaba `inventory.quantity` (bug real confirmado), invisible
+      // para escandallo/stockDeduct/inventory_commitments.
+      const adj = await adjustIngredientStock(client, {
+        ingredientId: receivingRecord.ingredient_id,
+        delta: -finalQty,
+        reason: 'operativo',
+        movementType: 'consumption',
+        eventId,
+        referenceType: 'event',
+        referenceId: eventId,
+        notes: `Consumo para evento ${eventResult.rows[0].client_name} - ${receivingRecord.ingredient_name}`,
+      });
+      const invRecord = {
+        ingredient_id: receivingRecord.ingredient_id,
+        quantity: adj.newQty,
+        unit: adj.unit,
+      };
 
       await client.query('COMMIT');
 
@@ -200,12 +181,7 @@ export async function POST(
         success: true,
         data: {
           consumption: consumptionRecord,
-          inventory: invRecord ? {
-            id: invRecord.id,
-            ingredient_id: invRecord.ingredient_id,
-            quantity: Number(invRecord.quantity),
-            unit: invRecord.unit,
-          } : null,
+          inventory: invRecord,
         },
       }, { status: 201 });
     } catch (error) {

@@ -5,8 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPool, queryMany, querySingle } from '@/lib/db';
+import { queryMany, querySingle, transaction } from '@/lib/db';
 import { sanitizeError, isValidUUID } from '@/lib/security';
+import { adjustIngredientStock } from '@/lib/domain/stockLedger';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -96,70 +97,50 @@ export async function PUT(
       );
     }
 
-    const pool = getPool();
-    const client = await pool.connect();
-
-    try {
-      await client.query('BEGIN');
-
-      // Obtener inventario actual
-      const inventory = await client.query(
-        `SELECT inv.*, i.name AS ingredient_name
-         FROM inventory inv
-         JOIN ingredients i ON i.id = inv.ingredient_id
-         WHERE inv.ingredient_id = $1
-         FOR UPDATE`,
+    // G6: el ajuste manual ahora pasa por el ledger único — actualiza
+    // ingredients.quantity (canónico) y refleja inventory/inventory_movements
+    // en la misma transacción, sin que esta ruta pierda su contrato HTTP.
+    const result = await transaction(async (client) => {
+      const ing = (await client.query(
+        `SELECT i.id, i.quantity, i.unit, i.name
+         FROM inventory inv JOIN ingredients i ON i.id = inv.ingredient_id
+         WHERE inv.ingredient_id = $1 FOR UPDATE`,
         [ingredientId]
-      );
+      )).rows[0];
+      if (!ing) return null;
 
-      if (inventory.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return NextResponse.json(
-          { success: false, error: 'No hay inventario para este ingrediente. Créelo primero con POST.' },
-          { status: 404 }
-        );
-      }
-
-      const inv = inventory.rows[0];
-      const oldQuantity = Number(inv.quantity);
+      const oldQuantity = Number(ing.quantity);
       const diff = newQuantity - oldQuantity;
 
-      // Actualizar inventario
-      const updated = await client.query(
-        `UPDATE inventory
-         SET quantity = $1, last_movement_at = now(), notes = $2
-         WHERE ingredient_id = $3
-         RETURNING *`,
-        [newQuantity, notes || null, ingredientId]
-      );
-
-      const invRecord = updated.rows[0];
-
-      // Registrar movimiento
-      await client.query(
-        `INSERT INTO inventory_movements
-           (inventory_id, movement_type, quantity, unit, reference_type, previous_stock, new_stock, notes)
-         VALUES ($1, 'adjustment', $2, $3, 'manual', $4, $5, $6)`,
-        [invRecord.id, diff, inv.unit, oldQuantity, newQuantity, notes || 'Ajuste manual de stock']
-      );
-
-      await client.query('COMMIT');
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          ...invRecord,
-          quantity: Number(invRecord.quantity),
-          previous_quantity: oldQuantity,
-          difference: diff,
-        },
+      const adj = await adjustIngredientStock(client, {
+        ingredientId,
+        delta: diff,
+        reason: 'ajuste_inventario',
+        movementType: 'adjustment',
+        referenceType: 'manual',
+        notes: notes || 'Ajuste manual de stock',
       });
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+
+      const invRecord = (await client.query(`SELECT * FROM inventory WHERE ingredient_id = $1`, [ingredientId])).rows[0];
+      return { invRecord, oldQuantity: adj.previousQty, diff };
+    });
+
+    if (!result) {
+      return NextResponse.json(
+        { success: false, error: 'No hay inventario para este ingrediente. Créelo primero con POST.' },
+        { status: 404 }
+      );
     }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...result.invRecord,
+        quantity: Number(result.invRecord.quantity),
+        previous_quantity: result.oldQuantity,
+        difference: result.diff,
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: sanitizeError(error) },

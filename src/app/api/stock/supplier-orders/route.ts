@@ -6,9 +6,10 @@
  * DELETE /api/stock/supplier-orders?id=X          — Delete order
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle } from '@/lib/db';
+import { queryMany, querySingle, transaction } from '@/lib/db';
 import { sanitizeError, sanitizeText, isValidUUID } from '@/lib/security';
 import { verifyToken } from '@/lib/auth';
+import { adjustIngredientStock } from '@/lib/domain/stockLedger';
 
 function requireAuth(request: NextRequest): { authenticated: boolean; error?: string } {
   const token = request.cookies.get('admin_session')?.value || request.cookies.get('eventflow_token')?.value;
@@ -121,19 +122,29 @@ export async function PUT(request: NextRequest) {
       vals
     );
 
-    // If delivered, auto-restock ingredients
+    // If delivered, auto-restock ingredients — vía el ledger único (G6): antes
+    // era un UPDATE directo sin log alguno (ni stock_entries ni
+    // inventory_movements); ahora queda trazado igual que cualquier recepción.
     if (status === 'delivered') {
       const items = await queryMany<any>(
         `SELECT * FROM supplier_order_items WHERE order_id = $1`, [id]
       );
-      for (const item of items) {
-        if (item.ingredient_id) {
-          await querySingle(
-            `UPDATE ingredients SET quantity = quantity + $1, last_restocked = now(), updated_at = now() WHERE id = $2`,
-            [Number(item.quantity), item.ingredient_id]
-          );
+      await transaction(async (client) => {
+        for (const item of items) {
+          if (item.ingredient_id) {
+            await adjustIngredientStock(client, {
+              ingredientId: item.ingredient_id,
+              delta: Number(item.quantity),
+              reason: 'compra_prevision',
+              movementType: 'receipt',
+              referenceType: 'supplier_order',
+              referenceId: id,
+              notes: `Pedido a proveedor entregado (${order?.supplier || 'proveedor'})`,
+            });
+            await querySingle(`UPDATE ingredients SET last_restocked = now() WHERE id = $1`, [item.ingredient_id]);
+          }
         }
-      }
+      });
     }
 
     return NextResponse.json({ success: true, data: order });

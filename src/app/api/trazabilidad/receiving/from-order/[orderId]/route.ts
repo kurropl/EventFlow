@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool, queryMany, querySingle } from '@/lib/db';
 import { sanitizeError, isValidUUID } from '@/lib/security';
+import { adjustIngredientStock } from '@/lib/domain/stockLedger';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -111,36 +112,19 @@ export async function POST(
           );
           const receivingRecord = receivingResult.rows[0];
 
-          // Upsert inventory
-          const inventoryResult = await client.query(
-            `INSERT INTO inventory (ingredient_id, quantity, unit, last_movement_at)
-             VALUES ($1, $2, $3, now())
-             ON CONFLICT (ingredient_id)
-             DO UPDATE SET
-               quantity = inventory.quantity + $2,
-               last_movement_at = now()
-             RETURNING *`,
-            [ingredientId, itemQuantity, itemUnit]
-          );
-          const invRecord = inventoryResult.rows[0];
-          const previousStock = Number(invRecord.quantity) - itemQuantity;
-
-          // Insertar inventory_movements
-          await client.query(
-            `INSERT INTO inventory_movements
-               (inventory_id, movement_type, quantity, unit, reference_type, reference_id,
-                previous_stock, new_stock, notes)
-             VALUES ($1, 'receipt', $2, $3, 'receiving_log', $4, $5, $6, $7)`,
-            [
-              invRecord.id,
-              itemQuantity,
-              itemUnit,
-              receivingRecord.id,
-              previousStock,
-              Number(invRecord.quantity),
-              `Recepción automática desde pedido ${orderId.slice(0, 8)} para ${ingredientName}`,
-            ]
-          );
+          // G6: antes esto SOLO escribía en `inventory.quantity` — nunca en
+          // `ingredients.quantity` (la fuente que consumen escandallo/
+          // stockDeduct/inventory_commitments). Bug real confirmado leyendo
+          // el código; corregido vía el ledger único.
+          await adjustIngredientStock(client, {
+            ingredientId,
+            delta: itemQuantity,
+            reason: 'compra_prevision',
+            movementType: 'receipt',
+            referenceType: 'receiving_log',
+            referenceId: receivingRecord.id,
+            notes: `Recepción automática desde pedido ${orderId.slice(0, 8)} para ${ingredientName}`,
+          });
 
           createdReceivings.push(receivingRecord);
         } catch (itemError) {
