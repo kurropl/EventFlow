@@ -100,44 +100,7 @@ export async function checkMarginAlerts(
   }));
 }
 
-/**
- * Congela el escandallo y calcula la desviación final
- */
-export async function freezeEventEscandallo(
-  eventId: string
-): Promise<{ deviationAmount: number; deviationPct: number; estimatedTotal: number; actualTotal: number }> {
-  const pool = getPool();
-
-  await pool.query('UPDATE event_shopping_items SET frozen = true WHERE event_id = $1', [eventId]);
-
-  const estimated = await pool.query(
-    `SELECT COALESCE(SUM(estimated_cost), 0) AS total FROM event_shopping_items WHERE event_id = $1`,
-    [eventId]
-  );
-
-  const actual = await pool.query(
-    `SELECT COALESCE(SUM(actual_cost_total), 0) AS total FROM event_shopping_items WHERE event_id = $1`,
-    [eventId]
-  );
-
-  const estimatedTotal = Number(estimated.rows[0]?.total) || 0;
-  const actualTotal = Number(actual.rows[0]?.total) || 0;
-  const deviation = actualTotal - estimatedTotal;
-  // deviation_pct es NUMERIC(5,2): clamp a ±999.99.
-  const rawPct = estimatedTotal > 0 ? (deviation / estimatedTotal) * 100 : 0;
-  const pct = Math.max(-999.99, Math.min(999.99, Math.round(rawPct * 100) / 100));
-
-  // Idempotente: un único snapshot por evento (índice único event_id).
-  await pool.query(
-    `INSERT INTO event_cost_deviations (event_id, estimated_total_cost, actual_total_cost, deviation_amount, deviation_pct)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (event_id) DO UPDATE
-       SET estimated_total_cost = EXCLUDED.estimated_total_cost,
-           actual_total_cost    = EXCLUDED.actual_total_cost,
-           deviation_amount     = EXCLUDED.deviation_amount,
-           deviation_pct        = EXCLUDED.deviation_pct`,
-    [eventId, estimatedTotal, actualTotal, deviation, pct]
-  );
-
-  return { deviationAmount: deviation, deviationPct: pct, estimatedTotal, actualTotal };
-}
+// freezeEventEscandallo eliminada (G20, Sprint 4) — era una copia más pobre
+// de domain/../lib/escandallo.ts::freezeEscandallo (no consolidaba real:=teórico
+// por línea, no fijaba frozen_at/closed_at). Único call site
+// (escandallo/event/[eventId]/route.ts) migrado a la implementación canónica.

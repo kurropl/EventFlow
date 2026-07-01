@@ -7,7 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool, querySingle, queryMany } from '@/lib/db';
-import { recalcEventEscandallo, freezeEventEscandallo, checkMarginAlerts } from '@/lib/recalcEscandallo';
+import { recalcEventEscandallo, checkMarginAlerts } from '@/lib/recalcEscandallo';
+import { freezeEscandallo } from '@/lib/escandallo';
 import { sanitizeError } from '@/lib/security';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -112,15 +113,23 @@ export async function POST(
 ) {
   try {
     const eventId = params.eventId;
-    const result = await freezeEventEscandallo(eventId);
+    // G20 (Sprint 4): consolidado en la implementación canónica (más completa —
+    // consolida real:=teórico por línea, fija frozen_at y closed_at).
+    const result = await freezeEscandallo(eventId);
+    // deviation_pct ya se calculó y persistió (con el clamp ±999.99) dentro de
+    // freezeEscandallo — se relee en vez de recalcularlo aquí para no divergir.
+    const snapshot = await querySingle<any>(
+      `SELECT deviation_pct FROM event_cost_deviations WHERE event_id = $1`,
+      [eventId]
+    );
 
     return NextResponse.json({
       success: true,
       data: {
-        deviation_amount: result.deviationAmount,
-        deviation_pct: result.deviationPct,
-        estimated_total: result.estimatedTotal,
-        actual_total: result.actualTotal,
+        deviation_amount: result.desviacion,
+        deviation_pct: Number(snapshot?.deviation_pct) || 0,
+        estimated_total: result.estimado,
+        actual_total: result.real,
       },
     });
   } catch (error) {

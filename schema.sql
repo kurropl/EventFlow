@@ -2193,3 +2193,16 @@ CREATE INDEX IF NOT EXISTS idx_event_contracts_event ON event_contracts(event_id
 -- renegocia (p.ej. tras INV-4 reabrir con cambio de precio).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_contracts_active
   ON event_contracts(event_id) WHERE status != 'voided';
+
+-- ============================================================
+-- SPRINT 4 · Nivel A — arreglos mecánicos
+-- ============================================================
+
+-- A3 (G21): admins.worker_id sin FK — vive activamente (vinculación de login
+-- cocina/camareros a su perfil de workers vía /api/admin/users), así que no
+-- es un simple "añadir limpio": se valida sin bloquear primero (NOT VALID)
+-- por si hubiera algún huérfano en datos de verificación/desarrollo.
+ALTER TABLE admins DROP CONSTRAINT IF EXISTS admins_worker_id_fkey;
+ALTER TABLE admins ADD CONSTRAINT admins_worker_id_fkey
+  FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE SET NULL NOT VALID;
+ALTER TABLE admins VALIDATE CONSTRAINT admins_worker_id_fkey;

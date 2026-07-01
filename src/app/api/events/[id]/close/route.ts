@@ -75,7 +75,7 @@ export async function POST(
           eventId,
           clientId: ev.client_id,
           fiscalName: client?.name || ev.client_name || 'Cliente',
-          fiscalNif: client?.nif || '',
+          fiscalNif: client?.fiscal_nif || '',
           subtotal: Number(ev.total_pvp || 0),
           ivaPct: Number(ev.iva_pct || 10),
           paymentsTotal: Number(paidRes.rows?.[0]?.paid || 0),

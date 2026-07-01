@@ -79,10 +79,14 @@ async function fwd2(event: any, motivo?: string) {
 
   await setEventStatus(event.id, 'sent');
   await querySingle(`UPDATE quotes SET status = 'sent', sent_at = now() WHERE id = $1 AND status = 'draft'`, [quote.id]);
-  await querySingle(
-    `UPDATE leads SET status = 'presupuestado' WHERE LOWER(name) = LOWER($1) AND status = 'nuevo'`,
-    [event.client_name]
-  );
+  // G19: vía la FK real (quotes.lead_id), no LOWER(name) difuso — mismo fix ya
+  // aplicado en acceptQuote.ts (T4.2), propagado aquí.
+  if (quote.lead_id) {
+    await querySingle(
+      `UPDATE leads SET status = 'presupuestado' WHERE id = $1 AND status = 'nuevo'`,
+      [quote.lead_id]
+    );
+  }
 
   await audit(event.id, 'event', event.id, 'FWD-2', 'draft', 'sent', 'admin', motivo);
   const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
@@ -226,9 +230,11 @@ async function inv1(event: any, motivo?: string) {
   await setEventStatus(event.id, 'lost', { extra: { lost_at: NOW, lost_reason: motivo } });
   await releaseVenue(getPool(), event.id);  // G1: el salón vuelve a estar libre
   await releaseInventoryCommitments(getPool() as any, event.id);  // G2 (no-op si nunca se aceptó)
+  // G19: vía la FK real (events.quote_id -> quotes.lead_id), no LOWER(name) difuso.
   await querySingle(
-    `UPDATE leads SET status = 'perdido' WHERE LOWER(name) = LOWER($1) AND status IN ('nuevo','presupuestado')`,
-    [event.client_name]
+    `UPDATE leads SET status = 'perdido'
+     WHERE id = (SELECT lead_id FROM quotes WHERE id = $1) AND status IN ('nuevo','presupuestado')`,
+    [event.quote_id]
   );
 
   await audit(event.id, 'event', event.id, 'INV-1', 'sent', 'lost', 'admin', motivo);
@@ -263,10 +269,11 @@ async function inv2(event: any, motivo?: string) {
   await setEventStatus(event.id, 'sent', { extra: { total_pvp: 0 } });
   await recalcEventCost(event.id);
 
-  // 6. Lead back to presupuestado (linked via client_name matching)
+  // 6. Lead back to presupuestado — G19: vía la FK real, no LOWER(name).
   await querySingle(
-    `UPDATE leads SET status = 'presupuestado' WHERE LOWER(name) = LOWER($1) AND status = 'convertido'`,
-    [event.client_name]
+    `UPDATE leads SET status = 'presupuestado'
+     WHERE id = (SELECT lead_id FROM quotes WHERE id = $1) AND status = 'convertido'`,
+    [event.quote_id]
   );
 
   // 7. Restore quote

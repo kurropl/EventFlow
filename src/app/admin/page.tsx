@@ -86,7 +86,7 @@ export default function AdminDashboard() {
   const isProveedores = pathname?.includes('proveedores');
   const isStock = pathname?.includes('stock');
   const isStaffing = pathname?.includes('staffing');
-  const isMapa = pathname?.includes('mapa-mas');
+  const isMapa = pathname?.includes('mapa-mesas');
   const isTraza = pathname?.includes('traza');
   const isTrazabilidad = pathname?.includes('trazabilidad');
   const isChecklist = pathname?.includes('checklist');
