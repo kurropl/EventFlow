@@ -1,9 +1,134 @@
 ## Último agente: Claude Code
-## Fecha: 01/07/2026 (Sprint 3)
+## Fecha: 01/07/2026 (Sprint 4)
 ## Rama: main
 ## Último commit: (ver `git log -1`, tras este handoff)
 
-### Qué se hizo (01/07 · Sprint 3 · G5 trazabilidad FEFO + G8 contrato/firma)
+### Qué se hizo (01/07 · Sprint 4 · los 14 gaps restantes del Gap Analysis, Nivel A+B)
+- [x] **SPEC-Sprint4-RemainingGaps.md** (SDD): 14 gaps (no 15 — G7 ya se
+  resolvió de rebote en Sprint 2), agrupados en Nivel A (5 arreglos
+  mecánicos), Nivel B (6 features acotadas, con decisiones de negocio E-B1
+  a E-B6 resueltas por el usuario) y Nivel C (3 iniciativas grandes,
+  documentadas pero NO construidas — ver más abajo).
+- [x] **Nivel A (G19,G20,G21,G22,bug-G9)**: enlace lead↔evento en
+  `transitions.ts` (fwd2/inv1/inv2) pasa de `LOWER(name)` difuso a la FK
+  real `quotes.lead_id`/`events.quote_id`; `freezeEventEscandallo`
+  (`recalcEscandallo.ts`, más pobre) eliminada, todo el mundo llama a
+  `freezeEscandallo` (`lib/escandallo.ts`, canónica); FK
+  `admins.worker_id → workers(id)` (`NOT VALID` + `VALIDATE`, sin bloquear
+  por huérfanos); typo `mapa-mas`→`mapa-mesas` en el dispatcher de
+  `admin/page.tsx`; `client?.nif` (columna inexistente, NIF de factura
+  siempre vacío) → `client?.fiscal_nif`, corregido en 2 sitios
+  (`close/route.ts` y `fwd4`, este segundo no detectado en el Spec inicial).
+- [x] **B1 (G10) · Staffing.** `domain/staffingSizing.ts::upsertStaffingLines`
+  — antes solo se regeneraba `camarero` (dejando cocinero/metre obsoletos
+  tras cambiar comensales) y el `ON CONFLICT DO NOTHING` no tenía
+  constraint única contra la que chocar, así que cada recálculo insertaba
+  un duplicado. Nuevo índice único parcial `(event_id, role) WHERE
+  status='open'` — redimensiona solo líneas abiertas (decisión E-B1).
+- [x] **B2 (G12) · Equipamiento.** Nueva tabla `event_equipment_checkout` +
+  `domain/equipmentCheckout.ts`. Reserva automática (E-B2, sin botón
+  manual) al generar la hoja de logística, solo eventos `externo`.
+  `PATCH /api/cocina/equipment/checkout/[eventId]` para marcar
+  enviado/devuelto con notas de rotura/merma.
+- [x] **B3 (G11) · Merma.** `recipe_items.merma_pct` ahora se persiste en
+  el import de recetas (antes se calculaba y se tiraba). Opción A (E-B3,
+  decisión del usuario): sin migración de filas existentes, el usuario
+  reimportará sus recetas manualmente.
+- [x] **B4 (G13) · CRM ownership.** `leads.assigned_to` como fuente única
+  (E-B4) — NO se duplica en `quotes`/`events`; se deriva siempre por JOIN
+  (`quotes.lead_id`, `events.quote_id→quotes.lead_id`). Nueva tabla
+  `interactions` (timeline comercial). `PATCH /api/leads/[id]/assign`
+  reasigna y automáticamente "arrastra" todos los presupuestos/eventos
+  derivados sin tocar ninguna otra fila.
+- [x] **B5 (G16) · Cierre unificado + facturación parcial.** Nuevo
+  `domain/closeEvent.ts` — única implementación de "cerrar un evento",
+  reemplaza 2 copias divergentes (`close/route.ts` y `fwd4` en
+  `transitions.ts`) que diferían en 5 puntos reales (`fwd4` forzaba TODOS
+  los pagos a `paid=true`, no escribía `event_cost_deviations`, tenía su
+  propio freeze inline más pobre...). E-B5 (decisión del usuario, va más
+  allá de mis 2 propuestas originales): el cierre NUNCA fuerza pagos; la
+  primera factura cubre el total por defecto o un importe explícito
+  (`invoiceAmount`), dejando el resto facturable MÁS TARDE con la nueva
+  ruta reutilizable `POST /api/events/[id]/invoice {amount}` (facturación
+  incremental real, varias facturas por evento mientras no se supere el
+  precio confirmado — solo aviso, nunca bloqueo).
+- [x] **B6 (G17) · Whitelist de status.** E-B6 (delegado a mi criterio):
+  alcance acotado, no la reforma completa de `setEventStatus`. Los 2
+  puntos que aceptaban `events.status` sin validar ningún valor (`PUT
+  /api/events/[id]` y `automation.ts`, incluido el bypass vía
+  `update_event_field`) ahora exigen pertenencia a `VALID_EVENT_STATUSES`.
+  Documentadas también 2 transiciones reales no representadas en
+  `VALID_TRANSITIONS` (`PAY-1` accepted→presupuestado, `PAY-2`
+  completed→paid) — sin cambiar su comportamiento, solo para que sean
+  visibles/auditables.
+- [x] **2 bugs reales encontrados escribiendo `verify-sprint4.sh`** (no
+  introducidos por B1-B6, pero solo detectables ejercitando estos flujos
+  de punta a punta):
+  - `upsertEventOrderStaffing.ts` escribía `event_orders.guest_count`,
+    columna que no existe en esa tabla — `POST
+    /api/event-flow/[eventId]/calculate` fallaba con 500 en cuanto el
+    evento ya tenía un `event_order` (o sea, casi siempre tras aceptar).
+    Su rama INSERT tampoco incluía `quote_id` (NOT NULL sin default).
+    Corregido: quita `guest_count` (la fuente ya es `events.guest_count`),
+    deriva `quote_id` del evento.
+  - `POST /api/leads` y `POST /api/interactions` usaban
+    `getCurrentUser().id` como FK directa a `admins.id`. El admin
+    "maestro" por variables de entorno usa un id sintético `'admin-1'`
+    que no es una fila real de `admins` — crear un lead o registrar una
+    interacción autenticado como ese admin rompía con un error de FK.
+    Corregido: solo se usa el id si es un UUID válido, `null` en caso
+    contrario.
+- [x] Verificación: nuevo `scripts/verify-sprint4.sh` **50/50** (AC-A1..A5
+  + AC-B1..B6); sin regresión (E2E 32/32 · RBAC 41/41 · Operativos 14/14 ·
+  ERP 17/17 · Sprint1 26/26 · Sprint2 27/27 · Sprint3 32/32); build de
+  producción exit 0.
+
+### Nivel C — grandes iniciativas documentadas, NO construidas (backlog futuro)
+- **C1 (G9) · Facturae/Verifactu.** Cumplimiento fiscal real requiere:
+  direcciones fiscales estructuradas (hoy texto libre), `invoice_lines`
+  persistidas de forma inmutable (hoy solo hay totales agregados), firma
+  digital XAdES con certificado cualificado, y para Verifactu específico:
+  encadenado por hash + envío a la AEAT. Primer paso realista si se aborda
+  en un Spec dedicado: `GET /api/invoices/[id]/facturae.xml` sin firma
+  (claramente marcado como no válido para envío oficial).
+- **C2 (G14) · IVA multi-tasa real.** Entrelazado con C1 — el primer paso
+  correcto es `catalog_items.iva_pct` (10% por defecto, 21% para bebidas
+  alcohólicas — hoy `bebida` mezcla agua/refrescos con vino/cerveza sin
+  campo que los distinga), llevado a líneas de presupuesto/factura, con
+  `createInvoice` reestructurado para sumar por tasa. Depende de resolver
+  primero la falta de tabla de líneas de factura de C1.
+- **C3 (G18) · 6 redundancias de modelo.** Confirmadas las 6, una peor de
+  lo que decía la auditoría: los planos de mesa son 4 tablas distintas
+  (`tables`, `table_plans`, `event_floorplans`, `floor_plans`), no 2 — con
+  `/api/plans` trayendo su propio `schema.sql` separado. Cada consolidación
+  (planos de mesa, sistemas de receta, `guest_forms` vs `guests`,
+  `selected_items` vs `event_menu_items`, `waiters` vs `workers` —
+  confirmado NO muerto, con ruta CRUD activa —, triple alias de coste) toca
+  funcionalidad real en producción. Recomendado: NO tocar en un sprint,
+  abordar de una en una con su propio Spec y batería de regresión.
+- **G23 · Dos proveedores de WhatsApp — NO es un bug.** Twilio (captación
+  pública, solo entrante) y Meta Cloud API (staffing interno,
+  entrante+saliente) cubren flujos genuinamente distintos con modelos de
+  confianza distintos. Decisión de arquitectura intencional, documentada
+  para que no se reabra como si fuera deuda técnica.
+
+### Pendiente / próximos pasos sugeridos
+- [ ] **Rediseño del UI del admin** (siguiente paso acordado con el
+  usuario, ahora que los 14 gaps de backend están cerrados): badge de
+  propietario + filtro "mis leads" en `LeadsCRM.tsx`/`KanbanPipeline.tsx`
+  (B4, el dato ya es servible), UI de reserva/devolución de equipamiento
+  (B2), botón de facturación parcial/manual en la ficha de evento (B5),
+  además de lo ya pendiente de Sprints 1-3 (selector de salón, aviso de
+  stock, margen real con coste de personal, botón "Generar contrato").
+- [ ] **Arreglar el bug de `guest-forms/decor`** (401 sin cookie pese a ser
+  pública) — encontrado en Sprint 3, sigue sin tocar.
+- [ ] Borrar la rama remota `claude/event-venue-redesign-JAUif` (el
+  usuario, por política de red del entorno bloquea el push de borrado).
+- [ ] Nivel C del Gap Analysis (G9/G14/G18/G23) — ver arriba, con su primer
+  paso ya perfilado para un futuro Spec dedicado. G4/G15 (TPV/KDS/
+  pasarela) siguen excluidos por mandato del usuario.
+
+### Histórico (01/07 · Sprint 3 · G5 trazabilidad FEFO + G8 contrato/firma)
 - [x] **SPEC-Sprint3-Trazabilidad-Contrato.md** (SDD): aprobado por el usuario
   con alcance ampliado sobre la propuesta inicial de G8 — (D1) HTML
   confirmado, (D2) **firma dibujada en canvas** (no solo nombre+NIF+checkbox
