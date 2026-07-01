@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
-import { sanitizeError } from '@/lib/security';
+import { sanitizeError, isValidUUID } from '@/lib/security';
 import { getCurrentUser } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -104,14 +104,17 @@ export async function POST(request: NextRequest) {
     const { name, email, phone, source, event_type, guest_count, event_date } = parsed.data;
 
     // G13 (Sprint 4): auto-asigna el lead al usuario autenticado que lo crea
-    // (null si viene de un flujo público/no autenticado, p.ej. configurador).
+    // (null si viene de un flujo público/no autenticado, p.ej. configurador,
+    // o del admin "maestro" por variables de entorno, cuyo id sintético
+    // 'admin-1' no es una fila real de `admins` y no puede usarse como FK).
     const currentUser = await getCurrentUser();
+    const assignedTo = currentUser?.id && isValidUUID(currentUser.id) ? currentUser.id : null;
 
     const lead = await querySingle<Lead>(
       `INSERT INTO leads (name, email, phone, source, event_type, guest_count, event_date, assigned_to)
        VALUES ($1, $2, $3, COALESCE($4, 'manual'), $5, $6, $7, $8)
        RETURNING *`,
-      [name, email || null, phone || null, source || 'manual', event_type || null, guest_count || null, event_date || null, currentUser?.id ?? null]
+      [name, email || null, phone || null, source || 'manual', event_type || null, guest_count || null, event_date || null, assignedTo]
     );
 
     // Send welcome email to new lead

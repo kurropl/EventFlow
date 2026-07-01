@@ -13,7 +13,6 @@ export interface UpsertEventOrderStaffingParams {
   eventId: string;
   tablesSuggested: number;
   waitersSuggested: number;
-  guestCount: number;
 }
 
 export async function upsertEventOrderStaffing(
@@ -25,19 +24,23 @@ export async function upsertEventOrderStaffing(
     [p.eventId]
   );
 
+  // event_orders no tiene columna guest_count propia — events.guest_count ya
+  // es la fuente única (bug encontrado vía verify-sprint4.sh: esta UPDATE
+  // rompía con "column guest_count does not exist" en cuanto el event_order
+  // ya existía, es decir, en casi cualquier recálculo tras la aceptación).
   if (existing.rows?.[0]) {
     await client.query(
       `UPDATE event_orders
-       SET tables_suggested = $1, waiters_suggested = $2,
-           guest_count = $3, updated_at = now()
-       WHERE event_id = $4`,
-      [p.tablesSuggested, p.waitersSuggested, p.guestCount, p.eventId]
+       SET tables_suggested = $1, waiters_suggested = $2, updated_at = now()
+       WHERE event_id = $3`,
+      [p.tablesSuggested, p.waitersSuggested, p.eventId]
     );
   } else {
     await client.query(
-      `INSERT INTO event_orders (event_id, tables_suggested, waiters_suggested, guest_count, status)
-       VALUES ($1, $2, $3, $4, 'pending')`,
-      [p.eventId, p.tablesSuggested, p.waitersSuggested, p.guestCount]
+      `INSERT INTO event_orders (event_id, quote_id, tables_suggested, waiters_suggested, status)
+       SELECT $1, e.quote_id, $2, $3, 'pending'
+       FROM events e WHERE e.id = $1 AND e.quote_id IS NOT NULL`,
+      [p.eventId, p.tablesSuggested, p.waitersSuggested]
     );
   }
 }

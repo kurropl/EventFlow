@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // El admin "maestro" por variables de entorno tiene id sintético
+    // 'admin-1', que no es una fila real de `admins` y no puede usarse como FK.
     const currentUser = await getCurrentUser();
+    const createdBy = currentUser?.id && isValidUUID(currentUser.id) ? currentUser.id : null;
     const created = await querySingle<any>(
       `INSERT INTO interactions (lead_id, event_id, type, notes, created_by)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
         parsed.data.event_id ?? null,
         parsed.data.type,
         parsed.data.notes ? sanitizeText(parsed.data.notes, 2000) : null,
-        currentUser?.id ?? null,
+        createdBy,
       ]
     );
 

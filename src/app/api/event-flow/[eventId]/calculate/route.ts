@@ -35,7 +35,6 @@ export async function POST(
       eventId,
       tablesSuggested: tablesNeeded,
       waitersSuggested: waitersNeeded,
-      guestCount,
     });
 
     // G10 (Sprint 4): fuente única — antes solo regeneraba 'camarero' (con un
