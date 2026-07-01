@@ -2206,3 +2206,65 @@ ALTER TABLE admins DROP CONSTRAINT IF EXISTS admins_worker_id_fkey;
 ALTER TABLE admins ADD CONSTRAINT admins_worker_id_fkey
   FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE SET NULL NOT VALID;
 ALTER TABLE admins VALIDATE CONSTRAINT admins_worker_id_fkey;
+
+-- ============================================================
+-- SPRINT 4 · B1 (G10) — Auto-dimensionado de staffing: constraint única
+-- ============================================================
+-- Necesaria para que un upsert real sea posible. Solo cubre líneas 'open':
+-- una línea ya 'filled'/'cancelled' no debe recibir un resize silencioso
+-- (E-B1: redimensionar solo lo que sigue abierto).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_staffing_lines_event_role_open
+  ON staffing_lines(event_id, role) WHERE status = 'open';
+
+-- ============================================================
+-- SPRINT 4 · B2 (G12) — Reserva de menaje/equipamiento por evento
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_equipment_checkout (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id          UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  equipment_id      UUID NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+  quantity_sent     NUMERIC(10,2) NOT NULL DEFAULT 0,
+  quantity_returned NUMERIC(10,2),
+  condition_notes   TEXT,
+  checked_out_at    TIMESTAMPTZ,
+  returned_at       TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (event_id, equipment_id)
+);
+CREATE INDEX IF NOT EXISTS idx_event_equipment_checkout_event ON event_equipment_checkout(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_equipment_checkout_equipment ON event_equipment_checkout(equipment_id);
+ALTER TABLE event_equipment_checkout DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- SPRINT 4 · B3 (G11) — merma_pct persistida (antes se calculaba y se tiraba)
+-- ============================================================
+-- E-B3 (decisión usuario): Opción A — solo persistir desde ahora, sin
+-- cambiar la fórmula de generateEscandallo.ts (recipe_items.quantity sigue
+-- siendo bruto). Filas existentes quedan en merma_pct=0 hasta que el
+-- usuario reimporte sus recetas (su plan, sin migración/backfill aquí).
+ALTER TABLE recipe_items ADD COLUMN IF NOT EXISTS merma_pct NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE recipe_item_versions ADD COLUMN IF NOT EXISTS merma_pct NUMERIC(5,2);
+
+-- ============================================================
+-- SPRINT 4 · B4 (G13) — CRM: propietario comercial + historial (E-B4 fuente única)
+-- ============================================================
+-- assigned_to vive SOLO en leads (fuente única). quotes/events lo derivan
+-- por join a través de la FK ya existente (quotes.lead_id; events.quote_id
+-- -> quotes.lead_id) — no se duplica columna, evita desincronización.
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES admins(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_leads_assigned_to ON leads(assigned_to);
+
+CREATE TABLE IF NOT EXISTS interactions (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id     UUID REFERENCES leads(id) ON DELETE CASCADE,
+  event_id    UUID REFERENCES events(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL CHECK (type IN ('llamada','email','whatsapp','nota','reunion')),
+  notes       TEXT,
+  created_by  UUID REFERENCES admins(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT interactions_target_chk CHECK (lead_id IS NOT NULL OR event_id IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS idx_interactions_lead ON interactions(lead_id);
+CREATE INDEX IF NOT EXISTS idx_interactions_event ON interactions(event_id);
+ALTER TABLE interactions DISABLE ROW LEVEL SECURITY;

@@ -60,9 +60,13 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('event_id');
     const leadId = searchParams.get('lead_id');
 
+    // G13 (Sprint 4): assigned_to derivado por join (fuente única en leads).
     let sql = `SELECT q.*, e.client_name, e.client_email, e.event_date,
-      e.guest_count, e.kids_count, e.event_type
-      FROM quotes q JOIN events e ON e.id = q.event_id`;
+      e.guest_count, e.kids_count, e.event_type,
+      l.assigned_to, a.name AS assigned_to_name
+      FROM quotes q JOIN events e ON e.id = q.event_id
+      LEFT JOIN leads l ON l.id = q.lead_id
+      LEFT JOIN admins a ON a.id = l.assigned_to`;
     const params: string[] = [];
     const conds: string[] = [];
 

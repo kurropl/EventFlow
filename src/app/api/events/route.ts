@@ -27,10 +27,13 @@ export async function GET(request: NextRequest) {
     );
     const offset = parseInt(searchParams.get('offset') ?? '0', 10) || 0;
 
+    // G13 (Sprint 4): assigned_to derivado por join events.quote_id ->
+    // quotes.lead_id -> leads.assigned_to (fuente única, sin columna propia).
     let query = `SELECT e.*,
       COALESCE(pay.total_paid, 0)::numeric AS total_paid,
       COALESCE(pay.pending_payments, 0)::int AS pending_payments,
-      COALESCE(pay.total_payments, 0)::int AS total_payments
+      COALESCE(pay.total_payments, 0)::int AS total_payments,
+      l.assigned_to, a.name AS assigned_to_name
     FROM events e
     LEFT JOIN LATERAL (
       SELECT
@@ -38,18 +41,21 @@ export async function GET(request: NextRequest) {
         COUNT(*) FILTER (WHERE paid = false) AS pending_payments,
         COUNT(*) AS total_payments
       FROM payments WHERE event_id = e.id
-    ) pay ON true`
+    ) pay ON true
+    LEFT JOIN quotes q ON q.id = e.quote_id
+    LEFT JOIN leads l ON l.id = q.lead_id
+    LEFT JOIN admins a ON a.id = l.assigned_to`
     const params: any[] = [];
     const conditions: string[] = [];
 
     if (status) {
-      conditions.push(`status = $${params.length + 1}`);
+      conditions.push(`e.status = $${params.length + 1}`);
       params.push(status);
     }
     if (email) {
       // Escape % and _ to prevent ILIKE wildcard injection
       const safeEmail = email.replace(/[%_]/g, (ch) => '\\' + ch);
-      conditions.push(`client_email ILIKE $${params.length + 1}`);
+      conditions.push(`e.client_email ILIKE $${params.length + 1}`);
       params.push(`%${safeEmail}%`);
     }
 
@@ -57,7 +63,7 @@ export async function GET(request: NextRequest) {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY e.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limit, offset);
 
     const events = await queryMany<any>(query, params);
@@ -106,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     // Get total count
     const countResult = await querySingle<any>(
-      `SELECT COUNT(*) as count FROM events${conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : ''}`,
+      `SELECT COUNT(*) as count FROM events e${conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : ''}`,
       params.slice(0, conditions.length)
     );
 

@@ -20,6 +20,7 @@ import { setEventStatus } from './eventState';
 import { reserveVenue, toDateStr, VenueConflictError } from './venueBooking';
 import { commitInventoryForEvent, checkInventoryShortages, type ShortageRow } from './inventoryCommitment';
 import { generateSupplierOrdersForEvent } from './generateSupplierOrders';
+import { upsertStaffingLines } from './staffingSizing';
 
 export interface AcceptQuoteResult {
   quote: any;
@@ -175,28 +176,13 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
     // 6) Fuente única de coste (Opción B)
     await recalcEventCost(client, eventId);
 
-    // 7) Staffing — idempotente (no-op si el evento ya tiene staffing_lines)
+    // 7) Staffing (G10, Sprint 4: fuente única domain/staffingSizing.ts,
+    // idempotente vía upsert — antes solo se generaba si NO existía ninguna
+    // línea, dejando cocinero/metre obsoletos tras un cambio de comensales)
     const guests = Number(quote.guest_count) || 0;
     const serviceType: ServiceType = quote.service_type === 'coctel' ? 'coctel' : 'menu';
-    const existingStaffing = (await client.query(
-      `SELECT 1 FROM staffing_lines WHERE event_id = $1 LIMIT 1`, [eventId]
-    )).rows[0];
-    if (!existingStaffing && guests > 0) {
-      const camareros = calcCamareros(guests, serviceType);
-      const cocineros = Math.ceil(guests / 30);
-      const metres = Math.max(1, Math.ceil(guests / 40));
-      const roles = [
-        { role: 'camarero', slots: camareros },
-        { role: 'cocinero', slots: cocineros },
-        { role: 'metre', slots: metres },
-      ];
-      for (const r of roles) {
-        await client.query(
-          `INSERT INTO staffing_lines (event_id, role, slots_needed, notes, status)
-           VALUES ($1, $2, $3, 'Auto-generado al aceptar presupuesto', 'open')`,
-          [eventId, r.role, r.slots]
-        );
-      }
+    if (guests > 0) {
+      await upsertStaffingLines(client, eventId, guests, serviceType);
     }
 
     // 7.5) G1 (Sprint 1): al confirmar el evento, su salón queda reservado.

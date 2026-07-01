@@ -9,6 +9,7 @@ import { query, getPool } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
 import { upsertEventOrderStaffing } from '@/lib/domain/upsertEventOrderStaffing';
+import { upsertStaffingLines } from '@/lib/domain/staffingSizing';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,13 +38,10 @@ export async function POST(
       guestCount,
     });
 
-    // Auto-create staffing lines for waiters
-    await query(
-      `INSERT INTO staffing_lines (event_id, role, slots_needed, status)
-       VALUES ($1, 'camarero', $2, 'open')
-       ON CONFLICT DO NOTHING`,
-      [eventId, waitersNeeded]
-    );
+    // G10 (Sprint 4): fuente única — antes solo regeneraba 'camarero' (con un
+    // ON CONFLICT DO NOTHING que nunca podía disparar, así que cada llamada
+    // insertaba una fila duplicada) y dejaba cocinero/metre obsoletos.
+    await upsertStaffingLines(getPool(), eventId, guestCount, serviceType);
 
     return NextResponse.json({
       success: true,

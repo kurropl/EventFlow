@@ -11,6 +11,7 @@
  */
 
 import { getPool } from '@/lib/db';
+import { reserveEquipmentForEvent } from '@/lib/domain/equipmentCheckout';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -436,9 +437,10 @@ export async function generateLogisticsSheet(
   const equipmentList = await softQuery(
     'SELECT id, name, stock_quantity, unit, category FROM equipment WHERE active = true'
   );
-  const stockMap = new Map(equipmentList.rows.map((r: any) => [r.name, { qty: Number(r.stock_quantity), unit: r.unit, category: r.category }]));
+  const stockMap = new Map(equipmentList.rows.map((r: any) => [r.name, { id: r.id, qty: Number(r.stock_quantity), unit: r.unit, category: r.category }]));
 
   const equipment: LogisticsEquipment[] = [];
+  const neededByEquipmentId = new Map<string, number>();
   for (const [name, needed] of equipmentNeeded) {
     const stock = stockMap.get(name);
     const available = stock?.qty || 0;
@@ -450,6 +452,14 @@ export async function generateLogisticsSheet(
       short: Math.max(0, Math.ceil(needed) - available),
       unit: stock?.unit || 'ud',
     });
+    if (stock?.id) neededByEquipmentId.set(stock.id, needed);
+  }
+
+  // G12 (Sprint 4, E-B2): reserva automática — solo eventos externos, donde
+  // aplica transporte de equipamiento. Reutiliza el cálculo de arriba, no lo
+  // duplica. Idempotente (upsert por evento+equipo).
+  if (includesEquipmentTransport && neededByEquipmentId.size > 0) {
+    await reserveEquipmentForEvent(pool, eventId, neededByEquipmentId);
   }
 
   // 4. Producto seco, perecedero y equipamiento-ingrediente desde escandallo.

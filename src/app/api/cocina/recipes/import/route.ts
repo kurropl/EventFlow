@@ -122,9 +122,11 @@ export async function POST(req: NextRequest) {
           ingredientesCreados++;
         }
         await pool.query(
-          `INSERT INTO recipe_items (catalog_item_id, ingredient_id, quantity, unit, notes)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [catalogId, ing.id, line.cantidad_bruta, line.unidad, line.notas]
+          // G11 (Sprint 4): persistir merma_pct — antes se calculaba
+          // (grossFromNet) y se descartaba tras usarlo para cantidad_bruta.
+          `INSERT INTO recipe_items (catalog_item_id, ingredient_id, quantity, unit, notes, merma_pct)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [catalogId, ing.id, line.cantidad_bruta, line.unidad, line.notas, line.merma_pct]
         );
         costePlato += lineCost(line.cantidad_bruta, ing.unit_cost);
       }

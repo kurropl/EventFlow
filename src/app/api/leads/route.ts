@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { getCurrentUser } from '@/lib/auth';
 import { z } from 'zod';
 
 // ── Types ───────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ interface Lead {
   event_type: string | null;
   guest_count: number | null;
   event_date: string | null;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -45,10 +47,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
+    const assignedTo = searchParams.get('assigned_to');
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 200);
     const offset = parseInt(searchParams.get('offset') ?? '0', 10);
 
-    let sql = `SELECT l.*,
+    // G13 (Sprint 4): assigned_to vive solo en leads (fuente única, E-B4).
+    let sql = `SELECT l.*, a.name AS assigned_to_name,
       COALESCE((
         SELECT jsonb_agg(DISTINCT jsonb_build_object('id',q.id,'status',q.status,'total_pvp',q.total_pvp,'event_date',e.event_date,'event_type',e.event_type))
         FROM quotes q
@@ -56,7 +60,8 @@ export async function GET(request: NextRequest) {
         WHERE q.lead_id = l.id
            OR (l.email IS NOT NULL AND e.client_email = l.email)
       ), '[]'::jsonb) AS quotes
-      FROM leads l`;
+      FROM leads l
+      LEFT JOIN admins a ON a.id = l.assigned_to`;
     const params: (string | number)[] = [];
     const conds: string[] = [];
 
@@ -67,6 +72,10 @@ export async function GET(request: NextRequest) {
     if (search) {
       conds.push(`(l.name ILIKE $${params.length + 1} OR l.email ILIKE $${params.length + 1})`);
       params.push(`%${search}%`);
+    }
+    if (assignedTo) {
+      conds.push(`l.assigned_to = $${params.length + 1}`);
+      params.push(assignedTo);
     }
 
     if (conds.length > 0) sql += ` WHERE ${conds.join(' AND ')}`;
@@ -94,11 +103,15 @@ export async function POST(request: NextRequest) {
 
     const { name, email, phone, source, event_type, guest_count, event_date } = parsed.data;
 
+    // G13 (Sprint 4): auto-asigna el lead al usuario autenticado que lo crea
+    // (null si viene de un flujo público/no autenticado, p.ej. configurador).
+    const currentUser = await getCurrentUser();
+
     const lead = await querySingle<Lead>(
-      `INSERT INTO leads (name, email, phone, source, event_type, guest_count, event_date)
-       VALUES ($1, $2, $3, COALESCE($4, 'manual'), $5, $6, $7)
+      `INSERT INTO leads (name, email, phone, source, event_type, guest_count, event_date, assigned_to)
+       VALUES ($1, $2, $3, COALESCE($4, 'manual'), $5, $6, $7, $8)
        RETURNING *`,
-      [name, email || null, phone || null, source || 'manual', event_type || null, guest_count || null, event_date || null]
+      [name, email || null, phone || null, source || 'manual', event_type || null, guest_count || null, event_date || null, currentUser?.id ?? null]
     );
 
     // Send welcome email to new lead
