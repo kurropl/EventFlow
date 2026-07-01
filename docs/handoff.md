@@ -1,9 +1,63 @@
 ## Último agente: Claude Code
-## Fecha: 30/06/2026 (Sprint 2)
+## Fecha: 01/07/2026 (Sprint 3)
 ## Rama: main
 ## Último commit: (ver `git log -1`, tras este handoff)
 
-### Qué se hizo (30/06 · Sprint 2 · G2 compromiso de inventario + G6 ledger único)
+### Qué se hizo (01/07 · Sprint 3 · G5 trazabilidad FEFO + G8 contrato/firma)
+- [x] **SPEC-Sprint3-Trazabilidad-Contrato.md** (SDD): aprobado por el usuario
+  con alcance ampliado sobre la propuesta inicial de G8 — (D1) HTML
+  confirmado, (D2) **firma dibujada en canvas** (no solo nombre+NIF+checkbox
+  como proponía la FASE 1), (D3) **botón separado** (el contrato ya NO se
+  genera dentro de `acceptQuote`, que queda sin tocar), (D4) texto legal
+  estándar redactado por el propio Spec (boilerplate razonable, pendiente de
+  revisión por abogado antes de producción real).
+- [x] **G5 · Trazabilidad de lote FEFO automática al cierre.** Nuevo
+  `domain/lotTraceability.ts::consumeLotsFEFO` — complementa (no sustituye)
+  el ledger único de G6: `adjustIngredientStock` sigue siendo el único
+  escritor del saldo; esto añade el RASTRO, consumiendo lotes por caducidad
+  más próxima primero, repartiendo entre varios si hace falta. Si el stock
+  consumido no viene de ningún lote registrado, no se inventa un origen: se
+  reporta como `traceGaps` (visible en la respuesta de `/close` y `FWD-4`,
+  nunca oculto). `stockDeduct.ts` lo invoca tras cada deducción real.
+- [x] **G8 · Contrato de cliente + firma dibujada.** Nueva tabla
+  `event_contracts` (con `signature_data` PNG en base64). Se genera BAJO
+  DEMANDA (`POST /api/events/[id]/contract/generate`, admin), nunca
+  automático. Página pública nueva `src/app/contrato/[token]/page.tsx` con
+  pizarra de firma real (canvas + pointer events, funciona con dedo en
+  móvil) — **verificada en navegador real con Playwright** (no solo a nivel
+  de API): carga del contrato, dibujo, envío, confirmación y persistencia en
+  BD, todo comprobado. Reutiliza el patrón `client_token` ya asentado
+  (`guest-forms/decor`).
+- [x] **Bug real encontrado y corregido de paso**: el middleware (`src/
+  middleware.ts::isPublicMethod`) NO whitelisteaba las rutas públicas nuevas
+  — se añadió `/api/contract/public/*`. Se detectó además que la ruta
+  hermana `guest-forms/decor` (que se documenta a sí misma como "sin auth
+  requerida") **está rota hoy** (401 sin cookie, confirmado con curl): el
+  middleware nunca la whitelistea pese a que su propio código no comprueba
+  sesión. **No se ha tocado** (fuera de alcance de G5/G8) — queda anotado
+  para un futuro arreglo.
+- [x] Verificación: `scripts/verify-sprint3.sh` **32/32** (G5: 12, G8: 20);
+  sin regresión (E2E 32/32, RBAC 41/41, Operativos 14/14, ERP 17/17,
+  Sprint1 26/26, Sprint2 27/27); build de producción exit 0.
+
+### Pendiente / próximos pasos sugeridos
+- [ ] **Arreglar el bug de `guest-forms/decor`** (401 sin cookie pese a ser
+  pública) — fuera del alcance de G5/G8, encontrado incidentalmente.
+- [ ] **Rediseño del UI del admin** (siguiente paso acordado con el usuario):
+  botón "Generar contrato" en la ficha de evento (el backend ya existe:
+  `POST /api/events/[id]/contract/generate`), selector de salón (Sprint 1),
+  aviso de faltante de stock + toggle de bloqueo (Sprint 2), margen real con
+  coste de personal en `rentabilidad` (Sprint 1) — todo servido por el
+  backend, falta solo la UI.
+- [ ] Borrar la rama remota `claude/event-venue-redesign-JAUif` (el usuario,
+  por política de red del entorno bloquea el push de borrado).
+- [ ] Gaps del Gap Analysis restantes: G9 (Facturae/Verifactu), G10
+  (auto-dimensionado staffing frágil), G11 (merma en coste real), G12
+  (menaje eventos externos), G13 (CRM sin owner), G14 (IVA por línea),
+  G16-G23 (deuda técnica/cohesión, P2). G4/G15 (TPV/KDS/pasarela) siguen
+  excluidos por mandato del usuario.
+
+### Histórico (30/06 · Sprint 2 · G2 compromiso de inventario + G6 ledger único)
 - [x] **SPEC-Sprint2-Inventory.md** (SDD): aprobado por el usuario con
   alcance ampliado sobre la propuesta inicial — el usuario pidió (E1) bloqueo
   **opcional** configurable (no solo no-bloqueante), (E2) confirmar que el

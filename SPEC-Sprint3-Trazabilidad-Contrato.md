@@ -1,7 +1,12 @@
 # SPEC · Sprint 3 — Trazabilidad de lote (G5) y Contrato/firma de cliente (G8)
 
-**Estado:** ✅ Aprobado — pasando a FASE 3. Decisiones finales del usuario sobre
-la propuesta original (D1–D4):
+**Estado:** ✅ Implementada (FASE 3 completada 2026-07-01). Verificación:
+`verify-sprint3.sh` 32/32 (G5: 12 + G8: 20) · sin regresión (E2E 32/32 · RBAC
+41/41 · Operativos 14/14 · ERP 17/17 · Sprint1 26/26 · Sprint2 27/27) · build
+de producción exit 0 · pizarra de firma verificada en navegador real
+(Playwright + Chromium: dibujo en canvas → envío → confirmación → BD).
+
+Decisiones finales del usuario sobre la propuesta original (D1–D4):
 - **D1** — Contrato en HTML confirmado (sin PDF real en este sprint).
 - **D2** — **Firma dibujada** (canvas), no solo nombre+NIF+checkbox como
   proponía la FASE 1. Añade una página pública con pizarra de firma y una

@@ -2166,3 +2166,30 @@ CREATE TRIGGER trg_sync_inventory_quantity
   FOR EACH ROW
   WHEN (NEW.quantity IS DISTINCT FROM OLD.quantity OR NEW.min_stock IS DISTINCT FROM OLD.min_stock)
   EXECUTE FUNCTION sync_inventory_quantity();
+
+-- ============================================================
+-- SPRINT 3 · G8 — Contrato de cliente + firma dibujada (patrón client_token)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_contracts (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id        UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    quote_id        UUID REFERENCES quotes(id) ON DELETE SET NULL,
+    content_html    TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','signed','voided')),
+    generated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    signed_at       TIMESTAMPTZ,
+    signed_by_name  TEXT,
+    signed_by_nif   TEXT,
+    -- D2: firma dibujada (canvas) — PNG en base64 (data URI), no un checkbox.
+    signature_data  TEXT,
+    signer_ip       TEXT,
+    voided_at       TIMESTAMPTZ,
+    voided_reason   TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_event_contracts_event ON event_contracts(event_id);
+-- Como mucho 1 contrato activo (pending o signed) por evento; anular
+-- (status='voided') libera el hueco para generar uno nuevo si el evento se
+-- renegocia (p.ej. tras INV-4 reabrir con cambio de precio).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_event_contracts_active
+  ON event_contracts(event_id) WHERE status != 'voided';

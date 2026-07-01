@@ -63,6 +63,67 @@ echo "▸ G5 · idempotencia (reintentar cierre no duplica)…"
 curl -s -X POST "$BASE/api/events/$EVENT/close" $AC -H 'Content-Type: application/json' >/dev/null
 check "AC-G5.5 · sigue habiendo 2 filas en lot_consumption" "$(q "SELECT count(*) FROM lot_consumption WHERE event_id='$EVENT'")" "2"
 
+# ════════════════════════════════════════════════════════════
+# G8 · Contrato y firma de cliente (D2 firma dibujada, D3 botón separado)
+# ════════════════════════════════════════════════════════════
+echo "▸ G8 · el contrato NO se genera automáticamente al aceptar (D3)…"
+check "AC-G8.2 · event_contracts vacío antes de generar" "$(q "SELECT count(*) FROM event_contracts WHERE event_id='$EVENT'")" "0"
+
+echo "▸ G8 · generación bajo demanda…"
+GEN1=$(curl -s -X POST "$BASE/api/events/$EVENT/contract/generate" $AC)
+echo "$GEN1" | grep -qi '"success":true' && ok "AC-G8.1 · contrato generado" || ko "generate: $GEN1"
+check "AC-G8.1 · 1 fila pending" "$(q "SELECT status FROM event_contracts WHERE event_id='$EVENT'")" "pending"
+
+GEN2=$(curl -s -X POST "$BASE/api/events/$EVENT/contract/generate" $AC)
+check "AC-G8.3 · idempotente (sigue 1 fila)" "$(q "SELECT count(*) FROM event_contracts WHERE event_id='$EVENT'")" "1"
+
+echo "▸ G8 · sin client_token (evento no aceptado) → 400…"
+DRAFT_EV="57777777-7777-7777-7777-777777777777"
+q "INSERT INTO events (id,client_name,client_email,event_type,guest_count,event_date,status)
+   VALUES ('$DRAFT_EV','Cliente Draft','draft@t.test','boda',10,(now()+interval '100 days')::date,'draft') ON CONFLICT (id) DO NOTHING" >/dev/null
+CODE_NOTOKEN=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/events/$DRAFT_EV/contract/generate" $AC)
+check "AC-G8.4 · evento sin client_token → 400" "$CODE_NOTOKEN" "400"
+
+echo "▸ G8 · acceso público por token…"
+CTOKEN=$(q "SELECT client_token FROM events WHERE id='$EVENT'")
+PUB=$(curl -s "$BASE/api/contract/public/$CTOKEN")
+echo "$PUB" | grep -qi '"success":true' && ok "AC-G8.5 · GET público 200" || ko "public GET: $PUB"
+check "AC-G8.5 · status pending" "$(echo "$PUB" | jget 'data.status')" "pending"
+CODE_BADTOKEN=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/contract/public/token-invalido-xyz")
+check "AC-G8.6 · token inválido → 404" "$CODE_BADTOKEN" "404"
+
+echo "▸ G8 · firma en blanco rechazada…"
+BLANK=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/contract/public/$CTOKEN/sign" \
+  -H 'Content-Type: application/json' -d '{"signed_by_name":"X","signed_by_nif":"1","signature_data":"data:image/png;base64,short"}')
+check "AC-G8.8 · signature_data corto → 422" "$BLANK" "422"
+check "AC-G8.8 · sigue pending (no se marcó firmado)" "$(q "SELECT status FROM event_contracts WHERE event_id='$EVENT'")" "pending"
+
+echo "▸ G8 · firma correcta (signature_data simulado, la pizarra real se probó en navegador)…"
+FAKESIG="data:image/png;base64,$(node -e "console.log('A'.repeat(600))")"
+SIGN=$(curl -s -X POST "$BASE/api/contract/public/$CTOKEN/sign" -H 'Content-Type: application/json' \
+  -d "{\"signed_by_name\":\"Cliente VERIFY\",\"signed_by_nif\":\"12345678A\",\"signature_data\":\"$FAKESIG\"}")
+echo "$SIGN" | grep -qi '"success":true' && ok "AC-G8.7 · firma aceptada" || ko "sign: $SIGN"
+check "AC-G8.7 · status signed" "$(q "SELECT status FROM event_contracts WHERE event_id='$EVENT'")" "signed"
+check "AC-G8.7 · signed_by_name persistido" "$(q "SELECT signed_by_name FROM event_contracts WHERE event_id='$EVENT'")" "Cliente VERIFY"
+check "AC-G8.7 · signer_ip capturado (no vacío)" "$(q "SELECT (signer_ip IS NOT NULL) FROM event_contracts WHERE event_id='$EVENT'")" "t"
+
+echo "▸ G8 · firmar dos veces → 409…"
+CODE_TWICE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/contract/public/$CTOKEN/sign" -H 'Content-Type: application/json' \
+  -d "{\"signed_by_name\":\"Otro\",\"signed_by_nif\":\"00000000X\",\"signature_data\":\"$FAKESIG\"}")
+check "AC-G8.9 · segunda firma → 409" "$CODE_TWICE" "409"
+check "AC-G8.9 · signed_by_name NO se sobrescribió" "$(q "SELECT signed_by_name FROM event_contracts WHERE event_id='$EVENT'")" "Cliente VERIFY"
+
+echo "▸ G8 · admin ve el contrato…"
+ADMIN_GET=$(curl -s "$BASE/api/events/$EVENT/contract" $AC)
+check "AC-G8.10 · admin GET 200 con status signed" "$(echo "$ADMIN_GET" | jget 'data.status')" "signed"
+
+echo "▸ G8 · anular y regenerar…"
+VOID=$(curl -s -X POST "$BASE/api/events/$EVENT/contract/void" $AC -H 'Content-Type: application/json' -d '{"reason":"test anular"}')
+check "AC-G8.11 · anulado" "$(echo "$VOID" | jget 'data.status')" "voided"
+GEN3=$(curl -s -X POST "$BASE/api/events/$EVENT/contract/generate" $AC)
+check "AC-G8.11 · nuevo contrato pending tras anular" "$(echo "$GEN3" | jget 'data.status')" "pending"
+check "AC-G8.11 · 2 filas en total (1 voided + 1 pending)" "$(q "SELECT count(*) FROM event_contracts WHERE event_id='$EVENT'")" "2"
+
 # ── Resultado ────────────────────────────────────────────────
 echo "─────────────────────────────────────────────"
 echo "RESULTADO:  $PASS OK  ·  $FAIL FALLOS"

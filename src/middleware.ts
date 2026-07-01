@@ -102,6 +102,8 @@ function isPublicMethod(method: string, pathname: string): boolean {
   if (pathname === '/api/guest-forms' && (method === 'GET' || method === 'POST')) return true;
   if (pathname === '/api/ai-quote' && method === 'POST') return true;
   if (pathname.startsWith('/api/webhooks/') && method === 'POST') return true;
+  // G8 (Sprint 3): contrato de cliente scoped por client_token, sin sesión.
+  if (pathname.startsWith('/api/contract/public/')) return true;
   return false;
 }
 
