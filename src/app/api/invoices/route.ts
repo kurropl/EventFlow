@@ -57,13 +57,15 @@ export async function POST(request: NextRequest) {
     if (!order) return NextResponse.json({ error: 'Event order not found' }, { status: 404 });
     if (!order.fiscal_nif) return NextResponse.json({ error: 'Client fiscal data missing. Complete the client fiscal info first.' }, { status: 400 });
 
-    // Idempotency: return existing invoice if already generated
-    const existingInvoice = await querySingle<any>(
-      `SELECT * FROM invoices WHERE event_order_id = $1`, [event_order_id]
+    // G16/E-B5 (Sprint 4): facturación parcial explícita — ya no se bloquea
+    // con "ya existe factura" ante CUALQUIER factura previa del pedido. Se
+    // permiten varias mientras la suma no supere confirmed_price (control de
+    // sanidad, no bloqueo duro: un exceso solo se avisa, nunca se rechaza).
+    const invoicedRes = await querySingle<any>(
+      `SELECT COALESCE(SUM(subtotal), 0) AS total FROM invoices WHERE event_order_id = $1 AND status != 'cancelled'`,
+      [event_order_id]
     );
-    if (existingInvoice) {
-      return NextResponse.json({ data: existingInvoice, idempotent: true }, { status: 200 });
-    }
+    const alreadyInvoiced = Number(invoicedRes?.total) || 0;
 
     // Calculate invoice amounts
     const extrasTotal = (order.extra_consumptions || []).reduce((s: number, ex: any) => s + (ex.amount || 0), 0);
@@ -95,7 +97,15 @@ export async function POST(request: NextRequest) {
       await querySingle(`UPDATE event_orders SET status = 'completed', completed_at = now() WHERE id = $1`, [event_order_id]);
     }
 
-    return NextResponse.json({ data: invoice }, { status: 201 });
+    const totalInvoiced = alreadyInvoiced + subtotal;
+    const overInvoiced = totalInvoiced > Number(order.confirmed_price || 0);
+
+    return NextResponse.json({
+      data: invoice,
+      warning: overInvoiced
+        ? `El total facturado (${totalInvoiced.toFixed(2)} €) supera el precio confirmado (${Number(order.confirmed_price || 0).toFixed(2)} €)`
+        : undefined,
+    }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

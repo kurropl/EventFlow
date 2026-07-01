@@ -14,7 +14,7 @@ import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { deductStockForEvent } from '@/lib/stockDeduct';
 import { acceptQuote, AcceptQuoteError } from '@/lib/domain/acceptQuote';
-import { setEventStatus } from '@/lib/domain/eventState';
+import { setEventStatus, VALID_EVENT_STATUSES } from '@/lib/domain/eventState';
 import { reserveVenue, resolveVenueId, VenueConflictError, toDateStr } from '@/lib/domain/venueBooking';
 
 const BAR_PRICE_PER_HOUR = 15; // € per person per hour
@@ -116,6 +116,15 @@ export async function PUT(
     const { status, notes, total_pvp, bar_hours, selected_items,
             client_name, client_email, event_type, guest_count, kids_count, event_date,
             linen_type, centerpiece } = body;
+
+    // G17/B6: whitelist — antes se aceptaba cualquier string como status,
+    // sin validar valor ni transición.
+    if (status !== undefined && !VALID_EVENT_STATUSES.has(status)) {
+      return NextResponse.json(
+        { success: false, error: `status inválido: '${status}'` },
+        { status: 400 }
+      );
+    }
 
     // If selected_items provided, recalculate total_pvp from catalog.
     // total_cost NO se calcula aquí: antes de la aceptación no existe escandallo

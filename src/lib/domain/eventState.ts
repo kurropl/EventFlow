@@ -21,7 +21,23 @@ export const VALID_TRANSITIONS: Record<string, { from: string[]; to: string }> =
   'INV-3': { from: ['accepted'],  to: 'cancelled' },
   'INV-4': { from: ['completed'], to: 'reopened' },
   'INV-5': { from: ['reopened'],  to: 'completed' },
+  // G17/B6 (Sprint 4): documentan transiciones que ya ocurrían en producción
+  // sin estar representadas aquí (payments/signal/route.ts,
+  // invoices/[id]/route.ts) — no pasan por el dispatcher de
+  // transitions/route.ts, se documentan solo para que sean visibles/auditables.
+  'PAY-1': { from: ['accepted'],  to: 'presupuestado' },
+  'PAY-2': { from: ['completed'], to: 'paid' },
 };
+
+/** G17/B6: whitelist cerrada para los puntos de escritura que aceptaban
+ *  cualquier string sin validar (events/[id]/route.ts PUT, automation.ts).
+ *  No sustituye a VALID_TRANSITIONS (gobernanza completa por transición
+ *  queda diferida, ver SPEC Sprint 4 Nivel C) — solo elimina el riesgo de
+ *  typos/estados inventados en esos 2 puntos peligrosos. */
+export const VALID_EVENT_STATUSES = new Set([
+  'draft', 'sent', 'accepted', 'presupuestado', 'completed',
+  'lost', 'cancelled', 'reopened', 'paid',
+]);
 
 export class EventStateError extends Error {
   status: number;
