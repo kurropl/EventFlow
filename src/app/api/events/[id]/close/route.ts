@@ -51,6 +51,11 @@ export async function POST(
     if (!ev.stock_deducted) {
       const ded = await deductStockForEvent(eventId);
       results.push(`Stock deducido (${ded?.deducted ?? 0} ingredientes)`);
+      // G5: huecos de trazabilidad de lote (consumo sin lote de origen
+      // registrado) — visibles, nunca ocultos.
+      if (ded?.traceGaps?.length) {
+        results.push(...ded.traceGaps.map((g) => `⚠ Trazabilidad: ${g}`));
+      }
     }
 
     // 3. Generate invoice

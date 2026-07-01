@@ -207,6 +207,7 @@ async function fwd4(event: any, motivo?: string) {
     const { deductStockForEvent } = await import('@/lib/stockDeduct');
     const r = await deductStockForEvent(event.id);
     if (r.deducted > 0) effects.push(`stock: ${r.deducted} items`);
+    if (r.traceGaps?.length) effects.push(...r.traceGaps.map((g) => `⚠ trazabilidad: ${g}`));
   } catch (e: any) {
     effects.push(`stock: failed (${e.message})`);
   }

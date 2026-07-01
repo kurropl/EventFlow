@@ -10,6 +10,7 @@ import { querySingle, queryMany, getPool } from '@/lib/db';
 import { setEventStatus } from '@/lib/domain/eventState';
 import { adjustIngredientStock } from '@/lib/domain/stockLedger';
 import { releaseInventoryCommitments } from '@/lib/domain/inventoryCommitment';
+import { consumeLotsFEFO, resolveRecipeId } from '@/lib/domain/lotTraceability';
 
 function gramsToUnit(grams: number, ingredientUnit: string): number {
   const u = ingredientUnit.toLowerCase().trim();
@@ -34,6 +35,7 @@ export interface DeductionResult {
   deducted: number;
   details: Array<{ ingredient_name: string; deducted_qty: number; unit: string }>;
   skipped?: string[];   // líneas con cantidad pero unidad/dimensión incompatible
+  traceGaps?: string[]; // G5: ingredientes cuyo consumo no se pudo trazar a un lote
   already_deducted?: boolean;
   error?: string;
 }
@@ -45,7 +47,7 @@ export interface DeductionResult {
 export async function deductStockForEvent(eventId: string): Promise<DeductionResult> {
   // 0. Idempotency check — skip if already deducted
   const event = await querySingle<any>(
-    `SELECT id, stock_deducted FROM events WHERE id = $1`, [eventId]
+    `SELECT id, stock_deducted, guest_count FROM events WHERE id = $1`, [eventId]
   );
   if (!event) {
     return { success: false, deducted: 0, details: [], error: 'Evento no encontrado' };
@@ -56,7 +58,7 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
 
   // 1. Fetch all shopping items for the event
   const shoppingItems = await queryMany<any>(
-    `SELECT id, event_id, ingredient_id, ingredient_name, total_grams, total_units, total_ml, completed
+    `SELECT id, event_id, ingredient_id, ingredient_name, total_grams, total_units, total_ml, completed, recipe_item_id
      FROM event_shopping_items
      WHERE event_id = $1`,
     [eventId]
@@ -69,6 +71,7 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
   const details: DeductionResult['details'] = [];
   let deductedCount = 0;
   const skipped: string[] = [];  // líneas con cantidad pero unidad/dimensión que no casa
+  const traceGaps: string[] = [];  // G5: consumo sin lote de origen registrado
 
   for (const item of shoppingItems) {
     const ingredientName = item.ingredient_name?.trim();
@@ -159,6 +162,23 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
       deducted_qty: Math.round((adj.previousQty - adj.newQty) * 10000) / 10000,
       unit: ingredient.unit,
     });
+
+    // 4.5) G5 (Sprint 3): traza el consumo real a un lote concreto (FEFO).
+    // Complementa el ledger (G6): el saldo ya se movió arriba; esto registra
+    // QUÉ lote lo cubrió. Si el stock no viene de ningún lote registrado, se
+    // reporta como traceGap en vez de inventarse un origen.
+    const recipeId = await resolveRecipeId(getPool() as any, item.recipe_item_id ?? null);
+    const trace = await consumeLotsFEFO(getPool() as any, {
+      ingredientId: ingredient.id,
+      eventId,
+      quantity: deductionAmount,
+      unit: ingredient.unit,
+      recipeId,
+      guestServed: event.guest_count ?? null,   // aproximación: raciones del evento, no por plato
+    });
+    if (trace.untracedQty > 0) {
+      traceGaps.push(`${ingredient.name}: ${trace.untracedQty}${ingredient.unit} sin lote de origen registrado`);
+    }
   }
 
   // 5. Mark event as stock_deducted and update status
@@ -177,5 +197,11 @@ export async function deductStockForEvent(eventId: string): Promise<DeductionRes
   // Cubre tanto close/route.ts como transitions::fwd4 (ambos llaman aquí).
   await releaseInventoryCommitments(getPool() as any, eventId);
 
-  return { success: true, deducted: deductedCount, details, skipped: skipped.length ? skipped : undefined };
+  return {
+    success: true,
+    deducted: deductedCount,
+    details,
+    skipped: skipped.length ? skipped : undefined,
+    traceGaps: traceGaps.length ? traceGaps : undefined,
+  };
 }
