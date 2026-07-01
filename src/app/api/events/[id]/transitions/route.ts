@@ -8,12 +8,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, getPool } from '@/lib/db';
 import { recalcEventCost } from '@/lib/domain/recalcEventCost';
-import { generateEscandallo } from '@/lib/domain/generateEscandallo';
 import { createInvoice } from '@/lib/domain/createInvoice';
 import { recordPayment } from '@/lib/domain/recordPayment';
 import { VALID_TRANSITIONS, assertTransition, EventStateError, setEventStatus, NOW } from '@/lib/domain/eventState';
 import { releaseVenue } from '@/lib/domain/venueBooking';
 import { releaseInventoryCommitments } from '@/lib/domain/inventoryCommitment';
+import { closeEvent, CloseEventError } from '@/lib/domain/closeEvent';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     switch (transition) {
       case 'FWD-2': return await fwd2(event, motivo);
       case 'FWD-3': return await fwd3(event, motivo, req);
-      case 'FWD-4': return await fwd4(event, motivo);
+      case 'FWD-4': return await fwd4(event, motivo, body.invoiceAmount);
       case 'INV-1': return await inv1(event, motivo);
       case 'INV-2': return await inv2(event, motivo);
       case 'INV-3': return await inv3(event, motivo);
@@ -129,96 +129,23 @@ async function fwd3(event: any, motivo: string | undefined, req: NextRequest) {
 // ═══════════════════════════════════════════════════════════════
 // FWD-4: Realizar evento (accepted → completed) ★ ATOMIC
 // ═══════════════════════════════════════════════════════════════
-async function fwd4(event: any, motivo?: string) {
-  const payments = await queryMany<any>(`SELECT * FROM payments WHERE event_id = $1`, [event.id]);
-  if (payments.length === 0) {
-    return NextResponse.json({ success: false, error: 'Cannot realize: no payments exist' }, { status: 400 });
-  }
-
-  const effects: string[] = [];
-
-  // 0. Freeze escandallo — marcar consumos reales como congelados
+async function fwd4(event: any, motivo?: string, invoiceAmount?: number) {
+  // G16/G20 (Sprint 4): delega en domain/closeEvent.ts — única implementación
+  // de "cerrar un evento", compartida con /api/events/[id]/close. Antes esta
+  // función tenía su propia copia divergente (freeze inline más pobre,
+  // forzaba TODOS los pagos a paid=true antes de facturar, no escribía
+  // event_cost_deviations, y facturaba con client?.nif — columna inexistente,
+  // NIF fiscal siempre vacío). E-B5: closeEvent nunca fuerza pagos.
   try {
-    const shoppingItems = await queryMany<any>(
-      `SELECT id FROM event_shopping_items WHERE event_id = $1 AND frozen = false`,
-      [event.id]
-    );
-    if (shoppingItems.length > 0) {
-      await querySingle(
-        `UPDATE event_shopping_items SET frozen = true, frozen_at = now() WHERE event_id = $1 AND frozen = false`,
-        [event.id]
-      );
-      effects.push(`escandallo: ${shoppingItems.length} items frozen`);
-    } else {
-      // Sin filas previas: generar vía la única fuente canónica (domain/generateEscandallo,
-      // misma usada por acceptQuote) y congelar el resultado.
-      const order = await querySingle<any>(`SELECT id FROM event_orders WHERE event_id = $1 LIMIT 1`, [event.id]);
-      const { created } = await generateEscandallo(getPool() as any, event.id, order?.id ?? null);
-      if (created > 0) {
-        await querySingle(
-          `UPDATE event_shopping_items SET frozen = true, frozen_at = now() WHERE event_id = $1 AND frozen = false`,
-          [event.id]
-        );
-        effects.push(`escandallo: ${created} items generated + frozen`);
-      } else {
-        effects.push('escandallo: no items to freeze');
-      }
-    }
+    const result = await closeEvent(event.id, { invoiceAmount, motivo });
+    await audit(event.id, 'event', event.id, 'FWD-4', 'accepted', 'completed', 'admin', motivo, { effects: result.effects });
+    return NextResponse.json({ success: true, data: result.event, transition: 'FWD-4', effects: result.effects });
   } catch (e: any) {
-    effects.push(`escandallo: failed (${e.message})`);
-  }
-
-  // 1. Event → completed
-  await setEventStatus(event.id, 'completed');
-  effects.push('event→completed');
-
-  // 2. Close operations
-  await querySingle(`UPDATE event_orders SET status = 'completed' WHERE event_id = $1 AND status != 'completed'`, [event.id]);
-  effects.push('operations→closed');
-
-  // 3. Complete unpaid payments
-  const unpaid = payments.filter(p => !p.paid);
-  for (const p of unpaid) {
-    await querySingle(`UPDATE payments SET paid = true, paid_date = now() WHERE id = $1`, [p.id]);
-  }
-  if (unpaid.length > 0) effects.push(`${unpaid.length} payments completed`);
-
-  // 4. Generate invoice if not exists
-  const existingInv = await querySingle<any>(`SELECT id FROM invoices WHERE event_id = $1 LIMIT 1`, [event.id]);
-  if (!existingInv) {
-    const order = await querySingle<any>(`SELECT * FROM event_orders WHERE event_id = $1 LIMIT 1`, [event.id]);
-    if (order) {
-      const client = await querySingle<any>(`SELECT * FROM clients WHERE id = $1`, [order.client_id]);
-      const totalPaid = payments.filter(p => p.paid).reduce((s, p) => s + Number(p.amount || 0), 0);
-      const subtotal = Number(order.confirmed_price || event.total_pvp || 0);
-
-      const invoice = await createInvoice(getPool() as any, {
-        orderId: order.id,
-        eventId: event.id,
-        clientId: order.client_id,
-        fiscalName: client?.name || event.client_name,
-        fiscalNif: client?.nif || '',
-        fiscalAddress: client?.address || '',
-        subtotal,
-        paymentsTotal: totalPaid,
-      });
-      effects.push(`invoice ${invoice.invoice_number}`);
+    if (e instanceof CloseEventError) {
+      return NextResponse.json({ success: false, error: e.message }, { status: e.status });
     }
+    throw e;
   }
-
-  // 5. Deduct stock
-  try {
-    const { deductStockForEvent } = await import('@/lib/stockDeduct');
-    const r = await deductStockForEvent(event.id);
-    if (r.deducted > 0) effects.push(`stock: ${r.deducted} items`);
-    if (r.traceGaps?.length) effects.push(...r.traceGaps.map((g) => `⚠ trazabilidad: ${g}`));
-  } catch (e: any) {
-    effects.push(`stock: failed (${e.message})`);
-  }
-
-  await audit(event.id, 'event', event.id, 'FWD-4', 'accepted', 'completed', 'admin', motivo, { effects });
-  const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
-  return NextResponse.json({ success: true, data: updated, transition: 'FWD-4', effects });
 }
 
 // ═══════════════════════════════════════════════════════════════
