@@ -131,7 +131,7 @@ export async function upsertStaffingLines(
 ```
 **Call sites a cambiar:** `acceptQuote.ts` (sustituye el bucle inline de 3 roles), `event-flow/[eventId]/calculate/route.ts` (sustituye el `INSERT ... camarero` suelto).
 
-**Decisión de negocio (E-B1):** ¿redimensionar SOLO líneas `status='open'` (mi propuesta, evita tocar algo ya cubierto/asignado) o siempre, sin importar el estado?
+**E-B1 (decidido):** redimensionar SOLO líneas `status='open'` (la recomendada) — una línea ya `filled`/`cancelled` no se toca.
 
 **Test:** aceptar presupuesto con 100 comensales (camarero+cocinero+metre creados), cambiar a 200 vía `/calculate`, confirmar que las 3 líneas se actualizan (no solo camarero) y que no hay duplicados.
 
@@ -157,9 +157,9 @@ CREATE TABLE IF NOT EXISTS event_equipment_checkout (
 ```
 Nuevo `domain/equipmentCheckout.ts::reserveEquipmentForEvent(client, eventId)` — reutiliza el cálculo YA existente de `generateLogisticsSheet` (no lo duplica: se extrae esa función de necesidad a algo reusable, o se llama a la misma consulta). Nueva ruta `PATCH /api/cocina/equipment/checkout/[eventId]` para marcar enviado/devuelto con notas de rotura.
 
-**Decisión de negocio (E-B2):** ¿la reserva se dispara automáticamente al generar la hoja de logística (solo para eventos `externo`, ya que en local no aplica transporte), o requiere un botón admin explícito?
+**E-B2 (decidido):** la reserva se dispara **automáticamente** al generar la hoja de logística (solo eventos `externo`) — sin botón manual. `generateLogisticsSheet` llama a `reserveEquipmentForEvent` como efecto secundario idempotente cada vez que se genera/regenera la hoja.
 
-**Test:** generar hoja de logística de un evento externo → reserva creada con las cantidades calculadas; marcar como devuelto con menos cantidad de la enviada → `condition_notes` refleja la merma.
+**Test:** generar hoja de logística de un evento externo → reserva creada con las cantidades calculadas automáticamente; marcar como devuelto con menos cantidad de la enviada → `condition_notes` refleja la merma.
 
 ## B3 · G11 — Merma no entra en el coste real
 
@@ -169,7 +169,7 @@ Nuevo `domain/equipmentCheckout.ts::reserveEquipmentForEvent(client, eventId)` �
 - **Opción A (mínima, sin migración):** añadir `recipe_items.merma_pct` solo como metadato/auditoría — se persiste desde ahora en adelante, pero `generateEscandallo.ts` no cambia (sigue usando `quantity` tal cual, que ya es bruto). Arregla la pérdida de trazabilidad hacia adelante, NO arregla el riesgo de que una edición manual futura reintroduzca un valor neto sin querer.
 - **Opción B (correcta, con migración):** `recipe_items.quantity` pasa a significar SIEMPRE neto; `merma_pct` se aplica en `generateEscandallo.ts`/`recalcEscandallo.ts` en tiempo de lectura (`qtyNative = recipe_qty * raciones / (1 - merma_pct/100)`). Requiere decidir qué hacer con las filas YA existentes (su `quantity` actual es bruto de una importación pasada — ¿se re-calcula el neto con el `merma_pct` que se capture ahora con `merma_pct=0` por defecto, dejándolas como están hasta que alguien las reimporte/edite?).
 
-Mi recomendación: **Opción A ahora** (bajo riesgo, cierra la pérdida de dato) + dejar la Opción B como una migración de datos explícita y separada si el negocio decide que el modelo "quantity=neto" es el correcto a futuro — no mezclar una migración de semántica de datos con este sprint.
+**E-B3 (decidido): Opción A**, y el usuario limpiará por su cuenta los datos de receta existentes (borrado + reimportación completa desde CSV) en vez de una migración en vivo — no se construye ningún script de migración/backfill para las filas actuales. `merma_pct` simplemente empieza a persistirse en `recipe_items` desde ya para toda importación futura; las filas ya existentes se quedan con `merma_pct=0` hasta que el usuario las reimporte, lo cual es aceptable dado su plan de borrar/reimportar.
 
 ```sql
 ALTER TABLE recipe_items ADD COLUMN IF NOT EXISTS merma_pct NUMERIC(5,2) NOT NULL DEFAULT 0;
@@ -183,11 +183,10 @@ ALTER TABLE recipe_item_versions ADD COLUMN IF NOT EXISTS merma_pct NUMERIC(5,2)
 
 **Hallazgo:** cero columnas de ownership en todo el esquema; `leads`/`quotes` routes ni siquiera llaman a `requireAuth()` hoy (el RBAC vive solo en middleware) — hay que añadir esa capa para poder auto-rellenar `assigned_to`/`created_by`.
 
-**Diseño:**
+**E-B4 (decidido): fuente única.** `assigned_to` vive SOLO en `leads` — no se duplica en `quotes` ni `events`. La propiedad de un presupuesto/evento se **deriva** siempre a través de la cadena de FKs ya existente: `quotes.lead_id → leads.assigned_to`, y para eventos: `events.quote_id → quotes.lead_id → leads.assigned_to`. Como todo evento ya tiene un lead auto-creado/vinculado al crearse (T4.1, `LEAD_CREATED`), esta cadena cubre prácticamente todos los casos sin necesitar columnas redundantes que puedan desincronizarse.
+
 ```sql
-ALTER TABLE leads  ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES admins(id) ON DELETE SET NULL;
-ALTER TABLE quotes ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES admins(id) ON DELETE SET NULL;
-ALTER TABLE events ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES admins(id) ON DELETE SET NULL;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES admins(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_leads_assigned_to ON leads(assigned_to);
 
 CREATE TABLE IF NOT EXISTS interactions (
@@ -203,32 +202,41 @@ CREATE TABLE IF NOT EXISTS interactions (
 ```
 `audit_log` se queda como está (ledger de transiciones de estado, inmutable) — NO se ensancha para esto, son conceptos distintos (uno es un log de sistema, el otro son notas editables de un comercial).
 
-**Cambios de ruta:** `src/app/api/leads/route.ts` (GET añade filtro `assigned_to`; POST añade `getCurrentUser()` para auto-asignar al creador), análogo en `quotes`/`events`. Nueva `PATCH /api/leads/[id]/assign` (reasignar), `POST/GET /api/interactions` (CRUD ligero, scoped por `lead_id` o `event_id`).
+**Cambios de ruta:**
+- `src/app/api/leads/route.ts`: GET añade filtro `?assigned_to=`; POST añade `getCurrentUser()` para auto-asignar `assigned_to` al creador si no se especifica.
+- `src/app/api/quotes/route.ts`, `src/app/api/events/route.ts` (GET/list): añaden un `LEFT JOIN` a través de `lead_id`/`quote_id→lead_id` para exponer `assigned_to`/`assigned_to_name` en la respuesta, sin columna propia.
+- Nueva `PATCH /api/leads/[id]/assign` (reasignar el lead — esto reasigna automáticamente todos sus presupuestos/eventos derivados, al ser fuente única).
+- Nueva `POST/GET /api/interactions` (CRUD ligero, scoped por `lead_id` o `event_id`).
 
 **Nota — esto es solo backend/API.** El "badge de propietario" y el filtro "mis leads" en `LeadsCRM.tsx`/`KanbanPipeline.tsx` son trabajo de UI, se dejan para el sprint de rediseño ya acordado; aquí solo se deja el dato servible.
 
-**Test:** crear un lead autenticado como usuario X → `assigned_to = X.id`; filtrar `/api/leads?assigned_to=X` → solo sus leads; crear una interacción → aparece en el timeline del lead.
+**Test:** crear un lead autenticado como usuario X → `assigned_to = X.id`; el evento derivado de ese lead (vía `quote_id→lead_id`) resuelve `assigned_to=X.id` en el JOIN sin columna propia; reasignar el lead → el evento deriva el nuevo propietario automáticamente; crear una interacción → aparece en el timeline del lead.
 
-## B5 · G16 — Orquestación de cierre duplicada
+## B5 · G16 — Orquestación de cierre duplicada + facturación parcial
 
 **Hallazgo, más serio de lo que sugería la auditoría original:** además de la ya conocida divergencia en pagos, se confirmaron 5 diferencias más entre `close/route.ts` y `fwd4`: `fwd4` exige `payments.length > 0` (close no), solo `fwd4` actualiza `event_orders.status`, solo `fwd4` escribe `audit_log`, la fuente del `subtotal` de la factura difiere (`event.total_pvp` vs `order.confirmed_price ?? event.total_pvp`), y `fwd4` nunca llamaba a la implementación correcta de freeze (arreglado en A2).
 
-**Decisión de negocio (E-B5), no es un detalle técnico:** *¿al cerrar un evento con saldo pendiente, se debe forzar el cobro de todos los pagos antes de facturar (comportamiento actual de `fwd4`) o se debe facturar solo lo realmente cobrado, dejando el saldo pendiente visible (comportamiento actual de `close/route.ts`)?* Son dos resultados de negocio distintos (una factura que dice "cobrado 100%" sin serlo, vs. una que refleja la deuda real). No la voy a decidir por ti.
+**E-B5 (decidido) — ni "forzar todo" ni "solo lo cobrado": facturación parcial explícita.** Tu requisito va más allá de las dos opciones que planteé: de un evento de 2000€, debe poder facturarse solo 1000€ (lo realmente cobrado), quedando los otros 1000€ pendientes de cobro manual — y facturables MÁS TARDE en una segunda factura cuando se cobren. Esto descarta ambos comportamientos actuales (`fwd4` fuerza el 100%; `close/route.ts` solo permite UNA factura por evento, nunca una segunda parcial posterior) y añade una capacidad nueva: **facturación incremental**.
 
-**Diseño** (independiente de esa decisión — el `domain/closeEvent.ts` se parametriza):
+**Diseño:**
+
+1. **`domain/closeEvent.ts`** — nunca fuerza pagos. El cierre (freeze/stock/estado/`audit_log`) siempre ocurre igual; la factura generada AL CERRAR es la primera factura parcial, por el importe indicado (o por defecto, lo ya marcado `paid=true`, igual que hace hoy `close/route.ts`):
 ```ts
 export async function closeEvent(
   eventId: string,
-  opts: { forcePayments: boolean; requirePayments: boolean; motivo?: string }
+  opts: { invoiceAmount?: number; motivo?: string }
 ): Promise<{ event: any; effects: string[] }> {
   // freeze vía freezeEscandallo (canónica, A2) → event_orders.status='completed' (siempre) →
-  // pagos (forzar o no según opts.forcePayments) → factura (createInvoice) →
+  // NUNCA fuerza payments.paid → factura por opts.invoiceAmount ?? Σ(payments.paid=true) →
   // stock (deductStockForEvent) → audit_log (siempre) → event → 'completed'
 }
 ```
-`close/route.ts` y `fwd4` pasan a ser wrappers finos sobre `closeEvent(eventId, {forcePayments: <decisión>, requirePayments: <decisión>})`, adaptando solo la forma de la respuesta HTTP (`results` vs `effects`) para no romper a los consumidores actuales.
+2. **Relajar la idempotencia de facturación** — hoy `invoices/route.ts` bloquea con "ya existe factura" si hay CUALQUIER factura para el `event_order_id`. Pasa a permitir varias facturas por evento mientras la suma de sus `subtotal` (no canceladas) no supere `order.confirmed_price` (control de sanidad, no bloqueo duro — un exceso solo genera un aviso, nunca un error, por si hay recargos legítimos).
+3. **Nueva ruta manual reutilizable** `POST /api/events/[id]/invoice` (mismo patrón que `POST /api/events/[id]/contract/generate` del Sprint 3 — botón admin, invocable varias veces): body `{ amount }`, llama a `createInvoice` con ese importe como `subtotal`. Funciona tanto en un evento recién cerrado como en uno cerrado hace tiempo (para facturar el resto cuando se cobre).
+4. El importe NO facturado se queda como `payments` sin marcar `paid` — se marcan manualmente más tarde vía la ruta YA existente `PATCH /api/payments/[id]`, sin cambios ahí.
+5. `close/route.ts` y `fwd4` pasan a ser wrappers finos sobre `closeEvent(eventId, { invoiceAmount, motivo })`, adaptando solo la forma de la respuesta HTTP (`results` vs `effects`).
 
-**Test:** cerrar un evento con saldo pendiente por ambas vías tras unificar → mismo comportamiento en ambas (ya no diverge); `event_orders.status` y `audit_log` se escriben en ambos casos.
+**Test:** cerrar un evento de 2000€ indicando `invoiceAmount=1000` → 1 factura por 1000€, `payments` con 1000€ aún sin marcar `paid`; marcar esos 1000€ como pagados manualmente vía `PATCH /api/payments/[id]`; llamar `POST /api/events/[id]/invoice {amount:1000}` → 2ª factura por los otros 1000€, ambas facturas suman el total del evento.
 
 ## B6 · G17 — Endurecimiento focalizado (no la reforma completa)
 
@@ -238,7 +246,7 @@ export async function closeEvent(
 
 Y 2 más que crean estados fantasma no representados en `VALID_TRANSITIONS` en absoluto: `presupuestado` (vía `payments/signal/route.ts`) y `paid` (vía `invoices/[id]/route.ts`).
 
-**Alcance para ESTE sprint (recomendado, no la reforma completa de los 17 sitios):**
+**E-B6 (decidido): el alcance acotado recomendado.**
 1. **Whitelist mínima** en los 2 puntos peligrosos: `events/[id]/route.ts` y `automation.ts` solo aceptan `status` si pertenece a un conjunto cerrado de valores válidos (`draft,sent,accepted,presupuestado,completed,lost,cancelled,reopened,paid`) — no elimina el bypass de gobernanza, pero elimina el riesgo de typos/estados inventados.
 2. **Documentar** `presupuestado`/`paid` como transiciones reales añadiendo entradas a `VALID_TRANSITIONS` (sin cambiar su comportamiento, solo haciéndolas visibles/auditables): `PAY-1: accepted→presupuestado`, `PAY-2: completed→paid`.
 
@@ -277,7 +285,7 @@ El agente confirmó que Twilio (captación pública de leads, solo entrante) y M
 | Ruta (edit) | `src/app/api/events/[id]/transitions/route.ts` | A1 (lead vía FK), A2 (freeze canónica en fwd4), B5 (delega en closeEvent) |
 | Lib (edit) | `src/lib/recalcEscandallo.ts` | A2: borrar `freezeEventEscandallo` |
 | Ruta (edit) | `src/app/api/escandallo/event/[eventId]/route.ts` | A2: llamar a `freezeEscandallo` |
-| DDL | `schema.sql` | A3 (FK worker_id), B1 (índice único staffing_lines), B2 (tabla event_equipment_checkout), B3 (merma_pct), B4 (assigned_to ×3 + tabla interactions), B6 (VALID_TRANSITIONS entries) |
+| DDL | `schema.sql` | A3 (FK worker_id), B1 (índice único staffing_lines), B2 (tabla event_equipment_checkout), B3 (merma_pct), B4 (assigned_to solo en leads + tabla interactions), B6 (VALID_TRANSITIONS entries) |
 | Frontend (edit) | `src/app/admin/page.tsx` | A4: typo mapa-mas |
 | Ruta (edit) | `src/app/api/events/[id]/close/route.ts` | A5 (fiscal_nif), B5 (delega en closeEvent) |
 | Dominio (nuevo) | `src/lib/domain/staffingSizing.ts` | B1 |
@@ -286,9 +294,12 @@ El agente confirmó que Twilio (captación pública de leads, solo entrante) y M
 | Dominio (nuevo) | `src/lib/domain/equipmentCheckout.ts` | B2 |
 | Ruta (nueva) | `src/app/api/cocina/equipment/checkout/[eventId]/route.ts` | B2 |
 | Ruta (edit) | `src/app/api/cocina/recipes/import/route.ts` | B3 (persistir merma_pct) |
-| Ruta (edit) | `src/app/api/leads/route.ts`, `quotes/route.ts`, `events/route.ts` | B4 (assigned_to + requireAuth) |
+| Ruta (edit) | `src/app/api/leads/route.ts` | B4 (assigned_to propio + requireAuth) |
+| Ruta (edit) | `src/app/api/quotes/route.ts`, `src/app/api/events/route.ts` | B4 (assigned_to derivado por JOIN, sin columna propia) |
 | Ruta (nueva) | `src/app/api/leads/[id]/assign/route.ts`, `src/app/api/interactions/route.ts` | B4 |
 | Dominio (nuevo) | `src/lib/domain/closeEvent.ts` | B5 |
+| Ruta (nueva) | `src/app/api/events/[id]/invoice/route.ts` | B5 (facturación parcial reutilizable) |
+| Ruta (edit) | `src/app/api/invoices/route.ts` | B5 (relaja idempotencia: varias facturas por evento) |
 | Ruta (edit) | `src/app/api/events/[id]/route.ts`, `src/lib/automation.ts` | B6 (whitelist de status) |
 | Test (nuevo) | `scripts/verify-sprint4.sh` | AC-A1..A5 + AC-B1..B6 |
 
@@ -298,15 +309,15 @@ El agente confirmó que Twilio (captación pública de leads, solo entrante) y M
 3. `npm run build` + `verify-sprint4.sh` + regresión completa de las 7 suites previas en cada punto de control.
 4. Documentar C1/C2/C3/G23 en `docs/handoff.md` como backlog explícito con su primer paso ya perfilado (no una promesa vaga).
 
-## Decisiones que necesito de ti (E-B1 a E-B6)
+## Decisiones — RESUELTAS por el usuario (E-B1 a E-B6)
 
-- **E-B1** (staffing): ¿redimensionar solo líneas `status='open'`, o siempre?
-- **E-B2** (equipamiento): ¿reserva automática al generar hoja de logística de eventos externos, o botón manual?
-- **E-B3** (merma): ¿Opción A (solo persistir el dato, sin cambiar la fórmula) u Opción B (migrar a neto+aplicación en lectura, con decisión de migración de datos)? — recomiendo A.
-- **E-B4** (CRM): ¿confirmas el diseño de `assigned_to`+`interactions` tal cual, o prefieres que ownership viva solo en `leads` (no duplicado en `quotes`/`events`)?
-- **E-B5** (cierre, la más importante): ¿forzar todos los pagos como cobrados al cerrar (como hoy `fwd4`), o facturar solo lo realmente cobrado dejando el saldo visible (como hoy `close/route.ts`)?
-- **E-B6** (estado): ¿confirmas el alcance acotado (whitelist + documentar 2 transiciones fantasma), dejando la reforma completa de `setEventStatus` para más adelante?
+- **E-B1** ✅ Solo líneas `status='open'` se redimensionan.
+- **E-B2** ✅ Reserva de equipamiento automática al generar la hoja de logística (eventos externos).
+- **E-B3** ✅ Opción A (solo persistir `merma_pct` desde ahora); el usuario reimportará los datos de receta existentes por su cuenta, sin migración/backfill.
+- **E-B4** ✅ Fuente única: `assigned_to` vive solo en `leads`; presupuestos/eventos lo derivan por join a través de `lead_id`.
+- **E-B5** ✅ Facturación parcial explícita: ni forzar el 100% ni bloquear a una sola factura — importe indicado + segunda factura posterior para el resto, vía nueva ruta manual reutilizable.
+- **E-B6** ✅ Alcance acotado (whitelist + documentar transiciones fantasma), reforma completa diferida.
 
 ---
 
-**FIN DEL SPEC — FASE 1 completada. No se ha modificado código ni base de datos. A la espera de tu revisión (Nivel A/B/C + decisiones E-B1..E-B6) y del comando "SPEC Aprobado" para ejecutar la FASE 3.**
+**FIN DEL SPEC — SPEC Aprobado (todas las decisiones resueltas). Pasando a FASE 3 (implementación).**
