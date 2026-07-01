@@ -1,9 +1,65 @@
 ## Último agente: Claude Code
-## Fecha: 30/06/2026
+## Fecha: 30/06/2026 (Sprint 2)
 ## Rama: main
 ## Último commit: (ver `git log -1`, tras este handoff)
 
-### Qué se hizo (30/06 · Auditoría ERP + Sprint 1 Core Business)
+### Qué se hizo (30/06 · Sprint 2 · G2 compromiso de inventario + G6 ledger único)
+- [x] **SPEC-Sprint2-Inventory.md** (SDD): aprobado por el usuario con
+  alcance ampliado sobre la propuesta inicial — el usuario pidió (E1) bloqueo
+  **opcional** configurable (no solo no-bloqueante), (E2) confirmar que el
+  pedido auto-generado requiere confirmación humana, (E3) dejar el modo
+  automático para ingredientes sin resolver como extensión futura, y (E4)
+  **adelantar G6** (unificación del doble ledger) a este mismo sprint en vez
+  de diferirlo.
+- [x] **G6 · Ledger único de stock.** `ingredients.quantity` es ahora la
+  única fuente de verdad. Nuevo `domain/stockLedger.ts::adjustIngredientStock`
+  — única función que debe escribir esa columna; en la misma transacción
+  registra en `stock_entries` (log canónico) y refleja `inventory`+
+  `inventory_movements` (espejo para Trazabilidad). Trigger
+  `sync_inventory_quantity` (INSERT + UPDATE de quantity/min_stock) como
+  defensa en profundidad. **Bugs reales confirmados leyendo el código**:
+  `trazabilidad/receiving/from-order/[orderId]` y `trazabilidad/
+  lot-consumption/[eventId]` escribían SOLO en `inventory.quantity`, nunca en
+  `ingredients.quantity` (la fuente que consume escandallo/stockDeduct) —
+  divergencia silenciosa real, no solo teórica. `stock/supplier-orders`
+  (marcar entregado) restockeaba sin dejar rastro en ningún log.
+  `stockDeduct.ts` era invisible a los ledgers de movimiento. `min_stock`
+  tenía la misma duplicación silenciosa que `quantity`. Los 6 puntos de
+  escritura redirigidos al ledger único.
+- [x] **G2 · Compromiso de inventario al aceptar + compra automática.**
+  Nueva tabla `inventory_commitments` (1 fila por evento+ingrediente).
+  Dominio nuevo `domain/inventoryCommitment.ts` (`commitInventoryForEvent`/
+  `releaseInventoryCommitments`/`checkInventoryShortages` — compara demanda
+  del evento contra stock físico MENOS lo comprometido por OTROS eventos) y
+  `domain/generateSupplierOrders.ts` (pedido borrador `pending`, nunca se
+  envía). `acceptQuote` comprueba faltantes tras generar el escandallo; si
+  `business_settings.block_accept_on_stock_shortage` está activo (default
+  `false`), bloquea con 409 y revierte todo; si no, avisa + genera el
+  pedido borrador. **Arregla la funcionalidad muerta `stockWarnings`**:
+  `quotes/[id]` PUT nunca la devolvía pese a que `LeadsCRM.tsx` y
+  `transitions::fwd3` ya la leían — confirmado con código, no solo
+  documentado en la auditoría. También arreglado: `convert_uom()`, llamada
+  por `/api/stock/generate-order` pero **ausente de `schema.sql`** (bug real
+  confirmado empíricamente — la ruta daba 500 contra cualquier BD limpia).
+  Compromisos se liberan en INV-1/INV-2/INV-3 y al cerrar (deducción real).
+- [x] Verificación: nuevo `scripts/verify-sprint2.sh` **27/27**; sin
+  regresión (E2E 32/32 · RBAC 41/41 · Operativos 14/14 · ERP 17/17 ·
+  Sprint1 26/26); build de producción exit 0.
+
+### Pendiente / próximos pasos sugeridos
+- [ ] **Rediseño del UI del admin** (siguiente paso acordado con el usuario):
+  selector de salón, aviso de faltante de stock en el flujo de aceptación,
+  toggle de `block_accept_on_stock_shortage`, y mostrar `laborCostPaid`/
+  margen real en `rentabilidad/page.tsx` (Sprint 1) — todo ya servido por
+  el backend, falta solo la UI.
+- [ ] Borrar la rama remota `claude/event-venue-redesign-JAUif` (el usuario,
+  por política de red del entorno bloquea el push de borrado).
+- [ ] Siguientes gaps del Gap Analysis (P0/P1 restantes): G5 (FEFO + lote→
+  consumo automático en el cierre, requisito legal APPCC), G8 (contrato/
+  firma de cliente), G9 (Facturae/Verifactu), G14 (IVA por línea). G4/G15
+  (TPV/KDS/pasarela) siguen excluidos por mandato del usuario.
+
+### Histórico (30/06 · Auditoría ERP + Sprint 1 Core Business)
 - [x] **Auditoría ERP/CRM completa** → `docs/auditoria-erp-2026-06.md` (Gap
   Analysis con doble óptica operaciones+arquitectura; 5 ejes auditados en
   paralelo). Veredicto: back-office sólido, faltan los lazos del medio

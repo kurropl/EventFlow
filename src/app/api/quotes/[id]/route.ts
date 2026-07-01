@@ -61,6 +61,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           data: result.quote,
           eventOrder: result.eventOrder,
           payments: result.payments,
+          // G2: el aviso de faltante de stock (antes "stockWarnings" era una
+          // funcionalidad muerta — quotes PUT nunca la devolvía pese a que
+          // LeadsCRM.tsx y transitions::fwd3 ya la leían). Top-level, no
+          // anidado bajo `data`, para que ambos consumidores existentes
+          // sigan funcionando sin tocarlos.
+          stockWarnings: result.stockWarnings,
         });
       } catch (err) {
         if (err instanceof AcceptQuoteError) {

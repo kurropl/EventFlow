@@ -2128,10 +2128,13 @@ INSERT INTO inventory (ingredient_id, quantity, unit, min_stock)
 SELECT id, quantity, unit, min_stock FROM ingredients i
 WHERE NOT EXISTS (SELECT 1 FROM inventory inv WHERE inv.ingredient_id = i.id);
 
--- Trigger de seguridad (defensa en profundidad): cualquier UPDATE de
+-- Trigger de seguridad (defensa en profundidad): cualquier INSERT/UPDATE de
 -- ingredients.quantity/min_stock — pase o no por domain/stockLedger.ts —
--- mantiene inventory.quantity/min_stock sincronizados. min_stock tenía la
--- MISMA duplicación que quantity (vivía en ambas tablas sin sincronizar;
+-- mantiene inventory.quantity/min_stock sincronizados DESDE EL MOMENTO EN
+-- QUE EL INGREDIENTE EXISTE (no solo tras su primer cambio de cantidad —
+-- cubre también ingredientes creados por seeds/migraciones posteriores a
+-- schema.sql, que el backfill de arriba no puede alcanzar). min_stock tenía
+-- la MISMA duplicación que quantity (vivía en ambas tablas sin sincronizar;
 -- auto-orders lee ingredients.min_stock, la pantalla de Trazabilidad lee
 -- inventory.min_stock). domain/stockLedger.ts hace además el registro
 -- detallado en inventory_movements/stock_entries; este trigger solo
@@ -2147,6 +2150,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Trigger de INSERT (sin WHEN — OLD no existe en este evento): garantiza
+-- el espejo desde el primer instante del ingrediente.
+DROP TRIGGER IF EXISTS trg_sync_inventory_insert ON ingredients;
+CREATE TRIGGER trg_sync_inventory_insert
+  AFTER INSERT ON ingredients
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_inventory_quantity();
+
+-- Trigger de UPDATE (con WHEN — evita escrituras innecesarias si cambia
+-- otra columna que no sea quantity/min_stock).
 DROP TRIGGER IF EXISTS trg_sync_inventory_quantity ON ingredients;
 CREATE TRIGGER trg_sync_inventory_quantity
   AFTER UPDATE OF quantity, min_stock ON ingredients

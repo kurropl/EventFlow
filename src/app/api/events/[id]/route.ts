@@ -276,10 +276,12 @@ export async function PUT(
     }
 
     // ── Aceptación: delegar en el dominio (única implementación, R1/D1) ──
+    let stockWarnings: unknown;
     if (result.acceptQuoteId) {
       try {
         const accepted = await acceptQuote(result.acceptQuoteId);
         result.event = accepted.event;
+        stockWarnings = accepted.stockWarnings;
       } catch (err) {
         if (err instanceof AcceptQuoteError) {
           return NextResponse.json({ success: false, error: err.message }, { status: err.status });
@@ -326,7 +328,7 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json({ success: true, data: result.event });
+    return NextResponse.json({ success: true, data: result.event, stockWarnings });
   } catch (error) {
     if (error instanceof VenueConflictError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 409 });

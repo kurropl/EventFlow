@@ -1,11 +1,59 @@
-# SPEC · Sprint 2 — Compromiso de inventario y compra automática (G2)
+# SPEC · Sprint 2 — Compromiso de inventario y compra automática (G2 + G6)
 
-**Metodología:** SDD. Este documento describe el QUÉ, el PORQUÉ y el CÓMO exacto. **No se ha tocado código ni base de datos** — FASE 1 (especificación), a la espera de revisión y aprobación explícita antes de implementar (FASE 3).
+**Estado:** ✅ Implementada (FASE 3 completada 2026-06-30). Verificación:
+`verify-sprint2.sh` 27/27 · sin regresión (E2E 32/32 · RBAC 41/41 ·
+Operativos 14/14 · ERP 17/17 · Sprint1 26/26) · build de producción exit 0.
+
+**Decisiones finales del usuario (E1–E4), alcance ampliado sobre la FASE 1:**
+- **E1** — Bloqueo **opcional** (no solo el no-bloqueante original): nuevo
+  `business_settings.block_accept_on_stock_shortage` (default `false`). Si se
+  activa, `acceptQuote` lanza `AcceptQuoteError(409)` y revierte TODA la
+  transacción cuando hay faltante — igual de estricto que G1 (salón). Sin UI
+  propia todavía (pendiente del rediseño del admin); se gestiona vía
+  `PUT /api/settings` o SQL directo.
+- **E2** — Confirmado: el pedido auto-generado queda SIEMPRE en `pending`
+  (borrador), nunca se envía a nadie; requiere confirmación humana en
+  `StockManager.tsx`.
+- **E3** — Por ahora los ingredientes sin resolver (`ingredient_id IS NULL`)
+  solo se avisan (informativo, `stockWarnings` con `available=0`), sin
+  generar pedido — `checkInventoryShortages`/`generateSupplierOrdersForEvent`
+  quedan estructuralmente listos para activar un modo automático futuro sin
+  rediseño (el discriminador `ingredient_id === null` ya distingue el caso).
+- **E4** — **G6 se adelanta a este mismo sprint** (no se difiere a un
+  "Sprint 3"): unificación del doble ledger de stock
+  (`ingredients.quantity` vs `inventory`/`inventory_movements`).
+
+**Metodología:** SDD. Este documento describe el QUÉ, el PORQUÉ y el CÓMO exacto.
 
 **Autor:** Arquitecto/Backend Senior · **Fecha:** 2026-06-30 · **Rama:** `main`
-**Origen:** `docs/auditoria-erp-2026-06.md`, Gap **G2** — *"El inventario no se compromete al confirmar y la compra es 100% manual"*.
+**Origen:** `docs/auditoria-erp-2026-06.md`, Gaps **G2** ("El inventario no se
+compromete al confirmar y la compra es 100% manual") y **G6** ("Dos
+contabilidades de stock paralelas").
 **Excluido por mandato vigente:** G4/G15 (pasarela de pago, TPV, KDS) — no se tocan ni se mencionan en el diseño.
-**Fuera de alcance de ESTE sprint (G6, explícitamente diferido):** la doble contabilidad de stock (`ingredients.quantity` vs `inventory`/`inventory_movements`) NO se unifica aquí. Este sprint usa `ingredients.quantity` como única fuente de "stock disponible" — es la misma fuente que ya usan `stock/check`, `stockDeduct.ts` y `generate-order` hoy, así que no se introduce una tercera verdad; solo se hace explícito que `inventory`/`inventory_movements` queda fuera.
+
+## Addendum G6 (incorporado tras aprobación, E4)
+
+`ingredients.quantity` pasa a ser la ÚNICA fuente de verdad de stock.
+`inventory`/`inventory_movements` (consumidos por las pantallas de
+Trazabilidad) se convierten en un ESPEJO, mantenido por:
+1. **`domain/stockLedger.ts::adjustIngredientStock`** — única función que
+   debe escribir `ingredients.quantity`; en la misma transacción registra en
+   `stock_entries` (log canónico) y refleja `inventory`+`inventory_movements`.
+2. **Trigger `sync_inventory_quantity`** (`AFTER INSERT` y
+   `AFTER UPDATE OF quantity, min_stock` en `ingredients`) — defensa en
+   profundidad: cualquier escritura que no pase por `stockLedger.ts` (o un
+   ingrediente sembrado directamente por SQL, como en los fixtures de test)
+   igual mantiene el saldo sincronizado desde el instante de creación.
+
+Bugs reales confirmados leyendo el código (no solo inferidos de la
+auditoría) y corregidos: `trazabilidad/receiving/from-order/[orderId]` y
+`trazabilidad/lot-consumption/[eventId]` escribían **solo** en
+`inventory.quantity`, nunca en `ingredients.quantity` — la divergencia
+silenciosa exacta que describía el Gap Analysis. `stock/supplier-orders`
+(marcar entregado) restockeaba sin dejar rastro en ningún log.
+`stockDeduct.ts` (deducción real de cierre) era invisible para los ledgers de
+movimiento. `min_stock` tenía la misma duplicación silenciosa que `quantity`.
+Los siete se corrigen unificando la escritura en `stockLedger.ts`.
 
 ---
 

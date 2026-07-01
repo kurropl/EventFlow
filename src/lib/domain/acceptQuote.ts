@@ -18,6 +18,8 @@ import { generateEscandallo } from './generateEscandallo';
 import { recalcEventCost } from './recalcEventCost';
 import { setEventStatus } from './eventState';
 import { reserveVenue, toDateStr, VenueConflictError } from './venueBooking';
+import { commitInventoryForEvent, checkInventoryShortages, type ShortageRow } from './inventoryCommitment';
+import { generateSupplierOrdersForEvent } from './generateSupplierOrders';
 
 export interface AcceptQuoteResult {
   quote: any;
@@ -25,6 +27,7 @@ export interface AcceptQuoteResult {
   eventOrder: any;
   payments: any[];
   clientToken: string;
+  stockWarnings: ShortageRow[];
 }
 
 export class AcceptQuoteError extends Error {
@@ -147,6 +150,28 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
     // 5) Escandallo (idempotente: generateEscandallo no duplica si ya existe)
     await generateEscandallo(client, eventId, eventOrder.id);
 
+    // 5.5) G2 (Sprint 2): comprometer el inventario que este evento reclama
+    // y comprobar faltantes contra lo ya comprometido por OTROS eventos
+    // (evita que dos bodas de la misma semana se prometan el mismo stock
+    // sin aviso). E1 (decisión usuario): bloqueo OPCIONAL vía
+    // business_settings.block_accept_on_stock_shortage (false por defecto =
+    // no bloqueante, igual que G1 si fuera desactivable). Si bloquea, nada
+    // de esta transacción se confirma (rollback completo). Si no bloquea,
+    // se genera un pedido borrador (E2: nunca se envía, requiere
+    // confirmación humana) y se avisa vía stockWarnings.
+    await commitInventoryForEvent(client, eventId);
+    const stockWarnings = await checkInventoryShortages(client, eventId);
+    if (stockWarnings.length > 0) {
+      const settings = (await client.query(
+        `SELECT block_accept_on_stock_shortage FROM business_settings LIMIT 1`
+      )).rows[0];
+      if (settings?.block_accept_on_stock_shortage) {
+        const names = stockWarnings.map(s => s.ingredient_name).join(', ');
+        throw new AcceptQuoteError(`Stock insuficiente para aceptar: ${names}`, 409);
+      }
+      await generateSupplierOrdersForEvent(client, eventId, stockWarnings);
+    }
+
     // 6) Fuente única de coste (Opción B)
     await recalcEventCost(client, eventId);
 
@@ -200,6 +225,6 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
       );
     }
 
-    return { quote: updatedQuote, event, eventOrder, payments, clientToken };
+    return { quote: updatedQuote, event, eventOrder, payments, clientToken, stockWarnings };
   });
 }

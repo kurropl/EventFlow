@@ -13,6 +13,7 @@ import { createInvoice } from '@/lib/domain/createInvoice';
 import { recordPayment } from '@/lib/domain/recordPayment';
 import { VALID_TRANSITIONS, assertTransition, EventStateError, setEventStatus, NOW } from '@/lib/domain/eventState';
 import { releaseVenue } from '@/lib/domain/venueBooking';
+import { releaseInventoryCommitments } from '@/lib/domain/inventoryCommitment';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -223,6 +224,7 @@ async function inv1(event: any, motivo?: string) {
 
   await setEventStatus(event.id, 'lost', { extra: { lost_at: NOW, lost_reason: motivo } });
   await releaseVenue(getPool(), event.id);  // G1: el salón vuelve a estar libre
+  await releaseInventoryCommitments(getPool() as any, event.id);  // G2 (no-op si nunca se aceptó)
   await querySingle(
     `UPDATE leads SET status = 'perdido' WHERE LOWER(name) = LOWER($1) AND status IN ('nuevo','presupuestado')`,
     [event.client_name]
@@ -246,6 +248,8 @@ async function inv2(event: any, motivo?: string) {
   // 2. Delete event_order and generated shopping items
   await querySingle(`DELETE FROM event_shopping_items WHERE event_id = $1`, [event.id]);
   await querySingle(`DELETE FROM event_orders WHERE event_id = $1`, [event.id]);
+  // G2: sin escandallo, el compromiso de inventario tampoco tiene sentido.
+  await releaseInventoryCommitments(getPool() as any, event.id);
 
   // 3. Revoke guest link
   await querySingle(`UPDATE events SET client_token = NULL WHERE id = $1`, [event.id]);
@@ -295,6 +299,7 @@ async function inv3(event: any, motivo?: string) {
     extra: { cancelled_at: NOW, cancelled_by: 'admin', cancel_reason: motivo },
   });
   await releaseVenue(getPool(), event.id);  // G1: el salón cancelado vuelve a estar libre
+  await releaseInventoryCommitments(getPool() as any, event.id);  // G2: stock ya no comprometido
 
   // Lead stays as 'convertido' for cancelled events (they are still a client)
   await audit(event.id, 'event', event.id, 'INV-3', 'accepted', 'cancelled', 'admin', motivo);
