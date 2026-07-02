@@ -29,15 +29,15 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import dynamic from 'next/dynamic';
 
 const OCRScanner = dynamic(() => import('@/components/b2b/OCRScanner'), {
-  loading: () => <div className="h-48 bg-[#F8F3E6] rounded-xl animate-pulse" />,
+  loading: () => <div className="h-48 bg-cream-dark rounded-xl animate-pulse" />,
 });
 
 const CocinaAlerts = dynamic(() => import('@/components/b2b/CocinaAlerts'), {
-  loading: () => <div className="h-32 bg-[#F8F3E6] rounded-xl animate-pulse" />,
+  loading: () => <div className="h-32 bg-cream-dark rounded-xl animate-pulse" />,
 });
 
 const HACCPPanel = dynamic(() => import('@/components/b2b/HACCPPanel'), {
-  loading: () => <div className="h-32 bg-[#F8F3E6] rounded-xl animate-pulse" />,
+  loading: () => <div className="h-32 bg-cream-dark rounded-xl animate-pulse" />,
 });
 
 /* ------------------------------------------------------------------ */
@@ -99,10 +99,10 @@ function ConfirmDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
-      <DialogContent className="sm:max-w-md bg-white border border-[#C9A86A]/20 text-[#0a0a0a]">
+      <DialogContent className="sm:max-w-md bg-white border border-gold/20 text-ink">
         <DialogHeader>
-          <DialogTitle className="text-[#C9A86A]">{title}</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogTitle className="text-gold">{title}</DialogTitle>
+          <DialogDescription className="text-ink-soft-60">
             {message}
           </DialogDescription>
         </DialogHeader>
@@ -110,7 +110,7 @@ function ConfirmDialog({
           <Button
             variant="ghost"
             onClick={onCancel}
-            className="text-[#6B7280] hover:text-[#0a0a0a] hover:bg-[#F8F3E6]"
+            className="text-ink-soft hover:text-ink hover:bg-cream-dark"
           >
             Cancelar
           </Button>
@@ -186,7 +186,7 @@ function RecetasTab() {
     return (
       <div className="animate-pulse space-y-3 p-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-10 bg-[#F8F3E6] rounded" />
+          <div key={i} className="h-10 bg-cream-dark rounded" />
         ))}
       </div>
     );
@@ -195,7 +195,7 @@ function RecetasTab() {
   if (!recipes.length) {
     return (
       <EmptyState
-        icon="food"
+        icon={<Icon name="food" className="w-6 h-6" />}
         title="Sin recetas"
         description="No hay recetas registradas aún."
       />
@@ -206,7 +206,7 @@ function RecetasTab() {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#C9A86A]/20 text-[#6B7280] uppercase text-xs tracking-wider">
+          <tr className="border-b border-gold/20 text-ink-soft uppercase text-xs tracking-wider">
             <th className="text-left py-3 px-3 font-medium">Nombre</th>
             <th className="text-left py-3 px-3 font-medium">Categoría</th>
             <th className="text-center py-3 px-3 font-medium">Versión</th>
@@ -218,13 +218,13 @@ function RecetasTab() {
           {recipes.map((recipe) => (
             <tr
               key={recipe.id}
-              className="border-b border-[#C9A86A]/10 hover:bg-white transition-colors"
+              className="border-b border-gold/10 hover:bg-white transition-colors"
             >
-              <td className="py-3 px-3 text-[#0a0a0a] font-medium">
+              <td className="py-3 px-3 text-ink font-medium">
                 {recipe.name}
               </td>
-              <td className="py-3 px-3 text-[#5A4A38]">{recipe.category}</td>
-              <td className="py-3 px-3 text-center text-[#5A4A38]">
+              <td className="py-3 px-3 text-ink-light">{recipe.category}</td>
+              <td className="py-3 px-3 text-center text-ink-light">
                 v{recipe.version}
               </td>
               <td className="py-3 px-3 text-center">
@@ -232,12 +232,12 @@ function RecetasTab() {
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                     recipe.published
                       ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-[#F8F3E6] text-[#6B7280]'
+                      : 'bg-cream-dark text-ink-soft'
                   }`}
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      recipe.published ? 'bg-emerald-500' : 'bg-[#9CA3AF]'
+                      recipe.published ? 'bg-emerald-500' : 'bg-ink-soft-60'
                     }`}
                   />
                   {recipe.published ? 'Sí' : 'No'}
@@ -248,7 +248,7 @@ function RecetasTab() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-[#6B7280] hover:text-[#0a0a0a] hover:bg-[#F8F3E6] h-8 px-2 text-xs"
+                    className="text-ink-soft hover:text-ink hover:bg-cream-dark h-8 px-2 text-xs"
                     title="Editar"
                   >
                     <Icon name="edit" className="w-3.5 h-3.5 mr-1" />
@@ -257,7 +257,7 @@ function RecetasTab() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-[#6B7280] hover:text-[#0a0a0a] hover:bg-[#F8F3E6] h-8 px-2 text-xs"
+                    className="text-ink-soft hover:text-ink hover:bg-cream-dark h-8 px-2 text-xs"
                     title="Ver detalle"
                   >
                     <Icon name="search" className="w-3.5 h-3.5 mr-1" />
@@ -403,7 +403,7 @@ function EquipamientoTab() {
     return (
       <div className="animate-pulse space-y-3 p-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-10 bg-[#F8F3E6] rounded" />
+          <div key={i} className="h-10 bg-cream-dark rounded" />
         ))}
       </div>
     );
@@ -412,13 +412,13 @@ function EquipamientoTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-[#6B7280]">
+        <h3 className="text-sm font-medium text-ink-soft">
           {items.length} equipos registrados
         </h3>
         <Button
           size="sm"
           onClick={() => setShowNew(!showNew)}
-          className="bg-[#C9A86A] hover:bg-[#B8922E] text-white font-medium text-xs h-8"
+          className="bg-gold hover:bg-gold-dark text-ink font-medium text-xs h-8"
         >
           <Icon name="plus" className="w-3.5 h-3.5 mr-1" />
           Nuevo equipo
@@ -426,33 +426,33 @@ function EquipamientoTab() {
       </div>
 
       {showNew && (
-        <div className="mb-4 p-3 rounded-lg border border-[#C9A86A]/20 bg-white space-y-2">
+        <div className="mb-4 p-3 rounded-lg border border-gold/20 bg-white space-y-2">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Input
               placeholder="Nombre"
               value={newForm.name}
               onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
-              className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] placeholder:text-[#9CA3AF] h-9 text-sm"
+              className="bg-white border-gold/30 text-ink placeholder:text-ink-soft-60 h-9 text-sm"
             />
             <Input
               placeholder="Categoría"
               value={newForm.category}
               onChange={(e) => setNewForm({ ...newForm, category: e.target.value })}
-              className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] placeholder:text-[#9CA3AF] h-9 text-sm"
+              className="bg-white border-gold/30 text-ink placeholder:text-ink-soft-60 h-9 text-sm"
             />
             <Input
               type="number"
               placeholder="Stock"
               value={newForm.stock}
               onChange={(e) => setNewForm({ ...newForm, stock: Number(e.target.value) })}
-              className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] placeholder:text-[#9CA3AF] h-9 text-sm"
+              className="bg-white border-gold/30 text-ink placeholder:text-ink-soft-60 h-9 text-sm"
             />
             <Input
               type="number"
               placeholder="Stock mínimo"
               value={newForm.min_stock}
               onChange={(e) => setNewForm({ ...newForm, min_stock: Number(e.target.value) })}
-              className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] placeholder:text-[#9CA3AF] h-9 text-sm"
+              className="bg-white border-gold/30 text-ink placeholder:text-ink-soft-60 h-9 text-sm"
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -460,7 +460,7 @@ function EquipamientoTab() {
               variant="ghost"
               size="sm"
               onClick={() => { setShowNew(false); setNewForm({ name: '', category: '', stock: 0, min_stock: 0 }); }}
-              className="text-[#6B7280] hover:text-[#0a0a0a] h-8 text-xs"
+              className="text-ink-soft hover:text-ink h-8 text-xs"
             >
               Cancelar
             </Button>
@@ -468,7 +468,7 @@ function EquipamientoTab() {
               size="sm"
               onClick={saveNew}
               disabled={saving || !newForm.name}
-              className="bg-[#C9A86A] hover:bg-[#B8922E] text-white h-8 text-xs font-medium"
+              className="bg-gold hover:bg-gold-dark text-ink h-8 text-xs font-medium"
             >
               {saving ? 'Guardando…' : 'Guardar'}
             </Button>
@@ -478,7 +478,7 @@ function EquipamientoTab() {
 
       {!items.length ? (
         <EmptyState
-          icon="package"
+          icon={<Icon name="package" className="w-6 h-6" />}
           title="Sin equipos"
           description="No hay equipamiento registrado. Añade el primero."
         />
@@ -486,7 +486,7 @@ function EquipamientoTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#C9A86A]/20 text-[#6B7280] uppercase text-xs tracking-wider">
+              <tr className="border-b border-gold/20 text-ink-soft uppercase text-xs tracking-wider">
                 <th className="text-left py-3 px-3 font-medium">Nombre</th>
                 <th className="text-left py-3 px-3 font-medium">Categoría</th>
                 <th className="text-center py-3 px-3 font-medium">Stock</th>
@@ -498,7 +498,7 @@ function EquipamientoTab() {
               {items.map((eq) => (
                 <tr
                   key={eq.id}
-                  className="border-b border-[#C9A86A]/10 hover:bg-white transition-colors"
+                  className="border-b border-gold/10 hover:bg-white transition-colors"
                 >
                   {editId === eq.id ? (
                     <>
@@ -506,14 +506,14 @@ function EquipamientoTab() {
                         <Input
                           value={editForm.name}
                           onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                          className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-8 text-sm"
+                          className="bg-white border-gold/30 text-ink h-8 text-sm"
                         />
                       </td>
                       <td className="py-2 px-3">
                         <Input
                           value={editForm.category}
                           onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                          className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-8 text-sm"
+                          className="bg-white border-gold/30 text-ink h-8 text-sm"
                         />
                       </td>
                       <td className="py-2 px-3 text-center">
@@ -521,7 +521,7 @@ function EquipamientoTab() {
                           type="number"
                           value={editForm.stock}
                           onChange={(e) => setEditForm({ ...editForm, stock: Number(e.target.value) })}
-                          className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-8 text-sm w-20 mx-auto text-center"
+                          className="bg-white border-gold/30 text-ink h-8 text-sm w-20 mx-auto text-center"
                         />
                       </td>
                       <td className="py-2 px-3 text-center">
@@ -529,7 +529,7 @@ function EquipamientoTab() {
                           type="number"
                           value={editForm.min_stock}
                           onChange={(e) => setEditForm({ ...editForm, min_stock: Number(e.target.value) })}
-                          className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-8 text-sm w-20 mx-auto text-center"
+                          className="bg-white border-gold/30 text-ink h-8 text-sm w-20 mx-auto text-center"
                         />
                       </td>
                       <td className="py-2 px-3 text-right">
@@ -538,7 +538,7 @@ function EquipamientoTab() {
                             size="sm"
                             onClick={saveEdit}
                             disabled={saving}
-                            className="bg-[#C9A86A] hover:bg-[#B8922E] text-white h-7 text-xs px-2"
+                            className="bg-gold hover:bg-gold-dark text-ink h-7 text-xs px-2"
                           >
                             {saving ? '…' : 'OK'}
                           </Button>
@@ -546,7 +546,7 @@ function EquipamientoTab() {
                             variant="ghost"
                             size="sm"
                             onClick={cancelEdit}
-                            className="text-[#6B7280] hover:text-[#0a0a0a] h-7 text-xs px-2"
+                            className="text-ink-soft hover:text-ink h-7 text-xs px-2"
                           >
                             X
                           </Button>
@@ -555,24 +555,24 @@ function EquipamientoTab() {
                     </>
                   ) : (
                     <>
-                      <td className="py-3 px-3 text-[#0a0a0a] font-medium">
+                      <td className="py-3 px-3 text-ink font-medium">
                         {eq.name}
                       </td>
-                      <td className="py-3 px-3 text-[#5A4A38]">{eq.category}</td>
+                      <td className="py-3 px-3 text-ink-light">{eq.category}</td>
                       <td className="py-3 px-3 text-center">
                         <span
                           className={`font-mono text-sm ${
                             eq.stock <= eq.min_stock
-                              ? 'text-red-400'
+                              ? 'text-danger'
                               : eq.stock <= eq.min_stock * 2
-                              ? 'text-yellow-400'
-                              : 'text-green-400'
+                              ? 'text-warning'
+                              : 'text-success'
                           }`}
                         >
                           {eq.stock}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-center text-[#6B7280] font-mono">
+                      <td className="py-3 px-3 text-center text-ink-soft font-mono">
                         {eq.min_stock}
                       </td>
                       <td className="py-3 px-3 text-right">
@@ -581,7 +581,7 @@ function EquipamientoTab() {
                             variant="ghost"
                             size="sm"
                             onClick={() => startEdit(eq)}
-                            className="text-[#6B7280] hover:text-[#0a0a0a] hover:bg-[#F8F3E6] h-7 px-2 text-xs"
+                            className="text-ink-soft hover:text-ink hover:bg-cream-dark h-7 px-2 text-xs"
                             title="Editar"
                           >
                             <Icon name="edit" className="w-3 h-3 mr-1" />
@@ -591,7 +591,7 @@ function EquipamientoTab() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setDeleteTarget(eq)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-7 px-2 text-xs"
+                            className="text-danger hover:text-danger hover:bg-danger/10 h-7 px-2 text-xs"
                             title="Eliminar"
                           >
                             <Icon name="trash" className="w-3 h-3 mr-1" />
@@ -685,7 +685,7 @@ function PasesTab() {
     return (
       <div className="animate-pulse space-y-3 p-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-10 bg-[#F8F3E6] rounded" />
+          <div key={i} className="h-10 bg-cream-dark rounded" />
         ))}
       </div>
     );
@@ -694,7 +694,7 @@ function PasesTab() {
   if (!mappings.length) {
     return (
       <EmptyState
-        icon="layout"
+        icon={<Icon name="layout" className="w-6 h-6" />}
         title="Sin mapeo de pases"
         description="No hay categorías con asignación de pase."
       />
@@ -705,7 +705,7 @@ function PasesTab() {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#C9A86A]/20 text-[#6B7280] uppercase text-xs tracking-wider">
+          <tr className="border-b border-gold/20 text-ink-soft uppercase text-xs tracking-wider">
             <th className="text-left py-3 px-3 font-medium">Categoría</th>
             <th className="text-left py-3 px-3 font-medium">Pase asignado</th>
             <th className="text-right py-3 px-3 font-medium">Acción</th>
@@ -715,9 +715,9 @@ function PasesTab() {
           {mappings.map((m) => (
             <tr
               key={m.id}
-              className="border-b border-[#C9A86A]/10 hover:bg-white transition-colors"
+              className="border-b border-gold/10 hover:bg-white transition-colors"
             >
-              <td className="py-3 px-3 text-white font-medium">
+              <td className="py-3 px-3 text-ink font-medium">
                 {m.category}
               </td>
               <td className="py-3 px-3">
@@ -727,18 +727,18 @@ function PasesTab() {
                   disabled={editingId === m.id && saving}
                 >
                   <SelectTrigger
-                    className={`w-44 bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-9 text-sm ${
+                    className={`w-44 bg-white border-gold/30 text-ink h-9 text-sm ${
                       editingId === m.id ? 'opacity-70' : ''
                     }`}
                   >
                     <SelectValue placeholder="Seleccionar pase" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a] text-white">
+                  <SelectContent className="bg-white border-cream-dark text-ink">
                     {passOptions.map((p) => (
                       <SelectItem
                         key={p.id}
                         value={p.id}
-                        className="hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] focus:text-white cursor-pointer"
+                        className="hover:bg-cream focus:bg-cream focus:text-ink cursor-pointer"
                       >
                         {p.name}
                       </SelectItem>
@@ -748,9 +748,9 @@ function PasesTab() {
               </td>
               <td className="py-3 px-3 text-right">
                 {editingId === m.id && saving ? (
-                  <span className="text-xs text-[#C9A86A]">Guardando…</span>
+                  <span className="text-xs text-gold">Guardando…</span>
                 ) : (
-                  <span className="text-xs text-[#9CA3AF]">
+                  <span className="text-xs text-ink-soft-60">
                     {m.pass_name}
                   </span>
                 )}
@@ -871,26 +871,26 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
     <div>
       {/* Event Selector */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-[#9CA3AF] mb-1.5">
+        <label className="block text-sm font-medium text-ink-soft-60 mb-1.5">
           Seleccionar evento
         </label>
         {loadingEvents ? (
-          <div className="h-10 w-full max-w-md bg-[#F8F3E6] rounded animate-pulse" />
+          <div className="h-10 w-full max-w-md bg-cream-dark rounded animate-pulse" />
         ) : (
           <Select value={selectedEventId} onValueChange={handleEventChange}>
-            <SelectTrigger className="w-full max-w-md bg-white border-[#C9A86A]/30 text-[#0a0a0a] h-10">
+            <SelectTrigger className="w-full max-w-md bg-white border-gold/30 text-ink h-10">
               <SelectValue placeholder="Elige un evento…" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-[#C9A86A]/30 text-[#0a0a0a] max-h-72">
+            <SelectContent className="bg-white border-gold/30 text-ink max-h-72">
               {events.map((ev) => (
                 <SelectItem
                   key={ev.id}
                   value={ev.id}
-                  className="hover:bg-[#F8F3E6] focus:bg-[#F8F3E6] focus:text-[#0a0a0a] cursor-pointer"
+                  className="hover:bg-cream-dark focus:bg-cream-dark focus:text-ink cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
                     <span>{ev.client_name}</span>
-                    <span className="text-[#9CA3AF] text-xs">
+                    <span className="text-ink-soft-60 text-xs">
                       {ev.event_date?.slice(0, 10)}
                     </span>
                   </span>
@@ -903,14 +903,14 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
 
       {!selectedEventId ? (
         <EmptyState
-          icon="clipboardList"
+          icon={<Icon name="clipboardList" className="w-6 h-6" />}
           title="Selecciona un evento"
           description="Elige un evento para visualizar sus hojas operativas."
         />
       ) : (
         <>
           {/* Sub-tabs: Producción / Carga / Logística */}
-          <div className="flex gap-1 mb-4 p-1 rounded-lg bg-[#F8F3E6] border border-[#C9A86A]/20 w-fit">
+          <div className="flex gap-1 mb-4 p-1 rounded-lg bg-cream-dark border border-gold/20 w-fit">
             {SHEET_TABS.map((t) => (
               <button
                 key={t.id}
@@ -918,7 +918,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
                   sheetTab === t.id
                     ? 'bg-gold text-black shadow-sm'
-                    : 'text-[#6B7280] hover:text-[#0a0a0a] hover:bg-white'
+                    : 'text-ink-soft hover:text-ink hover:bg-white'
                 }`}
               >
                 {t.label}
@@ -938,16 +938,16 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
           ) : loadingSheet ? (
             <div className="animate-pulse space-y-3 p-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-8 bg-[#F8F3E6] rounded" />
+                <div key={i} className="h-8 bg-cream-dark rounded" />
               ))}
             </div>
           ) : sheetError ? (
             <div className="p-6 text-center">
-              <p className="text-red-400 text-sm">{sheetError}</p>
+              <p className="text-danger text-sm">{sheetError}</p>
             </div>
           ) : !sheetData.length ? (
             <EmptyState
-              icon="clipboardList"
+              icon={<Icon name="clipboardList" className="w-6 h-6" />}
               title="Sin datos"
               description={`No hay datos de ${sheetTab} para este evento.`}
             />
@@ -955,7 +955,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#C9A86A]/20 text-[#6B7280] uppercase text-xs tracking-wider">
+                  <tr className="border-b border-gold/20 text-ink-soft uppercase text-xs tracking-wider">
                     {Object.keys(sheetData[0]).map((key) => (
                       <th
                         key={key}
@@ -970,12 +970,12 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
                   {sheetData.map((row, idx) => (
                     <tr
                       key={idx}
-                      className="border-b border-[#C9A86A]/10 hover:bg-white transition-colors"
+                      className="border-b border-gold/10 hover:bg-white transition-colors"
                     >
                       {Object.values(row).map((val, ci) => (
                         <td
                           key={ci}
-                          className="py-2.5 px-3 text-gray-200 whitespace-nowrap"
+                          className="py-2.5 px-3 text-ink whitespace-nowrap"
                         >
                           {val === null || val === undefined
                             ? '—'
@@ -988,8 +988,169 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
               </table>
             </div>
           )}
+          {sheetTab === 'logistica' && <EquipmentCheckoutPanel eventId={selectedEventId} />}
         </>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reserva de equipamiento (checkout) — G12, Sprint 4/5               */
+/*  La reserva se crea automáticamente al generar la hoja de logística */
+/*  (eventos externos); aquí solo se gestiona su ciclo de vida:        */
+/*  marcar enviado y marcar devuelto con notas de rotura/merma.        */
+/* ------------------------------------------------------------------ */
+
+interface EquipmentCheckoutRow {
+  id: string;
+  equipment_id: string;
+  equipment_name: string;
+  unit: string;
+  quantity_sent: number;
+  quantity_returned: number | null;
+  condition_notes: string | null;
+  checked_out_at: string | null;
+  returned_at: string | null;
+}
+
+function EquipmentCheckoutPanel({ eventId }: { eventId: string }) {
+  const [rows, setRows] = useState<EquipmentCheckoutRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [returnForm, setReturnForm] = useState<{ id: string; qty: string; notes: string } | null>(null);
+
+  const fetchRows = useCallback(async () => {
+    if (!eventId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/cocina/equipment/checkout/${eventId}`);
+      const data = await res.json();
+      setRows(data.success ? data.data || [] : []);
+    } catch {
+      setRows([]);
+    }
+    setLoading(false);
+  }, [eventId]);
+
+  useEffect(() => { fetchRows(); }, [fetchRows]);
+
+  const markSent = async (equipmentId: string) => {
+    setBusyId(equipmentId);
+    try {
+      await fetch(`/api/cocina/equipment/checkout/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sent', equipment_id: equipmentId }),
+      });
+      fetchRows();
+    } catch {}
+    setBusyId(null);
+  };
+
+  const submitReturn = async () => {
+    if (!returnForm) return;
+    setBusyId(returnForm.id);
+    try {
+      await fetch(`/api/cocina/equipment/checkout/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'return',
+          equipment_id: returnForm.id,
+          quantity_returned: Number(returnForm.qty) || 0,
+          condition_notes: returnForm.notes || null,
+        }),
+      });
+      setReturnForm(null);
+      fetchRows();
+    } catch {}
+    setBusyId(null);
+  };
+
+  if (!eventId || loading) return null;
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="mt-6 pt-4 border-t border-cream-dark">
+      <h3 className="text-sm font-semibold text-ink mb-3">Reserva de equipamiento (venue externo)</h3>
+      <div className="space-y-2">
+        {rows.map((r) => {
+          const sent = !!r.checked_out_at;
+          const returned = !!r.returned_at;
+          return (
+            <div key={r.id} className="p-3 rounded-lg bg-cream border border-cream-dark">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-ink">{r.equipment_name}</p>
+                  <p className="text-xs text-ink-soft-60">
+                    {r.quantity_sent} {r.unit} enviados
+                    {returned && ` · ${r.quantity_returned} ${r.unit} devueltos`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!sent && (
+                    <button
+                      onClick={() => markSent(r.equipment_id)}
+                      disabled={busyId === r.equipment_id}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gold text-ink hover:bg-gold-dark disabled:opacity-50 transition-colors"
+                    >
+                      Marcar enviado
+                    </button>
+                  )}
+                  {sent && !returned && (
+                    <button
+                      onClick={() => setReturnForm({ id: r.equipment_id, qty: String(r.quantity_sent), notes: '' })}
+                      disabled={busyId === r.equipment_id}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-cream-dark hover:border-gold disabled:opacity-50 transition-colors"
+                    >
+                      Marcar devuelto
+                    </button>
+                  )}
+                  {sent && (
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-success/10 text-success">
+                      Enviado
+                    </span>
+                  )}
+                  {returned && (
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-ink/10 text-ink">
+                      Devuelto
+                    </span>
+                  )}
+                </div>
+              </div>
+              {r.condition_notes && (
+                <p className="text-xs text-warning mt-2">⚠ {r.condition_notes}</p>
+              )}
+              {returnForm?.id === r.equipment_id && (
+                <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-white border border-cream-dark">
+                  <input
+                    type="number"
+                    min="0"
+                    value={returnForm.qty}
+                    onChange={(e) => setReturnForm({ ...returnForm, qty: e.target.value })}
+                    className="w-20 text-sm border border-cream-dark rounded-lg px-2 py-1.5"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Notas de rotura/merma (opcional)"
+                    value={returnForm.notes}
+                    onChange={(e) => setReturnForm({ ...returnForm, notes: e.target.value })}
+                    className="flex-1 text-sm border border-cream-dark rounded-lg px-3 py-1.5"
+                  />
+                  <button
+                    onClick={submitReturn}
+                    disabled={busyId === r.equipment_id}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gold text-ink hover:bg-gold-dark disabled:opacity-50 transition-colors"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -999,10 +1160,10 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
 /* ------------------------------------------------------------------ */
 
 const ESTADO_META: Record<string, { label: string; cls: string; dot: string }> = {
-  listo:      { label: 'Listo',      cls: 'text-emerald-300 border-emerald-700/50 bg-emerald-900/20', dot: 'bg-emerald-400' },
-  pendiente:  { label: 'Pendiente',  cls: 'text-amber-300 border-amber-700/50 bg-amber-900/20',       dot: 'bg-amber-400' },
-  bloqueado:  { label: 'Bloqueado',  cls: 'text-gray-400 border-gray-700/50 bg-gray-800/30',          dot: 'bg-gray-500' },
-  no_aplica:  { label: 'No aplica',  cls: 'text-gray-500 border-gray-800 bg-transparent',             dot: 'bg-gray-700' },
+  listo:      { label: 'Listo',      cls: 'text-success border-success/30 bg-success/10', dot: 'bg-success' },
+  pendiente:  { label: 'Pendiente',  cls: 'text-warning border-warning/30 bg-warning/10', dot: 'bg-warning' },
+  bloqueado:  { label: 'Bloqueado',  cls: 'text-ink-soft border-cream-dark bg-cream',     dot: 'bg-ink-soft-60' },
+  no_aplica:  { label: 'No aplica',  cls: 'text-ink-soft-60 border-cream-dark bg-transparent', dot: 'bg-cream-dark' },
 };
 const MOMENTO_LABEL: Record<string, string> = { pre: 'Antes del evento', dia: 'Día del evento', post: 'Después del evento' };
 
@@ -1050,7 +1211,7 @@ function GuiaTab() {
         <select
           value={selectedEventId}
           onChange={(e) => setSelectedEventId(e.target.value)}
-          className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white min-w-[260px]"
+          className="bg-white border border-cream-dark rounded-lg px-3 py-2 text-sm text-ink min-w-[260px]"
         >
           <option value="">Selecciona un evento…</option>
           {events.map(ev => (
@@ -1061,11 +1222,11 @@ function GuiaTab() {
         </select>
         {guia && (
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-500">Ubicación:</span>
+            <span className="text-ink-soft-60">Ubicación:</span>
             {(['benitez', 'externo'] as const).map(v => (
               <button key={v} disabled={savingVenue} onClick={() => setVenue(v)}
                 className={`px-3 py-1.5 rounded-md border transition-all ${
-                  guia.venue.tipo === v ? 'bg-gold text-black border-gold font-medium' : 'text-gray-300 border-[#2a2a2a] hover:border-gold/50'
+                  guia.venue.tipo === v ? 'bg-gold text-ink border-gold font-medium' : 'text-ink-soft border-cream-dark hover:border-gold/50'
                 }`}>
                 {v === 'benitez' ? 'En el local (Benítez)' : 'Ubicación externa'}
               </button>
@@ -1074,19 +1235,19 @@ function GuiaTab() {
         )}
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando guía…</p>}
+      {loading && <p className="text-sm text-ink-soft-60">Cargando guía…</p>}
       {!loading && !selectedEventId && (
-        <p className="text-sm text-gray-500">Elige un evento para ver su guía de cocina completa, antes y después del evento.</p>
+        <p className="text-sm text-ink-soft-60">Elige un evento para ver su guía de cocina completa, antes y después del evento.</p>
       )}
 
       {guia && !loading && (
         <>
           {/* Cabecera: venue + progreso */}
-          <div className="rounded-xl border border-[#1e1e1e] bg-[#0a0a0a] p-4 mb-5">
+          <div className="rounded-xl border border-cream-dark bg-cream p-4 mb-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-base font-semibold text-white">{guia.evento.nombre}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-base font-semibold text-ink">{guia.evento.nombre}</p>
+                <p className="text-xs text-ink-soft mt-0.5">
                   {guia.evento.pax} pax · {guia.evento.serviceType === 'coctel' ? 'cóctel' : 'menú'} ·{' '}
                   <span className="text-gold">{guia.venue.etiqueta}</span>
                   {guia.venue.ubicacion ? ` · ${guia.venue.ubicacion}` : ''}
@@ -1094,10 +1255,10 @@ function GuiaTab() {
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-gold">{guia.progreso.pct}%</p>
-                <p className="text-[11px] text-gray-500">{guia.progreso.completadas}/{guia.progreso.aplicables} fases</p>
+                <p className="text-[11px] text-ink-soft-60">{guia.progreso.completadas}/{guia.progreso.aplicables} fases</p>
               </div>
             </div>
-            <div className="mt-3 flex items-start gap-2 text-xs text-gray-400 bg-[#111] rounded-lg px-3 py-2 border border-[#1e1e1e]">
+            <div className="mt-3 flex items-start gap-2 text-xs text-ink-soft bg-white rounded-lg px-3 py-2 border border-cream-dark">
               <Icon name="info" className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" />
               <span>{guia.venue.nota}</span>
             </div>
@@ -1109,21 +1270,21 @@ function GuiaTab() {
             if (fases.length === 0) return null;
             return (
               <div key={m} className="mb-5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{MOMENTO_LABEL[m]}</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-soft-60 mb-2">{MOMENTO_LABEL[m]}</h3>
                 <div className="space-y-2">
                   {fases.map((f: any) => {
                     const meta = ESTADO_META[f.estado] || ESTADO_META.bloqueado;
                     return (
                       <div key={f.key}
-                        className={`rounded-lg border p-3 ${f.aplica ? 'border-[#1e1e1e] bg-[#0f0f0f]' : 'border-[#161616] bg-transparent opacity-60'}`}>
+                        className={`rounded-lg border p-3 ${f.aplica ? 'border-cream-dark bg-cream' : 'border-cream-dark bg-transparent opacity-60'}`}>
                         <div className="flex items-start gap-3">
                           <span className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}`} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sm font-medium text-white">{f.titulo}</p>
+                              <p className="text-sm font-medium text-ink">{f.titulo}</p>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full border ${meta.cls}`}>{meta.label}</span>
                             </div>
-                            <p className="text-xs text-gray-400 mt-0.5">{f.resumen}</p>
+                            <p className="text-xs text-ink-soft mt-0.5">{f.resumen}</p>
                           </div>
                         </div>
                       </div>
@@ -1156,29 +1317,29 @@ export default function CocinaPanel() {
   const [activeTab, setActiveTab] = useState('guia');
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#0a0a0a]">
+    <div className="min-h-screen bg-cream text-ink">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-[#C9A86A] flex items-center gap-2 font-serif">
-            <Icon name="food" className="w-5 h-5 text-[#C9A86A]" />
+          <h1 className="text-xl font-bold text-gold flex items-center gap-2 font-serif">
+            <Icon name="food" className="w-5 h-5 text-gold" />
             Cocina
           </h1>
-          <p className="text-sm text-[#9CA3AF] mt-1">
+          <p className="text-sm text-ink-soft-60 mt-1">
             Gestión de recetas, equipamiento, pases y hojas operativas
           </p>
         </div>
 
         {/* Main Tabs */}
-        <div className="flex gap-1 mb-6 p-1 rounded-lg bg-[#F8F3E6] border border-[#C9A86A]/20 w-fit">
+        <div className="flex gap-1 mb-6 p-1 rounded-lg bg-cream-dark border border-gold/20 w-fit">
           {MAIN_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'bg-[#C9A86A] text-white shadow-sm'
-                  : 'text-[#6B7280] hover:text-[#0a0a0a] hover:bg-white'
+                  ? 'bg-gold text-ink shadow-sm'
+                  : 'text-ink-soft hover:text-ink hover:bg-white'
               }`}
             >
               {tab.label}
@@ -1187,7 +1348,7 @@ export default function CocinaPanel() {
         </div>
 
         {/* Tab Content */}
-        <div className="rounded-xl border border-[#1e1e1e] bg-[#0f0f0f] p-4 sm:p-6">
+        <div className="rounded-xl border border-cream-dark bg-white p-4 sm:p-6">
           {activeTab === 'guia' && <GuiaTab />}
           {activeTab === 'recetas' && <RecetasTab />}
           {activeTab === 'equipamiento' && <EquipamientoTab />}

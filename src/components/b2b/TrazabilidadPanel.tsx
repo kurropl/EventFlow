@@ -518,7 +518,7 @@ export default function TrazabilidadPanel() {
             </div>
           ) : inventory.length === 0 ? (
             <EmptyState
-              icon="package"
+              icon={<Icon name="package" className="w-6 h-6" />}
               title="Sin inventario"
               description="No hay ingredientes registrados en el inventario."
             />
@@ -626,7 +626,7 @@ export default function TrazabilidadPanel() {
             </div>
           ) : receivings.length === 0 ? (
             <EmptyState
-              icon="truck"
+              icon={<Icon name="truck" className="w-6 h-6" />}
               title="Sin recepciones"
               description="No hay registros de recepción. Crea una nueva recepción para comenzar."
             />
@@ -920,7 +920,7 @@ export default function TrazabilidadPanel() {
 
           {!selectedEventLot && (
             <EmptyState
-              icon="layers"
+              icon={<Icon name="layers" className="w-6 h-6" />}
               title="Selecciona un evento"
               description="Elige un evento para ver los lotes de ingredientes consumidos."
             />
@@ -947,7 +947,7 @@ export default function TrazabilidadPanel() {
 
           {selectedEventLot && !lotLoading && lotConsumption.length === 0 && (
             <EmptyState
-              icon="package"
+              icon={<Icon name="package" className="w-6 h-6" />}
               title="Sin consumo de lotes"
               description="Este evento no tiene lotes de ingredientes consumidos registrados."
             />
@@ -1026,7 +1026,7 @@ export default function TrazabilidadPanel() {
 
           {!selectedEventAppcc && (
             <EmptyState
-              icon="clipboardCheck"
+              icon={<Icon name="clipboardCheck" className="w-6 h-6" />}
               title="Selecciona un evento"
               description="Elige un evento para generar el informe APPCC completo."
             />
@@ -1076,7 +1076,7 @@ export default function TrazabilidadPanel() {
               {/* Trazabilidad detallada */}
               {appccData.trace.length === 0 ? (
                 <EmptyState
-                  icon="package"
+                  icon={<Icon name="package" className="w-6 h-6" />}
                   title="Sin datos de trazabilidad"
                   description="No hay ingredientes con trazabilidad registrada para este evento."
                 />

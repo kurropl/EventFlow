@@ -14,6 +14,7 @@ interface Lead {
   source: string; status: string; notes: string | null;
   event_type: string | null; guest_count: number | null; event_date: string | null;
   converted_to_client_id: string | null;
+  assigned_to: string | null; assigned_to_name: string | null;
   created_at: string; quotes: Quote[];
 }
 interface Quote {
@@ -48,6 +49,111 @@ const fmtDate = (d: string | null) => {
 };
 const initials = (n: string) => n.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('');
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+interface Interaction {
+  id: string;
+  type: 'llamada' | 'email' | 'whatsapp' | 'nota' | 'reunion';
+  notes: string | null;
+  created_by_name: string | null;
+  created_at: string;
+}
+
+const INTERACTION_TYPE_LABELS: Record<string, string> = {
+  llamada: 'Llamada', email: 'Email', whatsapp: 'WhatsApp', nota: 'Nota', reunion: 'Reunión',
+};
+
+/* G13 (Sprint 4/5): historial de interacciones — antes registrado en el
+ * backend (POST/GET /api/interactions) sin ningún punto de la UI que lo
+ * usara. */
+function LeadInteractionsTimeline({ leadId }: { leadId: string }) {
+  const [items, setItems] = useState<Interaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [type, setType] = useState<Interaction['type']>('llamada');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const fetchItems = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/interactions?lead_id=${leadId}`);
+      const json = await res.json();
+      setItems(json.data || []);
+    } catch {}
+    setLoading(false);
+  }, [leadId]);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const addInteraction = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/interactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: leadId, type, notes: notes || null }),
+      });
+      if (res.ok) {
+        setNotes('');
+        fetchItems();
+      }
+    } catch {}
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-ink">Historial de interacciones</h3>
+      <div className="flex gap-2 p-3 rounded-xl bg-cream border border-cream-dark">
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as Interaction['type'])}
+          className="text-xs border border-cream-dark rounded-lg px-2 py-2 bg-white focus:outline-none"
+        >
+          {Object.entries(INTERACTION_TYPE_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notas (opcional)..."
+          className="flex-1 text-sm border border-cream-dark rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-gold/30"
+        />
+        <button
+          onClick={addInteraction}
+          disabled={saving}
+          className="text-xs font-medium px-3 py-2 rounded-lg bg-gold text-ink hover:bg-gold-dark disabled:opacity-50 transition-colors"
+        >
+          {saving ? 'Guardando...' : 'Registrar'}
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-xs text-ink-soft-60">Cargando...</p>
+      ) : items.length === 0 ? (
+        <p className="text-xs text-ink-soft-60 italic">Sin interacciones registradas todavía</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((it) => (
+            <div key={it.id} className="flex items-start gap-3 p-3 rounded-lg bg-white border border-cream-dark">
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cream text-ink-soft shrink-0 mt-0.5">
+                {INTERACTION_TYPE_LABELS[it.type] || it.type}
+              </span>
+              <div className="flex-1 min-w-0">
+                {it.notes && <p className="text-sm text-ink">{it.notes}</p>}
+                <p className="text-[11px] text-ink-soft-60 mt-0.5">
+                  {it.created_by_name || 'Sistema'} · {fmtDate(it.created_at)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LeadsCRM() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,12 +166,23 @@ export default function LeadsCRM() {
   const [quoteEdit, setQuoteEdit] = useState({ base_pvp: 0, bar_price: 0, extras_pvp: 0, iva_pct: 10 });
   const [stockWarnings, setStockWarnings] = useState<Array<{ ingredient_name: string; needed: number; available: number; unit: string; deficit: number }>>([]);
   const [showStockWarnings, setShowStockWarnings] = useState(false);
+  // G13 (Sprint 4/5): propietario comercial — filtro "mis leads"
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [myLeadsOnly, setMyLeadsOnly] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => {
+      const id = d?.user?.id;
+      if (id && UUID_RE.test(id)) setCurrentUserId(id);
+    }).catch(() => {});
+  }, []);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (statusFilter) params.set('status', statusFilter);
     if (search) params.set('search', search);
+    if (myLeadsOnly && currentUserId) params.set('assigned_to', currentUserId);
     params.set('limit', '200');
     try {
       const res = await fetch(`/api/leads?${params}`);
@@ -73,7 +190,7 @@ export default function LeadsCRM() {
       setLeads(json.data || []);
     } catch (e) { console.error('fetchLeads', e); }
     setLoading(false);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, myLeadsOnly, currentUserId]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -230,12 +347,12 @@ export default function LeadsCRM() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex items-center gap-3">
         <button onClick={() => setSelectedLead(null)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-cream-dark hover:bg-cream transition-colors">
           <Icon name="arrowLeft" className="w-4 h-4" />
         </button>
         <div>
-          <h2 className="text-lg font-bold text-[#1A1A2E]">{selectedLead.name}</h2>
-          <p className="text-xs text-[#6B7280]">{selectedLead.email} · {selectedLead.phone || '—'}</p>
+          <h2 className="text-lg font-bold text-ink">{selectedLead.name}</h2>
+          <p className="text-xs text-ink-soft">{selectedLead.email} · {selectedLead.phone || '—'}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <select
@@ -245,7 +362,7 @@ export default function LeadsCRM() {
               setSelectedLead({ ...selectedLead, status: newStatus });
               updateStatus(selectedLead.id, newStatus);
             }}
-            className={`text-[11px] font-medium px-2.5 py-1.5 rounded-lg border ${STATUS_COLORS[selectedLead.status] || ''} focus:outline-none focus:ring-2 focus:ring-[#1A1A2E]/10 cursor-pointer`}
+            className={`text-[11px] font-medium px-2.5 py-1.5 rounded-lg border ${STATUS_COLORS[selectedLead.status] || ''} focus:outline-none focus:ring-2 focus:ring-ink/10 cursor-pointer`}
           >
             {Object.entries(STATUS_LABELS).map(([key, label]) => (
               <option key={key} value={key}>{label}</option>
@@ -256,70 +373,70 @@ export default function LeadsCRM() {
 
       {/* Datos del evento asociado */}
       {selectedLead.event_date && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
-          <div><p className="text-[11px] text-[#6B7280] uppercase tracking-wide">Tipo</p><p className="text-sm font-medium text-[#1A1A2E]">{selectedLead.event_type || '—'}</p></div>
-          <div><p className="text-[11px] text-[#6B7280] uppercase tracking-wide">Fecha evento</p><p className="text-sm font-medium text-[#1A1A2E]">{fmtDate(selectedLead.event_date)}</p></div>
-          <div><p className="text-[11px] text-[#6B7280] uppercase tracking-wide">Comensales</p><p className="text-sm font-medium text-[#1A1A2E]">{selectedLead.guest_count || '—'}</p></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-cream border border-cream-dark">
+          <div><p className="text-[11px] text-ink-soft uppercase tracking-wide">Tipo</p><p className="text-sm font-medium text-ink">{selectedLead.event_type || '—'}</p></div>
+          <div><p className="text-[11px] text-ink-soft uppercase tracking-wide">Fecha evento</p><p className="text-sm font-medium text-ink">{fmtDate(selectedLead.event_date)}</p></div>
+          <div><p className="text-[11px] text-ink-soft uppercase tracking-wide">Comensales</p><p className="text-sm font-medium text-ink">{selectedLead.guest_count || '—'}</p></div>
         </div>
       )}
 
       {/* Presupuestos */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">Presupuestos</h3>
+          <h3 className="text-sm font-semibold text-ink">Presupuestos</h3>
           {selectedLead.status !== 'convertido' && selectedLead.status !== 'perdido' && (
             <button onClick={() => createQuote(selectedLead)}
-              className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-[#1A1A2E] text-white hover:bg-[#2D2D44] transition-colors">
+              className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-ink text-white hover:bg-ink-light transition-colors">
               + Nuevo Presupuesto
             </button>
           )}
         </div>
         {(!selectedLead.quotes || selectedLead.quotes.length === 0) ? (
-          <div className="text-center py-8 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-xl border border-dashed border-[#E5E7EB]">
+          <div className="text-center py-8 text-sm text-ink-soft bg-cream rounded-xl border border-dashed border-cream-dark">
             Sin presupuestos todavía
           </div>
         ) : (
           selectedLead.quotes.map(q => (
-            <div key={q.id} className="p-4 rounded-xl bg-white border border-[#E5E7EB] space-y-3">
+            <div key={q.id} className="p-4 rounded-xl bg-white border border-cream-dark space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] text-[#6B7280]">
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-cream-dark bg-cream text-ink-soft">
                     {QUOTE_STATUS[q.status] || q.status}
                   </span>
-                  <span className="text-xs text-[#9CA3AF]">{fmtDate(q.created_at)}</span>
+                  <span className="text-xs text-ink-soft-60">{fmtDate(q.created_at)}</span>
                 </div>
-                <span className="text-sm font-bold text-[#1A1A2E]">{money(q.total_pvp)}</span>
+                <span className="text-sm font-bold text-ink">{money(q.total_pvp)}</span>
               </div>
 
               {quoteEditId === q.id ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-[#FAF8F5] rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-cream rounded-lg">
                   <div>
-                    <label className="text-[10px] text-[#6B7280] uppercase tracking-wide">Base PVP</label>
+                    <label className="text-[10px] text-ink-soft uppercase tracking-wide">Base PVP</label>
                     <input type="number" value={quoteEdit.base_pvp} onChange={e => setQuoteEdit(p => ({...p, base_pvp: +e.target.value}))}
-                      className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-1.5 bg-white" />
+                      className="w-full text-sm border border-cream-dark rounded-lg px-3 py-1.5 bg-white" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#6B7280] uppercase tracking-wide">Barra libre</label>
+                    <label className="text-[10px] text-ink-soft uppercase tracking-wide">Barra libre</label>
                     <input type="number" value={quoteEdit.bar_price} onChange={e => setQuoteEdit(p => ({...p, bar_price: +e.target.value}))}
-                      className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-1.5 bg-white" />
+                      className="w-full text-sm border border-cream-dark rounded-lg px-3 py-1.5 bg-white" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#6B7280] uppercase tracking-wide">Extras</label>
+                    <label className="text-[10px] text-ink-soft uppercase tracking-wide">Extras</label>
                     <input type="number" value={quoteEdit.extras_pvp} onChange={e => setQuoteEdit(p => ({...p, extras_pvp: +e.target.value}))}
-                      className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-1.5 bg-white" />
+                      className="w-full text-sm border border-cream-dark rounded-lg px-3 py-1.5 bg-white" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#6B7280] uppercase tracking-wide">IVA %</label>
+                    <label className="text-[10px] text-ink-soft uppercase tracking-wide">IVA %</label>
                     <input type="number" value={quoteEdit.iva_pct} onChange={e => setQuoteEdit(p => ({...p, iva_pct: +e.target.value}))}
-                      className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-1.5 bg-white" />
+                      className="w-full text-sm border border-cream-dark rounded-lg px-3 py-1.5 bg-white" />
                   </div>
                   <div className="col-span-2 flex gap-2">
                     <button onClick={() => { updateQuotePrice(q.id); }}
-                      className="flex-1 text-[11px] font-medium py-1.5 rounded-lg bg-[#1A1A2E] text-white hover:bg-[#2D2D44] transition-colors">
+                      className="flex-1 text-[11px] font-medium py-1.5 rounded-lg bg-ink text-white hover:bg-ink-light transition-colors">
                       Guardar y Enviar
                     </button>
                     <button onClick={() => setQuoteEditId(null)}
-                      className="text-[11px] font-medium px-4 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+                      className="text-[11px] font-medium px-4 py-1.5 rounded-lg border border-cream-dark hover:bg-cream transition-colors">
                       Cancelar
                     </button>
                   </div>
@@ -327,18 +444,18 @@ export default function LeadsCRM() {
               ) : (
                 <div className="flex gap-2">
                   <button onClick={() => { setQuoteEditId(q.id); setQuoteEdit({ base_pvp: q.base_pvp, bar_price: q.bar_price, extras_pvp: q.extras_pvp, iva_pct: q.iva_pct }); }}
-                    className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+                    className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-cream-dark hover:bg-cream transition-colors">
                     Editar Precios
                   </button>
                   {q.status === 'draft' && (
                     <button onClick={() => sendQuote(q.id)}
-                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-[#2563EB] text-white hover:bg-[#1D4ED8] transition-colors">
+                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-gold text-ink hover:bg-gold-dark transition-colors">
                       Enviar Presupuesto
                     </button>
                   )}
                   {q.status === 'sent' && (
                     <button onClick={() => acceptQuote(q.id)}
-                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-[#15803D] text-white hover:bg-[#166534] transition-colors">
+                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-success text-white hover:bg-success/90 transition-colors">
                       Aceptar Presupuesto
                     </button>
                   )}
@@ -349,6 +466,9 @@ export default function LeadsCRM() {
         )}
       </div>
 
+      {/* Timeline de interacciones (G13, Sprint 5) */}
+      <LeadInteractionsTimeline leadId={selectedLead.id} />
+
       {/* Modal de conversión a cliente */}
       <AnimatePresence>
         {showConvert && (
@@ -357,35 +477,35 @@ export default function LeadsCRM() {
             onClick={e => { if (e.target === e.currentTarget) setShowConvert(false); }}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               className="bg-white rounded-2xl p-6 shadow-xl max-w-lg w-full mx-4 space-y-4">
-              <h3 className="text-lg font-bold text-[#1A1A2E]">Aceptar Presupuesto</h3>
-              <p className="text-sm text-[#6B7280]">Introduce los datos fiscales del cliente para generar la orden de evento y la factura.</p>
+              <h3 className="text-lg font-bold text-ink">Aceptar Presupuesto</h3>
+              <p className="text-sm text-ink-soft">Introduce los datos fiscales del cliente para generar la orden de evento y la factura.</p>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">Nombre Fiscal *</label>
+                  <label className="block text-[11px] font-medium text-ink-soft uppercase tracking-wide mb-1">Nombre Fiscal *</label>
                   <input type="text" value={convertForm.fiscal_name} placeholder={selectedLead?.name || ''}
                     onChange={e => setConvertForm(p => ({...p, fiscal_name: e.target.value}))}
-                    className="w-full text-sm border border-[#E5E7EB] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1A1A2E]/10" />
+                    className="w-full text-sm border border-cream-dark rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ink/10" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">NIF / CIF *</label>
+                  <label className="block text-[11px] font-medium text-ink-soft uppercase tracking-wide mb-1">NIF / CIF *</label>
                   <input type="text" value={convertForm.fiscal_nif} placeholder="12345678Z"
                     onChange={e => setConvertForm(p => ({...p, fiscal_nif: e.target.value.toUpperCase()}))}
-                    className="w-full text-sm border border-[#E5E7EB] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1A1A2E]/10" />
+                    className="w-full text-sm border border-cream-dark rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ink/10" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#6B7280] uppercase tracking-wide mb-1">Dirección Fiscal</label>
+                  <label className="block text-[11px] font-medium text-ink-soft uppercase tracking-wide mb-1">Dirección Fiscal</label>
                   <input type="text" value={convertForm.fiscal_address} placeholder="Calle, número, ciudad"
                     onChange={e => setConvertForm(p => ({...p, fiscal_address: e.target.value}))}
-                    className="w-full text-sm border border-[#E5E7EB] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1A1A2E]/10" />
+                    className="w-full text-sm border border-cream-dark rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-ink/10" />
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={handleConvert}
-                  className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors">
+                  className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-success text-white hover:bg-success/90 transition-colors">
                   Convertir a Cliente y Activar Evento
                 </button>
                 <button onClick={() => setShowConvert(false)}
-                  className="text-sm font-medium px-5 py-2.5 rounded-xl border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+                  className="text-sm font-medium px-5 py-2.5 rounded-xl border border-cream-dark hover:bg-cream transition-colors">
                   Cancelar
                 </button>
               </div>
@@ -403,15 +523,27 @@ export default function LeadsCRM() {
         title="Leads"
         subtitle="Prospectos del configurador y contactos manuales"
         actions={
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="text-[11px] font-medium border border-[#E5E7EB] rounded-xl px-3 py-2 bg-white text-[#1A1A2E] focus:outline-none">
-            <option value="">Todos los estados</option>
-            <option value="nuevo">Nuevo</option>
-            <option value="contactado">Contactado</option>
-            <option value="presupuestado">Presupuestado</option>
-            <option value="convertido">Convertido</option>
-            <option value="perdido">Perdido</option>
-          </select>
+          <>
+            {currentUserId && (
+              <button
+                onClick={() => setMyLeadsOnly((v) => !v)}
+                className={`text-[11px] font-medium rounded-xl px-3 py-2 border transition-colors ${
+                  myLeadsOnly ? 'bg-gold text-ink border-gold' : 'bg-white text-ink-soft border-cream-dark hover:border-gold'
+                }`}
+              >
+                Mis leads
+              </button>
+            )}
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              className="text-[11px] font-medium border border-cream-dark rounded-xl px-3 py-2 bg-white text-ink focus:outline-none">
+              <option value="">Todos los estados</option>
+              <option value="nuevo">Nuevo</option>
+              <option value="contactado">Contactado</option>
+              <option value="presupuestado">Presupuestado</option>
+              <option value="convertido">Convertido</option>
+              <option value="perdido">Perdido</option>
+            </select>
+          </>
         }
       />
 
@@ -421,10 +553,10 @@ export default function LeadsCRM() {
         count={leads.length}
         filters={
           <div className="relative">
-            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-soft-60" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Buscar..."
-              className="text-sm border border-[#E5E7EB] rounded-xl pl-9 pr-4 py-2 w-56 focus:outline-none focus:ring-2 focus:ring-[#1A1A2E]/10" />
+              className="text-sm border border-cream-dark rounded-xl pl-9 pr-4 py-2 w-56 focus:outline-none focus:ring-2 focus:ring-ink/10" />
           </div>
         }
         emptyTitle="No hay leads todavía"
@@ -448,6 +580,7 @@ export default function LeadsCRM() {
                 { label: 'Tel', value: lead.phone || '—' },
                 { label: 'Evento', value: `${lead.event_type || '—'} · ${lead.guest_count || 0} pax` },
                 { label: 'Presupuestos', value: String(lead.quotes?.length || 0) },
+                { label: 'Propietario', value: lead.assigned_to_name || 'Sin asignar' },
                 { label: 'Fecha', value: fmtDate(lead.created_at) },
               ]}
             />
@@ -458,34 +591,34 @@ export default function LeadsCRM() {
       {/* ── Stock Warnings Modal ── */}
       {showStockWarnings && stockWarnings.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowStockWarnings(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#ECECF1] max-w-lg w-full mx-4 p-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-[#ECECF1] flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#FFF8EC] flex items-center justify-center">
-                <Icon name="alertTriangle" className="w-5 h-5 text-[#D97706]" />
+          <div className="bg-white rounded-2xl shadow-2xl border border-cream-dark max-w-lg w-full mx-4 p-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-cream-dark flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
+                <Icon name="alertTriangle" className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-[#1A1A1A]">Stock insuficiente</h3>
-                <p className="text-xs text-[#6B7280]">Hay ingredientes que no cubren la demanda del evento</p>
+                <h3 className="text-[15px] font-semibold text-ink">Stock insuficiente</h3>
+                <p className="text-xs text-ink-soft">Hay ingredientes que no cubren la demanda del evento</p>
               </div>
             </div>
             <div className="px-6 py-4 max-h-[320px] overflow-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#ECECF1]">
-                    <th className="text-left py-2 text-[#9CA3AF] font-medium text-[11px] uppercase">Ingrediente</th>
-                    <th className="text-right py-2 text-[#9CA3AF] font-medium text-[11px] uppercase">Necesario</th>
-                    <th className="text-right py-2 text-[#9CA3AF] font-medium text-[11px] uppercase">Disponible</th>
-                    <th className="text-right py-2 text-[#9CA3AF] font-medium text-[11px] uppercase">Déficit</th>
+                  <tr className="border-b border-cream-dark">
+                    <th className="text-left py-2 text-ink-soft-60 font-medium text-[11px] uppercase">Ingrediente</th>
+                    <th className="text-right py-2 text-ink-soft-60 font-medium text-[11px] uppercase">Necesario</th>
+                    <th className="text-right py-2 text-ink-soft-60 font-medium text-[11px] uppercase">Disponible</th>
+                    <th className="text-right py-2 text-ink-soft-60 font-medium text-[11px] uppercase">Déficit</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stockWarnings.map((w, i) => (
-                    <tr key={i} className="border-b border-[#F2F2F5] last:border-b-0">
-                      <td className="py-2 text-[#1A1A1A] text-[13px] font-medium">{w.ingredient_name}</td>
-                      <td className="py-2 text-right text-[#1A1A1A] text-[13px] tabular-nums">{w.needed} {w.unit}</td>
-                      <td className="py-2 text-right text-[#D97706] text-[13px] tabular-nums font-medium">{w.available} {w.unit}</td>
+                    <tr key={i} className="border-b border-cream-dark last:border-b-0">
+                      <td className="py-2 text-ink text-[13px] font-medium">{w.ingredient_name}</td>
+                      <td className="py-2 text-right text-ink text-[13px] tabular-nums">{w.needed} {w.unit}</td>
+                      <td className="py-2 text-right text-warning text-[13px] tabular-nums font-medium">{w.available} {w.unit}</td>
                       <td className="py-2 text-right">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#FEF3F3] text-[#DC2626]">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-danger/10 text-danger">
                           -{w.deficit} {w.unit}
                         </span>
                       </td>
@@ -494,10 +627,10 @@ export default function LeadsCRM() {
                 </tbody>
               </table>
             </div>
-            <div className="px-6 py-3 bg-[#FAFAFC] border-t border-[#ECECF1] flex justify-end">
+            <div className="px-6 py-3 bg-cream border-t border-cream-dark flex justify-end">
               <button
                 onClick={() => setShowStockWarnings(false)}
-                className="px-5 py-2 rounded-xl text-sm font-medium bg-[#1A1A1A] text-white hover:bg-[#2A2A3A] transition-colors"
+                className="px-5 py-2 rounded-xl text-sm font-medium bg-ink text-white hover:bg-ink-light transition-colors"
               >
                 Entendido
               </button>
