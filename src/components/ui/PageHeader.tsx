@@ -19,14 +19,11 @@ export function PageHeader({ title, subtitle, actions, stats, className }: PageH
       {/* Title row */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1
-            className="text-xl font-bold text-[#1A1A1A] leading-tight"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-          >
+          <h1 className="text-xl font-heading font-bold text-ink leading-tight">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-[13px] text-[#9CA3AF] mt-0.5 truncate">{subtitle}</p>
+            <p className="text-[13px] text-ink-soft mt-0.5 truncate">{subtitle}</p>
           )}
         </div>
         {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}

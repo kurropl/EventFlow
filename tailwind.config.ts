@@ -45,6 +45,20 @@ const config: Config = {
           DEFAULT: '#fbf8f1',
           dark: '#ede8da',
         },
+        // Estados semánticos — fuente única (Sprint 5, C1): antes cada
+        // panel redefinía estos 3 colores con su propio hex suelto.
+        success: {
+          DEFAULT: '#15803d',
+          light: '#16a34a',
+        },
+        warning: {
+          DEFAULT: '#b45309',
+          light: '#d97706',
+        },
+        danger: {
+          DEFAULT: '#dc2626',
+          light: '#ef4444',
+        },
       },
       fontFamily: {
         heading: ['var(--font-heading)', 'serif'],

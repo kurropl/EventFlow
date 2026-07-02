@@ -10,6 +10,8 @@ export type { StatItem } from './StatStrip';
 
 export { EmptyState } from './EmptyState';
 
+export { Spinner } from './Spinner';
+
 /* Re-export existing shadcn/ui components */
 export { Badge, badgeVariants } from './badge';
 export { Button, buttonVariants } from './button';
