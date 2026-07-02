@@ -1,9 +1,89 @@
 ## Último agente: Claude Code
-## Fecha: 01/07/2026 (Sprint 4)
+## Fecha: 02/07/2026 (Sprint 5)
 ## Rama: main
 ## Último commit: (ver `git log -1`, tras este handoff)
 
-### Qué se hizo (01/07 · Sprint 4 · los 14 gaps restantes del Gap Analysis, Nivel A+B)
+### Qué se hizo (02/07 · Sprint 5 · auditoría y unificación UI/UX)
+- [x] **SPEC-Sprint5-UIUX.md** (SDD): auditoría en 3 frentes (3 agentes en
+  paralelo) — consistencia del sistema de diseño, cobertura de UI sobre la
+  lógica de backend de Sprints 1-4, y traducción al español. Plan de
+  ejecución por checkpoints C1-C5, sin decisiones de negocio pendientes
+  (a diferencia de Sprint 4) — propuestas técnicas concretas.
+- [x] **C1 · Fundamentos del design system.** `tailwind.config.ts`: nuevos
+  tokens `success`/`warning`/`danger` (antes cada panel redefinía estos 3
+  colores con su propio hex). `ui/button.tsx`: variante `default` de
+  `amber-600` (Tailwind genérico) a `gold` (el dorado de marca real que ya
+  dominaba el resto de la app) — el propio primitivo compartido estaba
+  desalineado con la marca. `ui/PageHeader.tsx`: elimina el `style` inline
+  de Playfair Display en favor de la clase `font-heading`. Nuevo
+  `ui/Spinner.tsx` (antes cada panel hardcodeaba su "Cargando...").
+  `ui/DataList.tsx::DataListEmpty` pasa a delegar en `EmptyState` (eran dos
+  implementaciones casi idénticas duplicadas).
+- [x] **C2 · Migración de paneles heredados.** `TrazabilidadPanel`,
+  `EventDetail`, `BillingPanel`, `KanbanPipeline`, `ProvidersManager`,
+  `LeadsCRM`, `CocinaPanel` y las páginas `rentabilidad`/`confirmacion`/
+  `config` — hex sueltos (`#1A1A1A`, `#C9A84C`, `#9CA3AF`, `stone-*`,
+  `emerald/amber/red` de Tailwind) migrados a los tokens únicos. Se
+  preservan como categóricas (no severidad) las paletas intencionalmente
+  distintivas: etapas del Kanban, categorías de proveedor. **Hallazgo real
+  más serio de lo esperado**: la pestaña "Guía del evento" de Cocina (y el
+  contenedor de las 6 pestañas del módulo) usaba un tema oscuro (fondo casi
+  negro, texto claro) completamente aislado del resto del admin — no era
+  solo hex sueltos, era una inconsistencia visual real de "coherencia en
+  todas las vistas". Migrado a los tokens únicos.
+- [x] **C3 · 10 features de UI sobre lógica de backend ya implementada**
+  (Sprints 1-4, sin ningún punto de UI que las usara hasta ahora):
+  selector de salón (`EventDetail`, `PUT {venue}`), margen real con coste
+  de personal (`rentabilidad`, `laborCostPaid`/`laborCostTotal` ya los
+  devolvía el backend del Sprint 1/G3), botón "Generar contrato"
+  (`EventDetail`), avisos de trazabilidad (`traceGaps`) separados
+  visualmente del éxito genérico del cierre, importe opcional al cerrar +
+  botón "Facturar importe adicional" (facturación parcial/posterior,
+  Sprint 4/B5), checkbox `block_accept_on_stock_shortage` (`config`, con
+  `GET/PUT /api/settings` ampliados), badge de propietario + toggle "Mis
+  leads" (`LeadsCRM`, con protección para que el admin maestro por
+  variables de entorno no intente "poseer" leads con su id sintético),
+  timeline de interacciones (`LeadsCRM`, `GET/POST /api/interactions`),
+  reserva de equipamiento con marcar enviado/devuelto (`CocinaPanel`,
+  `GET/PATCH /api/cocina/equipment/checkout/[eventId]`).
+- [x] **Bugs reales encontrados de paso** (no introducidos por Sprint 5,
+  pero solo detectables auditando/tocando estos ficheros):
+  - `events/[id]/route.ts` GET solo devolvía `venue_id` (UUID), insuficiente
+    para que la UI supiera qué salón mostrar seleccionado — se añade
+    `venue_slug` vía `LEFT JOIN venues`.
+  - `<EmptyState icon="nombreDeIcono">` pasaba un string literal en vez de
+    un elemento `<Icon>` en 9 sitios (`CocinaPanel.tsx`,
+    `TrazabilidadPanel.tsx`) — el nombre del icono se renderizaba como
+    texto plano en vez de un icono. Corregido en los 2 ficheros.
+- [x] **C4 · 3 fixes de traducción** (la app ya estaba mayoritariamente en
+  español, hallazgo tranquilizador de la auditoría): pestaña "Dashboard" →
+  "Resumen" en `HACCPPanel`; texto `sr-only` "Close" → "Cerrar" en
+  `ui/dialog.tsx`/`ui/sheet.tsx` (boilerplate de shadcn); `floor-plan/
+  generate/route.ts` usa `sanitizeError()` como el resto de rutas.
+- [x] Verificación: nuevo `scripts/verify-sprint5-ui.sh` **18/18**
+  (estática: hex de roles unificados, bug `icon="string"`; funcional:
+  las 10 features de C3 vía API; C4); sin regresión (E2E 32/32 · RBAC
+  41/41 · Operativos 14/14 · ERP 17/17 · Sprint1 26/26 · Sprint2 27/27 ·
+  Sprint3 32/32 · Sprint4 50/50); build de producción exit 0. Verificado
+  visualmente con Playwright durante el desarrollo (staffing, Ficha del
+  Evento, Configuración, Rentabilidad, Cocina antes/después del fix del
+  tema oscuro).
+
+### Pendiente / próximos pasos sugeridos
+- [ ] **Bugs pre-existentes encontrados pero fuera de alcance de Sprint 5**
+  (no son de diseño/UI ni de traducción, son de esquema/backend):
+  `/api/stock/escandallos` falla con "column esi.custom_qty does not
+  exist"; `/api/briefing/[eventId]` falla con "column ci.allergens does
+  not exist". Ambos son bugs de esquema reales, detectados al navegar la
+  Ficha del Evento, no relacionados con el trabajo de este sprint.
+- [ ] `guest-forms/decor` (401 sin cookie pese a ser pública, Sprint 3) —
+  sigue sin tocar.
+- [ ] Borrar la rama remota `claude/event-venue-redesign-JAUif` (el
+  usuario, por política de red del entorno bloquea el push de borrado).
+- [ ] Nivel C del Gap Analysis (G9/G14/G18/G23, Sprint 4) — backlog
+  documentado para un futuro Spec dedicado.
+
+### Histórico (01/07 · Sprint 4 · los 14 gaps restantes del Gap Analysis, Nivel A+B)
 - [x] **SPEC-Sprint4-RemainingGaps.md** (SDD): 14 gaps (no 15 — G7 ya se
   resolvió de rebote en Sprint 2), agrupados en Nivel A (5 arreglos
   mecánicos), Nivel B (6 features acotadas, con decisiones de negocio E-B1
