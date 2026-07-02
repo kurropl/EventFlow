@@ -4,6 +4,7 @@
  * Returns JSON array of table positions.
  */
 import { NextResponse } from 'next/server';
+import { sanitizeError } from '@/lib/security';
 
 interface Waiter {
   id: string;
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Internal error',
+      error: sanitizeError(error),
     }, { status: 500 });
   }
 }

@@ -182,7 +182,7 @@ export default function HACCPPanel({ eventId }: { eventId?: string }) {
   };
 
   const TABS = [
-    { id: 'dashboard' as const, label: 'Dashboard', icon: ClipboardCheck },
+    { id: 'dashboard' as const, label: 'Resumen', icon: ClipboardCheck },
     { id: 'fridge' as const, label: 'Neveras', icon: Thermometer },
     { id: 'cleaning' as const, label: 'Limpieza', icon: Droplets },
     { id: 'traceability' as const, label: 'Trazabilidad', icon: Package },
