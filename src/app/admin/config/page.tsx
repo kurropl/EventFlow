@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/b2b/AdminLayout';
 import UsersManager from '@/components/b2b/UsersManager';
+import { PageHeader, Spinner } from '@/components/ui';
 
 interface Settings {
   business_name: string;
@@ -16,6 +17,7 @@ interface Settings {
   logo_url: string;
   bar_price_per_hour: number;
   iva_pct: number;
+  block_accept_on_stock_shortage: boolean;
 }
 
 const defaultSettings: Settings = {
@@ -27,6 +29,7 @@ const defaultSettings: Settings = {
   logo_url: '',
   bar_price_per_hour: 15,
   iva_pct: 10,
+  block_accept_on_stock_shortage: false,
 };
 
 // Validation patterns
@@ -121,29 +124,29 @@ function EventJobsPanel() {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-[#ECECF1] p-6">
-      <h2 className="text-base font-semibold text-[#1A1A1A] mb-1">Configuración de Eventos</h2>
-      <p className="text-xs text-[#6B7280] mb-5">Ejecución manual de tareas automáticas. Puedes lanzar cada job cuando lo necesites.</p>
+    <div className="bg-white rounded-2xl border border-cream-dark p-6">
+      <h2 className="text-base font-semibold text-ink mb-1">Configuración de Eventos</h2>
+      <p className="text-xs text-ink-soft mb-5">Ejecución manual de tareas automáticas. Puedes lanzar cada job cuando lo necesites.</p>
       <div className="space-y-3">
         {EVENT_JOBS.map((job) => {
           const isRunning = running[job.id];
           const result = results[job.id];
           return (
-            <div key={job.id} className="flex items-start gap-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#ECECF1]">
+            <div key={job.id} className="flex items-start gap-4 p-4 rounded-xl bg-cream border border-cream-dark">
               {/* Icon */}
-              <div className="w-9 h-9 rounded-lg bg-[#C9A84C]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-sm font-bold text-[#C9A84C]">{job.icon}</span>
+              <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-sm font-bold text-gold">{job.icon}</span>
               </div>
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-medium text-[#1A1A1A]">{job.label}</h3>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#ECECF1] text-[#6B7280] font-mono">{job.method} {job.endpoint}</span>
+                  <h3 className="text-sm font-medium text-ink">{job.label}</h3>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-cream-dark text-ink-soft font-mono">{job.method} {job.endpoint}</span>
                 </div>
-                <p className="text-xs text-[#6B7280] mt-0.5">{job.description}</p>
+                <p className="text-xs text-ink-soft mt-0.5">{job.description}</p>
                 {/* Result */}
                 {result && (
-                  <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${result.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                  <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${result.ok ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                     {result.msg}
                   </div>
                 )}
@@ -152,11 +155,11 @@ function EventJobsPanel() {
               <button
                 onClick={() => runJob(job)}
                 disabled={isRunning}
-                className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-medium border border-[#C9A84C] text-[#C9A84C] hover:bg-[#C9A84C] hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-0.5"
+                className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-medium border border-gold text-gold hover:bg-gold hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-0.5"
               >
                 {isRunning ? (
                   <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                    <span className="w-3 h-3 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                     Ejecutando
                   </span>
                 ) : 'Ejecutar'}
@@ -259,9 +262,7 @@ export default function ConfigPage() {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner label="Cargando configuración..." />
       </AdminLayout>
     );
   }
@@ -271,12 +272,7 @@ export default function ConfigPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-serif text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-              Configuración
-            </h1>
-            <p className="text-[13px] text-[#6B7280] mt-1">Datos del negocio y parámetros del sistema</p>
-          </div>
+          <PageHeader title="Configuración" subtitle="Datos del negocio y parámetros del sistema" />
           <button
             onClick={handleSave}
             disabled={saving}
@@ -300,114 +296,134 @@ export default function ConfigPage() {
         )}
 
         {/* Datos del negocio */}
-        <div className="bg-white rounded-2xl border border-[#ECECF1] p-6">
-          <h2 className="text-base font-semibold text-[#1A1A1A] mb-4">Datos del Negocio</h2>
+        <div className="bg-white rounded-2xl border border-cream-dark p-6">
+          <h2 className="text-base font-semibold text-ink mb-4">Datos del Negocio</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">Nombre del negocio</label>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Nombre del negocio</label>
               <input
                 type="text"
                 value={settings.business_name}
                 onChange={(e) => update('business_name', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-[#FAF8F5] text-sm focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">CIF / NIF</label>
+              <label className="block text-xs font-medium text-ink-soft mb-1">CIF / NIF</label>
               <input
                 type="text"
                 value={settings.cif}
                 onChange={(e) => update('cif', e.target.value)}
                 placeholder="B12345678"
-                className={`w-full px-3 py-2.5 rounded-lg border bg-[#FAF8F5] text-sm focus:ring-2 transition-all ${
+                className={`w-full px-3 py-2.5 rounded-lg border bg-cream text-sm focus:ring-2 transition-all ${
                   validationErrors.cif
-                    ? 'border-red-400 focus:ring-red-300 focus:border-red-400'
-                    : 'border-[#E5E7EB] focus:ring-[#C9A84C] focus:border-[#C9A84C]'
+                    ? 'border-danger focus:ring-danger/30 focus:border-danger'
+                    : 'border-cream-dark focus:ring-gold focus:border-gold'
                 }`}
               />
               {validationErrors.cif && (
-                <p className="text-xs text-red-500 mt-1">{validationErrors.cif}</p>
+                <p className="text-xs text-danger mt-1">{validationErrors.cif}</p>
               )}
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">Dirección</label>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Dirección</label>
               <input
                 type="text"
                 value={settings.address}
                 onChange={(e) => update('address', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-[#FAF8F5] text-sm focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">Telefono</label>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Telefono</label>
               <input
                 type="tel"
                 value={settings.phone}
                 onChange={(e) => update('phone', e.target.value)}
                 placeholder="612 345 678"
-                className={`w-full px-3 py-2.5 rounded-lg border bg-[#FAF8F5] text-sm focus:ring-2 transition-all ${
+                className={`w-full px-3 py-2.5 rounded-lg border bg-cream text-sm focus:ring-2 transition-all ${
                   validationErrors.phone
-                    ? 'border-red-400 focus:ring-red-300 focus:border-red-400'
-                    : 'border-[#E5E7EB] focus:ring-[#C9A84C] focus:border-[#C9A84C]'
+                    ? 'border-danger focus:ring-danger/30 focus:border-danger'
+                    : 'border-cream-dark focus:ring-gold focus:border-gold'
                 }`}
               />
               {validationErrors.phone && (
-                <p className="text-xs text-red-500 mt-1">{validationErrors.phone}</p>
+                <p className="text-xs text-danger mt-1">{validationErrors.phone}</p>
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">Email</label>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Email</label>
               <input
                 type="email"
                 value={settings.email}
                 onChange={(e) => update('email', e.target.value)}
                 placeholder="info@negocio.es"
-                className={`w-full px-3 py-2.5 rounded-lg border bg-[#FAF8F5] text-sm focus:ring-2 transition-all ${
+                className={`w-full px-3 py-2.5 rounded-lg border bg-cream text-sm focus:ring-2 transition-all ${
                   validationErrors.email
-                    ? 'border-red-400 focus:ring-red-300 focus:border-red-400'
-                    : 'border-[#E5E7EB] focus:ring-[#C9A84C] focus:border-[#C9A84C]'
+                    ? 'border-danger focus:ring-danger/30 focus:border-danger'
+                    : 'border-cream-dark focus:ring-gold focus:border-gold'
                 }`}
               />
               {validationErrors.email && (
-                <p className="text-xs text-red-500 mt-1">{validationErrors.email}</p>
+                <p className="text-xs text-danger mt-1">{validationErrors.email}</p>
               )}
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">URL del logo</label>
+              <label className="block text-xs font-medium text-ink-soft mb-1">URL del logo</label>
               <input
                 type="url"
                 value={settings.logo_url}
                 onChange={(e) => update('logo_url', e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-[#FAF8F5] text-sm focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
               />
             </div>
           </div>
         </div>
 
         {/* Parametros */}
-        <div className="bg-white rounded-2xl border border-[#ECECF1] p-6">
-          <h2 className="text-base font-semibold text-[#1A1A1A] mb-4">Parametros del Sistema</h2>
+        <div className="bg-white rounded-2xl border border-cream-dark p-6">
+          <h2 className="text-base font-semibold text-ink mb-4">Parametros del Sistema</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">Precio barra por hora (EUR)</label>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Precio barra por hora (EUR)</label>
               <input
                 type="number"
                 step="0.50"
                 value={settings.bar_price_per_hour}
                 onChange={(e) => update('bar_price_per_hour', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-[#FAF8F5] text-sm focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#6B7280] mb-1">IVA (%)</label>
+              <label className="block text-xs font-medium text-ink-soft mb-1">IVA (%)</label>
               <input
                 type="number"
                 step="0.5"
                 value={settings.iva_pct}
                 onChange={(e) => update('iva_pct', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-[#FAF8F5] text-sm focus:ring-2 focus:ring-[#C9A84C] focus:border-[#C9A84C] transition-all"
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
               />
+            </div>
+            <div className="md:col-span-2">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.block_accept_on_stock_shortage}
+                  onChange={(e) => update('block_accept_on_stock_shortage', e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-gold"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-ink">
+                    Bloquear la aceptación de presupuestos si falta stock
+                  </span>
+                  <span className="block text-xs text-ink-soft mt-0.5">
+                    Por defecto, si al aceptar un presupuesto no hay stock suficiente solo se avisa y se
+                    genera un pedido borrador a proveedores. Con esto activo, la aceptación se rechaza (409)
+                    hasta que se resuelva el faltante.
+                  </span>
+                </span>
+              </label>
             </div>
           </div>
         </div>

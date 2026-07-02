@@ -7,6 +7,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { CATEGORY_LABELS } from '@/types/specs';
+import { Spinner } from '@/components/ui';
 
 interface ProviderRow {
   id: string;
@@ -98,10 +99,10 @@ export default function ProvidersManager() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-serif text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h2 className="text-2xl font-heading text-ink">
             Proveedores
           </h2>
-          <p className="text-[#6B7280] text-sm">
+          <p className="text-ink-soft text-sm">
             {totalCount} proveedores · {activeCount} activos
           </p>
         </div>
@@ -121,10 +122,10 @@ export default function ProvidersManager() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre, contacto, email…"
-            className="w-full text-sm bg-white border border-[#ECECF1] rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:border-[#C9A84C] transition-colors"
+            className="w-full text-sm bg-white border border-cream-dark rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:border-gold transition-colors"
           />
           <svg
-            className="w-4 h-4 text-[#9CA3AF] absolute left-3 top-3"
+            className="w-4 h-4 text-ink-soft-60 absolute left-3 top-3"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -137,7 +138,7 @@ export default function ProvidersManager() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="text-sm bg-white border border-[#ECECF1] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C9A84C] transition-colors"
+          className="text-sm bg-white border border-cream-dark rounded-xl px-3 py-2.5 focus:outline-none focus:border-gold transition-colors"
         >
           <option value="">Todas las categorías</option>
           {categories.map((cat) => (
@@ -149,8 +150,8 @@ export default function ProvidersManager() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#ECECF1] shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden">
-        <div className="hidden md:grid grid-cols-12 gap-3 px-5 py-3 border-b border-[#F0F0F4] text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+      <div className="bg-white rounded-2xl border border-cream-dark shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden">
+        <div className="hidden md:grid grid-cols-12 gap-3 px-5 py-3 border-b border-cream-dark text-[11px] font-semibold uppercase tracking-wide text-ink-soft-60">
           <div className="col-span-3">Proveedor</div>
           <div className="col-span-2">Categoría</div>
           <div className="col-span-2">Contacto</div>
@@ -158,12 +159,12 @@ export default function ProvidersManager() {
           <div className="col-span-1 text-center">Estado</div>
           <div className="col-span-1 text-right">Creado</div>
         </div>
-        <div className="divide-y divide-[#F2F2F5]">
+        <div className="divide-y divide-cream-dark">
           {loading && (
-            <div className="px-5 py-12 text-center text-sm text-[#9CA3AF]">Cargando…</div>
+            <Spinner label="Cargando…" />
           )}
           {!loading && filtered.length === 0 && (
-            <div className="px-5 py-12 text-center text-sm text-[#9CA3AF]">
+            <div className="px-5 py-12 text-center text-sm text-ink-soft-60">
               No hay proveedores que coincidan.
             </div>
           )}
@@ -171,7 +172,7 @@ export default function ProvidersManager() {
             <button
               key={p.id}
               onClick={() => setSelected(p)}
-              className="w-full text-left grid grid-cols-2 md:grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-[#FAFAFC] transition-colors"
+              className="w-full text-left grid grid-cols-2 md:grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-cream transition-colors"
             >
               <div className="col-span-2 md:col-span-3 flex items-center gap-3 min-w-0">
                 <div
@@ -181,7 +182,7 @@ export default function ProvidersManager() {
                   {initials(p.name)}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-[#1A1A1A] truncate">{p.name}</div>
+                  <div className="text-[13px] font-semibold text-ink truncate">{p.name}</div>
                 </div>
               </div>
               <div className="hidden md:block col-span-2">
@@ -191,20 +192,20 @@ export default function ProvidersManager() {
                   {CATEGORY_LABELS[p.category] || p.category}
                 </span>
               </div>
-              <div className="hidden md:block col-span-2 text-[12px] text-[#6B7280] min-w-0">
+              <div className="hidden md:block col-span-2 text-[12px] text-ink-soft min-w-0">
                 <div className="truncate">{p.contact_name || '—'}</div>
               </div>
-              <div className="hidden md:block col-span-3 text-[12px] text-[#6B7280] min-w-0">
+              <div className="hidden md:block col-span-3 text-[12px] text-ink-soft min-w-0">
                 <div className="truncate">{p.email || '—'}</div>
                 <div className="truncate">{p.phone || ''}</div>
               </div>
               <div className="hidden md:block col-span-1 text-center">
                 <span
-                  className={`inline-block w-2 h-2 rounded-full ${p.active ? 'bg-green-500' : 'bg-red-400'}`}
+                  className={`inline-block w-2 h-2 rounded-full ${p.active ? 'bg-success' : 'bg-danger/60'}`}
                   title={p.active ? 'Activo' : 'Inactivo'}
                 />
               </div>
-              <div className="hidden md:block col-span-1 text-right text-[12px] text-[#9CA3AF]">
+              <div className="hidden md:block col-span-1 text-right text-[12px] text-ink-soft-60">
                 {fmtDate(p.created_at)}
               </div>
             </button>
@@ -299,10 +300,10 @@ function ProviderDrawer({
       <motion.div
         initial={{ x: 420 }}
         animate={{ x: 0 }}
-        className="relative w-full max-w-md bg-[#FAFAFC] h-full overflow-y-auto shadow-2xl"
+        className="relative w-full max-w-md bg-cream h-full overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white border-b border-[#ECECF1] px-5 py-4 flex items-center gap-3 z-10">
+        <div className="sticky top-0 bg-white border-b border-cream-dark px-5 py-4 flex items-center gap-3 z-10">
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white flex-shrink-0"
             style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
@@ -310,12 +311,12 @@ function ProviderDrawer({
             {initials(provider.name)}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-semibold text-[#1A1A1A] truncate">{provider.name}</div>
-            <div className="text-[12px] text-[#9CA3AF]">
+            <div className="font-semibold text-ink truncate">{provider.name}</div>
+            <div className="text-[12px] text-ink-soft-60">
               {CATEGORY_LABELS[provider.category] || provider.category}
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg text-[#9CA3AF] hover:bg-[#F5F5F8]">
+          <button onClick={onClose} className="p-2 rounded-lg text-ink-soft-60 hover:bg-cream">
             ✕
           </button>
         </div>
@@ -386,7 +387,7 @@ function ProviderDrawer({
                   className="sr-only"
                 />
                 <div
-                  className={`w-10 h-6 rounded-full transition-colors ${active ? 'bg-green-500' : 'bg-gray-300'}`}
+                  className={`w-10 h-6 rounded-full transition-colors ${active ? 'bg-success' : 'bg-cream-dark'}`}
                 >
                   <div
                     className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mt-1 ml-1 ${
@@ -395,7 +396,7 @@ function ProviderDrawer({
                   />
                 </div>
               </div>
-              <span className="text-sm text-[#6B7280]">Proveedor activo</span>
+              <span className="text-sm text-ink-soft">Proveedor activo</span>
             </label>
           </div>
 
@@ -404,7 +405,7 @@ function ProviderDrawer({
             <button
               onClick={save}
               disabled={saving || !name.trim()}
-              className="w-full text-sm font-medium text-white px-4 py-3 rounded-xl shadow-sm disabled:opacity-60"
+              className="w-full text-sm font-medium text-white px-4 py-3 rounded-xl shadow-sm disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
             >
               {saving ? 'Guardando…' : 'Guardar cambios'}
@@ -412,7 +413,7 @@ function ProviderDrawer({
             <button
               onClick={remove}
               disabled={deleting}
-              className="w-full text-sm font-medium text-[#DC2626] px-4 py-3 rounded-xl border border-[#FECACA] hover:bg-[#FEF2F2] transition-colors disabled:opacity-60"
+              className="w-full text-sm font-medium text-danger px-4 py-3 rounded-xl border border-danger/30 hover:bg-danger/10 transition-colors disabled:opacity-50"
             >
               {deleting ? 'Eliminando…' : 'Eliminar proveedor'}
             </button>
@@ -482,10 +483,7 @@ function ProviderForm({
         className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3
-          className="font-serif text-xl text-[#1A1A1A]"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-        >
+        <h3 className="font-heading text-xl text-ink">
           Nuevo proveedor
         </h3>
 
@@ -529,7 +527,7 @@ function ProviderForm({
               className="sr-only"
             />
             <div
-              className={`w-10 h-6 rounded-full transition-colors ${f.active ? 'bg-green-500' : 'bg-gray-300'}`}
+              className={`w-10 h-6 rounded-full transition-colors ${f.active ? 'bg-success' : 'bg-cream-dark'}`}
             >
               <div
                 className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mt-1 ml-1 ${
@@ -538,22 +536,22 @@ function ProviderForm({
               />
             </div>
           </div>
-          <span className="text-sm text-[#6B7280]">Proveedor activo</span>
+          <span className="text-sm text-ink-soft">Proveedor activo</span>
         </label>
 
-        {err && <p className="text-sm text-[#DC2626]">{err}</p>}
+        {err && <p className="text-sm text-danger">{err}</p>}
 
         <div className="flex gap-2 justify-end pt-1">
           <button
             onClick={onClose}
-            className="text-sm px-4 py-2.5 rounded-xl text-[#6B7280] hover:bg-[#F5F5F8]"
+            className="text-sm px-4 py-2.5 rounded-xl text-ink-soft hover:bg-cream"
           >
             Cancelar
           </button>
           <button
             onClick={save}
             disabled={saving}
-            className="text-sm font-medium text-white px-4 py-2.5 rounded-xl shadow-sm disabled:opacity-60"
+            className="text-sm font-medium text-white px-4 py-2.5 rounded-xl shadow-sm disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
           >
             {saving ? 'Guardando…' : 'Crear proveedor'}
@@ -568,9 +566,9 @@ function ProviderForm({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white border border-[#ECECF1] rounded-xl px-4 py-3">
-      <div className="text-[11px] text-[#9CA3AF]">{label}</div>
-      <div className="text-lg font-semibold text-[#1A1A1A] tabular-nums">{value}</div>
+    <div className="bg-white border border-cream-dark rounded-xl px-4 py-3">
+      <div className="text-[11px] text-ink-soft-60">{label}</div>
+      <div className="text-lg font-semibold text-ink tabular-nums">{value}</div>
     </div>
   );
 }
@@ -578,7 +576,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[12px] font-medium text-[#6B7280] mb-1">{label}</span>
+      <span className="block text-[12px] font-medium text-ink-soft mb-1">{label}</span>
       {children}
     </label>
   );

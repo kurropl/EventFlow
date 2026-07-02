@@ -20,7 +20,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
     const settings = await querySingle<any>(
-      `SELECT business_name, address, cif, phone, email, logo_url, bar_price_per_hour, iva_pct FROM business_settings LIMIT 1`
+      `SELECT business_name, address, cif, phone, email, logo_url, bar_price_per_hour, iva_pct,
+              block_accept_on_stock_shortage
+       FROM business_settings LIMIT 1`
     );
     return NextResponse.json({ success: true, data: settings || {} });
   } catch (error) {
@@ -47,6 +49,8 @@ export async function PUT(request: NextRequest) {
       logo_url: body.logo_url,
       bar_price_per_hour: body.bar_price_per_hour != null ? Number(body.bar_price_per_hour) : undefined,
       iva_pct: body.iva_pct != null ? Number(body.iva_pct) : undefined,
+      block_accept_on_stock_shortage: typeof body.block_accept_on_stock_shortage === 'boolean'
+        ? body.block_accept_on_stock_shortage : undefined,
     };
 
     for (const [key, val] of Object.entries(updatable)) {

@@ -23,6 +23,10 @@ export const EVENT_STATUS_MAP: Record<string, { label: string; color: string; bg
   presupuestado: { label: 'Presupuestado', color: 'text-amber-700', bg: 'bg-amber-100' },
   convertido: { label: 'Convertido',  color: 'text-green-700',   bg: 'bg-green-100' },
   perdido:    { label: 'Perdido',     color: 'text-red-700',     bg: 'bg-red-100' },
+  // Staffing lines (staffing_lines.status): distinto dominio de quotes/leads,
+  // reutiliza este mismo componente — antes se veían sin traducir ("open").
+  open:       { label: 'Abierto',     color: 'text-amber-700',   bg: 'bg-amber-100' },
+  filled:     { label: 'Cubierto',    color: 'text-green-700',   bg: 'bg-green-100' },
 };
 
 export function getStatusBadge(status: string) {

@@ -26,7 +26,10 @@ export async function GET(
   try {
     const { id } = await params;
     const event = await querySingle<any>(
-      `SELECT * FROM events WHERE id = $1`,
+      `SELECT e.*, v.slug AS venue_slug
+       FROM events e
+       LEFT JOIN venues v ON v.id = e.venue_id
+       WHERE e.id = $1`,
       [id]
     );
 

@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import StatusBadge from './StatusBadge';
 import BriefingCamareros from './BriefingCamareros';
+import { PageHeader, EmptyState } from '@/components/ui';
 import {
   CalendarDays,
   Users,
@@ -26,6 +27,9 @@ import {
   Check,
   Package,
   Truck,
+  FileText,
+  Receipt,
+  MapPin,
 } from 'lucide-react';
 
 /* ── Helpers ───────────────────────────────────────────────────── */
@@ -38,15 +42,21 @@ const fmtDate = (d: string | null | undefined) => {
   return `${parseInt(day)}/${parseInt(m)}/${y}`;
 };
 
+const VENUE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'salon-arriba', label: 'Salón de Arriba' },
+  { value: 'salon-abajo', label: 'Salón de Abajo' },
+  { value: 'externo', label: 'Fuera de los salones (externo)' },
+];
+
 /* ── Loading Skeleton ──────────────────────────────────────────── */
 function SectionSkeleton() {
   return (
-    <div className="bg-[#F8F3E6] rounded-xl p-6 space-y-4 animate-pulse">
-      <div className="h-5 w-40 bg-[#C9A86A]/20 rounded" />
+    <div className="bg-cream-dark rounded-xl p-6 space-y-4 animate-pulse">
+      <div className="h-5 w-40 bg-gold/20 rounded" />
       <div className="space-y-2">
-        <div className="h-4 w-full bg-[#C9A86A]/10 rounded" />
-        <div className="h-4 w-3/4 bg-[#C9A86A]/10 rounded" />
-        <div className="h-4 w-1/2 bg-[#C9A86A]/10 rounded" />
+        <div className="h-4 w-full bg-gold/10 rounded" />
+        <div className="h-4 w-3/4 bg-gold/10 rounded" />
+        <div className="h-4 w-1/2 bg-gold/10 rounded" />
       </div>
     </div>
   );
@@ -55,7 +65,7 @@ function SectionSkeleton() {
 function FullSkeleton() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="h-8 w-64 bg-[#C9A86A]/15 rounded-lg animate-pulse" />
+      <div className="h-8 w-64 bg-gold/15 rounded-lg animate-pulse" />
       {Array.from({ length: 4 }).map((_, i) => (
         <SectionSkeleton key={i} />
       ))}
@@ -67,8 +77,8 @@ function FullSkeleton() {
 function SectionHeader({ icon: Icon, title }: { icon: any; title: string }) {
   return (
     <div className="flex items-center gap-2 mb-4">
-      <Icon className="w-5 h-5 text-[#C9A86A]" />
-      <h2 className="font-serif text-lg font-semibold text-[#C9A86A]">{title}</h2>
+      <Icon className="w-5 h-5 text-gold" />
+      <h2 className="font-heading text-lg font-semibold text-gold">{title}</h2>
     </div>
   );
 }
@@ -77,8 +87,8 @@ function SectionHeader({ icon: Icon, title }: { icon: any; title: string }) {
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wider text-[#9CA3AF] font-semibold mb-0.5">{label}</p>
-      <p className="text-sm text-[#0a0a0a]">{value || '—'}</p>
+      <p className="text-[11px] uppercase tracking-wider text-ink-soft-60 font-semibold mb-0.5">{label}</p>
+      <p className="text-sm text-ink">{value || '—'}</p>
     </div>
   );
 }
@@ -86,7 +96,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 /* ── Empty State ───────────────────────────────────────────────── */
 function EmptyMessage({ text }: { text: string }) {
   return (
-    <p className="text-sm text-[#9CA3AF] italic">{text}</p>
+    <p className="text-sm text-ink-soft-60 italic">{text}</p>
   );
 }
 
@@ -103,6 +113,8 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   const [escandalloItems, setEscandalloItems] = useState<any[]>([]);
   const [staffingLines, setStaffingLines] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [contract, setContract] = useState<any>(null);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
@@ -110,17 +122,28 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   const [confirmMsg, setConfirmMsg] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [closeMsg, setCloseMsg] = useState('');
+  const [closeEffects, setCloseEffects] = useState<string[] | null>(null);
+  const [closeError, setCloseError] = useState('');
+  const [invoiceAmount, setInvoiceAmount] = useState('');
   const [copied, setCopied] = useState(false);
+  const [venueSaving, setVenueSaving] = useState(false);
+  const [venueMsg, setVenueMsg] = useState('');
+  const [generatingContract, setGeneratingContract] = useState(false);
+  const [contractMsg, setContractMsg] = useState('');
+  const [extraInvoiceAmount, setExtraInvoiceAmount] = useState('');
+  const [invoicing, setInvoicing] = useState(false);
+  const [invoiceMsg, setInvoiceMsg] = useState('');
 
   const fetchAll = useCallback(async () => {
     try {
-      const [eventRes, escRes, staffRes, payRes, quoteRes] = await Promise.allSettled([
+      const [eventRes, escRes, staffRes, payRes, quoteRes, contractRes, invRes] = await Promise.allSettled([
         fetch(`/api/events/${eventId}`),
         fetch(`/api/stock/escandallos?event_id=${eventId}`),
         fetch(`/api/staffing/lines?event_id=${eventId}`),
         fetch(`/api/payments?event_id=${eventId}`),
         fetch(`/api/quotes?event_id=${eventId}`),
+        fetch(`/api/events/${eventId}/contract`),
+        fetch(`/api/invoices?event_id=${eventId}`),
       ]);
 
       // Event (required)
@@ -159,6 +182,20 @@ export default function EventDetail({ eventId }: EventDetailProps) {
         const quotes = j.data || [];
         setQuote(quotes.length > 0 ? quotes[0] : null);
       }
+
+      // Contrato (Sprint 3, G8) — puede no existir todavía (404), no es un error
+      if (contractRes.status === 'fulfilled' && contractRes.value.ok) {
+        const j = await contractRes.value.json();
+        setContract(j.data || null);
+      } else {
+        setContract(null);
+      }
+
+      // Facturas (Sprint 4, B5) — puede haber varias (facturación parcial)
+      if (invRes.status === 'fulfilled' && invRes.value.ok) {
+        const j = await invRes.value.json();
+        setInvoices(j.data || []);
+      }
     } catch {
       setError('Error al cargar los datos');
     } finally {
@@ -177,13 +214,107 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   if (error || !event) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
-        <p className="text-sm text-red-500 mb-2">{error || 'Evento no encontrado'}</p>
-        <p className="text-xs text-[#9CA3AF]">ID: {eventId}</p>
+        <p className="text-sm text-danger mb-2">{error || 'Evento no encontrado'}</p>
+        <p className="text-xs text-ink-soft-60">ID: {eventId}</p>
       </div>
     );
   }
 
   const items: any[] = event.selected_items || [];
+  const totalInvoiced = invoices.filter((i) => i.status !== 'cancelled').reduce((s, i) => s + Number(i.subtotal || 0), 0);
+  const totalPvp = Number(event.total_pvp || 0);
+  const remainingToInvoice = Math.max(0, totalPvp - totalInvoiced);
+
+  const setVenue = async (venue: string) => {
+    setVenueSaving(true);
+    setVenueMsg('');
+    try {
+      const res = await fetch(`/api/events/${event.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venue }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAll();
+      } else {
+        setVenueMsg(data.error || 'Error al asignar el salón');
+      }
+    } catch {
+      setVenueMsg('Error de conexión');
+    }
+    setVenueSaving(false);
+  };
+
+  const generateContract = async () => {
+    setGeneratingContract(true);
+    setContractMsg('');
+    try {
+      const res = await fetch(`/api/events/${event.id}/contract/generate`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setContract(data.data);
+      } else {
+        setContractMsg(data.error || 'Error al generar el contrato');
+      }
+    } catch {
+      setContractMsg('Error de conexión');
+    }
+    setGeneratingContract(false);
+  };
+
+  const closeEvent = async () => {
+    setClosing(true);
+    setCloseError('');
+    setCloseEffects(null);
+    try {
+      const amount = invoiceAmount ? Number(invoiceAmount) : undefined;
+      const res = await fetch(`/api/events/${event.id}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(amount !== undefined ? { invoiceAmount: amount } : {}),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCloseEffects(data.data?.results || []);
+        fetchAll();
+      } else {
+        setCloseError(data.error || 'Error al cerrar el evento');
+      }
+    } catch {
+      setCloseError('Error de conexión');
+    }
+    setClosing(false);
+  };
+
+  const invoiceRemainder = async () => {
+    if (!extraInvoiceAmount || Number(extraInvoiceAmount) <= 0) return;
+    setInvoicing(true);
+    setInvoiceMsg('');
+    try {
+      const res = await fetch(`/api/events/${event.id}/invoice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(extraInvoiceAmount) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInvoiceMsg(`✓ Factura ${data.data?.invoice_number || ''} generada` + (data.warning ? ` — ${data.warning}` : ''));
+        setExtraInvoiceAmount('');
+        fetchAll();
+      } else {
+        setInvoiceMsg('Error: ' + (data.error || ''));
+      }
+    } catch {
+      setInvoiceMsg('Error de conexión');
+    }
+    setInvoicing(false);
+  };
+
+  // G5 (Sprint 3): huecos de trazabilidad — se separan del resto de efectos
+  // del cierre para que se vean como aviso, no como confirmación genérica.
+  const closeWarnings = (closeEffects || []).filter((e) => e.startsWith('⚠'));
+  const closeConfirmations = (closeEffects || []).filter((e) => !e.startsWith('⚠'));
 
   /* ════════════════════════════════════════════════════════════════
      Render
@@ -191,24 +322,21 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       {/* ── Page Title ──────────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
-        <h1 className="font-serif text-2xl font-bold text-[#0a0a0a]">Ficha del Evento</h1>
-        <StatusBadge status={event.status} />
-      </div>
+      <PageHeader title="Ficha del Evento" actions={<StatusBadge status={event.status} />} />
 
       {/* ──────────────────────────────────────────────────────────
          1. DATOS DEL EVENTO
          ────────────────────────────────────────────────────────── */}
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={CalendarDays} title="Datos del Evento" />
-        <div className="bg-[#F8F3E6] rounded-lg p-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="bg-cream-dark rounded-lg p-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Field label="Cliente" value={event.client_name} />
           <Field
             label="Email"
             value={
               event.client_email ? (
                 <span className="flex items-center gap-1">
-                  <Mail className="w-3 h-3 text-[#9CA3AF]" />
+                  <Mail className="w-3 h-3 text-ink-soft-60" />
                   {event.client_email}
                 </span>
               ) : null
@@ -219,7 +347,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
             value={
               event.client_phone ? (
                 <span className="flex items-center gap-1">
-                  <Phone className="w-3 h-3 text-[#9CA3AF]" />
+                  <Phone className="w-3 h-3 text-ink-soft-60" />
                   {event.client_phone}
                 </span>
               ) : null
@@ -231,7 +359,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
             label="Comensales"
             value={
               <span className="flex items-center gap-1">
-                <Users className="w-3 h-3 text-[#9CA3AF]" />
+                <Users className="w-3 h-3 text-ink-soft-60" />
                 {event.guest_count || 0}
                 {event.kids_count ? ` (+ ${event.kids_count} ninos)` : ''}
               </span>
@@ -240,8 +368,8 @@ export default function EventDetail({ eventId }: EventDetailProps) {
           <Field
             label="Total PVP"
             value={
-              <span className="flex items-center gap-1 font-semibold text-[#0a0a0a]">
-                <Euro className="w-3 h-3 text-[#C9A86A]" />
+              <span className="flex items-center gap-1 font-semibold text-ink">
+                <Euro className="w-3 h-3 text-gold" />
                 {money(event.total_pvp || event.total_display)}
               </span>
             }
@@ -260,27 +388,57 @@ export default function EventDetail({ eventId }: EventDetailProps) {
           )}
         </div>
 
+        {/* Selector de salón (G1, Sprint 1/5) */}
+        <div className="mt-4 bg-cream-dark rounded-lg p-4">
+          <p className="text-[11px] uppercase tracking-wider text-ink-soft-60 font-semibold mb-2 flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5" />
+            Salón
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {VENUE_OPTIONS.map((opt) => {
+              const isActive = event.venue_id
+                ? opt.value !== 'externo' && event.venue_slug === opt.value
+                : opt.value === 'externo';
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setVenue(opt.value)}
+                  disabled={venueSaving}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                    isActive
+                      ? 'bg-gold text-ink border-gold'
+                      : 'bg-white text-ink-soft border-cream-dark hover:border-gold'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          {venueMsg && <p className="text-xs text-danger mt-2">{venueMsg}</p>}
+        </div>
+
         {/* Selected items mini-table */}
         {items.length > 0 && (
-          <div className="mt-4 bg-[#F8F3E6] rounded-lg p-4">
-            <p className="text-[11px] uppercase tracking-wider text-[#9CA3AF] font-semibold mb-2">
+          <div className="mt-4 bg-cream-dark rounded-lg p-4">
+            <p className="text-[11px] uppercase tracking-wider text-ink-soft-60 font-semibold mb-2">
               Items seleccionados ({items.length})
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#C9A86A]/20">
-                    <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Nombre</th>
-                    <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Categoria</th>
-                    <th className="text-right py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Cantidad</th>
+                  <tr className="border-b border-gold/20">
+                    <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Nombre</th>
+                    <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Categoria</th>
+                    <th className="text-right py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Cantidad</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item: any, i: number) => (
-                    <tr key={i} className="border-b border-[#C9A86A]/10 last:border-0">
-                      <td className="py-1.5 text-[#0a0a0a]">{item.name}</td>
-                      <td className="py-1.5 text-[#9CA3AF]">{item.category || '—'}</td>
-                      <td className="py-1.5 text-right text-[#0a0a0a]">{item.quantity || 1}</td>
+                    <tr key={i} className="border-b border-gold/10 last:border-0">
+                      <td className="py-1.5 text-ink">{item.name}</td>
+                      <td className="py-1.5 text-ink-soft-60">{item.category || '—'}</td>
+                      <td className="py-1.5 text-right text-ink">{item.quantity || 1}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -293,10 +451,10 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       {/* ──────────────────────────────────────────────────────────
          2. PRESUPUESTO
          ────────────────────────────────────────────────────────── */}
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={ClipboardList} title="Presupuesto" />
         {quote ? (
-          <div className="bg-[#F8F3E6] rounded-lg p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-cream-dark rounded-lg p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Field label="Estado" value={<StatusBadge status={quote.status} />} />
             <Field label="PVP base" value={money(quote.base_pvp)} />
             <Field label="Coste base" value={money(quote.base_cost)} />
@@ -317,19 +475,19 @@ export default function EventDetail({ eventId }: EventDetailProps) {
          3. SEÑAL Y CONFIRMACIÓN
          ────────────────────────────────────────────────────────── */}
       {(quote || event.status === 'sent' || event.status === 'draft' || event.status === 'accepted') && (
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={WalletMinimal} title="Señal y Confirmación" />
-        <div className="bg-[#F8F3E6] rounded-lg p-4 space-y-4">
+        <div className="bg-cream-dark rounded-lg p-4 space-y-4">
           {/* Estado actual */}
           <div className="flex items-center gap-3">
             <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
               event.status === 'accepted'
-                ? 'bg-emerald-100 text-emerald-700'
+                ? 'bg-success/10 text-success'
                 : quote?.deposit_paid === true
-                  ? 'bg-emerald-100 text-emerald-700'
+                  ? 'bg-success/10 text-success'
                   : event.status === 'completed' || event.status === 'paid'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-amber-100 text-amber-700'
+                    ? 'bg-ink/10 text-ink'
+                    : 'bg-warning/10 text-warning'
             }`}>
               {event.status === 'accepted' ? '✓ Confirmado'
                 : event.status === 'completed' ? 'Completado'
@@ -338,7 +496,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
                 : 'Pendiente de señal'}
             </div>
             {quote && (
-              <span className="text-xs text-stone-400">
+              <span className="text-xs text-ink-soft-60">
                 Señal: {money(quote.deposit_amount || (Number(quote.total_pvp || 0) * Number(quote.deposit_pct || 40) / 100))}
                 ({quote.deposit_pct || 40}%)
               </span>
@@ -349,18 +507,18 @@ export default function EventDetail({ eventId }: EventDetailProps) {
           {event.status !== 'accepted' && event.status !== 'completed' && event.status !== 'paid' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Signal amount card */}
-              <div className="p-4 bg-white rounded-lg border border-stone-200">
-                <p className="text-xs text-stone-500 mb-2">Importe de la señal</p>
+              <div className="p-4 bg-white rounded-lg border border-cream-dark">
+                <p className="text-xs text-ink-soft mb-2">Importe de la señal</p>
                 <p className="text-xl font-bold font-mono">
                   {money(quote?.deposit_amount || (Number(event.total_pvp || 0) * Number(quote?.deposit_pct || 40) / 100))}
                 </p>
-                <p className="text-xs text-stone-400 mt-1">
+                <p className="text-xs text-ink-soft-60 mt-1">
                   {quote?.deposit_pct || 40}% del total · {money(event.total_pvp || 0)}
                 </p>
               </div>
 
               {/* Confirm button */}
-              <div className="p-4 bg-white rounded-lg border border-stone-200 flex flex-col justify-between">
+              <div className="p-4 bg-white rounded-lg border border-cream-dark flex flex-col justify-between">
                 <button
                   onClick={async () => {
                     setConfirming(true);
@@ -382,14 +540,14 @@ export default function EventDetail({ eventId }: EventDetailProps) {
                     setConfirming(false);
                   }}
                   disabled={confirming || quote?.deposit_paid}
-                  className="w-full py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 rounded-lg bg-success text-white text-sm font-medium hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {confirming ? 'Confirmando...' : quote?.deposit_paid
                     ? 'Señal ya registrada'
                     : '✓ Registrar señal y confirmar evento'}
                 </button>
                 {confirmMsg && (
-                  <p className={`text-xs mt-2 ${confirmMsg.includes('Error') ? 'text-red-600' : 'text-emerald-600'}`}>
+                  <p className={`text-xs mt-2 ${confirmMsg.includes('Error') ? 'text-danger' : 'text-success'}`}>
                     {confirmMsg}
                   </p>
                 )}
@@ -399,13 +557,13 @@ export default function EventDetail({ eventId }: EventDetailProps) {
 
           {/* Guest invitation link (show when confirmed) */}
           {(event.status === 'accepted' || event.status === 'completed' || event.status === 'paid') && event.client_token && (
-            <div className="p-4 bg-white rounded-lg border border-emerald-200">
+            <div className="p-4 bg-white rounded-lg border border-success/30">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">ACTIVO</span>
-                <span className="text-xs text-stone-500">Enlace para invitados</span>
+                <span className="text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded-full">ACTIVO</span>
+                <span className="text-xs text-ink-soft">Enlace para invitados</span>
               </div>
               <div className="flex items-center gap-2">
-                <code className="flex-1 text-xs bg-stone-50 border border-stone-200 rounded-lg p-2.5 truncate font-mono text-stone-600">
+                <code className="flex-1 text-xs bg-cream border border-cream-dark rounded-lg p-2.5 truncate font-mono text-ink-soft">
                   {`${window.location.origin}/invitados/${event.client_token}`}
                 </code>
                 <button
@@ -414,12 +572,12 @@ export default function EventDetail({ eventId }: EventDetailProps) {
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
-                  className="px-3 py-2 rounded-lg bg-stone-800 text-white text-xs font-medium hover:bg-stone-700 shrink-0"
+                  className="px-3 py-2 rounded-lg bg-ink text-white text-xs font-medium hover:bg-ink-light shrink-0"
                 >
                   {copied ? '✓ Copiado' : 'Copiar'}
                 </button>
               </div>
-              <p className="text-[10px] text-stone-400 mt-1">Comparte este enlace con el cliente para que rellene los invitados</p>
+              <p className="text-[10px] text-ink-soft-60 mt-1">Comparte este enlace con el cliente para que rellene los invitados</p>
             </div>
           )}
         </div>
@@ -427,45 +585,93 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       )}
 
       {/* ──────────────────────────────────────────────────────────
-         4. ESCANDALLO
+         4. CONTRATO (Sprint 3, G8)
          ────────────────────────────────────────────────────────── */}
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      {event.client_token && (
+        <section className="bg-cream border border-gold/20 rounded-xl p-6">
+          <SectionHeader icon={FileText} title="Contrato" />
+          <div className="bg-cream-dark rounded-lg p-4">
+            {contract ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                    contract.status === 'signed' ? 'bg-success/10 text-success'
+                      : contract.status === 'voided' ? 'bg-danger/10 text-danger'
+                      : 'bg-warning/10 text-warning'
+                  }`}>
+                    {contract.status === 'signed' ? 'Firmado' : contract.status === 'voided' ? 'Anulado' : 'Pendiente de firma'}
+                  </span>
+                  {contract.signed_by_name && (
+                    <span className="text-xs text-ink-soft">
+                      {contract.signed_by_name} · {fmtDate(contract.signed_at)}
+                    </span>
+                  )}
+                </div>
+                <a
+                  href={`/contrato/${event.client_token}`}
+                  target="_blank"
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-cream-dark hover:bg-cream transition-colors"
+                >
+                  Ver contrato
+                </a>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-ink-soft-60">Sin contrato generado todavía</p>
+                <button
+                  onClick={generateContract}
+                  disabled={generatingContract}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gold text-ink hover:bg-gold-dark disabled:opacity-50 transition-colors"
+                >
+                  {generatingContract ? 'Generando...' : 'Generar contrato'}
+                </button>
+              </div>
+            )}
+            {contractMsg && <p className="text-xs text-danger mt-2">{contractMsg}</p>}
+          </div>
+        </section>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────
+         5. ESCANDALLO
+         ────────────────────────────────────────────────────────── */}
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={ShoppingBag} title="Escandallo" />
         {escandalloItems.length > 0 ? (
-          <div className="bg-[#F8F3E6] rounded-lg p-4 overflow-x-auto">
+          <div className="bg-cream-dark rounded-lg p-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#C9A86A]/20">
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Ingrediente</th>
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Proveedor</th>
-                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Gramos</th>
-                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Unidades</th>
-                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Ml</th>
-                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Completado</th>
+                <tr className="border-b border-gold/20">
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Ingrediente</th>
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Proveedor</th>
+                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Gramos</th>
+                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Unidades</th>
+                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Ml</th>
+                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Completado</th>
                 </tr>
               </thead>
               <tbody>
                 {escandalloItems.map((item: any) => (
-                  <tr key={item.id} className="border-b border-[#C9A86A]/10 last:border-0">
-                    <td className="py-1.5 text-[#0a0a0a] flex items-center gap-1.5">
-                      <Package className="w-3 h-3 text-[#C9A86A]" />
+                  <tr key={item.id} className="border-b border-gold/10 last:border-0">
+                    <td className="py-1.5 text-ink flex items-center gap-1.5">
+                      <Package className="w-3 h-3 text-gold" />
                       {item.ingredient_name}
                     </td>
-                    <td className="py-1.5 text-[#9CA3AF] flex items-center gap-1">
+                    <td className="py-1.5 text-ink-soft-60 flex items-center gap-1">
                       {item.provider_name && <Truck className="w-3 h-3" />}
                       {item.provider_name || '—'}
                     </td>
-                    <td className="py-1.5 text-right text-[#0a0a0a]">{item.total_grams || '—'}</td>
-                    <td className="py-1.5 text-right text-[#0a0a0a]">{item.total_units || '—'}</td>
-                    <td className="py-1.5 text-right text-[#0a0a0a]">{item.total_ml || '—'}</td>
+                    <td className="py-1.5 text-right text-ink">{item.total_grams || '—'}</td>
+                    <td className="py-1.5 text-right text-ink">{item.total_units || '—'}</td>
+                    <td className="py-1.5 text-right text-ink">{item.total_ml || '—'}</td>
                     <td className="py-1.5 text-center">
                       {item.completed ? (
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 text-green-700">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-success/10 text-success">
                           <Check className="w-3 h-3" />
                         </span>
                       ) : (
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 text-[#9CA3AF]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#9CA3AF]" />
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-cream-dark text-ink-soft-60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-ink-soft-60" />
                         </span>
                       )}
                     </td>
@@ -480,35 +686,35 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         5. PERSONAL
+         6. PERSONAL
          ────────────────────────────────────────────────────────── */}
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={Shirt} title="Personal" />
         {staffingLines.length > 0 ? (
-          <div className="bg-[#F8F3E6] rounded-lg p-4 overflow-x-auto">
+          <div className="bg-cream-dark rounded-lg p-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#C9A86A]/20">
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Rol</th>
-                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Plazas</th>
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Horario</th>
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Ubicacion</th>
-                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Asignados</th>
-                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Estado</th>
+                <tr className="border-b border-gold/20">
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Rol</th>
+                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Plazas</th>
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Horario</th>
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Ubicacion</th>
+                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Asignados</th>
+                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {staffingLines.map((line: any) => (
-                  <tr key={line.id} className="border-b border-[#C9A86A]/10 last:border-0">
-                    <td className="py-1.5 text-[#0a0a0a] font-medium">{line.role}</td>
-                    <td className="py-1.5 text-center text-[#0a0a0a]">{line.slots_needed}</td>
-                    <td className="py-1.5 text-[#9CA3AF]">
+                  <tr key={line.id} className="border-b border-gold/10 last:border-0">
+                    <td className="py-1.5 text-ink font-medium">{line.role}</td>
+                    <td className="py-1.5 text-center text-ink">{line.slots_needed}</td>
+                    <td className="py-1.5 text-ink-soft-60">
                       {line.start_time && line.end_time
                         ? `${line.start_time} — ${line.end_time}`
                         : '—'}
                     </td>
-                    <td className="py-1.5 text-[#9CA3AF]">{line.location || '—'}</td>
-                    <td className="py-1.5 text-center text-[#0a0a0a]">
+                    <td className="py-1.5 text-ink-soft-60">{line.location || '—'}</td>
+                    <td className="py-1.5 text-center text-ink">
                       {line.assigned_count || 0}/{line.slots_needed}
                     </td>
                     <td className="py-1.5 text-center">
@@ -525,29 +731,29 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         6. PAGOS
+         7. PAGOS Y FACTURACIÓN
          ────────────────────────────────────────────────────────── */}
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={WalletMinimal} title="Pagos" />
         {payments.length > 0 ? (
-          <div className="bg-[#F8F3E6] rounded-lg p-4 overflow-x-auto">
+          <div className="bg-cream-dark rounded-lg p-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#C9A86A]/20">
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Concepto</th>
-                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Importe</th>
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Vencimiento</th>
-                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Estado</th>
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Pagado</th>
-                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-[#9CA3AF] font-semibold">Metodo</th>
+                <tr className="border-b border-gold/20">
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Concepto</th>
+                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Importe</th>
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Vencimiento</th>
+                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Estado</th>
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Pagado</th>
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Metodo</th>
                 </tr>
               </thead>
               <tbody>
                 {payments.map((p: any) => (
-                  <tr key={p.id} className="border-b border-[#C9A86A]/10 last:border-0">
-                    <td className="py-1.5 text-[#0a0a0a]">{p.concept}</td>
-                    <td className="py-1.5 text-right font-semibold text-[#0a0a0a]">{money(p.amount)}</td>
-                    <td className="py-1.5 text-[#9CA3AF]">
+                  <tr key={p.id} className="border-b border-gold/10 last:border-0">
+                    <td className="py-1.5 text-ink">{p.concept}</td>
+                    <td className="py-1.5 text-right font-semibold text-ink">{money(p.amount)}</td>
+                    <td className="py-1.5 text-ink-soft-60">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {fmtDate(p.due_date)}
@@ -555,32 +761,32 @@ export default function EventDetail({ eventId }: EventDetailProps) {
                     </td>
                     <td className="py-1.5 text-center">
                       {p.paid ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/10 px-2 py-0.5 rounded-full">
                           <Check className="w-3 h-3" />
                           Pagado
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full">
                           <Clock className="w-3 h-3" />
                           Pendiente
                         </span>
                       )}
                     </td>
-                    <td className="py-1.5 text-[#9CA3AF]">{fmtDate(p.paid_date)}</td>
-                    <td className="py-1.5 text-[#9CA3AF]">{p.method || '—'}</td>
+                    <td className="py-1.5 text-ink-soft-60">{fmtDate(p.paid_date)}</td>
+                    <td className="py-1.5 text-ink-soft-60">{p.method || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {/* Summary */}
             <div className="mt-3 flex justify-end gap-6 text-sm">
-              <span className="text-[#9CA3AF]">
-                Total: <strong className="text-[#0a0a0a]">{money(payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0))}</strong>
+              <span className="text-ink-soft-60">
+                Total: <strong className="text-ink">{money(payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0))}</strong>
               </span>
-              <span className="text-green-700">
+              <span className="text-success">
                 Pagado: <strong>{money(payments.filter((p: any) => p.paid).reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0))}</strong>
               </span>
-              <span className="text-amber-700">
+              <span className="text-warning">
                 Pendiente: <strong>{money(payments.filter((p: any) => !p.paid).reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0))}</strong>
               </span>
             </div>
@@ -588,30 +794,79 @@ export default function EventDetail({ eventId }: EventDetailProps) {
         ) : (
           <EmptyMessage text="Sin pagos registrados" />
         )}
+
+        {/* Facturación parcial/posterior (Sprint 4, B5) */}
+        {invoices.length > 0 && (
+          <div className="mt-4 bg-cream-dark rounded-lg p-4">
+            <p className="text-[11px] uppercase tracking-wider text-ink-soft-60 font-semibold mb-2 flex items-center gap-1.5">
+              <Receipt className="w-3.5 h-3.5" />
+              Facturas ({invoices.length})
+            </p>
+            <div className="space-y-1.5">
+              {invoices.map((inv: any) => (
+                <div key={inv.id} className="flex items-center justify-between text-sm">
+                  <span className="text-ink">{inv.invoice_number}</span>
+                  <span className="text-ink-soft-60">{money(inv.subtotal)} · {inv.status === 'paid' ? 'Pagada' : 'Pendiente'}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-ink-soft-60 mt-2">
+              Facturado: {money(totalInvoiced)} de {money(totalPvp)}
+              {remainingToInvoice > 0 && ` — quedan ${money(remainingToInvoice)} por facturar`}
+            </p>
+          </div>
+        )}
+
+        {(event.status === 'completed' || event.status === 'paid') && remainingToInvoice > 0 && (
+          <div className="mt-4 bg-white rounded-lg border border-cream-dark p-4">
+            <p className="text-xs text-ink-soft mb-2">Facturar importe adicional (el resto ya cobrado manualmente)</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder={`Máx. ${remainingToInvoice.toFixed(2)}`}
+                value={extraInvoiceAmount}
+                onChange={(e) => setExtraInvoiceAmount(e.target.value)}
+                className="flex-1 text-sm border border-cream-dark rounded-lg px-3 py-2 focus:outline-none focus:border-gold"
+              />
+              <button
+                onClick={invoiceRemainder}
+                disabled={invoicing || !extraInvoiceAmount}
+                className="text-sm font-medium px-4 py-2 rounded-lg bg-gold text-ink hover:bg-gold-dark disabled:opacity-50 transition-colors"
+              >
+                {invoicing ? 'Facturando...' : 'Facturar'}
+              </button>
+            </div>
+            {invoiceMsg && (
+              <p className={`text-xs mt-2 ${invoiceMsg.includes('Error') ? 'text-danger' : 'text-success'}`}>{invoiceMsg}</p>
+            )}
+          </div>
+        )}
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         7. HISTORIAL
+         8. HISTORIAL
          ────────────────────────────────────────────────────────── */}
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={History} title="Historial" />
-        <div className="bg-[#F8F3E6] rounded-lg p-4">
+        <div className="bg-cream-dark rounded-lg p-4">
           <EmptyMessage text="Sin datos de historial" />
         </div>
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         8. BRIEFING CAMAREROS
+         9. BRIEFING CAMAREROS
          ────────────────────────────────────────────────────────── */}
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={Users} title="Briefing Camareros" />
         <BriefingCamareros eventId={event.id} />
       </section>
 
       {/* ──────────────────────────────────────────────────────────
-         9. CÁLCULO AUTOMÁTICO
+         10. CÁLCULO AUTOMÁTICO Y CIERRE
          ────────────────────────────────────────────────────────── */}
-      <section className="bg-[#FAF8F5] border border-[#C9A86A]/20 rounded-xl p-6">
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
         <SectionHeader icon={Calculator} title="Cálculos del Evento" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
@@ -627,14 +882,14 @@ export default function EventDetail({ eventId }: EventDetailProps) {
               setCalculating(false);
             }}
             disabled={calculating}
-            className="flex items-center gap-3 p-4 bg-white rounded-lg border border-stone-200 hover:border-[#C9A86A] transition-all disabled:opacity-50"
+            className="flex items-center gap-3 p-4 bg-white rounded-lg border border-cream-dark hover:border-gold transition-all disabled:opacity-50"
           >
-            <div className="w-10 h-10 rounded-lg bg-[#FBF6E9] flex items-center justify-center">
-              <Table className="w-5 h-5 text-[#C9A86A]" />
+            <div className="w-10 h-10 rounded-lg bg-cream-dark flex items-center justify-center">
+              <Table className="w-5 h-5 text-gold" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-stone-800">Calcular mesas y camareros</p>
-              <p className="text-xs text-stone-500">{event?.guest_count || 0} invitados → mesas de 10</p>
+              <p className="font-medium text-ink">Calcular mesas y camareros</p>
+              <p className="text-xs text-ink-soft-60">{event?.guest_count || 0} invitados → mesas de 10</p>
             </div>
           </button>
 
@@ -653,85 +908,95 @@ export default function EventDetail({ eventId }: EventDetailProps) {
               setCalculating(false);
             }}
             disabled={calculating}
-            className="flex items-center gap-3 p-4 bg-white rounded-lg border border-stone-200 hover:border-[#C9A86A] transition-all disabled:opacity-50"
+            className="flex items-center gap-3 p-4 bg-white rounded-lg border border-cream-dark hover:border-gold transition-all disabled:opacity-50"
           >
-            <div className="w-10 h-10 rounded-lg bg-[#FBF6E9] flex items-center justify-center">
-              <Calculator className="w-5 h-5 text-[#C9A86A]" />
+            <div className="w-10 h-10 rounded-lg bg-cream-dark flex items-center justify-center">
+              <Calculator className="w-5 h-5 text-gold" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-stone-800">Recalcular escandallo</p>
-              <p className="text-xs text-stone-500">Desde recetas activas</p>
+              <p className="font-medium text-ink">Recalcular escandallo</p>
+              <p className="text-xs text-ink-soft-60">Desde recetas activas</p>
             </div>
           </button>
         </div>
         {calcResult && (
-          <div className="mt-4 p-4 bg-white rounded-lg border border-emerald-200 text-sm">
-            <p className="font-medium text-emerald-800 mb-2">Resultado:</p>
+          <div className="mt-4 p-4 bg-white rounded-lg border border-success/30 text-sm">
+            <p className="font-medium text-success mb-2">Resultado:</p>
             <div className="grid grid-cols-3 gap-3 text-xs">
               <div>
-                <span className="text-stone-500">Mesas</span>
+                <span className="text-ink-soft-60">Mesas</span>
                 <p className="text-lg font-bold font-mono">{calcResult.tables_needed}</p>
               </div>
               <div>
-                <span className="text-stone-500">Camareros</span>
+                <span className="text-ink-soft-60">Camareros</span>
                 <p className="text-lg font-bold font-mono">{calcResult.waiters_needed}</p>
               </div>
               <div>
-                <span className="text-stone-500">Ocupación</span>
+                <span className="text-ink-soft-60">Ocupación</span>
                 <p className="text-lg font-bold font-mono">{calcResult.capacity_used}%</p>
               </div>
             </div>
           </div>
         )}
         {event.status === 'accepted' || event.status === 'in_progress' ? (
-          <div className="mt-6 pt-4 border-t border-stone-200">
+          <div className="mt-6 pt-4 border-t border-cream-dark">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-white rounded-lg border border-cream-dark">
+                <p className="text-xs text-ink-soft mb-2">Importe a facturar (opcional)</p>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder={`Por defecto: ${money(totalPvp)}`}
+                  value={invoiceAmount}
+                  onChange={(e) => setInvoiceAmount(e.target.value)}
+                  className="w-full text-sm border border-cream-dark rounded-lg px-3 py-2 focus:outline-none focus:border-gold"
+                />
+                <p className="text-[10px] text-ink-soft-60 mt-1">
+                  Deja en blanco para facturar el total. El resto se podrá facturar más tarde.
+                </p>
+              </div>
               <button
-                onClick={async () => {
-                  setClosing(true);
-                  setCloseMsg('');
-                  try {
-                    const res = await fetch(`/api/events/${event.id}/close`, { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
-                      setCloseMsg('✓ ' + (data.data?.results || []).join(', '));
-                      fetchAll();
-                    } else {
-                      setCloseMsg('Error: ' + (data.error || ''));
-                    }
-                  } catch { setCloseMsg('Error de conexión'); }
-                  setClosing(false);
-                }}
+                onClick={closeEvent}
                 disabled={closing}
-                className="flex items-center gap-3 p-4 bg-white rounded-lg border border-stone-200 hover:border-red-400 transition-all disabled:opacity-50 col-span-full"
+                className="flex items-center gap-3 p-4 bg-white rounded-lg border border-cream-dark hover:border-danger transition-all disabled:opacity-50"
               >
-                <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <div className="w-10 h-10 rounded-lg bg-danger/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-danger" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div className="text-left flex-1">
-                  <p className="font-medium text-stone-800">
+                  <p className="font-medium text-ink">
                     {closing ? 'Cerrando evento...' : 'Cerrar Evento'}
                   </p>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-xs text-ink-soft-60">
                     Congela escandallo · Deduce stock · Genera factura · Marca completado
                   </p>
                 </div>
               </button>
             </div>
-            {closeMsg && (
-              <div className={`mt-3 p-3 rounded-lg text-sm ${
-                closeMsg.includes('Error') ? 'bg-red-50 text-red-700 border border-red-200'
-                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-              }`}>
-                {closeMsg}
+            {closeError && (
+              <div className="mt-3 p-3 rounded-lg text-sm bg-danger/10 text-danger border border-danger/30">
+                {closeError}
+              </div>
+            )}
+            {closeConfirmations.length > 0 && (
+              <div className="mt-3 p-3 rounded-lg text-sm bg-success/10 text-success border border-success/30">
+                ✓ {closeConfirmations.join(', ')}
+              </div>
+            )}
+            {closeWarnings.length > 0 && (
+              <div className="mt-3 p-3 rounded-lg text-sm bg-warning/10 text-warning border border-warning/30 space-y-1">
+                {closeWarnings.map((w, i) => (
+                  <p key={i}>{w}</p>
+                ))}
               </div>
             )}
           </div>
         ) : event.status === 'completed' || event.status === 'paid' ? (
-          <div className="mt-6 pt-4 border-t border-stone-200">
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-sm text-blue-700">
+          <div className="mt-6 pt-4 border-t border-cream-dark">
+            <div className="p-4 bg-ink/10 rounded-lg border border-ink/20 text-sm text-ink">
               Evento cerrado. Escandallo congelado y stock deducido.
             </div>
           </div>

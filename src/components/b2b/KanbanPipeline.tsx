@@ -131,48 +131,48 @@ function SendBudgetModal({
       >
         {/* Header */}
         <div className="px-6 pt-6 pb-2">
-          <h2 className="font-serif text-lg text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h2 className="font-heading text-lg text-ink">
             Enviar presupuesto
           </h2>
-          <p className="text-[12px] text-[#6B7280] mt-0.5">{event.client_name}</p>
+          <p className="text-[12px] text-ink-soft mt-0.5">{event.client_name}</p>
         </div>
 
         {/* Email preview */}
         <div className="px-6 py-4">
-          <div className="bg-[#FAFAFC] rounded-xl border border-[#ECECF1] p-4 text-[13px] space-y-2">
-            <p className="font-medium text-[#1A1A1A]">
+          <div className="bg-cream rounded-xl border border-cream-dark p-4 text-[13px] space-y-2">
+            <p className="font-medium text-ink">
               Hola {event.client_name.split(' ')[0]},
             </p>
-            <p className="text-[#6B7280] leading-relaxed">
+            <p className="text-ink-soft leading-relaxed">
               Te adjuntamos el presupuesto para tu{' '}
-              <span className="font-medium text-[#1A1A1A]">{EVENT_TYPE_LABELS[event.event_type] || event.event_type}</span>{' '}
-              del <span className="font-medium text-[#1A1A1A]">{formatDate(event.event_date)}</span>.
+              <span className="font-medium text-ink">{EVENT_TYPE_LABELS[event.event_type] || event.event_type}</span>{' '}
+              del <span className="font-medium text-ink">{formatDate(event.event_date)}</span>.
             </p>
-            <div className="bg-white rounded-lg border border-[#ECECF1] p-3 text-[12px] space-y-1">
+            <div className="bg-white rounded-lg border border-cream-dark p-3 text-[12px] space-y-1">
               <div className="flex justify-between">
-                <span className="text-[#9CA3AF]">Comensales</span>
-                <span className="font-medium text-[#1A1A1A]">{event.guest_count} adultos{event.kids_count > 0 ? ` + ${event.kids_count} niños` : ''}</span>
+                <span className="text-ink-soft-60">Comensales</span>
+                <span className="font-medium text-ink">{event.guest_count} adultos{event.kids_count > 0 ? ` + ${event.kids_count} niños` : ''}</span>
               </div>
               {event.bar_hours > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-[#9CA3AF]">Barra</span>
-                  <span className="font-medium text-[#1A1A1A]">{event.bar_hours}h</span>
+                  <span className="text-ink-soft-60">Barra</span>
+                  <span className="font-medium text-ink">{event.bar_hours}h</span>
                 </div>
               )}
-              <div className="flex justify-between pt-1 border-t border-[#ECECF1]">
-                <span className="text-[#9CA3AF]">Total estimado</span>
-                <span className="font-bold text-[#1A1A1A]">{money(event.total_display || event.total_pvp)}</span>
+              <div className="flex justify-between pt-1 border-t border-cream-dark">
+                <span className="text-ink-soft-60">Total estimado</span>
+                <span className="font-bold text-ink">{money(event.total_display || event.total_pvp)}</span>
               </div>
             </div>
-            <p className="text-[#6B7280] text-[11px] italic">
+            <p className="text-ink-soft text-[11px] italic">
               * Este presupuesto se enviará por correo electrónico a{' '}
-              <span className="font-medium not-italic text-[#1A1A1A]">{event.client_email}</span>
+              <span className="font-medium not-italic text-ink">{event.client_email}</span>
             </p>
             {error && (
-              <div className="text-[12px] text-[#DC2626] bg-[#FEF3F3] rounded-lg px-3 py-2">{error}</div>
+              <div className="text-[12px] text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>
             )}
             {sent && (
-              <div className="text-[12px] text-[#16A34A] bg-[#EFFAF2] rounded-lg px-3 py-2 flex items-center gap-2">
+              <div className="text-[12px] text-success bg-success/10 rounded-lg px-3 py-2 flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M5 13l4 4L19 7" />
                 </svg>
@@ -187,7 +187,7 @@ function SendBudgetModal({
           <button
             onClick={onClose}
             disabled={sending}
-            className="flex-1 text-[13px] font-medium border border-[#E5E7EB] text-[#6B7280] py-2.5 rounded-xl hover:bg-[#F5F5F8] disabled:opacity-40 transition-colors"
+            className="flex-1 text-[13px] font-medium border border-cream-dark text-ink-soft py-2.5 rounded-xl hover:bg-cream disabled:opacity-50 transition-colors"
           >
             Cancelar
           </button>
@@ -299,10 +299,10 @@ function PaymentModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 pt-6 pb-2">
-          <h2 className="font-serif text-lg text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <h2 className="font-heading text-lg text-ink">
             {type === 'total' ? 'Cobro total' : 'Cobro parcial'}
           </h2>
-          <p className="text-[12px] text-[#6B7280] mt-0.5">
+          <p className="text-[12px] text-ink-soft mt-0.5">
             {event.client_name} · Total: {money(total)}
           </p>
         </div>
@@ -310,11 +310,11 @@ function PaymentModal({
         <div className="px-6 py-4 space-y-4">
           {/* Concept */}
           <div>
-            <label className="block text-[12px] font-medium text-[#6B7280] mb-1">Concepto</label>
+            <label className="block text-[12px] font-medium text-ink-soft mb-1">Concepto</label>
             <input
               value={concept}
               onChange={(e) => setConcept(e.target.value)}
-              className="w-full text-[13px] border border-[#E5E7EB] rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C]"
+              className="w-full text-[13px] border border-cream-dark rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold"
               placeholder="Ej: Señal, Saldo..."
               disabled={processing || done}
             />
@@ -322,14 +322,14 @@ function PaymentModal({
 
           {/* Amount */}
           <div>
-            <label className="block text-[12px] font-medium text-[#6B7280] mb-1">Importe</label>
+            <label className="block text-[12px] font-medium text-ink-soft mb-1">Importe</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#9CA3AF]">€</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft-60">€</span>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full text-[13px] border border-[#E5E7EB] rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30 focus:border-[#C9A84C]"
+                className="w-full text-[13px] border border-cream-dark rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold"
                 placeholder="0"
                 min={0}
                 step={0.01}
@@ -342,7 +342,7 @@ function PaymentModal({
                   <button
                     key={amt}
                     onClick={() => setAmount(String(amt))}
-                    className="flex-1 text-[10px] font-medium bg-[#F5F5F8] text-[#6B7280] hover:bg-[#ECECF1] py-1.5 rounded-lg transition-colors"
+                    className="flex-1 text-[10px] font-medium bg-cream text-ink-soft hover:bg-cream-dark py-1.5 rounded-lg transition-colors"
                     disabled={processing || done}
                   >
                     {money(amt)}
@@ -354,7 +354,7 @@ function PaymentModal({
 
           {/* Method */}
           <div>
-            <label className="block text-[12px] font-medium text-[#6B7280] mb-1">Método de pago</label>
+            <label className="block text-[12px] font-medium text-ink-soft mb-1">Método de pago</label>
             <div className="flex gap-2">
               {[
                 { value: 'transferencia', label: 'Transferencia' },
@@ -367,8 +367,8 @@ function PaymentModal({
                   onClick={() => setMethod(m.value)}
                   className={`flex-1 text-[11px] font-medium py-2 rounded-lg border transition-colors ${
                     method === m.value
-                      ? 'bg-[#1A1A2E] text-white border-[#1A1A2E]'
-                      : 'bg-white text-[#6B7280] border-[#E5E7EB] hover:bg-[#F5F5F8]'
+                      ? 'bg-ink text-white border-ink'
+                      : 'bg-white text-ink-soft border-cream-dark hover:bg-cream'
                   }`}
                   disabled={processing || done}
                 >
@@ -379,10 +379,10 @@ function PaymentModal({
           </div>
 
           {pError && (
-            <div className="text-[12px] text-[#DC2626] bg-[#FEF3F3] rounded-lg px-3 py-2">{pError}</div>
+            <div className="text-[12px] text-danger bg-danger/10 rounded-lg px-3 py-2">{pError}</div>
           )}
           {done && (
-            <div className="text-[12px] text-[#16A34A] bg-[#EFFAF2] rounded-lg px-3 py-2 flex items-center gap-2">
+            <div className="text-[12px] text-success bg-success/10 rounded-lg px-3 py-2 flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path d="M5 13l4 4L19 7" />
               </svg>
@@ -395,7 +395,7 @@ function PaymentModal({
           <button
             onClick={onClose}
             disabled={processing}
-            className="flex-1 text-[13px] font-medium border border-[#E5E7EB] text-[#6B7280] py-2.5 rounded-xl hover:bg-[#F5F5F8] disabled:opacity-40 transition-colors"
+            className="flex-1 text-[13px] font-medium border border-cream-dark text-ink-soft py-2.5 rounded-xl hover:bg-cream disabled:opacity-50 transition-colors"
           >
             Cancelar
           </button>
@@ -515,34 +515,34 @@ export default function KanbanPipeline() {
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {STATS.map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl border border-[#ECECF1] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <div key={s.label} className="bg-white rounded-2xl border border-cream-dark p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="w-2 h-2 rounded-full" style={{ background: s.accent }} />
-              <span className="text-[12px] text-[#6B7280]">{s.label}</span>
+              <span className="text-[12px] text-ink-soft">{s.label}</span>
             </div>
-            <div className="text-2xl font-semibold text-[#1A1A1A] tabular-nums">{s.value}</div>
+            <div className="text-2xl font-semibold text-ink tabular-nums">{s.value}</div>
           </div>
         ))}
       </div>
 
       {!loading && events.length === 0 && (
-        <p className="text-xs text-[#9CA3AF]">No hay presupuestos registrados aún.</p>
+        <p className="text-xs text-ink-soft-60">No hay presupuestos registrados aún.</p>
       )}
-      {loading && <p className="text-xs text-[#9CA3AF]">Cargando presupuestos…</p>}
+      {loading && <p className="text-xs text-ink-soft-60">Cargando presupuestos…</p>}
 
       {/* Board */}
       <div className="flex gap-4 overflow-x-auto pb-4 flex-1 min-h-0">
         {COLUMNS.map((col) => {
           const colEvents = getEventsByStatus(col.status);
           return (
-            <div key={col.status} className="flex-shrink-0 w-[300px] flex flex-col rounded-2xl bg-[#FAFAFC] border border-[#ECECF1] h-full">
+            <div key={col.status} className="flex-shrink-0 w-[300px] flex flex-col rounded-2xl bg-cream border border-cream-dark h-full">
               {/* Column header */}
               <div className="px-4 py-3 flex items-center justify-between rounded-t-2xl" style={{ background: col.tint }}>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: col.dot }} />
-                  <span className="text-[13px] font-semibold text-[#374151]">{col.label}</span>
+                  <span className="text-[13px] font-semibold text-ink">{col.label}</span>
                 </div>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70 text-[#6B7280]">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70 text-ink-soft">
                   {colEvents.length}
                 </span>
               </div>
@@ -550,7 +550,7 @@ export default function KanbanPipeline() {
               {/* Cards */}
               <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
                 {colEvents.length === 0 && (
-                  <div className="text-center text-[12px] text-[#B0B0B8] py-8">Sin presupuestos</div>
+                  <div className="text-center text-[12px] text-ink-soft-60 py-8">Sin presupuestos</div>
                 )}
                 {colEvents.map((event, i) => (
                   <motion.div
@@ -558,7 +558,7 @@ export default function KanbanPipeline() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                    className={`bg-white rounded-xl p-3.5 border shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all cursor-pointer group ${isIncompleteDraft(event) ? 'border-orange-300 border-dashed' : 'border-[#ECECF1]'}`}
+                    className={`bg-white rounded-xl p-3.5 border shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-[0_4px_14px_rgba(16,24,40,0.08)] hover:border-[#E0D3A8] transition-all cursor-pointer group ${isIncompleteDraft(event) ? 'border-orange-300 border-dashed' : 'border-cream-dark'}`}
                     title={isIncompleteDraft(event) ? incompleteReasons(event).join(' · ') : ''}
                     onClick={() => setEditingId(event.id)}
                   >
@@ -569,10 +569,10 @@ export default function KanbanPipeline() {
                         {initials(event.client_name)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-[13px] font-semibold text-[#1A1A1A] leading-tight truncate">{event.client_name}</h4>
-                        <p className="text-[11px] text-[#9CA3AF] truncate">{event.client_email}</p>
+                        <h4 className="text-[13px] font-semibold text-ink leading-tight truncate">{event.client_name}</h4>
+                        <p className="text-[11px] text-ink-soft-60 truncate">{event.client_email}</p>
                       </div>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#FBF6E9] text-[#A88A3A] whitespace-nowrap">
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#FBF6E9] text-gold-dark whitespace-nowrap">
                         {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
                       </span>
                       {isIncompleteDraft(event) && (
@@ -583,18 +583,18 @@ export default function KanbanPipeline() {
                     </div>
 
                     {/* Meta */}
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#6B7280] mb-3">
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-soft mb-3">
                       <span className="inline-flex items-center gap-1">
-                        <svg className="w-3 h-3 text-[#B0B0B8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        <svg className="w-3 h-3 text-ink-soft-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                         {formatDate(event.event_date)}
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <svg className="w-3 h-3 text-[#B0B0B8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        <svg className="w-3 h-3 text-ink-soft-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                         {event.guest_count}{event.kids_count > 0 ? ` +${event.kids_count}` : ''}
                       </span>
                       {event.bar_hours > 0 && (
                         <span className="inline-flex items-center gap-1">
-                          <svg className="w-3 h-3 text-[#B0B0B8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                          <svg className="w-3 h-3 text-ink-soft-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                           {event.bar_hours}h barra
                         </span>
                       )}
@@ -604,12 +604,12 @@ export default function KanbanPipeline() {
                     {(event.selected_items || []).length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-3">
                         {(event.selected_items || []).slice(0, 2).map((item, j) => (
-                          <span key={j} className="text-[10px] bg-[#F5F5F8] text-[#6B7280] px-1.5 py-0.5 rounded-md truncate max-w-[120px]">
+                          <span key={j} className="text-[10px] bg-cream text-ink-soft px-1.5 py-0.5 rounded-md truncate max-w-[120px]">
                             {item.name}
                           </span>
                         ))}
                         {(event.selected_items || []).length > 2 && (
-                          <span className="text-[10px] text-[#B0B0B8] px-1">+{event.selected_items.length - 2}</span>
+                          <span className="text-[10px] text-ink-soft-60 px-1">+{event.selected_items.length - 2}</span>
                         )}
                       </div>
                     )}
@@ -617,8 +617,8 @@ export default function KanbanPipeline() {
                     {/* Total PVP */}
                     {Number(event.total_pvp) > 0 && (
                       <div className="flex items-center justify-between pt-2 border-t border-[#F2F2F5]">
-                        <span className="text-[10px] text-[#6B7280]">Total</span>
-                        <span className="text-[13px] font-bold text-[#1A1A1A]">{money(event.total_display || event.total_pvp)}</span>
+                        <span className="text-[10px] text-ink-soft">Total</span>
+                        <span className="text-[13px] font-bold text-ink">{money(event.total_display || event.total_pvp)}</span>
                       </div>
                     )}
 
@@ -628,7 +628,7 @@ export default function KanbanPipeline() {
                       {col.status === 'draft' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSendBudgetEventId(event.id); }}
-                          className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors"
+                          className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-gold-dark hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors"
                         >
                           Enviar presupuesto
                         </button>
@@ -639,19 +639,19 @@ export default function KanbanPipeline() {
                         <>
                           <button
                             onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'accepted'); }}
-                            className="flex-1 text-[11px] font-medium bg-[#EFFAF2] text-[#15803D] hover:bg-[#D1FAE5] py-1.5 rounded-lg transition-colors"
+                            className="flex-1 text-[11px] font-medium bg-success/10 text-success hover:bg-success/20 py-1.5 rounded-lg transition-colors"
                           >
                             Aceptar
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setSendBudgetEventId(event.id); }}
-                            className="text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] px-2.5 py-1.5 rounded-lg transition-colors"
+                            className="text-[11px] font-medium bg-[#FBF6E9] text-gold-dark hover:bg-[#F5EAD0] px-2.5 py-1.5 rounded-lg transition-colors"
                           >
                             Reenviar
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled'); }}
-                            className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors"
+                            className="text-[11px] bg-danger/10 text-danger hover:bg-danger/20 px-2.5 py-1.5 rounded-lg transition-colors"
                           >
                             Cancelar
                           </button>
@@ -668,26 +668,26 @@ export default function KanbanPipeline() {
                               <>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setPaymentModal({ eventId: event.id, type: 'parcial' }); }}
-                                  className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-[#A88A3A] hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors"
+                                  className="flex-1 text-[11px] font-medium bg-[#FBF6E9] text-gold-dark hover:bg-[#F5EAD0] py-1.5 rounded-lg transition-colors"
                                 >
                                   Cobro parcial
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setPaymentModal({ eventId: event.id, type: 'total' }); }}
-                                  className="flex-1 text-[11px] font-medium bg-[#EFFAF2] text-[#15803D] hover:bg-[#D1FAE5] py-1.5 rounded-lg transition-colors"
+                                  className="flex-1 text-[11px] font-medium bg-success/10 text-success hover:bg-success/20 py-1.5 rounded-lg transition-colors"
                                 >
                                   Cobro total
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled'); }}
-                                  className="text-[11px] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FCE3E3] px-2.5 py-1.5 rounded-lg transition-colors"
+                                  className="text-[11px] bg-danger/10 text-danger hover:bg-danger/20 px-2.5 py-1.5 rounded-lg transition-colors"
                                 >
                                   Cancelar
                                 </button>
                               </>
                             ) : (
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] font-semibold text-[#15803D] bg-[#D1FAE5] px-2.5 py-1 rounded-full">
+                                <span className="text-[11px] font-semibold text-success bg-success/20 px-2.5 py-1 rounded-full">
                                   Pagado completo
                                 </span>
                               </div>
@@ -702,14 +702,14 @@ export default function KanbanPipeline() {
                           <a
                             href={`/admin/invitados?event_id=${event.id}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="flex-1 text-center text-[10px] font-medium text-[#6B7280] bg-[#F5F5F8] hover:bg-[#ECECF1] py-1 rounded-lg transition-colors"
+                            className="flex-1 text-center text-[10px] font-medium text-ink-soft bg-cream hover:bg-cream-dark py-1 rounded-lg transition-colors"
                           >
                             Invitados
                           </a>
                           <a
                             href={`/admin/operations?event_id=${event.id}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="flex-1 text-center text-[10px] font-medium text-[#6B7280] bg-[#F5F5F8] hover:bg-[#ECECF1] py-1 rounded-lg transition-colors"
+                            className="flex-1 text-center text-[10px] font-medium text-ink-soft bg-cream hover:bg-cream-dark py-1 rounded-lg transition-colors"
                           >
                             Operaciones
                           </a>

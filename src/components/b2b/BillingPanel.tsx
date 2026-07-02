@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { PageHeader, Spinner, EmptyState } from '@/components/ui';
 import { StatStrip } from '@/components/ui/StatStrip';
 
 interface Payment {
@@ -33,16 +34,16 @@ const fmtDate = (d: string | null) => {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  overdue: 'bg-red-50 text-red-700 border-red-200',
-  cancelled: 'bg-gray-50 text-gray-500 border-gray-200',
+  pending: 'bg-warning/10 text-warning border-warning/30',
+  paid: 'bg-success/10 text-success border-success/30',
+  overdue: 'bg-danger/10 text-danger border-danger/30',
+  cancelled: 'bg-cream text-ink-soft border-cream-dark',
 };
 
 const PAYMENT_CONCEPT_COLORS: Record<string, string> = {
-  'Señal': 'bg-amber-50 text-amber-700 border-amber-200',
+  'Señal': 'bg-warning/10 text-warning border-warning/30',
   'Saldo': 'bg-blue-50 text-blue-700 border-blue-200',
-  'default': 'bg-gray-50 text-gray-600 border-gray-200',
+  'default': 'bg-cream text-ink-soft border-cream-dark',
 };
 
 export default function BillingPanel() {
@@ -100,36 +101,36 @@ export default function BillingPanel() {
       {/* Same invoice detail view as before - abbreviated */}
       <div className="flex items-center gap-3">
         <button onClick={() => setSelectedInvoice(null)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-cream-dark hover:bg-cream transition-colors">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <div>
-          <h2 className="text-lg font-bold text-[#1A1A2E]">{selectedInvoice.invoice_number}</h2>
-          <p className="text-xs text-[#6B7280]">{selectedInvoice.client_name} · {selectedInvoice.event_type}</p>
+          <h2 className="text-lg font-bold text-ink">{selectedInvoice.invoice_number}</h2>
+          <p className="text-xs text-ink-soft">{selectedInvoice.client_name} · {selectedInvoice.event_type}</p>
         </div>
         <span className={`ml-auto text-[11px] font-medium px-2.5 py-1 rounded-full border ${STATUS_COLORS[selectedInvoice.status] || ''}`}>
           {selectedInvoice.status === 'paid' ? 'Pagada' : selectedInvoice.status === 'pending' ? 'Pendiente' : selectedInvoice.status}
         </span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-[#FAF8F5] border border-[#E5E7EB]">
-        <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Subtotal</p><p className="text-lg font-bold text-[#1A1A2E]">{money(selectedInvoice.subtotal)}</p></div>
-        <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">IVA {selectedInvoice.iva_pct}%</p><p className="text-lg font-bold text-[#1A1A2E]">{money(selectedInvoice.iva_amount)}</p></div>
-        <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Total</p><p className="text-lg font-bold text-[#1A1A2E]">{money(selectedInvoice.total)}</p></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-cream border border-cream-dark">
+        <div><p className="text-[10px] text-ink-soft uppercase tracking-wide font-semibold">Subtotal</p><p className="text-lg font-bold text-ink">{money(selectedInvoice.subtotal)}</p></div>
+        <div><p className="text-[10px] text-ink-soft uppercase tracking-wide font-semibold">IVA {selectedInvoice.iva_pct}%</p><p className="text-lg font-bold text-ink">{money(selectedInvoice.iva_amount)}</p></div>
+        <div><p className="text-[10px] text-ink-soft uppercase tracking-wide font-semibold">Total</p><p className="text-lg font-bold text-ink">{money(selectedInvoice.total)}</p></div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white border border-[#E5E7EB]">
-        <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Cliente fiscal</p><p className="text-sm text-[#1A1A2E] font-medium">{selectedInvoice.fiscal_name}</p><p className="text-xs text-[#6B7280]">{selectedInvoice.fiscal_nif}</p></div>
-        <div><p className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold">Fechas</p><p className="text-sm text-[#1A1A2E]">Emitida: {fmtDate(selectedInvoice.created_at)}</p>{selectedInvoice.paid_at && <p className="text-xs text-green-600">Pagada: {fmtDate(selectedInvoice.paid_at)}</p>}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white border border-cream-dark">
+        <div><p className="text-[10px] text-ink-soft uppercase tracking-wide font-semibold">Cliente fiscal</p><p className="text-sm text-ink font-medium">{selectedInvoice.fiscal_name}</p><p className="text-xs text-ink-soft">{selectedInvoice.fiscal_nif}</p></div>
+        <div><p className="text-[10px] text-ink-soft uppercase tracking-wide font-semibold">Fechas</p><p className="text-sm text-ink">Emitida: {fmtDate(selectedInvoice.created_at)}</p>{selectedInvoice.paid_at && <p className="text-xs text-success">Pagada: {fmtDate(selectedInvoice.paid_at)}</p>}</div>
       </div>
       <div className="flex gap-3">
         {selectedInvoice.status === 'pending' && (
           <button onClick={() => { fetch(`/api/invoices/${selectedInvoice.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paid' }) }).then(() => { setSelectedInvoice(null); fetchData(); }); }}
-            className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors">
+            className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-success text-white hover:bg-success/90 transition-colors">
             Marcar como Pagada
           </button>
         )}
         <a href={`/admin/recibo/${selectedInvoice.id}`} target="_blank"
-          className="flex-1 text-sm font-medium py-2.5 rounded-xl border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors text-center">
+          className="flex-1 text-sm font-medium py-2.5 rounded-xl border border-cream-dark hover:bg-cream transition-colors text-center">
           🖨 Ver Justificante
         </a>
       </div>
@@ -138,10 +139,7 @@ export default function BillingPanel() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-[#1A1A2E]">Facturación y Cobros</h1>
-        <p className="text-xs text-[#6B7280]">Cobros pendientes, pagos recibidos y facturación</p>
-      </div>
+      <PageHeader title="Facturación y Cobros" subtitle="Cobros pendientes, pagos recibidos y facturación" />
 
       {/* Stats */}
       <StatStrip items={[
@@ -152,67 +150,68 @@ export default function BillingPanel() {
       ]} />
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-[#F3F4F6] rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-cream rounded-xl w-fit">
         <button onClick={() => setActiveTab('payments')}
-          className={`px-4 py-1.5 text-[12px] font-medium rounded-lg transition-colors ${activeTab === 'payments' ? 'bg-white text-[#1A1A2E] shadow-sm' : 'text-[#6B7280] hover:text-[#1A1A2E]'}`}>
+          className={`px-4 py-1.5 text-[12px] font-medium rounded-lg transition-colors ${activeTab === 'payments' ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}>
           Cobros
         </button>
         <button onClick={() => setActiveTab('invoices')}
-          className={`px-4 py-1.5 text-[12px] font-medium rounded-lg transition-colors ${activeTab === 'invoices' ? 'bg-white text-[#1A1A2E] shadow-sm' : 'text-[#6B7280] hover:text-[#1A1A2E]'}`}>
+          className={`px-4 py-1.5 text-[12px] font-medium rounded-lg transition-colors ${activeTab === 'invoices' ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}>
           Facturas
         </button>
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-sm text-[#6B7280]">Cargando...</div>
+        <Spinner label="Cargando..." />
       ) : activeTab === 'payments' ? (
         /* === PAYMENTS VIEW === */
         <div className="space-y-4">
           {payments.length === 0 ? (
-            <div className="text-center py-12 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-2xl border border-dashed border-[#E5E7EB]">
-              No hay cobros registrados. Al aceptar un presupuesto se generan automáticamente la señal y el saldo final.
-            </div>
+            <EmptyState
+              title="No hay cobros registrados"
+              description="Al aceptar un presupuesto se generan automáticamente la señal y el saldo final."
+            />
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-cream-dark bg-white">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
-                    <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Evento</th>
-                    <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Concepto</th>
-                    <th className="text-right text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Importe</th>
-                    <th className="text-center text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Vencimiento</th>
-                    <th className="text-center text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Estado</th>
-                    <th className="text-right text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Acción</th>
+                  <tr className="border-b border-cream-dark bg-cream">
+                    <th className="text-left text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Evento</th>
+                    <th className="text-left text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Concepto</th>
+                    <th className="text-right text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Importe</th>
+                    <th className="text-center text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Vencimiento</th>
+                    <th className="text-center text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Estado</th>
+                    <th className="text-right text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Acción</th>
                   </tr>
                 </thead>
                 <tbody>
                   {payments.map((p) => {
                     const isOverdue = !p.paid && p.due_date && new Date(p.due_date) < new Date();
                     return (
-                      <tr key={p.id} className={`border-b border-[#F3F4F6] hover:bg-[#FAF8F5] transition-colors ${isOverdue ? 'bg-red-50/30' : ''}`}>
+                      <tr key={p.id} className={`border-b border-cream-dark hover:bg-cream transition-colors ${isOverdue ? 'bg-danger/5' : ''}`}>
                         <td className="px-4 py-3.5">
-                          <p className="text-sm font-medium text-[#1A1A2E]">{p.client_name}</p>
-                          <p className="text-[11px] text-[#9CA3AF] capitalize">{p.event_type} · {fmtDate(p.event_date)}</p>
+                          <p className="text-sm font-medium text-ink">{p.client_name}</p>
+                          <p className="text-[11px] text-ink-soft-60 capitalize">{p.event_type} · {fmtDate(p.event_date)}</p>
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
                             {getConceptBadge(p.concept)}
-                            <span className="text-sm text-[#1A1A2E]">{p.concept}</span>
+                            <span className="text-sm text-ink">{p.concept}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-right text-sm font-bold text-[#1A1A2E]">{money(p.amount)}</td>
-                        <td className="px-4 py-3.5 text-center text-sm text-[#6B7280]">{fmtDate(p.due_date)}</td>
+                        <td className="px-4 py-3.5 text-right text-sm font-bold text-ink">{money(p.amount)}</td>
+                        <td className="px-4 py-3.5 text-center text-sm text-ink-soft">{fmtDate(p.due_date)}</td>
                         <td className="px-4 py-3.5 text-center">
                           {p.paid ? (
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/30">
                               Cobrado {p.paid_date ? fmtDate(p.paid_date) : ''}
                             </span>
                           ) : isOverdue ? (
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/30">
                               Vencido
                             </span>
                           ) : (
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/30">
                               Pendiente
                             </span>
                           )}
@@ -222,7 +221,7 @@ export default function BillingPanel() {
                             <button
                               onClick={() => markPaymentPaid(p)}
                               disabled={payingId === p.id}
-                              className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-[#15803D] text-white hover:bg-[#166534] disabled:opacity-50 transition-colors">
+                              className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-success text-white hover:bg-success/90 disabled:opacity-50 transition-colors">
                               {payingId === p.id ? '...' : 'Cobrar'}
                             </button>
                           )}
@@ -230,12 +229,12 @@ export default function BillingPanel() {
                             <div className="flex gap-1 justify-end">
                               {p.receipt_url ? (
                                 <a href={p.receipt_url} target="_blank"
-                                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors inline-flex items-center gap-1">
+                                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-cream-dark hover:bg-cream transition-colors inline-flex items-center gap-1">
                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
                                   Justificante
                                 </a>
                               ) : (
-                                <label className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] cursor-pointer transition-colors inline-flex items-center gap-1">
+                                <label className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-cream-dark hover:bg-cream cursor-pointer transition-colors inline-flex items-center gap-1">
                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 4v8m0 0l-3-3m3 3l3-3M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
                                   Subir justificante
                                   <input type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden"
@@ -274,40 +273,41 @@ export default function BillingPanel() {
         /* === INVOICES VIEW (same as before) === */
         <div className="space-y-4">
           {invoices.length === 0 ? (
-            <div className="text-center py-12 text-sm text-[#6B7280] bg-[#FAF8F5] rounded-2xl border border-dashed border-[#E5E7EB]">
-              No hay facturas todavía. Completa un evento y genera la factura desde aquí.
-            </div>
+            <EmptyState
+              title="No hay facturas todavía"
+              description="Completa un evento y genera la factura desde aquí."
+            />
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-cream-dark bg-white">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-[#E5E7EB] bg-[#FAF8F5]">
-                    <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Factura</th>
-                    <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Cliente</th>
-                    <th className="text-left text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Evento</th>
-                    <th className="text-right text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Total</th>
-                    <th className="text-center text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Estado</th>
-                    <th className="text-right text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide px-4 py-3">Acción</th>
+                  <tr className="border-b border-cream-dark bg-cream">
+                    <th className="text-left text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Factura</th>
+                    <th className="text-left text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Cliente</th>
+                    <th className="text-left text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Evento</th>
+                    <th className="text-right text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Total</th>
+                    <th className="text-center text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Estado</th>
+                    <th className="text-right text-[11px] font-semibold text-ink-soft uppercase tracking-wide px-4 py-3">Acción</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoices.map((inv) => (
                     <tr key={inv.id}
                       onClick={() => setSelectedInvoice(inv)}
-                      className="border-b border-[#F3F4F6] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                      className="border-b border-cream-dark hover:bg-cream cursor-pointer transition-colors">
                       <td className="px-4 py-3.5">
-                        <p className="text-sm font-medium text-[#1A1A2E]">{inv.invoice_number}</p>
-                        <p className="text-[11px] text-[#9CA3AF]">{fmtDate(inv.created_at)}</p>
+                        <p className="text-sm font-medium text-ink">{inv.invoice_number}</p>
+                        <p className="text-[11px] text-ink-soft-60">{fmtDate(inv.created_at)}</p>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="text-sm text-[#1A1A2E]">{inv.client_name}</p>
-                        <p className="text-[11px] text-[#9CA3AF]">{inv.fiscal_nif}</p>
+                        <p className="text-sm text-ink">{inv.client_name}</p>
+                        <p className="text-[11px] text-ink-soft-60">{inv.fiscal_nif}</p>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="text-sm text-[#1A1A2E] capitalize">{inv.event_type}</p>
-                        <p className="text-[11px] text-[#9CA3AF]">{fmtDate(inv.event_date)}</p>
+                        <p className="text-sm text-ink capitalize">{inv.event_type}</p>
+                        <p className="text-[11px] text-ink-soft-60">{fmtDate(inv.event_date)}</p>
                       </td>
-                      <td className="px-4 py-3.5 text-right text-sm font-bold text-[#1A1A2E]">{money(inv.total)}</td>
+                      <td className="px-4 py-3.5 text-right text-sm font-bold text-ink">{money(inv.total)}</td>
                       <td className="px-4 py-3.5 text-center">
                         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[inv.status] || ''}`}>
                           {inv.status === 'paid' ? 'Pagada' : inv.status === 'pending' ? 'Pendiente' : inv.status}
@@ -317,12 +317,12 @@ export default function BillingPanel() {
                         <div className="flex gap-1 justify-end" onClick={e => e.stopPropagation()}>
                           {inv.status === 'pending' && (
                             <button onClick={() => fetch(`/api/invoices/${inv.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paid' }) }).then(fetchData)}
-                              className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-[#15803D] text-white hover:bg-[#166534]">
+                              className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-success text-white hover:bg-success/90">
                               Pagar
                             </button>
                           )}
                           <a href={`/admin/recibo/${inv.id}`} target="_blank"
-                            className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6]">
+                            className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-cream-dark hover:bg-cream">
                             🖨
                           </a>
                         </div>

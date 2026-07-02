@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select';
 import Icon from '@/components/shared/Icon';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PageHeader } from '@/components/ui/PageHeader';
 import QrScanner from '@/components/b2b/QrScanner';
 
 /* ------------------------------------------------------------------ */
@@ -149,9 +150,9 @@ interface AppccResponse {
 /* ------------------------------------------------------------------ */
 
 function stockStatus(qty: number, min: number | null) {
-  if (qty <= 0) return { label: 'Agotado', icon: 'circleX' as const, color: 'text-red-600', bg: 'bg-red-50' };
-  if (min !== null && qty <= min) return { label: 'Bajo', icon: 'alertTriangle' as const, color: 'text-amber-600', bg: 'bg-amber-50' };
-  return { label: 'OK', icon: 'check-circle' as const, color: 'text-green-600', bg: 'bg-green-50' };
+  if (qty <= 0) return { label: 'Agotado', icon: 'circleX' as const, color: 'text-danger', bg: 'bg-danger/10' };
+  if (min !== null && qty <= min) return { label: 'Bajo', icon: 'alertTriangle' as const, color: 'text-warning', bg: 'bg-warning/10' };
+  return { label: 'OK', icon: 'check-circle' as const, color: 'text-success', bg: 'bg-success/10' };
 }
 
 function formatDate(d: string | null | undefined) {
@@ -450,19 +451,17 @@ export default function TrazabilidadPanel() {
     <div className="max-w-7xl mx-auto">
       {/* Encabezado */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-800" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-          Trazabilidad Sanitaria
-        </h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Gestión de inventario, recepciones, lotes e informe APPCC
-        </p>
+        <PageHeader
+          title="Trazabilidad Sanitaria"
+          subtitle="Gestión de inventario, recepciones, lotes e informe APPCC"
+        />
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
-          <Icon name="alertCircle" className="w-4 h-4 text-red-500 flex-shrink-0" />
-          <p className="text-sm text-red-700">{error}</p>
-          <button onClick={() => setError('')} className="ml-auto text-red-400 hover:text-red-600">
+        <div className="mb-4 px-4 py-3 bg-danger/10 border border-danger/30 rounded-xl flex items-center gap-2">
+          <Icon name="alertCircle" className="w-4 h-4 text-danger flex-shrink-0" />
+          <p className="text-sm text-danger">{error}</p>
+          <button onClick={() => setError('')} className="ml-auto text-danger/70 hover:text-danger">
             <Icon name="x" className="w-4 h-4" />
           </button>
         </div>
@@ -472,20 +471,20 @@ export default function TrazabilidadPanel() {
       {/*  Tabs                                                         */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="w-full justify-start gap-1 bg-stone-50 p-1 rounded-xl border border-stone-200 overflow-x-auto">
-          <TabsTrigger value="inventario" className="data-[state=active]:bg-white data-[state=active]:text-amber-800 data-[state=active]:shadow-sm text-xs sm:text-sm">
+        <TabsList className="w-full justify-start gap-1 bg-cream p-1 rounded-xl border border-cream-dark overflow-x-auto">
+          <TabsTrigger value="inventario" className="data-[state=active]:bg-white data-[state=active]:text-warning data-[state=active]:shadow-sm text-xs sm:text-sm">
             <Icon name="package" className="w-4 h-4 mr-1.5" />
             Inventario
           </TabsTrigger>
-          <TabsTrigger value="recepciones" className="data-[state=active]:bg-white data-[state=active]:text-amber-800 data-[state=active]:shadow-sm text-xs sm:text-sm">
+          <TabsTrigger value="recepciones" className="data-[state=active]:bg-white data-[state=active]:text-warning data-[state=active]:shadow-sm text-xs sm:text-sm">
             <Icon name="truck" className="w-4 h-4 mr-1.5" />
             Recepciones
           </TabsTrigger>
-          <TabsTrigger value="lotes" className="data-[state=active]:bg-white data-[state=active]:text-amber-800 data-[state=active]:shadow-sm text-xs sm:text-sm">
+          <TabsTrigger value="lotes" className="data-[state=active]:bg-white data-[state=active]:text-warning data-[state=active]:shadow-sm text-xs sm:text-sm">
             <Icon name="layers" className="w-4 h-4 mr-1.5" />
             Lotes por evento
           </TabsTrigger>
-          <TabsTrigger value="appcc" className="data-[state=active]:bg-white data-[state=active]:text-amber-800 data-[state=active]:shadow-sm text-xs sm:text-sm">
+          <TabsTrigger value="appcc" className="data-[state=active]:bg-white data-[state=active]:text-warning data-[state=active]:shadow-sm text-xs sm:text-sm">
             <Icon name="clipboardCheck" className="w-4 h-4 mr-1.5" />
             Informe APPCC
           </TabsTrigger>
@@ -496,7 +495,7 @@ export default function TrazabilidadPanel() {
         {/* ─────────────────────────────────────────────────────────── */}
         <TabsContent value="inventario" className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-ink-soft">
               {inventory.length} ingrediente{inventory.length !== 1 ? 's' : ''} en inventario
             </p>
             <Button
@@ -514,7 +513,7 @@ export default function TrazabilidadPanel() {
           {invLoading ? (
             <div className="animate-pulse space-y-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-12 bg-stone-100 rounded-lg" />
+                <div key={i} className="h-12 bg-cream-dark rounded-lg" />
               ))}
             </div>
           ) : inventory.length === 0 ? (
@@ -524,10 +523,10 @@ export default function TrazabilidadPanel() {
               description="No hay ingredientes registrados en el inventario."
             />
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+            <div className="overflow-x-auto rounded-xl border border-cream-dark bg-white">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-stone-50 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                  <tr className="bg-cream text-left text-xs font-semibold text-ink-soft uppercase tracking-wider">
                     <th className="px-4 py-3">Ingrediente</th>
                     <th className="px-4 py-3">Stock</th>
                     <th className="px-4 py-3">Stock mínimo</th>
@@ -540,14 +539,14 @@ export default function TrazabilidadPanel() {
                   {inventory.map((item) => {
                     const st = stockStatus(item.quantity, item.min_stock);
                     return (
-                      <tr key={item.id} className="hover:bg-stone-50/50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-stone-800">
+                      <tr key={item.id} className="hover:bg-cream/50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-ink">
                           {item.ingredient_name}
                         </td>
-                        <td className="px-4 py-3 text-stone-600">
+                        <td className="px-4 py-3 text-ink-soft">
                           {item.quantity.toLocaleString('es-ES', { maximumFractionDigits: 1 })} {item.unit}
                         </td>
-                        <td className="px-4 py-3 text-stone-500">
+                        <td className="px-4 py-3 text-ink-soft">
                           {item.min_stock !== null
                             ? `${item.min_stock.toLocaleString('es-ES', { maximumFractionDigits: 1 })} ${item.unit}`
                             : '—'}
@@ -558,7 +557,7 @@ export default function TrazabilidadPanel() {
                             {st.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-stone-500 text-xs">
+                        <td className="px-4 py-3 text-ink-soft text-xs">
                           {item.last_movement_at ? formatDate(item.last_movement_at) : 'Sin movimientos'}
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -570,7 +569,7 @@ export default function TrazabilidadPanel() {
                             }}
                             variant="ghost"
                             size="sm"
-                            className="text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                            className="text-xs text-warning hover:text-warning hover:bg-warning/10"
                           >
                             <Icon name="edit" className="w-3.5 h-3.5 mr-1" />
                             Ajustar
@@ -599,7 +598,7 @@ export default function TrazabilidadPanel() {
                   onChange={(e) => setRecFilterSupplier(e.target.value)}
                   className="w-48 h-9 text-xs pl-8"
                 />
-                <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
+                <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-soft-60" />
               </div>
               <Input
                 placeholder="Filtrar por lote..."
@@ -611,7 +610,7 @@ export default function TrazabilidadPanel() {
             <Button
               onClick={() => setShowRecForm(true)}
               size="sm"
-              className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
+              className="text-xs"
             >
               <Icon name="plus" className="w-3.5 h-3.5 mr-1" />
               Nueva recepción
@@ -622,7 +621,7 @@ export default function TrazabilidadPanel() {
           {recLoading ? (
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-stone-100 rounded-lg" />
+                <div key={i} className="h-12 bg-cream-dark rounded-lg" />
               ))}
             </div>
           ) : receivings.length === 0 ? (
@@ -632,10 +631,10 @@ export default function TrazabilidadPanel() {
               description="No hay registros de recepción. Crea una nueva recepción para comenzar."
             />
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+            <div className="overflow-x-auto rounded-xl border border-cream-dark bg-white">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-stone-50 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                  <tr className="bg-cream text-left text-xs font-semibold text-ink-soft uppercase tracking-wider">
                     <th className="px-4 py-3">Fecha</th>
                     <th className="px-4 py-3">Ingrediente</th>
                     <th className="px-4 py-3">Lote</th>
@@ -648,36 +647,36 @@ export default function TrazabilidadPanel() {
                 </thead>
                 <tbody className="divide-y divide-stone-100">
                   {receivings.map((rec) => (
-                    <tr key={rec.id} className="hover:bg-stone-50/50 transition-colors">
-                      <td className="px-4 py-3 text-stone-600 text-xs whitespace-nowrap">
+                    <tr key={rec.id} className="hover:bg-cream/50 transition-colors">
+                      <td className="px-4 py-3 text-ink-soft text-xs whitespace-nowrap">
                         {formatDate(rec.received_date)}
                       </td>
-                      <td className="px-4 py-3 font-medium text-stone-800">
+                      <td className="px-4 py-3 font-medium text-ink">
                         {rec.ingredient_name}
                       </td>
                       <td className="px-4 py-3">
-                        <code className="text-xs bg-stone-100 px-1.5 py-0.5 rounded text-stone-700 font-mono">
+                        <code className="text-xs bg-cream-dark px-1.5 py-0.5 rounded text-ink-light font-mono">
                           {rec.lot_number}
                         </code>
                       </td>
-                      <td className="px-4 py-3 text-stone-600">
+                      <td className="px-4 py-3 text-ink-soft">
                         {Number(rec.batch_quantity).toLocaleString('es-ES', { maximumFractionDigits: 1 })} {rec.unit}
                       </td>
-                      <td className="px-4 py-3 text-stone-500">
+                      <td className="px-4 py-3 text-ink-soft">
                         {rec.supplier || '—'}
                       </td>
-                      <td className="px-4 py-3 text-stone-500 text-xs">
+                      <td className="px-4 py-3 text-ink-soft text-xs">
                         {rec.expiry_date ? formatDate(rec.expiry_date) : '—'}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs ${rec.temp_alert ? 'text-red-600 font-medium' : 'text-stone-500'}`}>
+                        <span className={`text-xs ${rec.temp_alert ? 'text-danger font-medium' : 'text-ink-soft'}`}>
                           {formatTemp(rec.temperature)}
                           {rec.temp_alert && <Icon name="alertTriangle" className="w-3 h-3 inline ml-1" />}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          rec.condition_ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                          rec.condition_ok ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
                         }`}>
                           {rec.condition_ok ? 'Aceptado' : 'Rechazado'}
                         </span>
@@ -702,7 +701,7 @@ export default function TrazabilidadPanel() {
               <div className="space-y-4 py-2">
                 {/* Ingrediente con buscador */}
                 <div className="relative">
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Ingrediente *</label>
+                  <label className="block text-xs font-medium text-ink-soft mb-1">Ingrediente *</label>
                   <Input
                     placeholder="Buscar ingrediente..."
                     value={ingredientSearch}
@@ -715,15 +714,15 @@ export default function TrazabilidadPanel() {
                     className="text-sm"
                   />
                   {ingredientOptions.length > 0 && showIngDropdown && (
-                    <div className="absolute z-20 top-full mt-1 w-full bg-white border border-stone-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-20 top-full mt-1 w-full bg-white border border-cream-dark rounded-xl shadow-lg max-h-48 overflow-y-auto">
                       {ingredientOptions.map((ing) => (
                         <button
                           key={ing.id}
                           onClick={() => selectIngredient(ing)}
-                          className="w-full text-left px-3 py-2 hover:bg-amber-50 text-sm transition-colors"
+                          className="w-full text-left px-3 py-2 hover:bg-warning/10 text-sm transition-colors"
                         >
                           <span className="font-medium">{ing.name}</span>
-                          <span className="text-stone-400 ml-2 text-xs">({ing.unit})</span>
+                          <span className="text-ink-soft-60 ml-2 text-xs">({ing.unit})</span>
                         </button>
                       ))}
                     </div>
@@ -733,7 +732,7 @@ export default function TrazabilidadPanel() {
                 {/* Lote y cantidad */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Nº de lote *</label>
+                    <label className="block text-xs font-medium text-ink-soft mb-1">Nº de lote *</label>
                     <Input
                       placeholder="Ej: LOTE-2025-001"
                       value={recForm.lot_number}
@@ -742,7 +741,7 @@ export default function TrazabilidadPanel() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Cantidad *</label>
+                    <label className="block text-xs font-medium text-ink-soft mb-1">Cantidad *</label>
                     <div className="flex gap-2">
                       <Input
                         type="number"
@@ -753,7 +752,7 @@ export default function TrazabilidadPanel() {
                         onChange={(e) => setRecForm((prev) => ({ ...prev, batch_quantity: e.target.value }))}
                         className="text-sm flex-1"
                       />
-                      <span className="text-xs text-stone-400 self-center">{recForm.unit}</span>
+                      <span className="text-xs text-ink-soft-60 self-center">{recForm.unit}</span>
                     </div>
                   </div>
                 </div>
@@ -761,7 +760,7 @@ export default function TrazabilidadPanel() {
                 {/* Proveedor y responsable */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Proveedor</label>
+                    <label className="block text-xs font-medium text-ink-soft mb-1">Proveedor</label>
                     <Input
                       placeholder="Nombre del proveedor"
                       value={recForm.supplier}
@@ -770,7 +769,7 @@ export default function TrazabilidadPanel() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Recibido por</label>
+                    <label className="block text-xs font-medium text-ink-soft mb-1">Recibido por</label>
                     <Input
                       placeholder="Nombre del responsable"
                       value={recForm.received_by}
@@ -783,7 +782,7 @@ export default function TrazabilidadPanel() {
                 {/* Fecha caducidad y temperatura */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Fecha de caducidad</label>
+                    <label className="block text-xs font-medium text-ink-soft mb-1">Fecha de caducidad</label>
                     <Input
                       type="date"
                       value={recForm.expiry_date}
@@ -792,7 +791,7 @@ export default function TrazabilidadPanel() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-1">Temperatura (°C)</label>
+                    <label className="block text-xs font-medium text-ink-soft mb-1">Temperatura (°C)</label>
                     <Input
                       type="number"
                       step="0.1"
@@ -806,7 +805,7 @@ export default function TrazabilidadPanel() {
 
                 {/* QR Code */}
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Código QR</label>
+                  <label className="block text-xs font-medium text-ink-soft mb-1">Código QR</label>
                   <div className="flex gap-2">
                     <Input
                       placeholder="Código escaneado o manual"
@@ -836,7 +835,7 @@ export default function TrazabilidadPanel() {
                 {/* Estado y notas */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-stone-600 mb-2">Estado</label>
+                    <label className="block text-xs font-medium text-ink-soft mb-2">Estado</label>
                     <div className="flex gap-3">
                       <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                         <input
@@ -844,7 +843,7 @@ export default function TrazabilidadPanel() {
                           name="condition"
                           checked={recForm.condition_ok}
                           onChange={() => setRecForm((prev) => ({ ...prev, condition_ok: true }))}
-                          className="text-amber-600 accent-amber-600"
+                          className="text-warning accent-amber-600"
                         />
                         Aceptado
                       </label>
@@ -854,7 +853,7 @@ export default function TrazabilidadPanel() {
                           name="condition"
                           checked={!recForm.condition_ok}
                           onChange={() => setRecForm((prev) => ({ ...prev, condition_ok: false }))}
-                          className="text-red-500 accent-red-500"
+                          className="text-danger accent-red-500"
                         />
                         Rechazado
                       </label>
@@ -863,13 +862,13 @@ export default function TrazabilidadPanel() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Notas</label>
+                  <label className="block text-xs font-medium text-ink-soft mb-1">Notas</label>
                   <textarea
                     placeholder="Observaciones adicionales..."
                     value={recForm.notes}
                     onChange={(e) => setRecForm((prev) => ({ ...prev, notes: e.target.value }))}
                     rows={2}
-                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-cream-dark rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
                   />
                 </div>
               </div>
@@ -886,7 +885,6 @@ export default function TrazabilidadPanel() {
                   onClick={handleSubmitReception}
                   disabled={recFormLoading}
                   size="sm"
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
                 >
                   {recFormLoading ? (
                     <><Icon name="spinner" className="w-3.5 h-3.5 mr-1.5 animate-spin" />Guardando...</>
@@ -931,17 +929,17 @@ export default function TrazabilidadPanel() {
           {lotLoading && (
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-stone-100 rounded-lg" />
+                <div key={i} className="h-12 bg-cream-dark rounded-lg" />
               ))}
             </div>
           )}
 
           {selectedEventLot && !lotLoading && lotEventInfo && (
-            <div className="bg-amber-50 rounded-xl px-4 py-3 border border-amber-200 mb-3">
-              <p className="text-sm font-medium text-amber-800">
+            <div className="bg-warning/10 rounded-xl px-4 py-3 border border-amber-200 mb-3">
+              <p className="text-sm font-medium text-warning">
                 {lotEventInfo.client_name}
               </p>
-              <p className="text-xs text-amber-600">
+              <p className="text-xs text-warning">
                 {lotEventInfo.event_date ? formatDate(lotEventInfo.event_date) : ''} · {lotEventInfo.status}
               </p>
             </div>
@@ -956,10 +954,10 @@ export default function TrazabilidadPanel() {
           )}
 
           {selectedEventLot && !lotLoading && lotConsumption.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+            <div className="overflow-x-auto rounded-xl border border-cream-dark bg-white">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-stone-50 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                  <tr className="bg-cream text-left text-xs font-semibold text-ink-soft uppercase tracking-wider">
                     <th className="px-4 py-3">Ingrediente</th>
                     <th className="px-4 py-3">Lote</th>
                     <th className="px-4 py-3">Consumido</th>
@@ -971,30 +969,30 @@ export default function TrazabilidadPanel() {
                 </thead>
                 <tbody className="divide-y divide-stone-100">
                   {lotConsumption.map((lot) => (
-                    <tr key={lot.id} className="hover:bg-stone-50/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-stone-800">
+                    <tr key={lot.id} className="hover:bg-cream/50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-ink">
                         {lot.ingredient_name}
                       </td>
                       <td className="px-4 py-3">
-                        <code className="text-xs bg-stone-100 px-1.5 py-0.5 rounded text-stone-700 font-mono">
+                        <code className="text-xs bg-cream-dark px-1.5 py-0.5 rounded text-ink-light font-mono">
                           {lot.lot_number}
                         </code>
                       </td>
-                      <td className="px-4 py-3 text-stone-600">
+                      <td className="px-4 py-3 text-ink-soft">
                         {lot.quantity_consumed.toLocaleString('es-ES', { maximumFractionDigits: 1 })} {lot.unit}
                       </td>
-                      <td className="px-4 py-3 text-stone-500">
+                      <td className="px-4 py-3 text-ink-soft">
                         {lot.supplier || '—'}
                       </td>
-                      <td className="px-4 py-3 text-stone-500 text-xs">
+                      <td className="px-4 py-3 text-ink-soft text-xs">
                         {lot.expiry_date ? formatDate(lot.expiry_date) : '—'}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs ${lot.temperature !== null && lot.temperature > 8 ? 'text-red-600 font-medium' : 'text-stone-500'}`}>
+                        <span className={`text-xs ${lot.temperature !== null && lot.temperature > 8 ? 'text-danger font-medium' : 'text-ink-soft'}`}>
                           {formatTemp(lot.temperature)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-stone-500 text-xs whitespace-nowrap">
+                      <td className="px-4 py-3 text-ink-soft text-xs whitespace-nowrap">
                         {formatDate(lot.consumed_at)}
                       </td>
                     </tr>
@@ -1037,7 +1035,7 @@ export default function TrazabilidadPanel() {
           {appccLoading && (
             <div className="animate-pulse space-y-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-16 bg-stone-100 rounded-lg" />
+                <div key={i} className="h-16 bg-cream-dark rounded-lg" />
               ))}
             </div>
           )}
@@ -1045,22 +1043,22 @@ export default function TrazabilidadPanel() {
           {selectedEventAppcc && !appccLoading && appccData && (
             <div className="space-y-6">
               {/* Cabecera del evento */}
-              <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+              <div className="bg-warning/10 rounded-xl p-4 border border-amber-200">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-amber-900 text-lg">
+                    <h3 className="font-semibold text-warning text-lg">
                       {appccData.event.client_name}
                     </h3>
-                    <p className="text-sm text-amber-700 mt-1">
+                    <p className="text-sm text-warning mt-1">
                       {appccData.event.event_date ? formatDate(appccData.event.event_date) : ''}
                       {appccData.event.event_type ? ` · ${appccData.event.event_type}` : ''}
                       {appccData.event.guest_count ? ` · ${appccData.event.guest_count} invitados` : ''}
                     </p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    appccData.event.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                    appccData.event.status === 'confirmed' ? 'bg-success/10 text-success' :
                     appccData.event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                    'bg-stone-100 text-stone-600'
+                    'bg-cream-dark text-ink-soft'
                   }`}>
                     {appccData.event.status}
                   </span>
@@ -1069,9 +1067,9 @@ export default function TrazabilidadPanel() {
 
               {/* Alertas */}
               {appccData.alerts.temperature && (
-                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-2">
-                  <Icon name="alertTriangle" className="w-5 h-5 text-red-500 flex-shrink-0" />
-                  <p className="text-sm text-red-700">{appccData.alerts.temperature}</p>
+                <div className="bg-danger/10 border border-danger/30 rounded-xl px-4 py-3 flex items-center gap-2">
+                  <Icon name="alertTriangle" className="w-5 h-5 text-danger flex-shrink-0" />
+                  <p className="text-sm text-danger">{appccData.alerts.temperature}</p>
                 </div>
               )}
 
@@ -1084,13 +1082,13 @@ export default function TrazabilidadPanel() {
                 />
               ) : (
                 <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-stone-700">
+                  <h4 className="text-sm font-semibold text-ink-light">
                     Trazabilidad completa ({appccData.trace.length} registro{appccData.trace.length !== 1 ? 's' : ''})
                   </h4>
-                  <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+                  <div className="overflow-x-auto rounded-xl border border-cream-dark bg-white">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-stone-50 text-left text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                        <tr className="bg-cream text-left text-xs font-semibold text-ink-soft uppercase tracking-wider">
                           <th className="px-4 py-3">Ingrediente</th>
                           <th className="px-4 py-3">Cantidad</th>
                           <th className="px-4 py-3">Lote</th>
@@ -1105,11 +1103,11 @@ export default function TrazabilidadPanel() {
                         {appccData.trace.map((item) => {
                           const hasLotData = item.lot_number !== null;
                           return (
-                            <tr key={item.shopping_item_id} className={`hover:bg-stone-50/50 transition-colors ${item.temp_alert ? 'bg-red-50/50' : ''}`}>
-                              <td className="px-4 py-3 font-medium text-stone-800">
+                            <tr key={item.shopping_item_id} className={`hover:bg-cream/50 transition-colors ${item.temp_alert ? 'bg-danger/10/50' : ''}`}>
+                              <td className="px-4 py-3 font-medium text-ink">
                                 {item.ingredient_name}
                               </td>
-                              <td className="px-4 py-3 text-stone-600">
+                              <td className="px-4 py-3 text-ink-soft">
                                 {item.total_grams
                                   ? `${Number(item.total_grams).toLocaleString('es-ES', { maximumFractionDigits: 1 })}g`
                                   : item.total_units
@@ -1120,36 +1118,36 @@ export default function TrazabilidadPanel() {
                               </td>
                               <td className="px-4 py-3">
                                 {hasLotData ? (
-                                  <code className="text-xs bg-stone-100 px-1.5 py-0.5 rounded text-stone-700 font-mono">
+                                  <code className="text-xs bg-cream-dark px-1.5 py-0.5 rounded text-ink-light font-mono">
                                     {item.lot_number}
                                   </code>
                                 ) : (
-                                  <span className="text-stone-400 italic text-xs">Sin asignar</span>
+                                  <span className="text-ink-soft-60 italic text-xs">Sin asignar</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-stone-500">
+                              <td className="px-4 py-3 text-ink-soft">
                                 {item.supplier || item.shopping_provider || '—'}
                               </td>
-                              <td className="px-4 py-3 text-stone-500 text-xs whitespace-nowrap">
+                              <td className="px-4 py-3 text-ink-soft text-xs whitespace-nowrap">
                                 {item.received_date ? formatDate(item.received_date) : '—'}
                               </td>
-                              <td className="px-4 py-3 text-stone-500 text-xs whitespace-nowrap">
+                              <td className="px-4 py-3 text-ink-soft text-xs whitespace-nowrap">
                                 {item.expiry_date ? formatDate(item.expiry_date) : '—'}
                               </td>
                               <td className="px-4 py-3">
-                                <span className={`text-xs ${item.temp_alert ? 'text-red-600 font-medium' : 'text-stone-500'}`}>
+                                <span className={`text-xs ${item.temp_alert ? 'text-danger font-medium' : 'text-ink-soft'}`}>
                                   {formatTemp(item.temperature)}
                                   {item.temp_alert && <Icon name="alertTriangle" className="w-3 h-3 inline ml-1" />}
                                 </span>
                               </td>
                               <td className="px-4 py-3">
                                 {item.completed ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
                                     <Icon name="check" className="w-3 h-3" />
                                     Completo
                                   </span>
                                 ) : (
-                                  <span className="text-stone-400 text-xs">Pendiente</span>
+                                  <span className="text-ink-soft-60 text-xs">Pendiente</span>
                                 )}
                               </td>
                             </tr>
@@ -1162,12 +1160,12 @@ export default function TrazabilidadPanel() {
               )}
 
               {/* Resumen */}
-              <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+              <div className="bg-success/10 rounded-xl p-4 border border-green-200">
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon name="check-circle" className="w-5 h-5 text-green-600" />
-                  <h3 className="font-semibold text-green-800">Resumen APPCC</h3>
+                  <Icon name="check-circle" className="w-5 h-5 text-success" />
+                  <h3 className="font-semibold text-success">Resumen APPCC</h3>
                 </div>
-                <p className="text-sm text-green-700">
+                <p className="text-sm text-success">
                   {appccData.trace.length} ingrediente{appccData.trace.length !== 1 ? 's' : ''} ·{' '}
                   {appccData.trace.filter((t) => t.completed).length} completo{appccData.trace.filter((t) => t.completed).length !== 1 ? 's' : ''} ·{' '}
                   {appccData.trace.filter((t) => t.temp_alert).length} alerta{appccData.trace.filter((t) => t.temp_alert).length !== 1 ? 's' : ''} de temperatura
@@ -1192,7 +1190,7 @@ export default function TrazabilidadPanel() {
 
           <div className="space-y-3 py-2">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
+              <label className="block text-xs font-medium text-ink-soft mb-1">
                 Nueva cantidad ({adjustDialog?.unit})
               </label>
               <Input
@@ -1206,7 +1204,7 @@ export default function TrazabilidadPanel() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
+              <label className="block text-xs font-medium text-ink-soft mb-1">
                 Motivo del ajuste
               </label>
               <textarea
@@ -1214,11 +1212,11 @@ export default function TrazabilidadPanel() {
                 value={adjustNotes}
                 onChange={(e) => setAdjustNotes(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
+                className="w-full px-3 py-2 text-sm border border-cream-dark rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
               />
             </div>
             {adjustDialog && (
-              <div className="text-xs text-stone-500">
+              <div className="text-xs text-ink-soft">
                 Stock actual: {adjustDialog.quantity.toLocaleString('es-ES', { maximumFractionDigits: 1 })} {adjustDialog.unit}
               </div>
             )}
@@ -1232,8 +1230,7 @@ export default function TrazabilidadPanel() {
               onClick={handleAdjust}
               disabled={loading}
               size="sm"
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
+              >
               {loading ? (
                 <><Icon name="spinner" className="w-3.5 h-3.5 mr-1.5 animate-spin" />Guardando...</>
               ) : (
