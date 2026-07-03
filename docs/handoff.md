@@ -1,9 +1,85 @@
 ## Último agente: Claude Code
-## Fecha: 02/07/2026 (Sprint 5)
+## Fecha: 03/07/2026 (Sprint 6)
 ## Rama: main
 ## Último commit: (ver `git log -1`, tras este handoff)
 
-### Qué se hizo (02/07 · Sprint 5 · auditoría y unificación UI/UX)
+### Qué se hizo (03/07 · Sprint 6 · cumplimiento del acta de cocina/APPCC)
+- [x] **SPEC-Sprint6-Cocina-APPCC.md** (SDD): a partir de la transcripción
+  de la reunión de cocina (18 puntos), auditoría en 3 frentes en paralelo
+  (configurador/presupuesto, cocina/APPCC/trazabilidad, staffing/
+  proveedores/memo) → matriz de cumplimiento fila-por-fila, plan de
+  ejecución por checkpoints F0-F4. Objetivo explícito del cliente: reducir
+  tiempos de gestión de cocina y APPCC.
+- [x] **F0 · Desbloqueos.** F0.1 escandallo por evento daba 500 (`esi.
+  custom_qty` no existe — exactamente el bug que Sprint 5 había dejado
+  documentado como fuera de alcance). F0.2 `catalog_items.allergens`/
+  `description` (nuevas columnas + editor con toggles de los 14 alérgenos
+  UE + textarea) — mismo bug de esquema que Sprint 5 dejó pendiente
+  (`ci.allergens` no existía). F0.3 el cron `pre-event-briefing` solo
+  contaba memos y no enviaba nada pese a que la infraestructura de envío
+  (WhatsApp/email) ya existía — ahora envía de verdad, idempotente vía
+  `briefing_send_log`.
+- [x] **F1 · APPCC recepción rápida.** F1.1 `gs1Parser.ts` interpreta
+  códigos GS1-128 (bracketed y flujo de dígitos crudo) para auto-rellenar
+  lote/caducidad al escanear una etiqueta — antes el escáner volcaba texto
+  sin procesar. F1.2 botón "Recibir pedido completo" en Pedidos a
+  Proveedores (backend `receiving/from-order` existía sin caller); de paso,
+  el CHECK constraint de `supplier_orders.status` no incluía `'ordered'`
+  — el botón "Marcar enviado" fallaba siempre. F1.3 el escaneo de etiqueta
+  (OCR) escribía SOLO en `stock_entries`, nunca en `ingredients.quantity`
+  (fuente canónica de escandallo/FEFO) — unificado con el ledger único (G6)
+  de Sprint 2; de paso, `ingredient_price_history` usaba columnas
+  inexistentes (500 en cualquier OCR con cambio de precio).
+- [x] **F2 · Hojas de cocina completas e imprimibles.** F2.1 la hoja de
+  carga agrupaba por pase pero los campos quedaban siempre vacíos (tipo
+  declarado, nunca poblado) — ahora agrupa de verdad con cantidades
+  agregadas por producto+unidad. F2.2 la hoja de logística calculaba
+  producto seco/perecedero/desechables pero la UI solo mostraba el
+  equipamiento — ahora se renderizan las 3 tablas. F2.3 botón "Imprimir /
+  PDF" en las 3 hojas operativas vía impresión nativa del navegador.
+- [x] **F3 · Presupuesto según lo acordado.** F3.1 `BudgetEditor` en
+  borrador solo permite editar comensales y precio final (backend ya
+  exponía `edit_only_price_and_guests`, sin consumidor). F3.2 toda
+  cancelación desde el Kanban exige motivo y va por transición gobernada
+  (INV-1); se elimina el botón Cancelar de la columna Aceptado — la
+  cancelación excepcional (INV-3, retiene la señal como penalización)
+  ahora vive solo en la ficha del evento (tampoco tenía consumidor antes).
+  F3.3 sección "Sugerencias adicionales" en el configurador, revive el
+  dataset `SUGGESTIONS`. F3.4 UI de gastos previos en la ficha (backend
+  existía sin caller) + línea propia en el desglose de Rentabilidad (antes
+  se fundían con "extras").
+- [x] **F4 · Staffing y proveedores.** F4.1 firma de nómina tras marcar
+  pagado (pizarra táctil, mismo mecanismo que la firma de contrato de
+  Sprint 3) — la API ya existía sin consumidor y ni siquiera se exponía
+  `signature_url` en el GET. F4.2 pestaña "Cuentas a pagar" en Proveedores
+  (backend `/api/provider-invoices` sin caller). F4.3 campo protocolo del
+  memo — completa los 7 campos del acta junto a F0.2; `events/[id]` PUT
+  no aceptaba `protocol_notes` pese a que columna y memo ya existían.
+  F4.4 el plano del venue externo (`venue_pdf_url`) se renderiza como capa
+  de fondo en el editor de sitting; de paso, la página `/admin/mapa-mesas`
+  ignoraba por completo el `?event_id=` con el que navega Operaciones — el
+  editor abría siempre sin evento y "guardar" no persistía nada.
+- [x] Verificación: nuevo `scripts/verify-sprint6.sh` **33/33**; sin
+  regresión (E2E 32/32 · RBAC 41/41 · Operativos 14/14 · ERP 17/17 ·
+  Sprint1 26/26 · Sprint2 27/27 · Sprint3 32/32 · Sprint4 50/50 · Sprint5
+  18/18 — 290/290 en total); build de producción exit 0; verificado
+  manualmente vía curl+psql cada flujo nuevo (escáner GS1, recepción
+  completa, OCR moviendo stock real, hoja de carga por pase, cancelación
+  gobernada INV-1/INV-3, gastos previos, firma de nómina, plano de venue).
+
+### Pendiente / próximos pasos sugeridos (Sprint 6)
+- [ ] Diferido explícitamente en el SPEC: vista 3D/360 del venue (cubierto
+  por F4.4 — sitting sobre el plano 2D subido — como alternativa
+  operativa); ratios de camareros configurables (hoy hardcodeados, la
+  fórmula en sí ya es correcta).
+- [ ] `guest-forms/decor` (401 sin cookie pese a ser pública) — sigue sin
+  tocar, arrastrado desde sprints anteriores.
+- [ ] Borrar la rama remota `claude/event-venue-redesign-JAUif` (el
+  usuario, por política de red del entorno bloquea el push de borrado).
+- [ ] Nivel C del Gap Analysis (G9/G14/G18/G23, Sprint 4) — backlog
+  documentado para un futuro Spec dedicado.
+
+### Histórico (02/07 · Sprint 5 · auditoría y unificación UI/UX)
 - [x] **SPEC-Sprint5-UIUX.md** (SDD): auditoría en 3 frentes (3 agentes en
   paralelo) — consistencia del sistema de diseño, cobertura de UI sobre la
   lógica de backend de Sprints 1-4, y traducción al español. Plan de
