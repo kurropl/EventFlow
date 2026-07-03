@@ -9,8 +9,9 @@
  * - Enlaza stock_entries con supplier_order_items
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
+import { adjustIngredientStock } from '@/lib/domain/stockLedger';
 
 interface ApplyItem {
   name: string;
@@ -134,9 +135,9 @@ export async function POST(request: NextRequest) {
           const currentPrice = ingRow?.current_price ? Number(ingRow.current_price) : 0;
           if (Math.abs(currentPrice - item.cost) > 0.01) {
             await query(
-              `INSERT INTO ingredient_price_history (ingredient_id, price, effective_date, notes)
-               VALUES ($1, $2, NOW(), $3)`,
-              [ingredientId, item.cost, `OCR: ${item.supplier || mode} - ${itemName}`]
+              `INSERT INTO ingredient_price_history (ingredient_id, old_price, new_price, changed_by)
+               VALUES ($1, $2, $3, $4)`,
+              [ingredientId, currentPrice, item.cost, `OCR: ${item.supplier || mode} - ${itemName}`]
             );
             priceUpdates.push({
               ingredientId,
@@ -146,27 +147,54 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 2. Crear entrada en stock_entries
+        // 2. Registrar lote (si es etiqueta con lote) y mover stock — vía el
+        // ledger único (G6): antes esto insertaba SOLO en stock_entries y
+        // nunca tocaba ingredients.quantity (fuente canónica de escandallo/
+        // FEFO), así que un escaneo de etiqueta no llegaba a mover stock real.
         const movementReason = mode === 'albaran' || mode === 'ticket_proveedor'
           ? 'compra_prevision' as const
           : 'operativo' as const;
+        const scanQty = item.quantity || 1;
+        const scanUnit = item.unit || 'ud';
 
-        const stockResult = await query(
-          `INSERT INTO stock_entries (ingredient_id, quantity, unit, event_id, notes, cost_price, movement_reason)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id`,
-          [
+        let receivingId: string | null = null;
+        if (mode === 'etiqueta_ingrediente' && item.lot) {
+          try {
+            const rec = await query(
+              `INSERT INTO receiving_log
+                 (ingredient_id, lot_number, batch_quantity, unit, supplier, expiry_date, source, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, 'scan', $7)
+               RETURNING id`,
+              [
+                ingredientId,
+                item.lot || 'SIN-LOTE',
+                scanQty,
+                scanUnit,
+                item.supplier || null,
+                item.expiry ? new Date(item.expiry).toISOString() : null,
+                `OCR: ${mode} - ${itemName}`,
+              ]
+            );
+            receivingId = (rec.rows?.[0] as any)?.id || null;
+          } catch {
+            // tabla receiving_log puede tener restricciones (fecha inválida,
+            // etc.) — no debe bloquear el movimiento de stock en sí.
+          }
+        }
+
+        await transaction((client) =>
+          adjustIngredientStock(client, {
             ingredientId,
-            item.quantity || 1,
-            item.unit || 'ud',
-            eventId || null,
-            `OCR: ${mode} - ${itemName}${item.supplier ? ` (${item.supplier})` : ''}`,
-            item.cost || null,
-            movementReason,
-          ]
+            delta: scanQty,
+            reason: movementReason,
+            movementType: 'receipt',
+            eventId: eventId || null,
+            referenceType: receivingId ? 'receiving_log' : 'ocr_scan',
+            referenceId: receivingId,
+            notes: `OCR: ${mode} - ${itemName}${item.supplier ? ` (${item.supplier})` : ''}`,
+          })
         );
-        const stockRow = (stockResult.rows?.[0] || null) as any;
-        const stockId = stockRow?.id || '';
+        const stockId = ingredientId;
 
         // 3. Si hay supplier_order, crear supplier_order_item
         let orderItemId: string | null = null;
@@ -180,27 +208,6 @@ export async function POST(request: NextRequest) {
           orderItemId = ((orderItemResult.rows[0] as any) || {}).id || null;
           if (orderItemId) orderItemIds.push(orderItemId);
           totalOrderCost += (item.cost || 0) * (item.quantity || 1);
-        }
-
-        // 4. Si es etiqueta con lote, registrar en receiving_log
-        if (mode === 'etiqueta_ingrediente' && item.lot) {
-          try {
-            await query(
-              `INSERT INTO receiving_log (ingredient_id, lot_number, batch_quantity, unit, supplier, expiry_date, source, notes)
-               VALUES ($1, $2, $3, $4, $5, $6, 'scan', $7)`,
-              [
-                ingredientId,
-                item.lot || 'SIN-LOTE',
-                item.quantity || 1,
-                item.unit || 'ud',
-                item.supplier || null,
-                item.expiry ? new Date(item.expiry).toISOString() : null,
-                `OCR: ${mode} - ${itemName}`,
-              ]
-            );
-          } catch {
-            // tabla receiving_log puede tener restricciones
-          }
         }
 
         results.push({
