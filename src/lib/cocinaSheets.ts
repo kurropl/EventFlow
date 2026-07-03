@@ -301,9 +301,22 @@ export async function generateLoadingSheet(
     [eventId]
   );
 
-  // Clasificar por perecedero/no perecedero
+  const passesResult = await softQuery('SELECT * FROM service_passes ORDER BY sort_order');
+  const passNames = new Map(passesResult.rows.map((p: any) => [p.pass_number, p.name]));
+  const passInfoOf = (passNum: number): PassInfo => ({
+    passNumber: passNum,
+    passName: (passNames.get(passNum) as string | undefined) || `Pase ${passNum}`,
+    icon: '📦',
+  });
+
+  // Clasificar por perecedero/no perecedero, agrupando por pase (F2.1: antes
+  // perecederoPasses/noPerecederoPasses quedaban siempre vacíos pese a estar
+  // declarados en el tipo — la hoja de carga no distinguía qué cargar en cada
+  // pase, solo un listado plano).
   const perecedero: LoadingItem[] = [];
   const noPerecedero: LoadingItem[] = [];
+  const perecederoByPass = new Map<number, LoadingItem[]>();
+  const noPerecederoByPass = new Map<number, LoadingItem[]>();
 
   for (const row of items.rows) {
     const passNum = await getPassForCategory(row.category, customPassOrder, row.ingredient_name);
@@ -316,7 +329,7 @@ export async function generateLoadingSheet(
       unit,
       perishable: false,
       passNumber: passNum,
-      passName: '',
+      passName: passInfoOf(passNum).passName,
       catalogItemName: row.ingredient_name,
     };
 
@@ -329,13 +342,31 @@ export async function generateLoadingSheet(
     if (isPerishable) {
       item.perishable = true;
       perecedero.push(item);
+      if (!perecederoByPass.has(passNum)) perecederoByPass.set(passNum, []);
+      perecederoByPass.get(passNum)!.push(item);
     } else {
       noPerecedero.push(item);
+      if (!noPerecederoByPass.has(passNum)) noPerecederoByPass.set(passNum, []);
+      noPerecederoByPass.get(passNum)!.push(item);
     }
   }
 
-  const passesResult = await softQuery('SELECT * FROM service_passes ORDER BY sort_order');
-  const passNames = new Map(passesResult.rows.map((p: any) => [p.pass_number, p.name]));
+  // Agregar cantidades por producto dentro de cada pase (mismo patrón que
+  // totalIngredients en generateProductionSheet) para que la hoja de carga
+  // muestre unidades reales a meter en la furgoneta por pase, no líneas sueltas.
+  const groupByPass = (byPass: Map<number, LoadingItem[]>) =>
+    [...byPass.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([passNum, passItems]) => {
+        const totals = new Map<string, LoadingItem>();
+        for (const it of passItems) {
+          const key = `${it.productName}::${it.unit}`;
+          const existing = totals.get(key);
+          if (existing) existing.quantity += it.quantity;
+          else totals.set(key, { ...it });
+        }
+        return { pass: passInfoOf(passNum), items: [...totals.values()] };
+      });
 
   return {
     eventName: ev.client_name,
@@ -344,8 +375,8 @@ export async function generateLoadingSheet(
     applies: true,
     perecedero,
     noPerecedero,
-    perecederoPasses: [],
-    noPerecederoPasses: [],
+    perecederoPasses: groupByPass(perecederoByPass),
+    noPerecederoPasses: groupByPass(noPerecederoByPass),
   };
 }
 

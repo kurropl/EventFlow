@@ -773,6 +773,7 @@ function HojasOperativasTab() {
   const [loadingEvents, setLoadingEvents] = useState(true);
 const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 'alertas' | 'ocr'>('produccion');
   const [sheetData, setSheetData] = useState<HojaRow[]>([]);
+  const [rawSheet, setRawSheet] = useState<any>(null);
   const [loadingSheet, setLoadingSheet] = useState(false);
   const [sheetError, setSheetError] = useState('');
 
@@ -806,6 +807,20 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
     }
     if (tab === 'carga') {
       if (!sheet.applies) return [{ aviso: sheet.reason || 'No aplica' }];
+      // F2.1: agrupado real por pase (antes perecederoPasses/noPerecederoPasses
+      // quedaban siempre vacíos) — se necesita saber qué cargar en cada pase.
+      const groups = [...(sheet.perecederoPasses || []), ...(sheet.noPerecederoPasses || [])];
+      if (groups.length) {
+        return groups.flatMap((g: any) =>
+          (g.items || []).map((it: any) => ({
+            pase: g.pass?.passName,
+            producto: it.productName,
+            cantidad: it.quantity,
+            unidad: it.unit,
+            perecedero: it.perishable ? 'Sí' : 'No',
+          }))
+        );
+      }
       return [...(sheet.perecedero || []), ...(sheet.noPerecedero || [])].map((it: any) => ({
         producto: it.productName,
         cantidad: it.quantity,
@@ -836,13 +851,16 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
       const data = await res.json();
       if (data.success) {
         setSheetData(flattenSheet(tab, data.data?.sheet));
+        setRawSheet(data.data?.sheet || null);
       } else {
         setSheetError(data.error || 'Error al cargar');
         setSheetData([]);
+        setRawSheet(null);
       }
     } catch {
       setSheetError('Error de conexión');
       setSheetData([]);
+      setRawSheet(null);
     }
     setLoadingSheet(false);
   }, []);
@@ -910,21 +928,45 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
       ) : (
         <>
           {/* Sub-tabs: Producción / Carga / Logística */}
-          <div className="flex gap-1 mb-4 p-1 rounded-lg bg-cream-dark border border-gold/20 w-fit">
-            {SHEET_TABS.map((t) => (
+          <div className="no-print flex items-center justify-between gap-3 mb-4">
+            <div className="flex gap-1 p-1 rounded-lg bg-cream-dark border border-gold/20 w-fit">
+              {SHEET_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setSheetTab(t.id)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    sheetTab === t.id
+                      ? 'bg-gold text-black shadow-sm'
+                      : 'text-ink-soft hover:text-ink hover:bg-white'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {/* F2.3: imprimir/PDF de las hojas de cocina (producción/carga/logística) */}
+            {['produccion', 'carga', 'logistica'].includes(sheetTab) && sheetData.length > 0 && (
               <button
-                key={t.id}
-                onClick={() => setSheetTab(t.id)}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  sheetTab === t.id
-                    ? 'bg-gold text-black shadow-sm'
-                    : 'text-ink-soft hover:text-ink hover:bg-white'
-                }`}
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-ink text-white text-sm font-medium hover:opacity-90 transition-opacity"
               >
-                {t.label}
+                <Icon name="printer" className="w-4 h-4" />
+                Imprimir / PDF
               </button>
-            ))}
+            )}
           </div>
+
+          {/* Título solo visible al imprimir */}
+          {['produccion', 'carga', 'logistica'].includes(sheetTab) && sheetData.length > 0 && (
+            <div className="hidden print:block mb-4 border-b-2 border-ink pb-2">
+              <h1 className="text-lg font-bold">
+                Hoja de {SHEET_TABS.find((t) => t.id === sheetTab)?.label} — {rawSheet?.eventName || ''}
+              </h1>
+              <p className="text-xs text-ink-soft-60">
+                {(rawSheet?.eventDate || '').toString().slice(0, 10)} · {new Date().toLocaleString('es-ES')}
+              </p>
+            </div>
+          )}
 
           {/* Sheet Content */}
           {sheetTab === 'alertas' ? (
@@ -988,8 +1030,45 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
               </table>
             </div>
           )}
+          {/* F2.2: producto seco/perecedero/desechables — el backend ya los
+              calculaba (generateLogisticsSheet) pero la UI solo mostraba el
+              equipamiento; el resto del pedido de furgoneta no se veía. */}
+          {sheetTab === 'logistica' && rawSheet && (
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <LogisticsGoodsTable title="Producto seco" items={rawSheet.dryGoods} />
+              <LogisticsGoodsTable title="Producto perecedero" items={rawSheet.perishableGoods} />
+              <LogisticsGoodsTable title="Desechables" items={rawSheet.disposables} />
+            </div>
+          )}
           {sheetTab === 'logistica' && <EquipmentCheckoutPanel eventId={selectedEventId} />}
         </>
+      )}
+    </div>
+  );
+}
+
+function LogisticsGoodsTable({ title, items }: { title: string; items?: { productName: string; quantity: number; unit: string; category?: string }[] }) {
+  const rows = items || [];
+  return (
+    <div className="rounded-xl border border-gold/20 bg-white overflow-hidden">
+      <div className="px-3 py-2 bg-cream-dark border-b border-gold/20 text-xs font-semibold text-ink uppercase tracking-wider">
+        {title} <span className="text-ink-soft-60 normal-case font-normal">({rows.length})</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="p-3 text-xs text-ink-soft-60">Sin items</p>
+      ) : (
+        <table className="w-full text-xs">
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-b border-gold/10 last:border-0">
+                <td className="py-1.5 px-3 text-ink">{r.productName}</td>
+                <td className="py-1.5 px-3 text-right text-ink-soft-60 whitespace-nowrap">
+                  {r.quantity} {r.unit}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

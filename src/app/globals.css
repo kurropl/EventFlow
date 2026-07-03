@@ -225,4 +225,12 @@ h4 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
   border-color: #C9A84C;
   box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
 }
+
+/* ============================================================
+   IMPRESIÓN — hojas operativas de cocina (Sprint 6, F2.3)
+   ============================================================ */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+}
 .crm-inp::placeholder { color: #B0B0B8; }
