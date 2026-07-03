@@ -2268,3 +2268,41 @@ CREATE TABLE IF NOT EXISTS interactions (
 CREATE INDEX IF NOT EXISTS idx_interactions_lead ON interactions(lead_id);
 CREATE INDEX IF NOT EXISTS idx_interactions_event ON interactions(event_id);
 ALTER TABLE interactions DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- SPRINT 6 · F0.2 — Alérgenos/descripción del plato (acta de cocina, E-S6.1)
+-- ============================================================
+-- Antes /api/briefing/[eventId] consultaba ci.allergens/ci.description sin
+-- que existieran (bug real, 500 al generar el memo de camareros). E-S6.1
+-- (decisión usuario): añadir las columnas de verdad — el acta exige
+-- intolerancias visibles en el memo, no solo silenciar el error.
+ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS allergens JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS description TEXT;
+
+-- ============================================================
+-- SPRINT 6 · F4.3 — Protocolo del evento (acta de cocina)
+-- ============================================================
+-- Nota de protocolo libre por evento, para completar los 7 campos del memo
+-- de camareros (datos personales, menú, intolerancias, mantelería,
+-- protocolo, anotaciones, barra libre).
+ALTER TABLE events ADD COLUMN IF NOT EXISTS protocol_notes TEXT;
+
+-- ============================================================
+-- SPRINT 6 · F0.3 — Envío real del briefing (acta de cocina, punto 10)
+-- ============================================================
+-- Antes el cron pre-event-briefing solo contaba memos y devolvía JSON, sin
+-- enviar nada. Log de envíos para idempotencia (no reenviar si el cron se
+-- ejecuta más de una vez el mismo T-1) y para que quede constancia de qué
+-- se envió y qué falló.
+CREATE TABLE IF NOT EXISTS briefing_send_log (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id    UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  worker_id   UUID NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+  channel     TEXT NOT NULL CHECK (channel IN ('email','whatsapp')),
+  status      TEXT NOT NULL CHECK (status IN ('sent','failed')),
+  error       TEXT,
+  sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (event_id, worker_id, channel)
+);
+CREATE INDEX IF NOT EXISTS idx_briefing_send_log_event ON briefing_send_log(event_id);
+ALTER TABLE briefing_send_log DISABLE ROW LEVEL SECURITY;

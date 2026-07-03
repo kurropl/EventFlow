@@ -66,7 +66,6 @@ export async function GET(request: NextRequest) {
          esi.total_grams,
          esi.total_units,
          esi.total_ml,
-         esi.custom_qty,
          esi.notes,
          esi.completed,
          e.client_name AS event_name,
@@ -98,7 +97,6 @@ export async function GET(request: NextRequest) {
         total_grams: row.total_grams,
         total_units: row.total_units,
         total_ml: row.total_ml,
-        custom_qty: row.custom_qty,
         notes: row.notes,
         completed: row.completed,
       });

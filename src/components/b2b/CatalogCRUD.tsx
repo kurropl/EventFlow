@@ -15,7 +15,16 @@ interface CatalogItem {
   active: boolean;
   estimated?: boolean;
   provider_name?: string;
+  allergens?: string[];
+  description?: string | null;
 }
+
+// Los 14 alérgenos de declaración obligatoria en la UE (Reglamento 1169/2011)
+const ALLERGENS = [
+  'gluten', 'crustáceos', 'huevos', 'pescado', 'cacahuetes', 'soja',
+  'lácteos', 'frutos de cáscara', 'apio', 'mostaza', 'sésamo',
+  'sulfitos', 'altramuces', 'moluscos',
+] as const;
 
 const CATEGORIES = [
   'aperitivo-frio', 'aperitivo-caliente', 'compartir-mesa',
@@ -80,7 +89,7 @@ export default function CatalogCRUD() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ name: '', category: '', pvp: '', cost: '', active: true });
+  const [editData, setEditData] = useState<{ name: string; category: string; pvp: string; cost: string; active: boolean; allergens: string[]; description: string }>({ name: '', category: '', pvp: '', cost: '', active: true, allergens: [], description: '' });
   const [newItem, setNewItem] = useState({ name: '', category: CATEGORIES[0], pvp: '', cost: '' });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -168,7 +177,9 @@ export default function CatalogCRUD() {
       const res = await fetch('/api/catalog', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editData),
+        // Bug real (Sprint 6): faltaba el id, así que ningún guardado de
+        // edición llegaba a aplicarse nunca (400 "Missing id" silencioso).
+        body: JSON.stringify({ ...editData, id: editingId }),
       });
       if (res.ok) {
         setEditingId(null);
@@ -193,7 +204,17 @@ export default function CatalogCRUD() {
 
   const startEdit = (item: CatalogItem) => {
     setEditingId(item.id);
-    setEditData({ name: item.name, category: item.category, pvp: String(item.pvp), cost: String(item.cost), active: item.active });
+    setEditData({
+      name: item.name, category: item.category, pvp: String(item.pvp), cost: String(item.cost), active: item.active,
+      allergens: Array.isArray(item.allergens) ? item.allergens : [],
+      description: item.description || '',
+    });
+  };
+  const toggleAllergen = (a: string) => {
+    setEditData((d) => ({
+      ...d,
+      allergens: d.allergens.includes(a) ? d.allergens.filter((x) => x !== a) : [...d.allergens, a],
+    }));
   };
   const toggleActive = async (item: CatalogItem) => {
     try {
@@ -315,6 +336,29 @@ export default function CatalogCRUD() {
             <input type="number" placeholder="Coste (€)" step="0.01" value={editData.cost}
               onChange={(e) => setEditData((d) => ({ ...d, cost: e.target.value }))}
               className="px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:outline-none" />
+          </div>
+          <div>
+            <textarea placeholder="Descripción del plato (opcional)" value={editData.description} rows={2}
+              onChange={(e) => setEditData((d) => ({ ...d, description: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg bg-[#FAFAFC] border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:outline-none resize-none" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-[#6B7280] mb-1.5 uppercase tracking-wide">
+              Alérgenos (memo de camareros / APPCC)
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {ALLERGENS.map((a) => {
+                const active = editData.allergens.includes(a);
+                return (
+                  <button key={a} type="button" onClick={() => toggleAllergen(a)}
+                    className={`text-xs px-2.5 py-1 rounded-full border capitalize transition-colors ${
+                      active ? 'bg-[#C9A84C] text-white border-[#C9A84C]' : 'bg-white text-[#6B7280] border-[#E5E5EC] hover:border-[#C9A84C]'
+                    }`}>
+                    {a}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="flex gap-2">
             <button onClick={handleEditItem} disabled={saving} className="text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>

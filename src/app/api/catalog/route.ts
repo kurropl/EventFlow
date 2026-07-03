@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(totalItems / limit);
 
     let items = await queryMany<any>(
-      `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, active, created_at, updated_at
+      `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, allergens, description, active, created_at, updated_at
        FROM catalog_items
        ${where}
        ORDER BY category, name
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       const seeded = await autoSeedCatalog();
       if (seeded > 0) {
         items = await queryMany<any>(
-          `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, active, created_at, updated_at
+          `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, allergens, description, active, created_at, updated_at
            FROM catalog_items
            WHERE active = true
            ORDER BY category, name
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name, category, pvp, cost, active } = body;
+    const { id, name, category, pvp, cost, active, allergens, description } = body;
     if (!id) {
       return NextResponse.json({ success: false, error: 'Missing id' }, { status: 400 });
     }
@@ -180,6 +180,9 @@ export async function PUT(request: NextRequest) {
     if (pvp !== undefined && pvp !== null) { sets.push(`pvp = $${idx++}`); params.push(Number(pvp)); }
     if (cost !== undefined && cost !== null) { sets.push(`cost = $${idx++}`); params.push(Number(cost)); }
     if (active !== undefined && active !== null) { sets.push(`active = $${idx++}`); params.push(Boolean(active)); }
+    // Sprint 6 (F0.2): alérgenos del plato (acta de cocina) — memo de camareros
+    if (allergens !== undefined && allergens !== null) { sets.push(`allergens = $${idx++}::jsonb`); params.push(JSON.stringify(allergens)); }
+    if (description !== undefined) { sets.push(`description = $${idx++}`); params.push(description || null); }
 
     if (sets.length === 0) {
       return NextResponse.json({ success: false, error: 'Nothing to update' }, { status: 400 });
