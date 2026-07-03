@@ -37,6 +37,7 @@ import Icon from '@/components/shared/Icon';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import QrScanner from '@/components/b2b/QrScanner';
+import { parseGS1 } from '@/lib/gs1Parser';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -208,7 +209,9 @@ export default function TrazabilidadPanel() {
     qr_code: '',
     notes: '',
     condition_ok: true,
+    source: 'manual' as 'manual' | 'scan',
   });
+  const [scanNotice, setScanNotice] = useState('');
   const [recFormLoading, setRecFormLoading] = useState(false);
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [ingredientOptions, setIngredientOptions] = useState<{ id: string; name: string; unit: string }[]>([]);
@@ -343,7 +346,29 @@ export default function TrazabilidadPanel() {
   };
 
   const handleQrScan = (decodedText: string) => {
-    setRecForm((prev) => ({ ...prev, qr_code: decodedText }));
+    // Sprint 6 (F1.1): antes solo se volcaba el texto crudo sin rellenar
+    // nada — ahora se interpreta como GS1-128 y se auto-rellenan lote y
+    // caducidad (el requisito literal del acta: "escáner que te meta la
+    // fecha de entrada, los lotes y todo lo de sanidad" — la fecha de
+    // entrada ya se auto-asigna en el backend a día de hoy).
+    const parsed = parseGS1(decodedText);
+    setRecForm((prev) => ({
+      ...prev,
+      qr_code: decodedText,
+      lot_number: parsed?.lot || prev.lot_number,
+      expiry_date: parsed?.expiryDate || parsed?.bestBeforeDate || prev.expiry_date,
+      source: 'scan',
+    }));
+    if (parsed?.lot || parsed?.expiryDate || parsed?.bestBeforeDate) {
+      const partes = [
+        parsed.lot ? `lote ${parsed.lot}` : null,
+        (parsed.expiryDate || parsed.bestBeforeDate) ? `caducidad ${parsed.expiryDate || parsed.bestBeforeDate}` : null,
+      ].filter(Boolean).join(' y ');
+      setScanNotice(`✓ Auto-rellenado desde el código: ${partes}`);
+    } else {
+      setScanNotice('Código leído, pero no se reconoce como GS1 — revisa lote/caducidad manualmente.');
+    }
+    setTimeout(() => setScanNotice(''), 6000);
     setShowQrScanner(false);
   };
 
@@ -374,6 +399,7 @@ export default function TrazabilidadPanel() {
           qr_code: recForm.qr_code || undefined,
           condition_ok: recForm.condition_ok,
           notes: recForm.notes || undefined,
+          source: recForm.source,
         }),
       });
       const d = await res.json();
@@ -382,7 +408,7 @@ export default function TrazabilidadPanel() {
         setRecForm({
           ingredient_name: '', ingredient_id: '', lot_number: '', batch_quantity: '',
           unit: 'g', received_by: '', expiry_date: '', temperature: '',
-          supplier: '', qr_code: '', notes: '', condition_ok: true,
+          supplier: '', qr_code: '', notes: '', condition_ok: true, source: 'manual',
         });
         setIngredientSearch('');
         await loadReceivings();
@@ -829,6 +855,11 @@ export default function TrazabilidadPanel() {
                         onClose={() => setShowQrScanner(false)}
                       />
                     </div>
+                  )}
+                  {scanNotice && (
+                    <p className={`text-xs mt-1.5 ${scanNotice.startsWith('✓') ? 'text-success' : 'text-warning'}`}>
+                      {scanNotice}
+                    </p>
                   )}
                 </div>
 

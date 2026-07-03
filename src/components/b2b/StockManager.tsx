@@ -190,6 +190,9 @@ export default function StockManager() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [newOrder, setNewOrder] = useState({ supplier: '', notes: '', expected_date: '', items: [] as any[] });
+  // Sprint 6 (F1.2): recepción completa de pedido con trazabilidad (lote/caducidad auto)
+  const [receivingOrderId, setReceivingOrderId] = useState<string | null>(null);
+  const [receiveResult, setReceiveResult] = useState<{ orderId: string; message: string; ok: boolean } | null>(null);
 
   // Stock check state
   const [stockCheckLoading, setStockCheckLoading] = useState(false);
@@ -1621,12 +1624,24 @@ export default function StockManager() {
               </div>
               <div>
                 <span className="block text-[20px] font-bold text-[#16A34A] tabular-nums">
-                  {supplierOrders.filter((o) => o.status === 'delivered').length}
+                  {supplierOrders.filter((o) => o.status === 'delivered' || o.status === 'received').length}
                 </span>
                 <span className="block text-[11px] text-[#9CA3AF] uppercase tracking-wider font-medium">Entregados</span>
               </div>
             </div>
           </div>
+
+          {receiveResult && (
+            <div className={`flex items-start justify-between gap-3 rounded-xl px-4 py-3 text-sm ${receiveResult.ok ? 'bg-[#EFFAF2] text-[#16A34A]' : 'bg-[#FEF3F3] text-[#DC2626]'}`}>
+              <div className="flex items-start gap-2">
+                <Icon name={receiveResult.ok ? 'check' : 'alertTriangle'} className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>{receiveResult.message}</span>
+              </div>
+              <button onClick={() => setReceiveResult(null)} className="flex-shrink-0 opacity-60 hover:opacity-100">
+                <Icon name="close" className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Orders table */}
           {loadingOrders ? (
@@ -1664,6 +1679,8 @@ export default function StockManager() {
                             return { label: 'Enviado', bg: 'bg-[#DBEAFE]', color: 'text-[#2563EB]', icon: 'truck' };
                           case 'delivered':
                             return { label: 'Entregado', bg: 'bg-[#D1FAE5]', color: 'text-[#16A34A]', icon: 'check' };
+                          case 'received':
+                            return { label: 'Recibido (trazado)', bg: 'bg-[#D1FAE5]', color: 'text-[#16A34A]', icon: 'check' };
                           case 'cancelled':
                             return { label: 'Cancelado', bg: 'bg-[#FEE2E2]', color: 'text-[#DC2626]', icon: 'close' };
                           default:
@@ -1716,21 +1733,39 @@ export default function StockManager() {
                               )}
                               {order.status === 'ordered' && (
                                 <button
+                                  disabled={receivingOrderId === order.id}
                                   onClick={async () => {
-                                    await fetch('/api/stock/supplier-orders', {
-                                      method: 'PUT',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ id: order.id, status: 'delivered', delivered_date: new Date().toISOString() }),
-                                    });
-                                    loadOrders();
+                                    setReceivingOrderId(order.id);
+                                    setReceiveResult(null);
+                                    try {
+                                      const res = await fetch(`/api/trazabilidad/receiving/from-order/${order.id}`, { method: 'POST' });
+                                      const json = await res.json();
+                                      if (json.success) {
+                                        const { items_processed, items_total, errors } = json.data;
+                                        setReceiveResult({
+                                          orderId: order.id,
+                                          ok: !errors,
+                                          message: errors
+                                            ? `Recibido ${items_processed}/${items_total} · ${errors.length} incidencia(s): ${errors.join(' ')}`
+                                            : `Pedido recibido: ${items_processed}/${items_total} items con lote/caducidad trazados.`,
+                                        });
+                                      } else {
+                                        setReceiveResult({ orderId: order.id, ok: false, message: json.error || 'Error al recibir el pedido.' });
+                                      }
+                                    } catch {
+                                      setReceiveResult({ orderId: order.id, ok: false, message: 'Error de red al recibir el pedido.' });
+                                    } finally {
+                                      setReceivingOrderId(null);
+                                      loadOrders();
+                                    }
                                   }}
-                                  className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#EFFAF2] hover:text-[#16A34A] transition-colors"
-                                  title="Marcar entregado"
+                                  className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#EFFAF2] hover:text-[#16A34A] transition-colors disabled:opacity-50"
+                                  title="Recibir pedido completo (registra lote/caducidad de cada item automáticamente)"
                                 >
-                                  <Icon name="check" className="w-3.5 h-3.5" />
+                                  <Icon name={receivingOrderId === order.id ? 'spinner' : 'check'} className={'w-3.5 h-3.5 ' + (receivingOrderId === order.id ? 'animate-spin' : '')} />
                                 </button>
                               )}
-                              {order.status !== 'cancelled' && order.status !== 'delivered' && (
+                              {order.status !== 'cancelled' && order.status !== 'delivered' && order.status !== 'received' && (
                                 <button
                                   onClick={async () => {
                                     await fetch('/api/stock/supplier-orders', {

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     let where = '';
     const params: any[] = [];
-    if (status && ['pending', 'ordered', 'delivered', 'cancelled'].includes(status)) {
+    if (status && ['pending', 'ordered', 'delivered', 'received', 'cancelled'].includes(status)) {
       where = `WHERE so.status = $1`;
       params.push(status);
     }

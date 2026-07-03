@@ -99,7 +99,12 @@ export async function POST(request: NextRequest) {
       supplier_order_id,
       condition_ok,
       notes,
+      source,
     } = body;
+    // Sprint 6 (F1.1): 'scan' cuando el lote/caducidad se auto-rellenaron
+    // desde un código de barras/QR — antes esta ruta ignoraba el campo y
+    // toda recepción quedaba marcada 'manual' aunque viniera del escáner.
+    const finalSource = source === 'scan' || source === 'api' ? source : 'manual';
 
     // Validaciones
     if (!ingredient_id || !isValidUUID(ingredient_id)) {
@@ -167,8 +172,8 @@ export async function POST(request: NextRequest) {
         `INSERT INTO receiving_log
            (supplier_order_id, ingredient_id, lot_number, batch_quantity, unit,
             received_date, received_by, expiry_date, temperature, supplier,
-            condition_ok, qr_code, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            condition_ok, qr_code, notes, source)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           supplier_order_id || null,
@@ -184,6 +189,7 @@ export async function POST(request: NextRequest) {
           finalCondition,
           qr_code || null,
           notes || null,
+          finalSource,
         ]
       );
       const receivingRecord = receivingResult.rows[0];

@@ -98,7 +98,7 @@ export async function POST(
             `INSERT INTO receiving_log
                (supplier_order_id, ingredient_id, lot_number, batch_quantity, unit,
                 received_date, supplier, condition_ok, source, notes)
-             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, true, 'manual', $7)
+             VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, true, 'api', $7)
              RETURNING *`,
             [
               orderId,

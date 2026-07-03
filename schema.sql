@@ -2306,3 +2306,16 @@ CREATE TABLE IF NOT EXISTS briefing_send_log (
 );
 CREATE INDEX IF NOT EXISTS idx_briefing_send_log_event ON briefing_send_log(event_id);
 ALTER TABLE briefing_send_log DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- SPRINT 6 · F1.2 — Fix: 'ordered' no estaba en el CHECK de supplier_orders
+-- ============================================================
+-- Bug real preexistente: el botón "Marcar enviado" del panel de Pedidos a
+-- Proveedores escribe status='ordered', pero el CHECK constraint (añadido en
+-- 2026-06-22-trazabilidad-migrate-v1.sql) solo permitía
+-- pending/approved/delivered/received/partial/cancelled — ese UPDATE
+-- fallaba siempre con una violación de CHECK. Se añade 'ordered' a la lista,
+-- que es el valor que toda la UI ya usa de forma consistente.
+ALTER TABLE supplier_orders DROP CONSTRAINT IF EXISTS supplier_orders_status_check;
+ALTER TABLE supplier_orders ADD CONSTRAINT supplier_orders_status_check
+    CHECK (status IN ('pending','ordered','approved','delivered','received','partial','cancelled'));
