@@ -190,6 +190,10 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [guestCount, setGuestCount] = useState(0);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  // F4.4: sitting sobre el plano del venue externo (events.venue_pdf_url ya
+  // existía — subido en la ficha del evento — pero nunca se usaba aquí).
+  const [venuePdfUrl, setVenuePdfUrl] = useState<string | null>(null);
+  const [showVenuePlan, setShowVenuePlan] = useState(true);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -355,6 +359,16 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
       .then(data => {
         if (data.success && data.total !== undefined) {
           setGuestCount(data.total);
+        }
+      })
+      .catch(() => {});
+
+    // F4.4: plano del venue externo, si se subió en la ficha del evento
+    fetch(`/api/events/${eventId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.data?.venue_pdf_url) {
+          setVenuePdfUrl(data.data.venue_pdf_url);
         }
       })
       .catch(() => {});
@@ -558,6 +572,19 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
             >
               ✋
             </button>
+            {venuePdfUrl && (
+              <>
+                <div className="w-px h-5 bg-[#C9A84C]/30 mx-1" />
+                <button
+                  onClick={() => setShowVenuePlan(v => !v)}
+                  className={`px-2 h-8 flex items-center justify-center rounded text-[10px] font-medium transition-colors
+                    ${showVenuePlan ? 'bg-[#6B2737] text-[#F6F1E7]' : 'hover:bg-[#EFE7D6] text-[#5A4A38]'}`}
+                  title="Mostrar/ocultar plano del venue"
+                >
+                  Plano venue
+                </button>
+              </>
+            )}
           </div>
 
           {/* Head table marker */}
@@ -580,19 +607,39 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
               top: 0, left: 0,
             }}
           >
+            {/* F4.4: plano del venue externo, como capa de fondo para calcar
+                el sitting sobre el espacio real (events.venue_pdf_url). */}
+            {venuePdfUrl && showVenuePlan && (
+              /\.pdf(\?|$)/i.test(venuePdfUrl) ? (
+                <embed
+                  src={venuePdfUrl}
+                  type="application/pdf"
+                  style={{ position: 'absolute', top: 0, left: 0, width: CANVAS_W, height: CANVAS_H, pointerEvents: 'none' }}
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={venuePdfUrl}
+                  alt="Plano del venue"
+                  style={{ position: 'absolute', top: 0, left: 0, width: CANVAS_W, height: CANVAS_H, objectFit: 'contain', pointerEvents: 'none' }}
+                />
+              )
+            )}
+
             {/* Grid SVG */}
             <svg
               ref={svgRef}
               width={CANVAS_W}
               height={CANVAS_H}
-              style={{ 
-                background: '#FBF8F1',
-                backgroundImage: `
+              style={{
+                background: venuePdfUrl && showVenuePlan ? 'transparent' : '#FBF8F1',
+                backgroundImage: venuePdfUrl && showVenuePlan ? undefined : `
                   linear-gradient(rgba(176, 138, 62, 0.06) 1px, transparent 1px),
                   linear-gradient(90deg, rgba(176, 138, 62, 0.06) 1px, transparent 1px)
                 `,
                 backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
                 boxShadow: '0 0 0 1px rgba(176, 138, 62, 0.2), 0 8px 40px rgba(60, 40, 20, 0.12)',
+                position: 'relative',
               }}
             >
               {tables.map((table) => (

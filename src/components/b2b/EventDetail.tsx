@@ -133,6 +133,12 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   const [extraInvoiceAmount, setExtraInvoiceAmount] = useState('');
   const [invoicing, setInvoicing] = useState(false);
   const [invoiceMsg, setInvoiceMsg] = useState('');
+  // F4.3: protocolo del evento — completa junto a F0.2 (intolerancias) los 7
+  // campos del memo de camareros. La columna y el memo ya existían, faltaba
+  // el propio caller (PUT no lo aceptaba y no había campo en la ficha).
+  const [protocolNotes, setProtocolNotes] = useState('');
+  const [savingProtocol, setSavingProtocol] = useState(false);
+  const [protocolMsg, setProtocolMsg] = useState('');
   // F3.2: cancelación excepcional de un evento aceptado — gobernada por
   // INV-3 (transitions/route.ts), exige motivo. Único punto de la app donde
   // se puede cancelar un evento ya aceptado (se eliminó del Kanban).
@@ -234,6 +240,10 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  useEffect(() => {
+    if (event) setProtocolNotes(event.protocol_notes || '');
+  }, [event?.id, event?.protocol_notes]);
 
   /* ── Loading ──────────────────────────────────────────────────── */
   if (loading) return <FullSkeleton />;
@@ -414,6 +424,41 @@ export default function EventDetail({ eventId }: EventDetailProps) {
               <Field label="Notas" value={event.notes} />
             </div>
           )}
+          <div className="col-span-full">
+            <label className="block text-[11px] uppercase tracking-wider text-ink-soft-60 font-medium mb-1">Protocolo</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <textarea
+                value={protocolNotes}
+                onChange={(e) => setProtocolNotes(e.target.value)}
+                placeholder="Notas de protocolo para el memo de camareros (orden de ceremonia, tratamiento a invitados VIP…)"
+                rows={2}
+                className="flex-1 text-sm border border-cream-dark rounded-lg px-3 py-2 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-gold/30"
+              />
+              <button
+                onClick={async () => {
+                  setSavingProtocol(true);
+                  setProtocolMsg('');
+                  try {
+                    const res = await fetch(`/api/events/${eventId}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ protocol_notes: protocolNotes || null }),
+                    });
+                    const data = await res.json();
+                    if (data.success) { setProtocolMsg('✓ Guardado'); fetchAll(); }
+                    else setProtocolMsg('Error: ' + (data.error || ''));
+                  } catch { setProtocolMsg('Error de conexión'); }
+                  setSavingProtocol(false);
+                  setTimeout(() => setProtocolMsg(''), 2000);
+                }}
+                disabled={savingProtocol}
+                className="px-4 py-2 rounded-lg bg-ink text-white text-sm font-medium hover:bg-ink-light disabled:opacity-50 whitespace-nowrap self-start"
+              >
+                {savingProtocol ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+            {protocolMsg && <p className="text-xs text-ink-soft-60 mt-1">{protocolMsg}</p>}
+          </div>
         </div>
 
         {/* Selector de salón (G1, Sprint 1/5) */}

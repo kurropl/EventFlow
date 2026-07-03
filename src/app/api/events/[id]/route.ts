@@ -118,7 +118,7 @@ export async function PUT(
     const body = await request.json();
     const { status, notes, total_pvp, bar_hours, selected_items,
             client_name, client_email, event_type, guest_count, kids_count, event_date,
-            linen_type, centerpiece } = body;
+            linen_type, centerpiece, protocol_notes } = body;
 
     // G17/B6: whitelist — antes se aceptaba cualquier string como status,
     // sin validar valor ni transición.
@@ -198,6 +198,9 @@ export async function PUT(
       pushIfInBody('event_date', 'event_date');
       pushIfInBody('linen_type', 'linen_type');
       pushIfInBody('centerpiece', 'centerpiece');
+      // F4.3: campo protocolo del memo — la columna y el memo ya existían
+      // (Sprint 6 F0.2/F0.3) pero PUT nunca lo aceptaba del body.
+      pushIfInBody('protocol_notes', 'protocol_notes');
       pushIfInBody('service_type', 'service_type');
       // venue_type explícito solo si NO se envía `venue`/`venue_id` (que lo
       // derivan abajo) — evita doble asignación de la misma columna en el SET.

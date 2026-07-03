@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
     const rows = await queryMany<any>(
       `SELECT wep.id, wep.worker_id, wep.event_id, wep.hours, wep.hourly_rate, wep.total_pay, wep.notes,
               wep.status, wep.paid_at, wep.created_at, wep.updated_at,
+              wep.signature_url, wep.signed_by, wep.signed_at,
               w.name AS worker_name, w.phone AS worker_phone, w.roles AS worker_roles
        FROM worker_event_pay wep
        JOIN workers w ON w.id = wep.worker_id

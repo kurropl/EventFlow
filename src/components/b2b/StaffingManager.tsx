@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Icon from '../shared/Icon';
 import { DataCard, DataList, PageHeader } from '@/components/ui';
@@ -769,6 +769,9 @@ export default function StaffingManager() {
   const [editingPayId, setEditingPayId] = useState<string | null>(null);
   const [payForm, setPayForm] = useState({ hours: '', hourly_rate: '', notes: '' });
   const [savingPay, setSavingPay] = useState(false);
+  // F4.1: firma de nómina tras marcar pagado (FR-A09) — pizarra táctil,
+  // mismo mecanismo que la firma del contrato (Sprint 3, G8).
+  const [signModalPay, setSignModalPay] = useState<{ id: string; worker_name: string } | null>(null);
   const [showAddPay, setShowAddPay] = useState(false);
   const [newPayForm, setNewPayForm] = useState({ worker_id: '', hours: '', hourly_rate: '10', notes: '' });
 
@@ -2124,6 +2127,9 @@ export default function StaffingManager() {
                                 >
                                   {isPaid ? 'Pagado' : 'Pendiente'}
                                 </span>
+                                {isPaid && p.signature_url && (
+                                  <span className="block mt-1 text-[9px] text-[#9CA3AF]">✓ Firmado</span>
+                                )}
                               </td>
                               <td className="px-4 py-2.5 text-[12px] text-[#6B7280]">
                                 {p.paid_at ? new Date(p.paid_at).toLocaleDateString('es-ES') : '--'}
@@ -2185,6 +2191,15 @@ export default function StaffingManager() {
                                           title="Marcar Pagado"
                                         >
                                           <Icon name="check-circle" className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                      {isPaid && !p.signature_url && (
+                                        <button
+                                          onClick={() => setSignModalPay({ id: p.id, worker_name: p.worker_name })}
+                                          className="p-1.5 rounded-lg text-[#C9A84C] hover:bg-[#FBF6E9] transition-colors"
+                                          title="Firmar recepción de nómina"
+                                        >
+                                          <Icon name="edit" className="w-3.5 h-3.5" />
                                         </button>
                                       )}
                                       <button
@@ -2379,6 +2394,142 @@ export default function StaffingManager() {
           </div>
         </div>
       )}
+
+      {/* F4.1: firma de nómina */}
+      {signModalPay && (
+        <PayrollSignModal
+          payId={signModalPay.id}
+          workerName={signModalPay.worker_name}
+          onClose={() => setSignModalPay(null)}
+          onSigned={() => { setSignModalPay(null); if (selectedEvent) loadWorkerPay(String(selectedEvent)); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Firma de nómina (F4.1, FR-A09) — mismo mecanismo de pizarra táctil   */
+/*  que la firma del contrato (Sprint 3, G8): canvas + toDataURL PNG.    */
+/* ------------------------------------------------------------------ */
+function PayrollSignModal({
+  payId,
+  workerName,
+  onClose,
+  onSigned,
+}: {
+  payId: string;
+  workerName: string;
+  onClose: () => void;
+  onSigned: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const getCanvasPoint = (canvas: HTMLCanvasElement, e: React.PointerEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    drawingRef.current = true;
+    const { x, y } = getCanvasPoint(canvas, e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const { x, y } = getCanvasPoint(canvas, e);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#1A1A1A';
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    setHasDrawn(true);
+  };
+
+  const handlePointerUp = () => { drawingRef.current = false; };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+  };
+
+  const submit = async () => {
+    if (!hasDrawn || !canvasRef.current) { setError('Firma en la pizarra antes de continuar'); return; }
+    setSubmitting(true);
+    setError('');
+    try {
+      const signatureData = canvasRef.current.toDataURL('image/png');
+      const res = await fetch(`/api/staffing/pay/${payId}/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signature_url: signatureData, signed_by: workerName }),
+      });
+      const data = await res.json();
+      if (!data.success) { setError(data.error || 'Error al firmar'); return; }
+      onSigned();
+    } catch {
+      setError('Error de conexión');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div
+        className="relative bg-white rounded-2xl border border-[#ECECF1] shadow-2xl w-full max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-base font-semibold text-[#1A1A1A] mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          Firma de recepción de nómina
+        </h3>
+        <p className="text-xs text-[#9CA3AF] mb-3">{workerName} confirma con su firma que ha recibido el pago.</p>
+
+        <canvas
+          ref={canvasRef}
+          width={400}
+          height={160}
+          className="w-full border border-[#E5E5EC] rounded-xl bg-[#FAFAFC] touch-none"
+          style={{ aspectRatio: '400/160' }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        />
+        <div className="flex items-center justify-between mt-2">
+          <button onClick={clearSignature} className="text-xs text-[#6B7280] hover:underline">
+            Borrar firma
+          </button>
+          {error && <span className="text-xs text-[#DC2626]">{error}</span>}
+        </div>
+
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} disabled={submitting}
+            className="flex-1 text-[13px] font-medium border border-[#E5E7EB] text-[#6B7280] py-2.5 rounded-xl hover:bg-[#F5F5F8] disabled:opacity-50">
+            Cancelar
+          </button>
+          <button onClick={submit} disabled={submitting || !hasDrawn}
+            className="flex-1 text-[13px] font-medium text-white py-2.5 rounded-xl disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
+            {submitting ? 'Guardando…' : 'Confirmar firma'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

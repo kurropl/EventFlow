@@ -58,6 +58,8 @@ export default function ProvidersManager() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [selected, setSelected] = useState<ProviderRow | null>(null);
   const [showNew, setShowNew] = useState(false);
+  // F4.2: cuentas a pagar (FR-A10) — pestaña nueva junto al directorio.
+  const [activeTab, setActiveTab] = useState<'directorio' | 'cuentas'>('directorio');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -106,15 +108,39 @@ export default function ProvidersManager() {
             {totalCount} proveedores · {activeCount} activos
           </p>
         </div>
-        <button
-          onClick={() => setShowNew(true)}
-          className="text-sm font-medium text-white px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all self-start"
-          style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
-        >
-          + Nuevo proveedor
-        </button>
+        {activeTab === 'directorio' && (
+          <button
+            onClick={() => setShowNew(true)}
+            className="text-sm font-medium text-white px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all self-start"
+            style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+          >
+            + Nuevo proveedor
+          </button>
+        )}
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-lg bg-cream-dark border border-gold/20 w-fit">
+        {[
+          { id: 'directorio' as const, label: 'Directorio' },
+          { id: 'cuentas' as const, label: 'Cuentas a pagar' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+              activeTab === t.id ? 'bg-gold text-black shadow-sm' : 'text-ink-soft hover:text-ink hover:bg-white'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'cuentas' ? (
+        <ProviderInvoicesTab providers={providers} />
+      ) : (
+      <>
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
@@ -235,6 +261,220 @@ export default function ProvidersManager() {
           }}
         />
       )}
+      </>
+      )}
+    </div>
+  );
+}
+
+// ── Cuentas a pagar (F4.2, FR-A10) ────────────────────────────
+
+interface ProviderInvoiceRow {
+  id: string;
+  provider_id: string | null;
+  provider_name: string | null;
+  concept: string | null;
+  amount: number | string;
+  issue_date: string | null;
+  due_date: string | null;
+  status: 'pendiente' | 'pagado' | 'vencido';
+  proof_url: string | null;
+  paid_at: string | null;
+  notes: string | null;
+}
+
+function ProviderInvoicesTab({ providers }: { providers: ProviderRow[] }) {
+  const [invoices, setInvoices] = useState<ProviderInvoiceRow[]>([]);
+  const [resumen, setResumen] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [showNew, setShowNew] = useState(false);
+  const [form, setForm] = useState({ provider_id: '', concept: '', amount: '', due_date: '' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/provider-invoices').then((r) => r.json());
+      if (res.success) { setInvoices(res.data); setResumen(res.resumen); }
+    } catch { /* keep empty */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const create = async () => {
+    if (!form.amount) return;
+    setSaving(true);
+    try {
+      await fetch('/api/provider-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider_id: form.provider_id || null,
+          concept: form.concept || null,
+          amount: Number(form.amount),
+          due_date: form.due_date || null,
+        }),
+      });
+      setForm({ provider_id: '', concept: '', amount: '', due_date: '' });
+      setShowNew(false);
+      load();
+    } catch { /* ignore */ }
+    setSaving(false);
+  };
+
+  const markPaid = async (id: string) => {
+    await fetch(`/api/provider-invoices/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'pagado' }),
+    });
+    load();
+  };
+
+  const uploadProof = async (id: string, file: File) => {
+    // Sin storage de archivos configurado: se usa un data-URL (igual que la
+    // firma de contrato/nómina) para no depender de infraestructura extra.
+    const reader = new FileReader();
+    reader.onload = async () => {
+      await fetch(`/api/provider-invoices/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof_url: String(reader.result) }),
+      });
+      load();
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (loading) return <div className="p-8 text-center"><Spinner /></div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Resumen */}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-3 bg-white rounded-xl px-5 py-4 border border-cream-dark min-w-[160px]">
+          <div>
+            <span className="block text-[20px] font-bold text-ink tabular-nums">{money(resumen?.debe_total || 0)}</span>
+            <span className="block text-[11px] text-ink-soft-60 uppercase tracking-wider font-medium">Debe total</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 bg-white rounded-xl px-5 py-4 border border-danger/30 min-w-[160px]">
+          <div>
+            <span className="block text-[20px] font-bold text-danger tabular-nums">{money(resumen?.vencido_total || 0)}</span>
+            <span className="block text-[11px] text-ink-soft-60 uppercase tracking-wider font-medium">Vencido ({resumen?.vencidas || 0})</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowNew((v) => !v)}
+          className="ml-auto text-sm font-medium text-white px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all self-start"
+          style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}
+        >
+          {showNew ? 'Cancelar' : '+ Nueva factura'}
+        </button>
+      </div>
+
+      {/* Alta de factura */}
+      {showNew && (
+        <div className="bg-white rounded-xl border border-cream-dark p-4 flex flex-wrap gap-2">
+          <select
+            value={form.provider_id}
+            onChange={(e) => setForm((f) => ({ ...f, provider_id: e.target.value }))}
+            className="text-sm border border-cream-dark rounded-lg px-3 py-2 bg-white"
+          >
+            <option value="">Proveedor…</option>
+            {providers.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <input
+            value={form.concept}
+            onChange={(e) => setForm((f) => ({ ...f, concept: e.target.value }))}
+            placeholder="Concepto"
+            className="flex-1 min-w-[160px] text-sm border border-cream-dark rounded-lg px-3 py-2"
+          />
+          <input
+            type="number" min={0} step={0.01}
+            value={form.amount}
+            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+            placeholder="Importe €"
+            className="w-28 text-sm border border-cream-dark rounded-lg px-3 py-2"
+          />
+          <input
+            type="date"
+            value={form.due_date}
+            onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
+            className="text-sm border border-cream-dark rounded-lg px-3 py-2"
+          />
+          <button
+            onClick={create}
+            disabled={saving || !form.amount}
+            className="px-4 py-2 rounded-lg bg-ink text-white text-sm font-medium hover:bg-ink-light disabled:opacity-50"
+          >
+            {saving ? 'Guardando…' : 'Añadir'}
+          </button>
+        </div>
+      )}
+
+      {/* Tabla */}
+      <div className="bg-white rounded-2xl border border-cream-dark overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-cream-dark bg-cream text-[11px] uppercase tracking-wider text-ink-soft-60">
+                <th className="text-left px-4 py-3 font-medium">Proveedor</th>
+                <th className="text-left px-4 py-3 font-medium">Concepto</th>
+                <th className="text-right px-4 py-3 font-medium">Importe</th>
+                <th className="text-left px-4 py-3 font-medium">Vencimiento</th>
+                <th className="text-center px-4 py-3 font-medium">Estado</th>
+                <th className="text-center px-4 py-3 font-medium">Justificante</th>
+                <th className="text-center px-4 py-3 font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.length === 0 ? (
+                <tr><td colSpan={7} className="text-center py-8 text-ink-soft-60 text-sm">Sin facturas registradas</td></tr>
+              ) : invoices.map((inv) => (
+                <tr key={inv.id} className={`border-b border-cream-dark last:border-0 ${inv.status === 'vencido' ? 'bg-danger/5' : ''}`}>
+                  <td className="px-4 py-2.5 text-ink">{inv.provider_name || '—'}</td>
+                  <td className="px-4 py-2.5 text-ink-soft-60">{inv.concept || '—'}</td>
+                  <td className="px-4 py-2.5 text-right font-medium text-ink">{money(inv.amount)}</td>
+                  <td className={`px-4 py-2.5 ${inv.status === 'vencido' ? 'text-danger font-medium' : 'text-ink-soft-60'}`}>
+                    {fmtDate(inv.due_date)}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                      inv.status === 'pagado' ? 'bg-success/10 text-success'
+                        : inv.status === 'vencido' ? 'bg-danger/10 text-danger'
+                        : 'bg-warning/10 text-warning'
+                    }`}>
+                      {inv.status === 'pagado' ? 'Pagado' : inv.status === 'vencido' ? 'Vencido' : 'Pendiente'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    {inv.proof_url ? (
+                      <a href={inv.proof_url} target="_blank" rel="noreferrer" className="text-xs text-gold hover:underline">Ver</a>
+                    ) : (
+                      <label className="text-xs text-ink-soft-60 hover:text-ink cursor-pointer underline">
+                        Subir
+                        <input type="file" accept="image/*,.pdf" className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(inv.id, f); }} />
+                      </label>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    {inv.status !== 'pagado' && (
+                      <button onClick={() => markPaid(inv.id)} className="text-xs text-success hover:underline font-medium">
+                        Marcar pagado
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
