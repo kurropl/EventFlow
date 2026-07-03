@@ -32,11 +32,15 @@ export async function GET(_req: NextRequest) {
           [eventId]
         );
 
-        // Desglose de costes
+        // Desglose de costes — F3.4: gastos previos (FR-A06) se guardan con
+        // line_type='extras' y description 'Gasto previo: …'; antes se
+        // fundían con el resto de extras en este desglose. Línea propia.
         const costsResult = await query(
-          `SELECT line_type, SUM(total) as total
+          `SELECT CASE WHEN line_type = 'extras' AND description LIKE 'Gasto previo:%'
+                       THEN 'gastos_previos' ELSE line_type END AS line_type,
+                  SUM(total) as total
            FROM cost_desglose WHERE event_id = $1
-           GROUP BY line_type ORDER BY total DESC`,
+           GROUP BY 1 ORDER BY total DESC`,
           [eventId]
         );
 

@@ -15,6 +15,9 @@
 import { useState, useMemo } from 'react';
 import { useWizardStore } from '@/store/useWizardStore';
 import { CATALOG_ITEMS } from '@/data/menus';
+import { SUGGESTIONS } from '@/data/catalog';
+
+const SUGGESTION_PREFIX = 'sugerencia:';
 
 // Categorías que se consideran "plato principal"
 const MAIN_COURSES = ['carne', 'pescado', 'arroz'];
@@ -90,6 +93,31 @@ export default function WizardStep3() {
 
   // Classify initial items from the store
   const initial = useMemo(() => classifyMenuItems(step3?.selected_items || []), []);
+
+  // F3.3: sugerencias adicionales — contextuales según los datos ya
+  // introducidos en el paso 1 (evento/comensales/niños). Dataset ya
+  // definido en catalog.ts pero sin ningún consumidor en la UI hasta ahora.
+  const visibleSuggestions = useMemo(() => SUGGESTIONS.filter((s: any) => {
+    if (s.event_type && s.event_type !== step1?.event_type) return false;
+    if (s.guest_threshold && adults < s.guest_threshold) return false;
+    if (s.has_kids && !(step1?.kids_count && step1.kids_count > 0)) return false;
+    return true;
+  }), [step1, adults]);
+
+  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(() => {
+    const ids = (step3?.selected_items || [])
+      .filter((it: any) => typeof it.item_id === 'string' && it.item_id.startsWith(SUGGESTION_PREFIX))
+      .map((it: any) => it.item_id.slice(SUGGESTION_PREFIX.length));
+    return new Set(ids);
+  });
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   // Catalog selections: category → Set of checked item names
   const [selectedCatalog, setSelectedCatalog] = useState<Record<string, Set<string>>>(() => {
@@ -205,6 +233,24 @@ export default function WizardStep3() {
           subtotal_pvp: 0,
           subtotal_cost: 0,
         });
+      });
+    });
+
+    // F3.3: sugerencias seleccionadas → mismo array selected_items (pvp/cost
+    // en 0, como cualquier item sin match de catálogo; el equipo comercial
+    // las precia manualmente al negociar).
+    selectedSuggestions.forEach((id) => {
+      const s = SUGGESTIONS.find((sg: any) => sg.id === id);
+      if (!s) return;
+      allItems.push({
+        item_id: `${SUGGESTION_PREFIX}${s.id}`,
+        name: s.title,
+        category: 'complemento',
+        quantity: 1,
+        unit_price_pvp: 0,
+        unit_price_cost: 0,
+        subtotal_pvp: 0,
+        subtotal_cost: 0,
       });
     });
 
@@ -386,6 +432,38 @@ export default function WizardStep3() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Sugerencias adicionales (F3.3) — contextuales, entre Menú y Extras */}
+      {visibleSuggestions.length > 0 && (
+        <div className="pt-2 border-t border-stone-200">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-1">Sugerencias adicionales</h3>
+          <p className="text-xs text-stone-400 mb-3">Ideas que suelen encajar bien con tu evento</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            {visibleSuggestions.map((s: any) => {
+              const isSelected = selectedSuggestions.has(s.id);
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => toggleSuggestion(s.id)}
+                  className={`p-3.5 rounded-xl border-2 transition-all duration-200 text-left ${
+                    isSelected
+                      ? 'border-[#C9A84C] bg-[#C9A84C]/8 shadow-sm'
+                      : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-xl leading-none">{s.icon}</span>
+                    <div className="min-w-0">
+                      <div className={`text-sm ${isSelected ? 'text-[#1A1A1A] font-medium' : 'text-stone-700'}`}>{s.title}</div>
+                      <div className="text-[11px] text-stone-400 mt-0.5">{s.description}</div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

@@ -133,6 +133,34 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   const [extraInvoiceAmount, setExtraInvoiceAmount] = useState('');
   const [invoicing, setInvoicing] = useState(false);
   const [invoiceMsg, setInvoiceMsg] = useState('');
+  // F3.2: cancelación excepcional de un evento aceptado — gobernada por
+  // INV-3 (transitions/route.ts), exige motivo. Único punto de la app donde
+  // se puede cancelar un evento ya aceptado (se eliminó del Kanban).
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState('');
+
+  // F3.4: gastos previos (FR-A06) — backend ya existía, sin ningún caller en la UI.
+  const [gastosPrevios, setGastosPrevios] = useState<any[]>([]);
+  const [gastosTotal, setGastosTotal] = useState(0);
+  const [gastoConcept, setGastoConcept] = useState('');
+  const [gastoAmount, setGastoAmount] = useState('');
+  const [savingGasto, setSavingGasto] = useState(false);
+  const [gastoMsg, setGastoMsg] = useState('');
+
+  const fetchGastosPrevios = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/events/${eventId}/gastos-previos`);
+      const data = await res.json();
+      if (data.success) {
+        setGastosPrevios(data.data || []);
+        setGastosTotal(Number(data.total) || 0);
+      }
+    } catch { /* no bloquea el resto de la ficha */ }
+  }, [eventId]);
+
+  useEffect(() => { fetchGastosPrevios(); }, [fetchGastosPrevios]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -580,6 +608,72 @@ export default function EventDetail({ eventId }: EventDetailProps) {
               <p className="text-[10px] text-ink-soft-60 mt-1">Comparte este enlace con el cliente para que rellene los invitados</p>
             </div>
           )}
+
+          {/* F3.2: cancelación excepcional (INV-3) — solo desde la ficha, con motivo obligatorio */}
+          {event.status === 'accepted' && (
+            <div className="p-4 bg-white rounded-lg border border-danger/20">
+              {!showCancelModal ? (
+                <button
+                  onClick={() => { setShowCancelModal(true); setCancelMsg(''); }}
+                  className="text-xs font-medium text-danger hover:underline"
+                >
+                  Cancelar evento (excepcional)
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-ink-soft">
+                    La señal cobrada se retiene como penalización. Requiere motivo.
+                  </p>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Motivo de la cancelación…"
+                    rows={2}
+                    className="w-full text-xs border border-cream-dark rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-danger/20"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setShowCancelModal(false); setCancelReason(''); }}
+                      disabled={cancelling}
+                      className="flex-1 text-xs font-medium border border-cream-dark text-ink-soft py-2 rounded-lg hover:bg-cream disabled:opacity-50"
+                    >
+                      Volver
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!cancelReason.trim()) { setCancelMsg('El motivo es obligatorio.'); return; }
+                        setCancelling(true);
+                        setCancelMsg('');
+                        try {
+                          const res = await fetch(`/api/events/${event.id}/transitions`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ transition: 'INV-3', motivo: cancelReason.trim() }),
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setShowCancelModal(false);
+                            setCancelReason('');
+                            fetchAll();
+                          } else {
+                            setCancelMsg('Error: ' + (data.error || ''));
+                          }
+                        } catch {
+                          setCancelMsg('Error de conexión');
+                        }
+                        setCancelling(false);
+                      }}
+                      disabled={cancelling || !cancelReason.trim()}
+                      className="flex-1 text-xs font-medium bg-danger text-white py-2 rounded-lg hover:bg-danger/90 disabled:opacity-50"
+                    >
+                      {cancelling ? 'Cancelando…' : 'Confirmar cancelación'}
+                    </button>
+                  </div>
+                  {cancelMsg && <p className="text-xs text-danger">{cancelMsg}</p>}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
       )}
@@ -683,6 +777,77 @@ export default function EventDetail({ eventId }: EventDetailProps) {
         ) : (
           <EmptyMessage text="Sin datos de escandallo" />
         )}
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────
+         5b. GASTOS PREVIOS (F3.4, FR-A06)
+         ────────────────────────────────────────────────────────── */}
+      <section className="bg-cream border border-gold/20 rounded-xl p-6">
+        <SectionHeader icon={WalletMinimal} title="Gastos previos" />
+        <div className="bg-cream-dark rounded-lg p-4 space-y-3">
+          {gastosPrevios.length > 0 ? (
+            <div className="space-y-1.5">
+              {gastosPrevios.map((g: any) => (
+                <div key={g.id} className="flex items-center justify-between text-sm bg-white rounded-lg px-3 py-2">
+                  <span className="text-ink">{String(g.description || '').replace(/^Gasto previo:\s*/, '')}</span>
+                  <span className="text-ink-soft-60 font-mono">{money(g.total)}</span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between text-sm font-semibold pt-2 border-t border-gold/20">
+                <span className="text-ink">Total gastos previos</span>
+                <span className="text-ink font-mono">{money(gastosTotal)}</span>
+              </div>
+            </div>
+          ) : (
+            <EmptyMessage text="Sin gastos previos registrados (gasolina, desplazamientos, compras puntuales…)" />
+          )}
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <input
+              value={gastoConcept}
+              onChange={(e) => setGastoConcept(e.target.value)}
+              placeholder="Concepto (p. ej. Gasolina furgoneta)"
+              className="flex-1 text-sm border border-cream-dark rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-gold/30"
+            />
+            <input
+              type="number" min={0} step={0.01}
+              value={gastoAmount}
+              onChange={(e) => setGastoAmount(e.target.value)}
+              placeholder="Importe €"
+              className="w-32 text-sm border border-cream-dark rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-gold/30"
+            />
+            <button
+              onClick={async () => {
+                if (!gastoConcept.trim() || !gastoAmount) return;
+                setSavingGasto(true);
+                setGastoMsg('');
+                try {
+                  const res = await fetch(`/api/events/${eventId}/gastos-previos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ concept: gastoConcept.trim(), amount: Number(gastoAmount) }),
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    setGastoConcept('');
+                    setGastoAmount('');
+                    fetchGastosPrevios();
+                    fetchAll();
+                  } else {
+                    setGastoMsg('Error: ' + (data.error || ''));
+                  }
+                } catch {
+                  setGastoMsg('Error de conexión');
+                }
+                setSavingGasto(false);
+              }}
+              disabled={savingGasto || !gastoConcept.trim() || !gastoAmount}
+              className="px-4 py-2 rounded-lg bg-ink text-white text-sm font-medium hover:bg-ink-light disabled:opacity-50 whitespace-nowrap"
+            >
+              {savingGasto ? 'Guardando…' : '+ Añadir gasto'}
+            </button>
+          </div>
+          {gastoMsg && <p className="text-xs text-danger">{gastoMsg}</p>}
+        </div>
       </section>
 
       {/* ──────────────────────────────────────────────────────────

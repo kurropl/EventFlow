@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { canEditOnlyPriceAndGuests } from '@/lib/quoteWorkflow';
 
 const CATEGORY_LABELS: Record<string, string> = {
   'aperitivo-frio': 'Aperitivos Fríos',
@@ -78,6 +79,11 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
   const [addItemName, setAddItemName] = useState<string>('');
   const [addQty, setAddQty] = useState(1);
   const [msg, setMsg] = useState('');
+  // F3.1 (FR-A02): en borrador solo se editan precio final y comensales —
+  // el desglose de platos/unidades aún no se ha negociado con el cliente.
+  const [guestCount, setGuestCount] = useState(0);
+  const [priceOverride, setPriceOverride] = useState(0);
+  const simpleMode = canEditOnlyPriceAndGuests(event?.status);
 
   // Load catalog on mount
   useEffect(() => {
@@ -98,6 +104,8 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
       setItems(itemsData);
       setBarHours(event.bar_hours || 0);
       setNotes(event.notes || '');
+      setGuestCount(Number(event.guest_count) || 0);
+      setPriceOverride(Number(event.total_pvp) || 0);
     }
   }, [event?.id, event]);
 
@@ -162,12 +170,16 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
     setMsg('');
     try {
       const body: any = {};
-      // Only send selected_items if we have them (avoid wiping with empty)
-      if (items.length > 0) {
+      if (simpleMode) {
+        // F3.1: en borrador solo comensales + precio final (sin desglose).
+        body.guest_count = guestCount;
+        body.total_pvp = priceOverride;
+      } else if (items.length > 0) {
+        // Only send selected_items if we have them (avoid wiping with empty)
         body.selected_items = items;
       }
       body.bar_hours = barHours;
-      body.bar_price = barHours * (event?.guest_count || 0) * BAR_PRICE_PER_HOUR;
+      body.bar_price = barHours * (guestCount || event?.guest_count || 0) * BAR_PRICE_PER_HOUR;
       body.notes = notes || null;
       if (newStatus) body.status = newStatus;
       const res = await fetch(`/api/events/${event.id}`, {
@@ -244,15 +256,37 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
               </div>
               <div className="bg-[#FAFAFC] rounded-xl p-3">
                 <span className="text-[#9CA3AF] block">Comensales</span>
-                <span className="font-semibold text-[#1A1A1A]">{event.guest_count} adultos{event.kids_count > 0 ? ` + ${event.kids_count} niños` : ''}</span>
+                {simpleMode ? (
+                  <input type="number" min={1} value={guestCount}
+                    onChange={(e) => setGuestCount(Number(e.target.value))}
+                    className="w-full mt-0.5 text-[13px] font-semibold text-[#1A1A1A] border border-[#E5E7EB] rounded-lg px-2 py-1 bg-white" />
+                ) : (
+                  <span className="font-semibold text-[#1A1A1A]">{event.guest_count} adultos{event.kids_count > 0 ? ` + ${event.kids_count} niños` : ''}</span>
+                )}
               </div>
             </div>
+
+            {/* F3.1 (FR-A02): en borrador, precio final editable directamente —
+                aún no hay desglose de platos negociado con el cliente. */}
+            {simpleMode && (
+              <div className="bg-[#FBF6E9] rounded-xl p-4 border border-[#EFE3BE]">
+                <label className="block text-[13px] font-semibold text-[#1A1A1A] mb-1.5">Precio final acordado (PVP)</label>
+                <input type="number" min={0} step={50} value={priceOverride}
+                  onChange={(e) => setPriceOverride(Number(e.target.value))}
+                  className="w-full text-lg font-bold text-[#1A1A1A] border border-[#E5D9A8] rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/30" />
+                <p className="text-[11px] text-[#9CA3AF] mt-1.5">
+                  Precio estimado a mano alzada. El desglose por platos se define en la fase de 1º contacto.
+                </p>
+              </div>
+            )}
 
             {/* Selected items */}
             <div>
               <h3 className="text-[13px] font-semibold text-[#1A1A1A] mb-2">Platos seleccionados ({items.length})</h3>
               {items.length === 0 && (
-                <p className="text-[12px] text-[#9CA3AF] py-4 text-center">Sin platos seleccionados. Añade desde el catálogo.</p>
+                <p className="text-[12px] text-[#9CA3AF] py-4 text-center">
+                  {simpleMode ? 'Aún sin platos definidos.' : 'Sin platos seleccionados. Añade desde el catálogo.'}
+                </p>
               )}
               <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
                 {items.map((item, idx) => {
@@ -263,20 +297,26 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
                   const catLabel = CATEGORY_LABELS[item.category] || item.category;
                   return (
                     <div key={idx} className="flex items-center gap-2 bg-[#FAFAFC] rounded-xl px-3 py-2.5 text-[12px] group hover:bg-[#F3F3F7] transition-colors">
-                      <button onClick={() => removeItem(idx)} className="text-[#C7C7CF] hover:text-[#DC2626] flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path d="M6 6l12 12M18 6l-12 12" />
-                        </svg>
-                      </button>
+                      {!simpleMode && (
+                        <button onClick={() => removeItem(idx)} className="text-[#C7C7CF] hover:text-[#DC2626] flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path d="M6 6l12 12M18 6l-12 12" />
+                          </svg>
+                        </button>
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-[#1A1A1A] truncate">{item.name}</div>
                         <div className="text-[10px] text-[#9CA3AF]">{catLabel}</div>
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button onClick={() => updateQty(idx, Number(item.quantity) - 1)} className="w-6 h-6 rounded-lg border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-white text-[13px] font-medium">−</button>
-                        <span className="w-8 text-center text-[13px] font-semibold tabular-nums">{item.quantity}</span>
-                        <button onClick={() => updateQty(idx, Number(item.quantity) + 1)} className="w-6 h-6 rounded-lg border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-white text-[13px] font-medium">+</button>
-                      </div>
+                      {simpleMode ? (
+                        <span className="w-8 text-center text-[13px] font-semibold tabular-nums text-[#6B7280]">{item.quantity}</span>
+                      ) : (
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button onClick={() => updateQty(idx, Number(item.quantity) - 1)} className="w-6 h-6 rounded-lg border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-white text-[13px] font-medium">−</button>
+                          <span className="w-8 text-center text-[13px] font-semibold tabular-nums">{item.quantity}</span>
+                          <button onClick={() => updateQty(idx, Number(item.quantity) + 1)} className="w-6 h-6 rounded-lg border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-white text-[13px] font-medium">+</button>
+                        </div>
+                      )}
                       <span className="text-[12px] font-medium text-[#1A1A1A] w-[70px] text-right tabular-nums">
                         {unitPvp > 0 ? money(subtotal) : '—'}
                       </span>
@@ -286,7 +326,9 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
               </div>
             </div>
 
-            {/* Add item from catalog */}
+            {/* Add item from catalog — oculto en borrador (F3.1): el desglose
+                de platos aún no se negocia en esta fase. */}
+            {!simpleMode && (
             <div className="bg-[#FAFAFC] rounded-xl p-3.5">
               <h4 className="text-[12px] font-semibold text-[#1A1A1A] mb-2">Añadir plato del catálogo</h4>
               <div className="flex gap-2">
@@ -320,6 +362,7 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
                 + Añadir plato
               </button>
             </div>
+            )}
 
             {/* Bar hours */}
             <div className="flex items-center gap-3">
@@ -342,7 +385,9 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
                 rows={2} placeholder="Notas internas…" />
             </div>
 
-            {/* Total */}
+            {/* Total — oculto en borrador (F3.1): el precio ya se edita
+                directamente arriba, sin desglose de platos que sumar. */}
+            {!simpleMode && (
             <div className="bg-[#FBF6E9] rounded-xl p-4 border border-[#EFE3BE]">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[13px] text-[#6B7280]">Comida (PVP)</span>
@@ -374,6 +419,7 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
                 </div>
               )}
             </div>
+            )}
 
             {/* Actions */}
 

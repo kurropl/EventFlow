@@ -217,6 +217,85 @@ function SendBudgetModal({
   );
 }
 
+/* ---------- CancelModal ---------- */
+/* F3.2: toda cancelación desde el Kanban exige motivo y va por la
+   transición gobernada INV-1 (sent → lost) — antes moveEvent() ponía
+   status='cancelled' directo, sin motivo ni auditoría. */
+function CancelModal({
+  event,
+  onClose,
+  onCancelled,
+}: {
+  event: KanbanEvent;
+  onClose: () => void;
+  onCancelled: () => void;
+}) {
+  const [motivo, setMotivo] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleCancel = async () => {
+    if (!motivo.trim()) { setError('El motivo es obligatorio.'); return; }
+    setSending(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/events/${event.id}/transitions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transition: 'INV-1', motivo: motivo.trim() }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || 'Error al cancelar');
+        return;
+      }
+      onCancelled();
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Error de red');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-serif text-lg text-ink mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          Cancelar presupuesto
+        </h3>
+        <p className="text-xs text-ink-soft-60 mb-3">{event.client_name}</p>
+        <textarea
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          placeholder="Motivo de la cancelación…"
+          rows={3}
+          className="w-full text-sm border border-cream-dark rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-danger/20"
+        />
+        {error && <p className="text-xs text-danger mt-2">{error}</p>}
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} disabled={sending}
+            className="flex-1 text-[13px] font-medium border border-cream-dark text-ink-soft py-2.5 rounded-xl hover:bg-cream disabled:opacity-50">
+            Volver
+          </button>
+          <button onClick={handleCancel} disabled={sending || !motivo.trim()}
+            className="flex-1 text-[13px] font-medium bg-danger text-white py-2.5 rounded-xl hover:bg-danger/90 disabled:opacity-50">
+            {sending ? 'Cancelando…' : 'Confirmar'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* ---------- PaymentModal ---------- */
 function PaymentModal({
   event,
@@ -435,6 +514,7 @@ export default function KanbanPipeline() {
   // Modal states
   const [sendBudgetEventId, setSendBudgetEventId] = useState<string | null>(null);
   const [paymentModal, setPaymentModal] = useState<{ eventId: string; type: 'parcial' | 'total' } | null>(null);
+  const [cancelModalEventId, setCancelModalEventId] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -498,6 +578,7 @@ export default function KanbanPipeline() {
 
   const sendBudgetEvent = sendBudgetEventId ? events.find((e) => e.id === sendBudgetEventId) ?? null : null;
   const paymentEvent = paymentModal ? events.find((e) => e.id === paymentModal.eventId) ?? null : null;
+  const cancelEvent = cancelModalEventId ? events.find((e) => e.id === cancelModalEventId) ?? null : null;
 
   const isIncompleteDraft = (ev: any) => ev.status === 'draft' && (
     !ev.selected_items?.length || !ev.client_email || !ev.guest_count
@@ -650,7 +731,7 @@ export default function KanbanPipeline() {
                             Reenviar
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled'); }}
+                            onClick={(e) => { e.stopPropagation(); setCancelModalEventId(event.id); }}
                             className="text-[11px] bg-danger/10 text-danger hover:bg-danger/20 px-2.5 py-1.5 rounded-lg transition-colors"
                           >
                             Cancelar
@@ -658,7 +739,11 @@ export default function KanbanPipeline() {
                         </>
                       )}
 
-                      {/* --- ACEPTADO --- */}
+                      {/* --- ACEPTADO ---
+                          F3.2: sin botón Cancelar aquí — la cancelación de un
+                          evento ya aceptado es excepcional (retiene la señal
+                          como penalización) y solo está disponible desde la
+                          ficha del evento, gobernada por INV-3 con motivo. */}
                       {col.status === 'accepted' && (() => {
                         const allPaid = Number(event.pending_payments ?? 0) === 0 && Number(event.total_payments ?? 0) > 0;
                         const hasPaid = (event.total_paid ?? 0) > 0;
@@ -677,12 +762,6 @@ export default function KanbanPipeline() {
                                   className="flex-1 text-[11px] font-medium bg-success/10 text-success hover:bg-success/20 py-1.5 rounded-lg transition-colors"
                                 >
                                   Cobro total
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); moveEvent(event.id, 'cancelled'); }}
-                                  className="text-[11px] bg-danger/10 text-danger hover:bg-danger/20 px-2.5 py-1.5 rounded-lg transition-colors"
-                                >
-                                  Cancelar
                                 </button>
                               </>
                             ) : (
@@ -745,6 +824,17 @@ export default function KanbanPipeline() {
             type={paymentModal.type}
             onClose={() => setPaymentModal(null)}
             onPaid={loadEvents}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Cancel modal (F3.2) */}
+      <AnimatePresence>
+        {cancelEvent && (
+          <CancelModal
+            event={cancelEvent}
+            onClose={() => setCancelModalEventId(null)}
+            onCancelled={loadEvents}
           />
         )}
       </AnimatePresence>
