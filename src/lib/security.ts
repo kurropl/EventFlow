@@ -131,6 +131,19 @@ export function hasPromptInjection(input: string): boolean {
   return patterns.some(re => re.test(input));
 }
 
+// ── Cron Authentication ──────────────────────────────────────────
+
+/** Validate a cron request by IP or header secret */
+export function isCronAuthorized(request: Request): boolean {
+  const cronSecret = process.env.CRON_AUTH_SECRET;
+  if (!cronSecret) return true;
+  const authHeader = request.headers.get('x-cron-auth');
+  if (authHeader && authHeader === cronSecret) return true;
+  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
+  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') return true;
+  return false;
+}
+
 /** Build a safe system prompt wrapper that reinforces boundaries */
 export function wrapWithGuardrails(systemPrompt: string): string {
   return `${systemPrompt}
@@ -204,8 +217,6 @@ export function sanitizeReply(reply: string): string {
     // Limit length
     .slice(0, 2000);
 }
-
-// ── Security Headers ────────────────────────────────────────────────
 
 export function securityHeaders(): Record<string, string> {
   return {
