@@ -28,6 +28,7 @@ const GROUPS: MenuGroup[] = [
     label: 'Panel principal',
     items: [
       { id: 'dashboard', label: 'Resumen', sub: 'Panel general', href: '/admin' },
+      { id: 'demo-ejemplo', label: 'Demo', sub: 'Flujo completo ejemplo', href: '/admin/demo-ejemplo' },
     ],
   },
   {

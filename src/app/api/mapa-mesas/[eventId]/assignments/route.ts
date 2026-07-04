@@ -39,6 +39,24 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'assignments debe ser un array' }, { status: 400 });
     }
 
+    // T3.13: verificar que todos los guest_id pertenecen al evento
+    const guestIds = assignments.map((a: any) => a.guest_id).filter(Boolean);
+    if (guestIds.length > 0) {
+      const validGuests = await query(
+        `SELECT id FROM guests WHERE event_id = $1 AND id = ANY($2::uuid[])`,
+        [params.eventId, guestIds]
+      );
+      const validIds = new Set((validGuests.rows || []).map((r: any) => r.id));
+      for (const a of assignments) {
+        if (a.guest_id && !validIds.has(a.guest_id)) {
+          return NextResponse.json(
+            { success: false, error: `El invitado ${a.guest_id} no pertenece a este evento` },
+            { status: 422 }
+          );
+        }
+      }
+    }
+
     await query('DELETE FROM table_assignments WHERE event_id = $1', [params.eventId]);
 
     for (const a of assignments) {

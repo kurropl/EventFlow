@@ -122,6 +122,8 @@ const MAP: Record<string, LucideIcon> = {
   book: Lucide.BookOpen,
   fileText: Lucide.FileText,
   fichaEvento: Lucide.FileText,
+  lead: Lucide.UserPlus,
+  'demo-ejemplo': Lucide.Play,
   receipt: Lucide.Receipt,
   trazabilidad: Lucide.ScanLine,
   printer: Lucide.Printer,
