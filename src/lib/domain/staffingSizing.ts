@@ -13,7 +13,8 @@
  * línea ya 'filled'/'cancelled' no recibe un resize silencioso.
  */
 import type { Pool, PoolClient } from 'pg';
-import { calcCamareros, type ServiceType } from '@/lib/operations';
+import { calcCamareros, type ServiceType, type OperationRatios } from '@/lib/operations';
+import { getOperationRatios } from './operationRatios';
 
 export function calcCocineros(guests: number): number {
   return Math.ceil(guests / 30);
@@ -27,10 +28,12 @@ export async function upsertStaffingLines(
   client: Pool | PoolClient,
   eventId: string,
   guests: number,
-  serviceType: ServiceType
+  serviceType: ServiceType,
+  ratios?: OperationRatios
 ): Promise<void> {
+  const r = ratios ?? await getOperationRatios();
   const roles = [
-    { role: 'camarero', slots: calcCamareros(guests, serviceType) },
+    { role: 'camarero', slots: calcCamareros(guests, serviceType, r) },
     { role: 'cocinero', slots: calcCocineros(guests) },
     { role: 'metre', slots: calcMetres(guests) },
   ];

@@ -14,6 +14,7 @@
 
 import { transaction } from '@/lib/db';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
+import { getOperationRatios } from './operationRatios';
 import { generateEscandallo } from './generateEscandallo';
 import { recalcEventCost } from './recalcEventCost';
 import { setEventStatus } from './eventState';
@@ -62,6 +63,7 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
     }
 
     const eventId = quote.event_id;
+    const ratios = await getOperationRatios();
 
     // 1) Marcar quote accepted (idempotente: no-op si ya lo estaba)
     const updatedQuote = (await client.query(
@@ -87,8 +89,8 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
     if (!eventOrder) {
       const guests = Number(quote.guest_count) || 0;
       const serviceType: ServiceType = quote.service_type === 'coctel' ? 'coctel' : 'menu';
-      const tablesSuggested = Math.max(1, calcMesas(guests));
-      const waitersSuggested = Math.max(1, calcCamareros(guests, serviceType));
+      const tablesSuggested = Math.max(1, calcMesas(guests, ratios));
+      const waitersSuggested = Math.max(1, calcCamareros(guests, serviceType, ratios));
 
       eventOrder = (await client.query(
         `INSERT INTO event_orders (event_id, quote_id, client_id, confirmed_price, final_price, status,
@@ -182,7 +184,7 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
     const guests = Number(quote.guest_count) || 0;
     const serviceType: ServiceType = quote.service_type === 'coctel' ? 'coctel' : 'menu';
     if (guests > 0) {
-      await upsertStaffingLines(client, eventId, guests, serviceType);
+      await upsertStaffingLines(client, eventId, guests, serviceType, ratios);
     }
 
     // 7.5) G1 (Sprint 1): al confirmar el evento, su salón queda reservado.

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, getPool } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
+import { getOperationRatios } from '@/lib/domain/operationRatios';
 import { upsertEventOrderStaffing } from '@/lib/domain/upsertEventOrderStaffing';
 import { upsertStaffingLines } from '@/lib/domain/staffingSizing';
 
@@ -28,8 +29,9 @@ export async function POST(
 
     const guestCount = Number((ev.rows[0] as any).guest_count) || 1;
     const serviceType: ServiceType = (ev.rows[0] as any).service_type === 'coctel' ? 'coctel' : 'menu';
-    const tablesNeeded = calcMesas(guestCount);
-    const waitersNeeded = calcCamareros(guestCount, serviceType);
+    const ratios = await getOperationRatios();
+    const tablesNeeded = calcMesas(guestCount, ratios);
+    const waitersNeeded = calcCamareros(guestCount, serviceType, ratios);
 
     await upsertEventOrderStaffing(getPool(), {
       eventId,
@@ -40,7 +42,7 @@ export async function POST(
     // G10 (Sprint 4): fuente única — antes solo regeneraba 'camarero' (con un
     // ON CONFLICT DO NOTHING que nunca podía disparar, así que cada llamada
     // insertaba una fila duplicada) y dejaba cocinero/metre obsoletos.
-    await upsertStaffingLines(getPool(), eventId, guestCount, serviceType);
+    await upsertStaffingLines(getPool(), eventId, guestCount, serviceType, ratios);
 
     return NextResponse.json({
       success: true,

@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
     }
     const settings = await querySingle<any>(
       `SELECT business_name, address, cif, phone, email, logo_url, bar_price_per_hour, iva_pct,
-              block_accept_on_stock_shortage
+              block_accept_on_stock_shortage, asientos_por_mesa, asientos_por_mesa_infantil,
+              pax_por_camarero_coctel, pax_por_camarero_menu, refuerzo_cada
        FROM business_settings LIMIT 1`
     );
     return NextResponse.json({ success: true, data: settings || {} });
@@ -51,6 +52,13 @@ export async function PUT(request: NextRequest) {
       iva_pct: body.iva_pct != null ? Number(body.iva_pct) : undefined,
       block_accept_on_stock_shortage: typeof body.block_accept_on_stock_shortage === 'boolean'
         ? body.block_accept_on_stock_shortage : undefined,
+      // Ratios de mesas/camareros (FR-A05) — configurables (antes hardcodeados
+      // en lib/operations.ts, pese a que ya aceptaba un parámetro `ratios`).
+      asientos_por_mesa: body.asientos_por_mesa != null ? Math.max(1, Math.round(Number(body.asientos_por_mesa))) : undefined,
+      asientos_por_mesa_infantil: body.asientos_por_mesa_infantil != null ? Math.max(1, Math.round(Number(body.asientos_por_mesa_infantil))) : undefined,
+      pax_por_camarero_coctel: body.pax_por_camarero_coctel != null ? Math.max(1, Math.round(Number(body.pax_por_camarero_coctel))) : undefined,
+      pax_por_camarero_menu: body.pax_por_camarero_menu != null ? Math.max(1, Math.round(Number(body.pax_por_camarero_menu))) : undefined,
+      refuerzo_cada: body.refuerzo_cada != null ? Math.max(1, Math.round(Number(body.refuerzo_cada))) : undefined,
     };
 
     for (const [key, val] of Object.entries(updatable)) {

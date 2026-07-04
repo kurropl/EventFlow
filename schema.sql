@@ -2319,3 +2319,17 @@ ALTER TABLE briefing_send_log DISABLE ROW LEVEL SECURITY;
 ALTER TABLE supplier_orders DROP CONSTRAINT IF EXISTS supplier_orders_status_check;
 ALTER TABLE supplier_orders ADD CONSTRAINT supplier_orders_status_check
     CHECK (status IN ('pending','ordered','approved','delivered','received','partial','cancelled'));
+
+-- ============================================================
+-- Ratios de personal/mesas configurables (pendiente de Sprint 4 · G10)
+-- ============================================================
+-- lib/operations.ts ya aceptaba un parámetro `ratios` opcional desde su
+-- creación (el propio docblock decía "se cargarán desde settings") pero
+-- ningún llamador lo cargaba nunca — todo el negocio corría siempre sobre
+-- RATIOS_DEFAULT hardcodeado. La fórmula en sí es correcta (confirmada por
+-- el cliente); solo faltaba hacerla configurable.
+ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS asientos_por_mesa INT NOT NULL DEFAULT 10;
+ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS asientos_por_mesa_infantil INT NOT NULL DEFAULT 8;
+ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS pax_por_camarero_coctel INT NOT NULL DEFAULT 12;
+ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS pax_por_camarero_menu INT NOT NULL DEFAULT 10;
+ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS refuerzo_cada INT NOT NULL DEFAULT 25;

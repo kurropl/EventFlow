@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
+import { getOperationRatios } from '@/lib/domain/operationRatios';
 
 export async function POST(
   _request: NextRequest,
@@ -146,7 +147,8 @@ export async function POST(
     }
 
     // 3. Calculate table distribution
-    const tablesNeeded = calcMesas(guestCount);
+    const ratios = await getOperationRatios();
+    const tablesNeeded = calcMesas(guestCount, ratios);
     const tables: any[] = [];
     const guestsPerTable = Math.floor(guestCount / tablesNeeded);
     const remainder = guestCount % tablesNeeded;
@@ -165,7 +167,7 @@ export async function POST(
 
     // Calculate staff
     const serviceType: ServiceType = event.service_type === 'coctel' ? 'coctel' : 'menu';
-    const waitersNeeded = calcCamareros(guestCount, serviceType);
+    const waitersNeeded = calcCamareros(guestCount, serviceType, ratios);
 
     // Execute all inserts in a single transaction for atomicity
     const result = await transaction(async (client) => {

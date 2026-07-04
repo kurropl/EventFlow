@@ -18,6 +18,12 @@ interface Settings {
   bar_price_per_hour: number;
   iva_pct: number;
   block_accept_on_stock_shortage: boolean;
+  // Ratios de mesas/camareros (FR-A05) — antes hardcodeados en lib/operations.ts
+  asientos_por_mesa: number;
+  asientos_por_mesa_infantil: number;
+  pax_por_camarero_coctel: number;
+  pax_por_camarero_menu: number;
+  refuerzo_cada: number;
 }
 
 const defaultSettings: Settings = {
@@ -30,6 +36,11 @@ const defaultSettings: Settings = {
   bar_price_per_hour: 15,
   iva_pct: 10,
   block_accept_on_stock_shortage: false,
+  asientos_por_mesa: 10,
+  asientos_por_mesa_infantil: 8,
+  pax_por_camarero_coctel: 12,
+  pax_por_camarero_menu: 10,
+  refuerzo_cada: 25,
 };
 
 // Validation patterns
@@ -424,6 +435,62 @@ export default function ConfigPage() {
                   </span>
                 </span>
               </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Ratios de mesas y camareros (FR-A05) */}
+        <div className="bg-white rounded-2xl border border-cream-dark p-6">
+          <h2 className="text-base font-semibold text-ink mb-1">Ratios de mesas y camareros</h2>
+          <p className="text-xs text-ink-soft mb-4">
+            Fórmula: mesas = comensales ÷ asientos por mesa · cóctel = pax ÷ ratio cóctel ·
+            menú sentado = (pax ÷ ratio base) + (pax ÷ refuerzo cada N adicionales)
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Asientos por mesa (adultos)</label>
+              <input
+                type="number" min={1} step={1}
+                value={settings.asientos_por_mesa}
+                onChange={(e) => update('asientos_por_mesa', parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Asientos por mesa infantil</label>
+              <input
+                type="number" min={1} step={1}
+                value={settings.asientos_por_mesa_infantil}
+                onChange={(e) => update('asientos_por_mesa_infantil', parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Comensales por camarero (cóctel)</label>
+              <input
+                type="number" min={1} step={1}
+                value={settings.pax_por_camarero_coctel}
+                onChange={(e) => update('pax_por_camarero_coctel', parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Comensales por camarero (menú sentado)</label>
+              <input
+                type="number" min={1} step={1}
+                value={settings.pax_por_camarero_menu}
+                onChange={(e) => update('pax_por_camarero_menu', parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Refuerzo cada N comensales (menú sentado)</label>
+              <input
+                type="number" min={1} step={1}
+                value={settings.refuerzo_cada}
+                onChange={(e) => update('refuerzo_cada', parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
+              />
             </div>
           </div>
         </div>

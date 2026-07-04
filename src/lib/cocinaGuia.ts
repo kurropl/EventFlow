@@ -17,6 +17,7 @@
  */
 import { queryMany, querySingle } from '@/lib/db';
 import { calcOperaciones, type ServiceType } from '@/lib/operations';
+import { getOperationRatios } from '@/lib/domain/operationRatios';
 import { computeEscandallo } from '@/lib/escandallo';
 
 export type VenueType = 'benitez' | 'externo';
@@ -93,7 +94,8 @@ export async function buildCocinaGuia(eventId: string): Promise<CocinaGuia | nul
   const serviceType: ServiceType = ev.service_type === 'coctel' ? 'coctel' : 'menu';
   const adultos = Number(ev.guest_count) || 0;
   const ninos = Number(ev.kids_count) || 0;
-  const ops = calcOperaciones(adultos, ninos, serviceType);
+  const ratios = await getOperationRatios();
+  const ops = calcOperaciones(adultos, ninos, serviceType, ratios);
   const completado = ['completed', 'completado', 'paid', 'pagado'].includes(ev.status);
 
   // ── Escandallo (fuente de verdad, teórico↔real) ─────────────────────────

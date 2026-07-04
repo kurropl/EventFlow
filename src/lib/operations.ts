@@ -8,8 +8,11 @@
  *   - menú sentado = ceil(pax / pax_por_camarero_menu) + floor(pax / refuerzo_cada) [10 + cada 25]
  *
  * `pax` = comensales totales (adultos + niños) para el reparto de camareros.
- * Los ratios son parametrizables (se cargarán desde `settings`; aquí van los
- * valores por defecto del negocio).
+ * Los ratios son parametrizables desde `business_settings`
+ * (ver `@/lib/domain/operationRatios.ts::getOperationRatios`, server-only —
+ * este fichero se mantiene libre de dependencias de Node/DB porque también
+ * lo importan componentes de cliente como ConfirmacionDashboard.tsx).
+ * RATIOS_DEFAULT son los valores de fábrica del negocio.
  */
 
 export type ServiceType = 'coctel' | 'menu';
