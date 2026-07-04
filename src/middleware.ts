@@ -100,6 +100,10 @@ function isPublicMethod(method: string, pathname: string): boolean {
   if (pathname === '/api/events' && method === 'POST') return true;
   if (pathname === '/api/catalog' && method === 'GET') return true;
   if (pathname === '/api/guest-forms' && (method === 'GET' || method === 'POST')) return true;
+  // Decoración por token de cliente (invitados/[token]) — ámbito público
+  // igual que guest-forms; nunca se listó aquí pese a estar marcada como
+  // pública en su propio código, así que siempre daba 401 sin cookie.
+  if (pathname === '/api/guest-forms/decor' && method === 'PATCH') return true;
   if (pathname === '/api/ai-quote' && method === 'POST') return true;
   if (pathname.startsWith('/api/webhooks/') && method === 'POST') return true;
   // G8 (Sprint 3): contrato de cliente scoped por client_token, sin sesión.
