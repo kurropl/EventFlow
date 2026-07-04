@@ -197,6 +197,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // T3.12: actualizar guest_count del evento con el número de invitados confirmados
+    const namedGuests = guests.filter((g: Record<string, unknown>) => g.name).length;
+    await querySingle(
+      `UPDATE events SET guest_count = $1 WHERE id = $2`,
+      [namedGuests, event.id]
+    );
+
     return NextResponse.json(
       { success: true, data: result },
       { status: existing ? 200 : 201, headers: securityHeaders() }

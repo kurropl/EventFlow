@@ -55,9 +55,18 @@ export async function POST(
         []
       );
 
-      let created = 0;
+      // T3.8: skip frozen items — don't overwrite frozen escandallo on recalc
+      let created = 0, skipped = 0;
       for (const raw of recipeItems.rows || []) {
         const ri = raw as any;
+
+        // Check if this items already has a frozen record
+        const existing = await query(
+          `SELECT id FROM event_shopping_items
+           WHERE event_id = $1 AND recipe_item_id = $2 AND frozen = true`,
+          [eventId, ri.id]
+        );
+        if (existing.rows?.length) { skipped++; continue; }
         const factor = guestCount / Math.max(Number(ri.servings || 1), 1);
         const theoreticalQty = Math.round(Number(ri.quantity || 0) * factor * 100) / 100;
         const estCost = Math.round(theoreticalQty * Number(ri.current_price || 0) * 100) / 100;
@@ -89,7 +98,7 @@ export async function POST(
 
       return NextResponse.json({
         success: true,
-        message: `Recalculado: ${created} items para ${guestCount} comensales`,
+        message: `Recalculado: ${created} items para ${guestCount} comensales (${skipped} congelados omitidos)`,
         guestCount,
       });
     }
