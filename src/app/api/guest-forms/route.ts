@@ -143,6 +143,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // T3.2 — Cannot block: check guest_count against guests limit
+    if (!event.guest_count || event.guest_count < 1) {
+      return NextResponse.json(
+        { success: false, error: 'El evento no tiene un número de invitados definido' },
+        { status: 422, headers: securityHeaders() }
+      );
+    }
+
     const clientName = sanitizeText(client_name, 100);
     const sanitizedEmail = sanitizeText(email || '', 150);
 
