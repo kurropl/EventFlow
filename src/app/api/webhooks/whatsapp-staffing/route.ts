@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('x-hub-signature-256');
     const body = await request.text();
 
-    if (signature && process.env.WHATSAPP_APP_SECRET) {
+    // Fail-closed: if WHATSAPP_APP_SECRET is configured, signature is mandatory
+    if (process.env.WHATSAPP_APP_SECRET) {
+      if (!signature) {
+        console.warn('[whatsapp-webhook] Missing signature');
+        return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+      }
       const expected = 'sha256=' + crypto
         .createHmac('sha256', process.env.WHATSAPP_APP_SECRET)
         .update(body)

@@ -5,10 +5,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateToken, setAuthCookie, authenticateAdmin } from '@/lib/auth';
-import { sanitizeError } from '@/lib/security';
+import { sanitizeError, checkRateLimit } from '@/lib/security';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    checkRateLimit(`login:${ip}`, 10, 15);
     const body = await request.json();
     const { username, password } = body;
 

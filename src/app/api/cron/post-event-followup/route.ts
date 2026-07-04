@@ -5,12 +5,16 @@
  * Call daily via cron.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { isCronAuthorized } from '@/lib/security';
 import { queryMany, querySingle } from '@/lib/db';
 import { sendEmail, templates } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  if (!isCronAuthorized(request)) {
+    return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+  }
   try {
     // Find completed events from 1-3 days ago that haven't been followed up
     const recentEvents = await queryMany<any>(

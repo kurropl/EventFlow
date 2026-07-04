@@ -5,12 +5,16 @@
  * Call this daily via cron or Vercel cron.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { isCronAuthorized } from '@/lib/security';
 import { queryMany, querySingle } from '@/lib/db';
 import { sendEmail, templates } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  if (!isCronAuthorized(request)) {
+    return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+  }
   try {
     // Find events with pending payments that haven't been reminded in 7 days
     const eventsWithPending = await queryMany<any>(

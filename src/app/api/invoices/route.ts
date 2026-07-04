@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizeError } from '@/lib/security';
 import { queryMany, querySingle, getPool } from '@/lib/db';
 import { createInvoice } from '@/lib/domain/createInvoice';
 

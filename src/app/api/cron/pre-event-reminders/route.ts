@@ -4,6 +4,7 @@
  * Sends reminders to clients 3 days and 1 day before their event.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { isCronAuthorized } from '@/lib/security';
 import { queryMany, querySingle } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 
@@ -33,7 +34,10 @@ function reminderTemplate(name: string, eventType: string, eventDate: string, da
   };
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  if (!isCronAuthorized(request)) {
+    return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+  }
   try {
     // 3-day reminders
     const threeDayEvents = await queryMany<any>(

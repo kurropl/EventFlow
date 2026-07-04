@@ -76,23 +76,6 @@ async function verifyJWT(token: string, secret: string): Promise<boolean> {
 // ============================================================
 
 /** Public API routes that don't require authentication */
-function isPublicRoute(pathname: string): boolean {
-  // Cron endpoints (triggered by external scheduler)
-  if (pathname.startsWith('/api/cron/')) return true;
-  // Public quote pages
-  if (pathname.startsWith('/presupuesto/')) return true;
-  if (pathname.startsWith('/api/quotes/public/')) return true;
-  // Stock auto-orders (internal cron)
-  if (pathname === '/api/stock/auto-orders') return true;
-  if (pathname.startsWith('/api/webhooks/')) return true;
-  if (pathname === '/api/ai-quote') return true;
-  if (pathname === '/api/guest-forms') return true;
-  if (pathname === '/api/events' && !pathname.includes('/api/events/')) {
-    return false;
-  }
-  return false;
-}
-
 function isPublicMethod(method: string, pathname: string): boolean {
   if (pathname.startsWith('/api/cron/')) return true;
   if (pathname.startsWith('/api/quotes/public/')) return true;
