@@ -15,7 +15,7 @@ import { getPool } from '@/lib/db';
 export const VALID_TRANSITIONS: Record<string, { from: string[]; to: string }> = {
   'FWD-2': { from: ['draft'],     to: 'sent' },
   'FWD-3': { from: ['sent'],      to: 'accepted' },
-  'FWD-4': { from: ['accepted', 'presupuestado'],  to: 'completed' },
+  'FWD-4': { from: ['accepted'],  to: 'completed' },
   'INV-1': { from: ['sent'],      to: 'lost' },
   'INV-2': { from: ['accepted'],  to: 'sent' },
   'INV-3': { from: ['accepted'],  to: 'cancelled' },
@@ -35,7 +35,7 @@ export const VALID_TRANSITIONS: Record<string, { from: string[]; to: string }> =
  *  queda diferida, ver SPEC Sprint 4 Nivel C) — solo elimina el riesgo de
  *  typos/estados inventados en esos 2 puntos peligrosos. */
 export const VALID_EVENT_STATUSES = new Set([
-  'draft', 'sent', 'accepted', 'presupuestado', 'completed',
+  'draft', 'sent', 'accepted',    // 'presupuestado' eliminado — es valor de leads.status, no events.status'completed',
   'lost', 'cancelled', 'reopened', 'paid',
 ]);
 

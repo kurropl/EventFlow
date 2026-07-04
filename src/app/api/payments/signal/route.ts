@@ -41,8 +41,8 @@ export async function POST(_req: NextRequest) {
       [amount, eventId]
     );
 
-    // 3. Set event status to 'presupuestado' (señal pagada)
-    await setEventStatus(eventId, 'presupuestado', { extraWhereSql: `AND status = 'accepted'` });
+    // 3. No cambiamos events.status — 'presupuestado' es de leads, no events
+    // El evento sigue 'accepted', la señal queda registrada en payments
 
     // 4. Send notification
     const event = await query(`SELECT client_email, client_name FROM events WHERE id = $1`, [eventId]);

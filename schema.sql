@@ -980,6 +980,11 @@ INSERT INTO units_of_measure (name, category, factor_to_base, symbol) VALUES
   ('ml', 'volume', 0.001, 'ml'),
   ('ud', 'unit', 1, 'ud')
 ON CONFLICT (name) DO NOTHING;
+
+-- Docena conversion
+INSERT INTO units_of_measure (name, category, factor_to_base, symbol) VALUES
+  ('docena', 'unit', 12, 'doc')
+ON CONFLICT (name) DO NOTHING;
 ALTER TABLE units_of_measure DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
@@ -1649,9 +1654,12 @@ CREATE TABLE IF NOT EXISTS workers (
   default_uniform TEXT,
   availability JSONB NOT NULL DEFAULT '{}',
   active BOOLEAN NOT NULL DEFAULT true,
+  contract_url    TEXT,
+  contract_name   TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
 CREATE INDEX IF NOT EXISTS idx_workers_roles ON workers USING GIN (roles);
 CREATE INDEX IF NOT EXISTS idx_workers_active ON workers (active) WHERE active = true;
 ALTER TABLE workers DISABLE ROW LEVEL SECURITY;

@@ -221,15 +221,14 @@ export async function POST(request: NextRequest) {
       } else {
         // Ingrediente no encontrado
         const stockResult = await query(
-          `INSERT INTO stock_entries (ingredient_id, quantity, unit, event_id, notes, cost_price, movement_reason)
-           VALUES (NULL, $1, $2, $3, $4, $5, 'operativo')
+          `INSERT INTO stock_entries (ingredient_id, quantity, unit, event_id, notes, movement_reason)
+           VALUES (NULL, $1, $2, $3, $4, 'operativo')
            RETURNING id`,
           [
             item.quantity || 1,
-            item.unit || 'ud',
-            eventId || null,
-            `OCR: ${mode} - ${itemName} (ingrediente no encontrado)${item.cost ? ` [${item.cost}€]` : ''}`,
-            item.cost || null,
+            item.unit || 'g',
+            eventId,
+            `${item.name} (sin match) — coste: ${item.cost || '?'}€`,
           ]
         );
         const stockRow2 = (stockResult.rows?.[0] || null) as any;

@@ -93,7 +93,7 @@ const UpdateRecipeSchema = z.object({
   instructions: z.string().optional().nullable(),
   prep_time: z.number().int().nonnegative().optional().nullable(),
   cook_time: z.number().int().nonnegative().optional().nullable(),
-  difficulty: z.enum(['fácil', 'media', 'difícil']).optional().nullable(),
+  difficulty: z.enum(['facil', 'media', 'dificil']).optional().nullable(),
   active: z.boolean().optional(),
 });
 

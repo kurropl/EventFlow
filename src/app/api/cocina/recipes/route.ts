@@ -41,7 +41,7 @@ const CreateRecipeSchema = z.object({
   instructions: z.string().optional().nullable(),
   prep_time: z.number().int().nonnegative().optional().nullable(),
   cook_time: z.number().int().nonnegative().optional().nullable(),
-  difficulty: z.enum(['fácil', 'media', 'difícil']).optional().nullable(),
+  difficulty: z.enum(['facil', 'media', 'dificil']).optional().nullable(),
   active: z.boolean().optional().default(true),
 });
 
@@ -63,7 +63,7 @@ const UpdateRecipeSchema = z.object({
   instructions: z.string().optional().nullable(),
   prep_time: z.number().int().nonnegative().optional().nullable(),
   cook_time: z.number().int().nonnegative().optional().nullable(),
-  difficulty: z.enum(['fácil', 'media', 'difícil']).optional().nullable(),
+  difficulty: z.enum(['facil', 'media', 'dificil']).optional().nullable(),
   active: z.boolean().optional(),
 });
 
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       `INSERT INTO recipes
          (name, description, source, servings, category, ingredients, instructions,
           prep_time, cook_time, difficulty, version, active, published)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         name.trim(),

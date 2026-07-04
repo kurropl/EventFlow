@@ -6,13 +6,16 @@ const passMappingSchema = z.object({
   mappings: z.array(
     z.object({
       category: z.enum([
-        'utensilio',
-        'vajilla',
-        'maquinaria',
-        'textil',
-        'mobiliario',
-        'descartable',
-        'catalog_item',
+        'aperitivo-frio',
+        'aperitivo-caliente',
+        'compartir-mesa',
+        'arroz',
+        'carne',
+        'pescado',
+        'sorbete',
+        'postre',
+        'bebida',
+        'complemento',
       ]),
       pass_id: z.string().uuid(),
     })

@@ -13,7 +13,7 @@ export async function GET(
   try {
     const result = await query(
       `SELECT ta.id, ta.table_id, ta.guest_id, ta.guest_name, ta.seat_number, ta.dietary_notes,
-              g.dietary_restrictions, g.allergens
+              g.dietary
        FROM table_assignments ta
        LEFT JOIN guests g ON g.id = ta.guest_id
        WHERE ta.event_id = $1

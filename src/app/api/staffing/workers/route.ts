@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     const rows = await queryMany<any>(
       `SELECT id, name, phone, roles, default_uniform, availability,
-              active, created_at, updated_at
+              active, contract_url, contract_name, created_at, updated_at
        FROM workers
        ${where}
        ORDER BY name ASC`,
