@@ -68,16 +68,28 @@
   gobernada INV-1/INV-3, gastos previos, firma de nómina, plano de venue).
 
 ### Pendiente / próximos pasos sugeridos (Sprint 6)
-- [ ] Diferido explícitamente en el SPEC: vista 3D/360 del venue (cubierto
-  por F4.4 — sitting sobre el plano 2D subido — como alternativa
-  operativa); ratios de camareros configurables (hoy hardcodeados, la
-  fórmula en sí ya es correcta).
-- [ ] `guest-forms/decor` (401 sin cookie pese a ser pública) — sigue sin
-  tocar, arrastrado desde sprints anteriores.
+- [x] **Ratios de mesas/camareros configurables** — `lib/operations.ts` ya
+  aceptaba un parámetro `ratios` opcional desde su creación, pero ningún
+  llamador lo cargaba nunca (siempre `RATIOS_DEFAULT` hardcodeado). Nuevas
+  columnas en `business_settings` + `lib/domain/operationRatios.ts`
+  (server-only, separado de `operations.ts` porque ese fichero también lo
+  importa un componente de cliente) + UI en Configuración. Los 4 puntos de
+  cálculo real (`acceptQuote`, `staffingSizing`, `event-flow/calculate`,
+  `generate-operations`, `cocinaGuia`) ya usan los ratios configurados.
+- [x] **Bug `guest-forms/decor`** (401 sin cookie pese a ser pública) —
+  `middleware.ts` solo listaba `/api/guest-forms`, nunca su subruta
+  `/decor` (PATCH, usada por `/invitados/[token]`). Arrastrado desde
+  Sprint 3, corregido.
+- [ ] Diferido explícitamente en el SPEC de Sprint 6: vista 3D/360 del
+  venue (cubierto por F4.4 — sitting sobre el plano 2D subido — como
+  alternativa operativa).
 - [ ] Borrar la rama remota `claude/event-venue-redesign-JAUif` (el
   usuario, por política de red del entorno bloquea el push de borrado).
-- [ ] Nivel C del Gap Analysis (G9/G14/G18/G23, Sprint 4) — backlog
-  documentado para un futuro Spec dedicado.
+- [ ] Nivel C del Gap Analysis (G9/G14/G18/G23, Sprint 4) — grandes
+  iniciativas de rediseño de esquema (Facturae/Verifactu, IVA multi-tasa,
+  6 redundancias de modelo), explícitamente marcadas como "no tocar en un
+  sprint, una por una con su propio Spec dedicado" — no abordadas a
+  propósito, no son deuda técnica olvidada.
 
 ### Histórico (02/07 · Sprint 5 · auditoría y unificación UI/UX)
 - [x] **SPEC-Sprint5-UIUX.md** (SDD): auditoría en 3 frentes (3 agentes en
