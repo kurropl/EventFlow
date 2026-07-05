@@ -318,12 +318,14 @@ export default function TrazabilidadPanel() {
   useEffect(() => { loadReceivings(); }, [loadReceivings]);
 
   const searchIngredients = useCallback(async (q: string) => {
+    // /api/ingredients nunca existió — GET /api/stock ya soporta buscar por
+    // nombre/proveedor (?search=), que es el endpoint real de ingredientes.
     if (!q || q.length < 2) { setIngredientOptions([]); return; }
     try {
-      const res = await fetch(`/api/ingredients?search=${encodeURIComponent(q)}&limit=10`);
+      const res = await fetch(`/api/stock?search=${encodeURIComponent(q)}`);
       const d = await res.json();
       if (d.success) {
-        setIngredientOptions((d.data || []).map((i: any) => ({ id: i.id, name: i.name, unit: i.unit || 'g' })));
+        setIngredientOptions((d.data || []).slice(0, 10).map((i: any) => ({ id: i.id, name: i.name, unit: i.unit || 'g' })));
       }
     } catch {}
   }, []);

@@ -27,6 +27,7 @@ import {
   SelectedItem,
   CatalogItem,
   EventSetupCreate,
+  BAR_PRICES,
 } from '@/types/specs';
 
 // ============================================================
@@ -275,7 +276,24 @@ export const useWizardStore = create<WizardState>()(
 
           // step3 may be null when a proposed menu is used without
           // customisation — fall back to an empty list so we never crash.
-          const rawSelectedItems: any[] = (state.step3 as any)?.selected_items ?? [];
+          // Los extras del paso 4 (selected_suggestions) se añaden como
+          // items adicionales — antes se guardaban en el store pero nunca
+          // llegaban al payload de /api/events, así que no se facturaban
+          // ni aparecían en cocina.
+          const step4Extras: any[] = (state.step4?.selected_suggestions ?? []).map((name: string) => ({
+            item_id: name,
+            name,
+            category: 'complemento',
+            quantity: 1,
+            unit_price_pvp: 0,
+            unit_price_cost: 0,
+            subtotal_pvp: 0,
+            subtotal_cost: 0,
+          }));
+          const rawSelectedItems: any[] = [
+            ...((state.step3 as any)?.selected_items ?? []),
+            ...step4Extras,
+          ];
           const selectedItemsPayload = state.mode === 'b2c'
             ? rawSelectedItems.map((item: any) => ({
                 item_id: item.item_id,
@@ -365,6 +383,7 @@ export const useWizardStore = create<WizardState>()(
           }
 
           const payload: EventSetupCreate = {
+            menu_id: state.step2.use_proposed ? (state.step2.menu_id || undefined) : undefined,
             client_name: state.clientInfo.name,
             client_email: state.clientInfo.email,
             client_phone: state.clientInfo.phone || undefined,
@@ -377,7 +396,9 @@ export const useWizardStore = create<WizardState>()(
             total_pvp: state.mode === 'b2b' ? state.totalPvp : totalPvp,
             total_cost: state.mode === 'b2b' ? state.totalCost : totalCost,
           bar_hours: state.step4.bar_hours,
-          bar_price: 0,
+          // Antes siempre 0 aunque el cliente eligiera horas de barra libre
+          // en el paso 4 — el evento se creaba sin cobrar el extra.
+          bar_price: (BAR_PRICES[state.step4.bar_hours as keyof typeof BAR_PRICES] ?? 0) * state.step1.guest_count,
           iva_pct: 10,
           notes: state.clientInfo.notes || undefined,
         };

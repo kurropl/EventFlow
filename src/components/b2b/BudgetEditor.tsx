@@ -433,7 +433,11 @@ export default function BudgetEditor({ event, onClose, onSaved }: Props) {
                 {saving ? 'Guardando…' : 'Guardar cambios'}
               </button>
               {event.status === 'draft' && (
-                <button onClick={() => save('sent')} disabled={saving || items.length === 0}
+                <button onClick={() => save('sent')}
+                  // simpleMode (borrador desde lead) no tiene desglose de
+                  // platos por diseño (F3.1) — exigir items.length > 0 dejaba
+                  // el botón permanentemente deshabilitado en ese modo.
+                  disabled={saving || (simpleMode ? !(priceOverride > 0 && guestCount > 0) : items.length === 0)}
                   className="text-[13px] font-medium text-white py-2.5 rounded-xl px-5 disabled:opacity-50 transition-all"
                   style={{ background: 'linear-gradient(135deg, #C9A84C, #A88A3A)' }}>
                   {saving ? '…' : 'Enviar presupuesto →'}

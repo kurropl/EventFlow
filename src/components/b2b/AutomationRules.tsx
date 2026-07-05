@@ -445,6 +445,7 @@ export default function AutomationRules() {
 
   const handleToggle = async (rule: AutomationRule) => {
     setToggling(rule.id);
+    setError(null);
     try {
       const res = await fetch(`/api/automation-rules/${rule.id}`, {
         method: 'PUT',
@@ -456,9 +457,12 @@ export default function AutomationRules() {
         setRules((prev) =>
           prev.map((r) => (r.id === rule.id ? { ...r, enabled: !r.enabled } : r))
         );
+      } else {
+        // Antes se revertía el switch en silencio sin decir por qué.
+        setError(json.error ?? 'Error al activar/desactivar la regla');
       }
-    } catch {
-      // Swallow
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error de conexión');
     } finally {
       setToggling(null);
     }

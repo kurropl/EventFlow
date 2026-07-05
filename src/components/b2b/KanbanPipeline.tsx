@@ -515,6 +515,7 @@ export default function KanbanPipeline() {
   const [sendBudgetEventId, setSendBudgetEventId] = useState<string | null>(null);
   const [paymentModal, setPaymentModal] = useState<{ eventId: string; type: 'parcial' | 'total' } | null>(null);
   const [cancelModalEventId, setCancelModalEventId] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState('');
 
   const loadEvents = useCallback(async () => {
     try {
@@ -549,17 +550,33 @@ export default function KanbanPipeline() {
   };
 
   const moveEvent = useCallback(async (eventId: string, toStatus: EventStatus) => {
+    // Antes nunca comprobaba res.ok/data.success: un 409 real (conflicto de
+    // stock/salón) dejaba la tarjeta en la columna nueva sin avisar de que
+    // el cambio no se había guardado.
+    const previousStatus = events.find((e) => e.id === eventId)?.status;
     setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, status: toStatus } : e)));
     if (!eventId.startsWith('demo-')) {
       try {
-        await fetch(`/api/events/${eventId}`, {
+        const res = await fetch(`/api/events/${eventId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: toStatus }),
         });
-      } catch { /* keep optimistic update */ }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          if (previousStatus) {
+            setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, status: previousStatus } : e)));
+          }
+          setMoveError(data?.error || 'No se pudo mover el evento');
+        }
+      } catch (e: any) {
+        if (previousStatus) {
+          setEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, status: previousStatus } : ev)));
+        }
+        setMoveError(e?.message || 'Error de red al mover el evento');
+      }
     }
-  }, []);
+  }, [events]);
 
   // Agrupa por FASE visible (no por estado técnico): 4 columnas + descartados.
   const getEventsByStatus = (status: EventStatus) =>
@@ -593,6 +610,12 @@ export default function KanbanPipeline() {
 
   return (
     <div className="space-y-6 flex flex-col h-full">
+      {moveError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm flex items-center justify-between">
+          <span>{moveError}</span>
+          <button onClick={() => setMoveError('')} className="text-red-400 hover:text-red-600 ml-3">✕</button>
+        </div>
+      )}
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {STATS.map((s) => (

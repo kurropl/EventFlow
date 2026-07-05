@@ -316,10 +316,19 @@ export default function OperationsManager() {
     setEditingWaiter(null);
   };
 
-  const deleteWaiter = (name: string) => {
-    setWaiters(prev => prev.filter(w => w.name !== name));
-    setTables(prev => prev.map(t => t.waiter === name ? { ...t, waiter: '' } : t));
-    setWaiterColors(prev => { const c = { ...prev }; delete c[name]; return c; });
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const deleteWaiter = async (waiter: Waiter) => {
+    // Antes solo mutaba el estado local: al recargar la página el camarero
+    // "eliminado" reaparecía porque nunca se llamaba al DELETE real.
+    if (UUID_RE.test(waiter.id)) {
+      try {
+        await fetch(`/api/waiters?id=${waiter.id}`, { method: 'DELETE' });
+      } catch {}
+    }
+    setWaiters(prev => prev.filter(w => w.id !== waiter.id));
+    setTables(prev => prev.map(t => t.waiter === waiter.name ? { ...t, waiter: '' } : t));
+    setWaiterColors(prev => { const c = { ...prev }; delete c[waiter.name]; return c; });
   };
 
   const addWaiter = () => {
@@ -488,6 +497,13 @@ export default function OperationsManager() {
               <Icon name="banknote" className="w-3.5 h-3.5"/>
               Cobrar
             </button>
+            {canComplete && (
+              <button onClick={() => setShowComplete(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[#15803D] text-white hover:bg-[#166534] transition-colors whitespace-nowrap shadow-sm">
+                <Icon name="checkCircle" className="w-3.5 h-3.5"/>
+                Finalizar Evento
+              </button>
+            )}
           </div>
         </div>
 
@@ -1230,7 +1246,7 @@ export default function OperationsManager() {
                             <button onClick={() => setEditingWaiter(w.name)}
                               className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#F3F4F6]"><Icon name="edit" className="w-3 h-3 text-[#6B7280]"/></button>
                             <button onClick={() => {
-                              if (confirm(`¿Eliminar a ${w.name}? Sus mesas quedarán sin asignar.`)) deleteWaiter(w.name);
+                              if (confirm(`¿Eliminar a ${w.name}? Sus mesas quedarán sin asignar.`)) deleteWaiter(w);
                             }}
                               className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-50"><Icon name="x" className="w-3 h-3 text-red-400"/></button>
                           </>

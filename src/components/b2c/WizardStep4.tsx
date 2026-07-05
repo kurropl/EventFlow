@@ -8,12 +8,15 @@
 import { useState, useEffect } from 'react';
 import { useWizardStore } from '@/store/useWizardStore';
 import { CATALOG_ITEMS } from '@/data/menus';
+import { BAR_PRICES } from '@/types/specs';
 
 export default function WizardStep4() {
-  const { step3, setStepData, nextStep, prevStep } = useWizardStore();
+  const { step1, step4, setStepData, nextStep, prevStep } = useWizardStore();
   const [extras, setExtras] = useState<string[]>([]);
+  const [barHours, setBarHours] = useState<0 | 1 | 2 | 3>((step4?.bar_hours as 0 | 1 | 2 | 3) || 0);
 
   const allExtras = CATALOG_ITEMS['complemento'] || [];
+  const guestCount = step1?.guest_count || 0;
 
   const toggleExtra = (extra: string) => {
     setExtras(prev =>
@@ -27,7 +30,7 @@ export default function WizardStep4() {
     setStepData('step4', {
       selected_suggestions: extras,
       suggestions: extras,
-      bar_hours: 0,
+      bar_hours: barHours,
     });
     nextStep();
   };
@@ -75,6 +78,37 @@ export default function WizardStep4() {
             </button>
           );
         })}
+      </div>
+
+      <div className="pt-2 border-t border-stone-200">
+        <h3 className="font-serif text-base font-semibold text-stone-700 mb-3 mt-6" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          Barra libre
+        </h3>
+        <div className="grid grid-cols-4 gap-2.5 max-w-md">
+          {([0, 1, 2, 3] as const).map((h) => (
+            <button
+              key={h}
+              onClick={() => setBarHours(h)}
+              className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${
+                barHours === h
+                  ? 'border-[#C9A84C] bg-[#C9A84C]/8 shadow-sm'
+                  : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm'
+              }`}
+            >
+              <div className={`text-sm font-medium ${barHours === h ? 'text-[#1A1A1A]' : 'text-stone-600'}`}>
+                {h === 0 ? 'Sin barra' : `${h}h`}
+              </div>
+              {h > 0 && (
+                <div className="text-[11px] text-stone-400 mt-0.5">{BAR_PRICES[h]}€/pax</div>
+              )}
+            </button>
+          ))}
+        </div>
+        {barHours > 0 && guestCount > 0 && (
+          <p className="text-xs text-stone-500 mt-2">
+            {barHours}h de barra libre × {guestCount} comensales × {BAR_PRICES[barHours]}€ = {(BAR_PRICES[barHours] * guestCount).toFixed(2)}€
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-stone-200">

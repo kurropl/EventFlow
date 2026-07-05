@@ -52,7 +52,9 @@ export default function WizardStep1() {
   const kids = parseInt(kidsCount) || 0;
   
   const eventDate = (month && day && year) ? `${year}-${month}-${day.padStart(2, '0')}` : '';
-  const canProceed = eventType && eventDate && adults >= 10;
+  const todayStr = `${today.year}-${today.month}-${today.day}`;
+  const isPastDate = !!eventDate && eventDate < todayStr;
+  const canProceed = eventType && eventDate && adults >= 10 && !isPastDate;
 
   const maxDays = getDays(month, year);
   useEffect(() => {
@@ -148,6 +150,9 @@ export default function WizardStep1() {
             {yearsRange().map((y) => (<option key={y} value={y}>{y}</option>))}
           </select>
         </div>
+        {isPastDate && (
+          <p className="text-xs text-red-600 mt-1.5">La fecha del evento no puede ser anterior a hoy.</p>
+        )}
       </div>
 
       {/* Guest Count */}

@@ -161,7 +161,9 @@ export default function LeadsCRM() {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showConvert, setShowConvert] = useState(false);
+  const [convertQuoteId, setConvertQuoteId] = useState<string | null>(null);
   const [convertForm, setConvertForm] = useState({ fiscal_name: '', fiscal_nif: '', fiscal_address: '' });
+  const [actionError, setActionError] = useState<string | null>(null);
   const [quoteEditId, setQuoteEditId] = useState<string | null>(null);
   const [quoteEdit, setQuoteEdit] = useState({ base_pvp: 0, bar_price: 0, extras_pvp: 0, iva_pct: 10 });
   const [stockWarnings, setStockWarnings] = useState<Array<{ ingredient_name: string; needed: number; available: number; unit: string; deficit: number }>>([]);
@@ -195,71 +197,85 @@ export default function LeadsCRM() {
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
   const updateStatus = async (id: string, status: string) => {
-    await fetch(`/api/leads/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    fetchLeads();
+    try {
+      const res = await fetch(`/api/leads/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Error al actualizar el estado del lead');
+      }
+      fetchLeads();
+    } catch (err: any) {
+      setActionError(err?.message || 'Error al actualizar el estado del lead');
+    }
   };
 
   // Crear presupuesto desde un lead (crea evento si no existe)
   const createQuote = async (lead: Lead) => {
-    // 1. Try to find existing event by email
-    let eventId: string | null = null;
-    let eventPvp = 0;
-    let eventCost = 0;
-    let eventBarPrice = 0;
+    try {
+      // 1. Try to find existing event by email
+      let eventId: string | null = null;
+      let eventPvp = 0;
+      let eventCost = 0;
+      let eventBarPrice = 0;
 
-    if (lead.email) {
-      const evRes = await fetch(`/api/events?email=${encodeURIComponent(lead.email)}`);
-      const evJson = await evRes.json();
-      const events = evJson.events || evJson.data || [];
-      if (events.length > 0) {
-        eventId = events[0].id;
-        eventPvp = events[0].total_pvp || 0;
-        eventCost = events[0].total_cost || 0;
-        eventBarPrice = events[0].bar_price || 0;
+      if (lead.email) {
+        const evRes = await fetch(`/api/events?email=${encodeURIComponent(lead.email)}`);
+        const evJson = await evRes.json();
+        const events = evJson.events || evJson.data || [];
+        if (events.length > 0) {
+          eventId = events[0].id;
+          eventPvp = events[0].total_pvp || 0;
+          eventCost = events[0].total_cost || 0;
+          eventBarPrice = events[0].bar_price || 0;
+        }
       }
-    }
 
-    // 2. If no event found, create one from lead data
-    if (!eventId) {
-      const evRes = await fetch('/api/events', {
+      // 2. If no event found, create one from lead data
+      if (!eventId) {
+        const evRes = await fetch('/api/events', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_name: lead.name,
+            client_email: lead.email || '',
+            client_phone: lead.phone || '',
+            event_type: lead.event_type || 'boda',
+            guest_count: lead.guest_count || 50,
+            event_date: lead.event_date || new Date().toISOString().split('T')[0],
+            status: 'draft',
+            selected_items: [],
+            total_pvp: 0,
+            total_cost: 0,
+            bar_hours: 0,
+            bar_price: 0,
+            iva_pct: 10,
+            notes: `Auto-creado desde lead: ${lead.name}`,
+          }),
+        });
+        const evJson = await evRes.json();
+        if (!evJson.data?.id) throw new Error(evJson?.error || 'Error creando evento para el lead');
+        eventId = evJson.data.id;
+      }
+
+      // 3. Create quote linked to lead
+      const res = await fetch('/api/quotes', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_name: lead.name,
-          client_email: lead.email || '',
-          client_phone: lead.phone || '',
-          event_type: lead.event_type || 'boda',
-          guest_count: lead.guest_count || 50,
-          event_date: lead.event_date || new Date().toISOString().split('T')[0],
-          status: 'draft',
-          selected_items: [],
-          total_pvp: 0,
-          total_cost: 0,
-          bar_hours: 0,
-          bar_price: 0,
-          iva_pct: 10,
-          notes: `Auto-creado desde lead: ${lead.name}`,
+          event_id: eventId, lead_id: lead.id,
+          base_pvp: eventPvp, base_cost: eventCost,
+          bar_price: eventBarPrice, iva_pct: 10,
         }),
       });
-      const evJson = await evRes.json();
-      if (!evJson.data?.id) { alert('Error creando evento para el lead'); return; }
-      eventId = evJson.data.id;
-    }
-
-    // 3. Create quote linked to lead
-    const res = await fetch('/api/quotes', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event_id: eventId, lead_id: lead.id,
-        base_pvp: eventPvp, base_cost: eventCost,
-        bar_price: eventBarPrice, iva_pct: 10,
-      }),
-    });
-    if (res.ok) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Error al crear el presupuesto');
+      }
       await updateStatus(lead.id, 'presupuestado');
       fetchLeads();
+    } catch (err: any) {
+      setActionError(err?.message || 'Error al crear el presupuesto');
     }
   };
 
@@ -267,6 +283,10 @@ export default function LeadsCRM() {
   const acceptQuote = async (quoteId: string) => {
     const q = selectedLead?.quotes.find(q => q.id === quoteId);
     if (!q) return;
+    // Antes se guardaba solo un flag showConvert=true, y handleConvert
+    // volvía a buscar "el primer presupuesto sent/draft" con .find() — con
+    // 2+ presupuestos podía convertir uno distinto al que el usuario aceptó.
+    setConvertQuoteId(quoteId);
     setShowConvert(true);
   };
 
@@ -275,72 +295,98 @@ export default function LeadsCRM() {
       alert('Nombre fiscal y NIF son obligatorios');
       return;
     }
-    // Update lead status to convertido + create client
-    const res = await fetch(`/api/leads/${selectedLead.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status: 'convertido',
-        fiscal_name: convertForm.fiscal_name,
-        fiscal_nif: convertForm.fiscal_nif,
-        fiscal_address: convertForm.fiscal_address,
-      }),
-    });
-    if (res.ok) {
+    try {
+      // Update lead status to convertido + create client
+      const res = await fetch(`/api/leads/${selectedLead.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'convertido',
+          fiscal_name: convertForm.fiscal_name,
+          fiscal_nif: convertForm.fiscal_nif,
+          fiscal_address: convertForm.fiscal_address,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Error al convertir el lead');
+      }
       // Get client ID from response
       const clientJson = await res.json();
       const clientId = clientJson?.data?.client?.id;
 
-      // Mark the quote as accepted
-      const acceptedQuote = selectedLead.quotes.find(q => q.status === 'sent' || q.status === 'draft');
+      // Mark the quote the user actually accepted — no re-derivarlo con find()
+      const acceptedQuote = selectedLead.quotes.find(q => q.id === convertQuoteId);
       if (acceptedQuote) {
         const quoteRes = await fetch(`/api/quotes/${acceptedQuote.id}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'accepted' }),
         });
         const quoteData = await quoteRes.json();
+        if (!quoteRes.ok) throw new Error(quoteData?.error || 'Error al aceptar el presupuesto');
         // Check for stock warnings
         if (quoteData.stockWarnings && quoteData.stockWarnings.length > 0) {
           setStockWarnings(quoteData.stockWarnings);
           setShowStockWarnings(true);
         }
-      }
 
-      // Create event order (this moves the event to in_progress)
-      if (acceptedQuote) {
-        await fetch('/api/event-orders', {
+        // Create event order (this moves the event to in_progress)
+        const orderRes = await fetch('/api/event-orders', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ quote_id: acceptedQuote.id, client_id: clientId || null }),
         });
+        if (!orderRes.ok) {
+          const orderData = await orderRes.json().catch(() => ({}));
+          throw new Error(orderData?.error || 'Error al crear la orden de evento');
+        }
       }
 
       setShowConvert(false);
+      setConvertQuoteId(null);
       setConvertForm({ fiscal_name: '', fiscal_nif: '', fiscal_address: '' });
       fetchLeads();
       setSelectedLead(null);
+    } catch (err: any) {
+      setActionError(err?.message || 'Error al convertir el lead');
     }
   };
 
   const updateQuotePrice = async (quoteId: string) => {
-    await fetch(`/api/quotes/${quoteId}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        base_pvp: quoteEdit.base_pvp,
-        bar_price: quoteEdit.bar_price,
-        extras_pvp: quoteEdit.extras_pvp,
-        iva_pct: quoteEdit.iva_pct,
-        status: 'sent',
-      }),
-    });
-    setQuoteEditId(null);
-    fetchLeads();
+    try {
+      const res = await fetch(`/api/quotes/${quoteId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_pvp: quoteEdit.base_pvp,
+          bar_price: quoteEdit.bar_price,
+          extras_pvp: quoteEdit.extras_pvp,
+          iva_pct: quoteEdit.iva_pct,
+          status: 'sent',
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Error al actualizar el presupuesto');
+      }
+      setQuoteEditId(null);
+      fetchLeads();
+    } catch (err: any) {
+      setActionError(err?.message || 'Error al actualizar el presupuesto');
+    }
   };
 
   const sendQuote = async (quoteId: string) => {
-    await fetch(`/api/quotes/${quoteId}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'sent' }),
-    });
-    fetchLeads();
+    try {
+      const res = await fetch(`/api/quotes/${quoteId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'sent' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Error al enviar el presupuesto');
+      }
+      fetchLeads();
+    } catch (err: any) {
+      setActionError(err?.message || 'Error al enviar el presupuesto');
+    }
   };
 
   if (selectedLead) return (
@@ -370,6 +416,13 @@ export default function LeadsCRM() {
           </select>
         </div>
       </div>
+
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm flex items-center justify-between">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-600 ml-3">✕</button>
+        </div>
+      )}
 
       {/* Datos del evento asociado */}
       {selectedLead.event_date && (
@@ -474,7 +527,7 @@ export default function LeadsCRM() {
         {showConvert && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-            onClick={e => { if (e.target === e.currentTarget) setShowConvert(false); }}>
+            onClick={e => { if (e.target === e.currentTarget) { setShowConvert(false); setConvertQuoteId(null); } }}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               className="bg-white rounded-2xl p-6 shadow-xl max-w-lg w-full mx-4 space-y-4">
               <h3 className="text-lg font-bold text-ink">Aceptar Presupuesto</h3>
@@ -504,7 +557,7 @@ export default function LeadsCRM() {
                   className="flex-1 text-sm font-medium py-2.5 rounded-xl bg-success text-white hover:bg-success/90 transition-colors">
                   Convertir a Cliente y Activar Evento
                 </button>
-                <button onClick={() => setShowConvert(false)}
+                <button onClick={() => { setShowConvert(false); setConvertQuoteId(null); }}
                   className="text-sm font-medium px-5 py-2.5 rounded-xl border border-cream-dark hover:bg-cream transition-colors">
                   Cancelar
                 </button>

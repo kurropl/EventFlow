@@ -45,21 +45,32 @@ export async function POST(req: NextRequest) {
     }
 
     const { waiters } = parsed.data;
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    // Atomic upsert: find existing by name, update or insert
+    // Atomic upsert: prefer matching by the real DB id (renombrar dos veces
+    // seguidas usaba WHERE name = $1, así que el segundo guardado ya no
+    // encontraba el nombre viejo y creaba una fila nueva huérfana). El id
+    // que envía el cliente para camareros recién creados en el navegador
+    // (`w${Date.now()}`) no es un UUID real, así que en ese caso se hace
+    // fallback al match por nombre — solo entonces es correcto insertar.
     const result = await transaction(async (client) => {
       const upserted: Waiter[] = [];
       for (const w of waiters) {
-        const existing = await client.query<Waiter>(
-          'SELECT id FROM waiters WHERE name = $1',
-          [w.name]
-        );
+        let existingId: string | null = null;
 
-        if (existing.rows.length > 0) {
-          // Update using the DB id (not the client-sent id)
+        if (w.id && UUID_RE.test(w.id)) {
+          const byId = await client.query<Waiter>('SELECT id FROM waiters WHERE id = $1', [w.id]);
+          if (byId.rows.length > 0) existingId = byId.rows[0].id;
+        }
+        if (!existingId) {
+          const byName = await client.query<Waiter>('SELECT id FROM waiters WHERE name = $1', [w.name]);
+          if (byName.rows.length > 0) existingId = byName.rows[0].id;
+        }
+
+        if (existingId) {
           const updated = (await client.query<Waiter>(
-            'UPDATE waiters SET role = $1, phone = $2 WHERE id = $3 RETURNING *',
-            [w.role || null, w.phone || null, existing.rows[0].id]
+            'UPDATE waiters SET name = $1, role = $2, phone = $3 WHERE id = $4 RETURNING *',
+            [w.name, w.role || null, w.phone || null, existingId]
           )).rows[0];
           if (updated) upserted.push(updated);
         } else {

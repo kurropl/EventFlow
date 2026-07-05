@@ -232,7 +232,15 @@ export const WizardStep1Schema = z.object({
   event_date: z.string().date('Fecha inválida'),
   guest_count: z.number().int().min(10).max(5000),
   kids_count: z.number().int().min(0).max(1000).default(0),
-});
+}).refine((data) => {
+  // No basta con deshabilitar el botón "Siguiente" en el UI: sin este
+  // refine, una llamada directa a setStepData()/API se saltaba la
+  // restricción y el wizard aceptaba fechas de evento pasadas.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDate = new Date(`${data.event_date}T00:00:00`);
+  return eventDate >= today;
+}, { message: 'La fecha del evento no puede ser anterior a hoy', path: ['event_date'] });
 export type WizardStep1 = z.infer<typeof WizardStep1Schema>;
 
 export const WizardStep2Schema = z.object({

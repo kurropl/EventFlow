@@ -53,14 +53,40 @@ export default function WizardStep2() {
 
   const handleUseMenu = () => {
     if (!canUseMenu) return;
+    const selectedMenu = PROPOSED_MENUS.find(m => m.id === selectedAdultId);
+    if (!selectedMenu) return;
+
     try {
+      // Fija el precio del menú elegido: rellena selected_items con los
+      // platos reales (igual que handleCustomizeMenu) para que submit()
+      // pueda calcular un total_pvp > 0 contra el catálogo, en vez de
+      // enviar un presupuesto a 0€ sin platos.
+      const selectedItems: any[] = [];
+      selectedMenu.sections.forEach(section => {
+        section.items.forEach(item => {
+          const category = getDishCategory(item);
+          const isMain = category === 'carne' || category === 'pescado' || category === 'arroz';
+          const onePerGuest = isMain || category === 'compartir-mesa';
+          selectedItems.push({
+            item_id: item,
+            name: item,
+            category,
+            quantity: onePerGuest ? (step1?.guest_count || 1) : 1,
+            unit_price_pvp: 0,
+            unit_price_cost: 0,
+            subtotal_pvp: 0,
+            subtotal_cost: 0,
+          });
+        });
+      });
+
       setStepData('step2', {
         use_proposed: true,
         menu_id: selectedAdultId,
         kid_menu_id: selectedKidId || '',
       });
       // Saltar a step4 directamente → menú ya hecho, no necesita personalizar
-      setStepData('step3', { selected_items: [] });
+      setStepData('step3', { selected_items: selectedItems });
       setStep(4);
     } catch (err: any) {
       setError(err?.message || 'Error al guardar el menú');
