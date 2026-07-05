@@ -673,6 +673,12 @@ CREATE INDEX IF NOT EXISTS idx_quotes_lead ON quotes(lead_id);
 CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status);
 -- Motivo obligatorio al cancelar/rechazar un presupuesto (FR-A03)
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
+-- Señal del presupuesto (auditoría adversarial T1.2): payments/signal/route.ts
+-- y EventDetail.tsx ya leían/escribían estas 3 columnas antes de que existieran
+-- — cada llamada a /api/payments/signal crasheaba con "column does not exist".
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS deposit_paid BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS deposit_amount NUMERIC(12,2);
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS deposit_pct NUMERIC(5,2) NOT NULL DEFAULT 40;
 ALTER TABLE quotes DISABLE ROW LEVEL SECURITY;
 DROP TRIGGER IF EXISTS trg_quotes_updated ON quotes;
 CREATE TRIGGER trg_quotes_updated BEFORE UPDATE ON quotes FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -981,9 +987,13 @@ INSERT INTO units_of_measure (name, category, factor_to_base, symbol) VALUES
   ('ud', 'unit', 1, 'ud')
 ON CONFLICT (name) DO NOTHING;
 
--- Docena conversion
+-- Docena conversion — el nombre debe ser 'doc' (no 'docena'): convert_uom()
+-- busca por `name`, y src/lib/recipeImport.ts::UNIT_ALIASES normaliza
+-- doc/docena/docenas siempre a la cadena 'doc' antes de llamarlo. Con
+-- name='docena' la fila nunca se encontraba y la conversión seguía
+-- devolviendo el número sin convertir (mismo bug, sin arreglar de verdad).
 INSERT INTO units_of_measure (name, category, factor_to_base, symbol) VALUES
-  ('docena', 'unit', 12, 'doc')
+  ('doc', 'unit', 12, 'doc')
 ON CONFLICT (name) DO NOTHING;
 ALTER TABLE units_of_measure DISABLE ROW LEVEL SECURITY;
 

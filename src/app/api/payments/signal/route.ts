@@ -11,7 +11,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, getPool } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
-import { setEventStatus } from '@/lib/domain/eventState';
 import { recordPayment } from '@/lib/domain/recordPayment';
 
 export async function POST(_req: NextRequest) {
@@ -37,8 +36,9 @@ export async function POST(_req: NextRequest) {
 
     // 2. Update quote deposit status
     await query(
-      `UPDATE quotes SET deposit_paid = true, deposit_amount = $1 WHERE event_id = $2 AND status = 'accepted'`,
-      [amount, eventId]
+      `UPDATE quotes SET deposit_paid = true, deposit_amount = $1, deposit_pct = $2
+       WHERE event_id = $3 AND status = 'accepted'`,
+      [amount, deposit_pct || 40, eventId]
     );
 
     // 3. No cambiamos events.status — 'presupuestado' es de leads, no events
