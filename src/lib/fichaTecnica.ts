@@ -43,31 +43,37 @@ export function computeFichaTotales(
   minPriceMultiplier: number,
   precioVenta: number | null
 ): FichaTotales {
-  const pesoTotal = round2(lineas.reduce((s, l) => s + (Number(l.quantity) || 0), 0));
-  const raciones = pesoRacion && pesoRacion > 0 ? round2(pesoTotal / pesoRacion) : null;
+  // Toda la cascada se calcula en precisión completa y solo se redondea el
+  // valor final de cada campo — redondear un resultado intermedio (p.ej.
+  // el peso total) y reutilizarlo para dividir arrastra el error aguas
+  // abajo. Con cantidades pequeñas (una yema a 0.002 kg en una receta de
+  // 214 raciones) redondear el peso total a 2 decimales antes de dividir
+  // por el peso/ración cambiaba las raciones de 214.2 a 214 exactas.
+  const pesoTotalRaw = lineas.reduce((s, l) => s + (Number(l.quantity) || 0), 0);
+  const racionesRaw = pesoRacion && pesoRacion > 0 ? pesoTotalRaw / pesoRacion : null;
 
-  const costeMateriaPrima = round2(
-    lineas.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitCost) || 0), 0)
+  const costeMateriaPrimaRaw = lineas.reduce(
+    (s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitCost) || 0), 0
   );
   const merma = Math.max(0, Number(mermaPct) || 0);
-  const costeTotal = round2(costeMateriaPrima * (1 + merma / 100));
+  const costeTotalRaw = costeMateriaPrimaRaw * (1 + merma / 100);
 
-  const costeUnitario = raciones && raciones > 0 ? round2(costeTotal / raciones) : null;
-  const precioMinimo = costeUnitario != null ? round2(costeUnitario * (Number(minPriceMultiplier) || 0)) : null;
+  const costeUnitarioRaw = racionesRaw && racionesRaw > 0 ? costeTotalRaw / racionesRaw : null;
+  const precioMinimoRaw = costeUnitarioRaw != null ? costeUnitarioRaw * (Number(minPriceMultiplier) || 0) : null;
 
-  const beneficioUnitario =
-    precioVenta != null && costeUnitario != null ? round2(precioVenta - costeUnitario) : null;
-  const beneficioTotal =
-    precioVenta != null && raciones != null ? round2(precioVenta * raciones - costeTotal) : null;
+  const beneficioUnitarioRaw =
+    precioVenta != null && costeUnitarioRaw != null ? precioVenta - costeUnitarioRaw : null;
+  const beneficioTotalRaw =
+    precioVenta != null && racionesRaw != null ? precioVenta * racionesRaw - costeTotalRaw : null;
 
   return {
-    pesoTotal,
-    raciones,
-    costeMateriaPrima,
-    costeTotal,
-    costeUnitario,
-    precioMinimo,
-    beneficioUnitario,
-    beneficioTotal,
+    pesoTotal: round2(pesoTotalRaw),
+    raciones: racionesRaw != null ? round2(racionesRaw) : null,
+    costeMateriaPrima: round2(costeMateriaPrimaRaw),
+    costeTotal: round2(costeTotalRaw),
+    costeUnitario: costeUnitarioRaw != null ? round2(costeUnitarioRaw) : null,
+    precioMinimo: precioMinimoRaw != null ? round2(precioMinimoRaw) : null,
+    beneficioUnitario: beneficioUnitarioRaw != null ? round2(beneficioUnitarioRaw) : null,
+    beneficioTotal: beneficioTotalRaw != null ? round2(beneficioTotalRaw) : null,
   };
 }

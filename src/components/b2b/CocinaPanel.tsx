@@ -141,6 +141,8 @@ function RecetasTab() {
   const [deleting, setDeleting] = useState(false);
   // undefined = editor cerrado; null = nueva ficha; string = editar esa receta
   const [editorTarget, setEditorTarget] = useState<string | null | undefined>(undefined);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const fetchRecipes = useCallback(async () => {
     setLoading(true);
@@ -186,8 +188,36 @@ function RecetasTab() {
     setDeleteTarget(null);
   };
 
+  const handleImportFicha = async (file: File) => {
+    setImporting(true);
+    setImportError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/cocina/recipes/import-ficha', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Error al importar la ficha técnica');
+      await fetchRecipes();
+      setEditorTarget(data.data.recipeId);
+    } catch (e: any) {
+      setImportError(e?.message || 'Error al importar la ficha técnica');
+    }
+    setImporting(false);
+  };
+
   const newRecipeButton = (
-    <div className="flex justify-end mb-3">
+    <div className="flex justify-end items-center gap-2 mb-3">
+      {importError && (
+        <span className="text-xs text-red-600 mr-2">{importError}</span>
+      )}
+      <label className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-cream-dark bg-white text-ink-soft text-sm font-medium cursor-pointer hover:bg-cream transition-colors">
+        <Icon name="download" className="w-3.5 h-3.5" />
+        {importing ? 'Importando…' : 'Importar Excel'}
+        <input
+          type="file" accept=".xlsx,.xls" className="hidden" disabled={importing}
+          onChange={(e) => { if (e.target.files?.[0]) handleImportFicha(e.target.files[0]); e.target.value = ''; }}
+        />
+      </label>
       <Button size="sm" onClick={() => setEditorTarget(null)}>
         <Icon name="plus" className="w-3.5 h-3.5 mr-1.5" />
         Nueva receta

@@ -2377,3 +2377,12 @@ ALTER TABLE recipes ADD COLUMN IF NOT EXISTS photo_url TEXT;
 -- unitario × 3 fijo). Se guarda en business_settings como los ratios de
 -- mesas/camareros, editable desde Configuración sin tocar código.
 ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS min_price_multiplier NUMERIC(6,2) NOT NULL DEFAULT 3;
+
+-- recipe_items.quantity NUMERIC(10,2) redondeaba a cero cantidades pequeñas
+-- en kg (p.ej. 0.002 kg de yema de huevo en PASTA_ESPEJO.xlsx), haciendo
+-- desaparecer su coste de la ficha técnica sin ningún aviso. Se ensancha a
+-- 3 decimales, igual que columnas equivalentes de cantidad (traceability_log,
+-- receiving_log). recipes.peso_racion recibe la misma precisión por la
+-- misma razón (gramos por ración con decimales finos).
+ALTER TABLE recipe_items ALTER COLUMN quantity TYPE NUMERIC(12,3);
+ALTER TABLE recipes ALTER COLUMN peso_racion TYPE NUMERIC(12,3);
