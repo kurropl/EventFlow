@@ -22,6 +22,14 @@ interface Handler {
   allowedSortColumns: string[];
   allowedColumns: string[];
   allowedFilters: string[];
+  /** Columna de fecha real para los filtros ?from=/?to= — solo se aplican si
+   *  está definida, ya que no todas las tablas APPCC tienen `recorded_at`
+   *  (fix: antes se asumía esa columna para las 8, y solo 2 la tienen). */
+  dateColumn?: string;
+  /** Columna+dirección del ORDER BY cuando no se pasa ?order= — antes se
+   *  asumía `created_at DESC` para las 8 tablas, pero monitoring/fridge/
+   *  cleaning/traceability no tienen esa columna y el SELECT crasheaba. */
+  defaultSort: string;
 }
 
 const HANDLERS: Record<string, Handler> = {
@@ -29,65 +37,90 @@ const HANDLERS: Record<string, Handler> = {
     table: 'haccp_plans', alias: 'hp',
     select: 'hp.*, e.client_name as event_name',
     join: 'LEFT JOIN events e ON e.id = hp.event_id',
-    allowedSortColumns: ['created_at', 'updated_at', 'name', 'status'],
-    allowedColumns: ['event_id', 'name', 'description', 'objective', 'responsible', 'status', 'review_date', 'notes'],
+    allowedSortColumns: ['created_at', 'updated_at', 'plan_type', 'status'],
+    allowedColumns: ['event_id', 'plan_type', 'version', 'approved_by', 'approval_date', 'valid_until', 'status'],
     allowedFilters: ['event_id', 'eventId', 'status'],
+    defaultSort: 'created_at DESC',
+    // Sin recorded_at real: solo created_at/updated_at, ninguno es el
+    // "cuándo ocurrió" que ?from=/?to= esperan — se omite el filtro de fecha.
   },
   limits: {
     table: 'haccp_critical_limits', alias: 'hcl',
-    select: 'hcl.*, hp.name as plan_name',
+    select: 'hcl.*, hp.plan_type as plan_type',
     join: 'LEFT JOIN haccp_plans hp ON hp.id = hcl.plan_id',
-    allowedSortColumns: ['created_at', 'updated_at', 'parameter', 'limit_value'],
-    allowedColumns: ['plan_id', 'parameter', 'limit_value', 'unit', 'tolerance', 'corrective_action', 'monitoring_frequency'],
-    allowedFilters: ['plan_id', 'planId', 'status'],
+    allowedSortColumns: ['created_at', 'parameter', 'name'],
+    allowedColumns: ['plan_id', 'parameter', 'name', 'description', 'min_value', 'max_value', 'unit', 'corrective_action', 'frequency'],
+    // Sin columna status: haccp_critical_limits no la tiene (fix — el
+    // filtro previo la incluía y crasheaba con "column does not exist").
+    allowedFilters: ['plan_id', 'planId'],
+    defaultSort: 'created_at DESC',
   },
   monitoring: {
     table: 'haccp_monitoring', alias: 'hm',
-    select: 'hm.*, hp.name as plan_name, e.client_name as event_name',
-    join: 'LEFT JOIN haccp_plans hp ON hp.id = hm.plan_id LEFT JOIN events e ON e.id = hm.event_id',
-    allowedSortColumns: ['recorded_at', 'created_at', 'value', 'status'],
-    allowedColumns: ['plan_id', 'event_id', 'limit_id', 'recorded_at', 'value', 'unit', 'status', 'recorded_by', 'notes', 'corrective_action'],
-    allowedFilters: ['event_id', 'eventId', 'plan_id', 'planId', 'limit_id', 'limitId', 'status'],
+    select: 'hm.*, hcl.name as limit_name',
+    join: 'LEFT JOIN haccp_critical_limits hcl ON hcl.id = hm.limit_id',
+    allowedSortColumns: ['recorded_at', 'value', 'status'],
+    allowedColumns: ['limit_id', 'recorded_at', 'recorded_by', 'value', 'unit', 'status', 'notes', 'is_corrected', 'corrected_at', 'corrected_by'],
+    allowedFilters: ['limit_id', 'limitId', 'status'],
+    dateColumn: 'recorded_at',
+    defaultSort: 'recorded_at DESC',
   },
-  temperatures: {
-    table: 'temperature_log', alias: 'tl',
-    select: 'tl.*, e.client_name as event_name',
-    join: 'LEFT JOIN events e ON e.id = tl.event_id',
-    allowedSortColumns: ['recorded_at', 'created_at', 'fridge_name', 'temperature'],
-    allowedColumns: ['event_id', 'fridge_name', 'temperature', 'ambient_temp', 'unit', 'status', 'recorded_by', 'notes', 'corrective_action'],
+  // Antes 'temperatures' → tabla 'temperature_log' (no existe; la real es
+  // fridge_temperature_log) y ningún componente llamaba a ese nombre —
+  // HACCPPanel.tsx siempre ha llamado a /api/appcc/fridge. Corregido.
+  fridge: {
+    table: 'fridge_temperature_log', alias: 'ftl',
+    select: 'ftl.*, e.client_name as event_name',
+    join: 'LEFT JOIN events e ON e.id = ftl.event_id',
+    allowedSortColumns: ['recorded_at', 'fridge_name', 'temperature'],
+    allowedColumns: ['event_id', 'fridge_name', 'fridge_type', 'temperature', 'target_min', 'target_max', 'status', 'recorded_by', 'notes'],
     allowedFilters: ['event_id', 'eventId', 'fridge_name', 'fridgeName', 'status'],
+    dateColumn: 'recorded_at',
+    defaultSort: 'recorded_at DESC',
   },
   cleaning: {
     table: 'cleaning_log', alias: 'cl',
     select: 'cl.*, e.client_name as event_name',
     join: 'LEFT JOIN events e ON e.id = cl.event_id',
-    allowedSortColumns: ['created_at', 'performed_at', 'area'],
-    allowedColumns: ['event_id', 'area', 'task', 'performed_by', 'performed_at', 'verified_by', 'status', 'notes'],
-    allowedFilters: ['event_id', 'eventId', 'status'],
+    // Sin created_at real: cleaning_log solo tiene performed_at (fix — el
+    // allowlist previo incluía 'created_at', columna inexistente).
+    allowedSortColumns: ['performed_at', 'area'],
+    allowedColumns: ['event_id', 'area', 'schedule', 'performed_at', 'performed_by', 'verified_by', 'verified_at', 'products_used', 'notes', 'checklist'],
+    // Sin columna status: cleaning_log no la tiene.
+    allowedFilters: ['event_id', 'eventId'],
+    dateColumn: 'performed_at',
+    defaultSort: 'performed_at DESC',
   },
   suppliers: {
     table: 'supplier_approval', alias: 'sa',
     select: 'sa.*, p.name as provider_name, p.category as provider_category',
     join: 'LEFT JOIN providers p ON p.id = sa.provider_id',
-    allowedSortColumns: ['created_at', 'expiry_date', 'status'],
-    allowedColumns: ['provider_id', 'document_type', 'document_url', 'expiry_date', 'status', 'notes', 'approved_by'],
+    allowedSortColumns: ['created_at', 'expires_at', 'status'],
+    allowedColumns: ['provider_id', 'approved_at', 'expires_at', 'approved_by', 'criteria_met', 'status', 'document_url', 'notes'],
     allowedFilters: ['provider_id', 'providerId', 'status'],
+    defaultSort: 'created_at DESC',
   },
   traceability: {
     table: 'traceability_log', alias: 'tl',
     select: 'tl.*, i.name as ingredient_name, r.name as recipe_name, e.client_name as event_name',
     join: 'LEFT JOIN ingredients i ON i.id = tl.ingredient_id LEFT JOIN recipes r ON r.id = tl.recipe_id LEFT JOIN events e ON e.id = tl.event_id',
-    allowedSortColumns: ['created_at', 'used_at', 'quantity'],
-    allowedColumns: ['event_id', 'ingredient_id', 'recipe_id', 'used_at', 'quantity', 'unit', 'batch', 'notes'],
-    allowedFilters: ['event_id', 'eventId', 'ingredient_id', 'ingredientId', 'status'],
+    allowedSortColumns: ['used_at', 'quantity_used'],
+    allowedColumns: ['event_id', 'ingredient_id', 'recipe_id', 'lot_number', 'receiving_id', 'quantity_used', 'unit', 'used_at', 'used_by', 'guest_served', 'is_critical', 'notes'],
+    // Sin columna status: traceability_log no la tiene.
+    allowedFilters: ['event_id', 'eventId', 'ingredient_id', 'ingredientId'],
+    dateColumn: 'used_at',
+    defaultSort: 'used_at DESC',
   },
   calibration: {
     table: 'haccp_equipment_calibration', alias: 'hec',
     select: 'hec.*, eq.name as equipment_name, eq.category as equipment_category',
     join: 'LEFT JOIN equipment eq ON eq.id = hec.equipment_id',
     allowedSortColumns: ['created_at', 'calibration_date', 'next_calibration'],
-    allowedColumns: ['equipment_id', 'calibration_date', 'next_calibration', 'standard_used', 'result', 'calibrated_by', 'notes'],
-    allowedFilters: ['equipment_id', 'equipmentId', 'status'],
+    allowedColumns: ['equipment_id', 'calibration_date', 'calibrated_by', 'result', 'next_calibration', 'certificate_url', 'notes'],
+    // Sin columna status: haccp_equipment_calibration usa `result` (pass/fail/adjusted), no status.
+    allowedFilters: ['equipment_id', 'equipmentId'],
+    dateColumn: 'calibration_date',
+    defaultSort: 'created_at DESC',
   },
 };
 
@@ -131,12 +164,15 @@ function buildFilters(sp: URLSearchParams, h: Handler): { where: string; params:
     idx++;
   }
 
-  // Date range filters are generic enough to apply to any resource with recorded_at/created_at
-  const f = sp.get('from');
-  if (f) { filters.push(`${alias}.recorded_at >= $${idx}`); params.push(f); idx++; }
+  // Date range filters solo se aplican si el recurso tiene una columna de
+  // fecha real declarada (no todas las tablas APPCC tienen recorded_at).
+  if (h.dateColumn) {
+    const f = sp.get('from');
+    if (f) { filters.push(`${alias}.${h.dateColumn} >= $${idx}`); params.push(f); idx++; }
 
-  const t = sp.get('to');
-  if (t) { filters.push(`${alias}.recorded_at <= $${idx}`); params.push(t); idx++; }
+    const t = sp.get('to');
+    if (t) { filters.push(`${alias}.${h.dateColumn} <= $${idx}`); params.push(t); idx++; }
+  }
 
   return {
     where: filters.length ? 'WHERE ' + filters.join(' AND ') : '',
@@ -164,7 +200,7 @@ async function handleGet(resource: string, sp: URLSearchParams): Promise<NextRes
 
   // Safe ORDER BY: allowlist only
   const rawOrder = sp.get('order');
-  let orderBy = h.alias + '.created_at DESC';
+  let orderBy = `${h.alias}.${h.defaultSort}`;
   if (rawOrder) {
     // Parse "column DIR" format
     const parts = rawOrder.split(/\s+/);
@@ -214,16 +250,19 @@ async function handlePost(resource: string, body: any): Promise<NextResponse> {
 }
 
 async function handleDashboard(): Promise<NextResponse> {
+  // Fix: la tabla real es fridge_temperature_log (no temperature_log), los
+  // status son ingleses ('ok'|'warning'|'critical', no 'pendiente'/'critico'),
+  // supplier_approval usa expires_at (no expiry_date) y no existe una tabla
+  // corrective_actions — se elimina esa métrica en vez de fingir un 0 fijo.
   const results = await Promise.allSettled([
     query(`SELECT COUNT(*)::int AS total FROM haccp_plans`),
-    query(`SELECT COUNT(*)::int AS pending FROM haccp_monitoring WHERE status = 'pendiente'`),
-    query(`SELECT COUNT(*)::int AS critical FROM temperature_log WHERE status = 'critico'`),
-    query(`SELECT COUNT(*)::int AS expired FROM supplier_approval WHERE expiry_date < NOW()`),
+    query(`SELECT COUNT(*)::int AS pending FROM haccp_monitoring WHERE status = 'warning'`),
+    query(`SELECT COUNT(*)::int AS critical FROM fridge_temperature_log WHERE status = 'critical'`),
+    query(`SELECT COUNT(*)::int AS expired FROM supplier_approval WHERE expires_at < NOW()`),
     query(`SELECT COUNT(*)::int AS needs_cal FROM haccp_equipment_calibration WHERE next_calibration < NOW()`),
-    query(`SELECT COUNT(*)::int AS non_compliant FROM corrective_actions WHERE status != 'resuelto'`),
   ]);
 
-  const [plans, monitoring, temps, suppliers, calibration, actions] = results.map(r =>
+  const [plans, monitoring, temps, suppliers, calibration] = results.map(r =>
     r.status === 'fulfilled' ? r.value.rows?.[0] || {} : {}
   );
 
@@ -233,7 +272,6 @@ async function handleDashboard(): Promise<NextResponse> {
     criticalTemps: temps.critical || 0,
     expiredDocuments: suppliers.expired || 0,
     pendingCalibration: calibration.needs_cal || 0,
-    openCorrectiveActions: actions.non_compliant || 0,
   }});
 }
 
