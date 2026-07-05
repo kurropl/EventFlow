@@ -24,6 +24,8 @@ interface Settings {
   pax_por_camarero_coctel: number;
   pax_por_camarero_menu: number;
   refuerzo_cada: number;
+  // Ficha técnica: precio mínimo de venta = coste unitario × este multiplicador
+  min_price_multiplier: number;
 }
 
 const defaultSettings: Settings = {
@@ -41,6 +43,7 @@ const defaultSettings: Settings = {
   pax_por_camarero_coctel: 12,
   pax_por_camarero_menu: 10,
   refuerzo_cada: 25,
+  min_price_multiplier: 3,
 };
 
 // Validation patterns
@@ -489,6 +492,25 @@ export default function ConfigPage() {
                 type="number" min={1} step={1}
                 value={settings.refuerzo_cada}
                 onChange={(e) => update('refuerzo_cada', parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Ficha técnica de recetas */}
+        <div className="bg-white rounded-2xl border border-cream-dark p-6">
+          <h2 className="text-base font-semibold text-ink mb-1">Ficha técnica de recetas</h2>
+          <p className="text-xs text-ink-soft mb-4">
+            Precio mínimo de venta sugerido = coste unitario × este multiplicador (referencia: 3 ≈ 33% food cost).
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-ink-soft mb-1">Multiplicador precio mínimo</label>
+              <input
+                type="number" min={1} step={0.1}
+                value={settings.min_price_multiplier}
+                onChange={(e) => update('min_price_multiplier', parseFloat(e.target.value) || 1)}
                 className="w-full px-3 py-2.5 rounded-lg border border-cream-dark bg-cream text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-all"
               />
             </div>

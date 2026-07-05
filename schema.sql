@@ -2351,3 +2351,29 @@ ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS asientos_por_mesa_infanti
 ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS pax_por_camarero_coctel INT NOT NULL DEFAULT 12;
 ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS pax_por_camarero_menu INT NOT NULL DEFAULT 10;
 ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS refuerzo_cada INT NOT NULL DEFAULT 25;
+
+-- ============================================================
+-- Ficha técnica de recetas (plantilla Excel del cliente:
+-- PLANTILLA_FICHA_TECNICA_AUTOMATIZADA) — cada receta pasa a ser la ficha
+-- técnica completa del plato: coste (ingredientes + merma agregada) y
+-- elaboración/alérgenos/foto/autor, no solo una lista de ingredientes.
+--
+-- El Excel aplica un único % de "merma y costes adicionales" sobre el
+-- coste total de la receta (no por ingrediente); sustituye al merma_pct
+-- por-línea de recipe_items, que ya no se usa aguas abajo (generateEscandallo
+-- nunca lo lee — solo servía para inflar la cantidad en el import CSV).
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS merma_pct NUMERIC(5,2) NOT NULL DEFAULT 20;
+-- Peso objetivo por ración (misma unidad que las líneas de ingredientes,
+-- normalmente gramos): las raciones se DERIVAN de peso_total / peso_racion,
+-- en vez de ser un número que se escribe directamente (recipes.servings
+-- se sigue sincronizando con el valor derivado, porque generateEscandallo/
+-- freeze ya dividen por él para escalar cantidades por evento).
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS peso_racion NUMERIC(10,2);
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS author TEXT;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS allergens TEXT;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS photo_url TEXT;
+
+-- Multiplicador configurable del precio mínimo de venta (Excel: coste
+-- unitario × 3 fijo). Se guarda en business_settings como los ratios de
+-- mesas/camareros, editable desde Configuración sin tocar código.
+ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS min_price_multiplier NUMERIC(6,2) NOT NULL DEFAULT 3;

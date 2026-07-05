@@ -36,6 +36,8 @@ const CocinaAlerts = dynamic(() => import('@/components/b2b/CocinaAlerts'), {
   loading: () => <div className="h-32 bg-cream-dark rounded-xl animate-pulse" />,
 });
 
+const FichaTecnicaEditor = dynamic(() => import('@/components/b2b/FichaTecnicaEditor'), { ssr: false });
+
 const HACCPPanel = dynamic(() => import('@/components/b2b/HACCPPanel'), {
   loading: () => <div className="h-32 bg-cream-dark rounded-xl animate-pulse" />,
 });
@@ -137,6 +139,8 @@ function RecetasTab() {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Recipe | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // undefined = editor cerrado; null = nueva ficha; string = editar esa receta
+  const [editorTarget, setEditorTarget] = useState<string | null | undefined>(undefined);
 
   const fetchRecipes = useCallback(async () => {
     setLoading(true);
@@ -182,6 +186,23 @@ function RecetasTab() {
     setDeleteTarget(null);
   };
 
+  const newRecipeButton = (
+    <div className="flex justify-end mb-3">
+      <Button size="sm" onClick={() => setEditorTarget(null)}>
+        <Icon name="plus" className="w-3.5 h-3.5 mr-1.5" />
+        Nueva receta
+      </Button>
+    </div>
+  );
+
+  const editorDialog = editorTarget !== undefined && (
+    <FichaTecnicaEditor
+      recipeId={editorTarget}
+      onClose={() => setEditorTarget(undefined)}
+      onSaved={() => { setEditorTarget(undefined); fetchRecipes(); }}
+    />
+  );
+
   if (loading) {
     return (
       <div className="animate-pulse space-y-3 p-4">
@@ -194,16 +215,21 @@ function RecetasTab() {
 
   if (!recipes.length) {
     return (
-      <EmptyState
-        icon={<Icon name="food" className="w-6 h-6" />}
-        title="Sin recetas"
-        description="No hay recetas registradas aún."
-      />
+      <>
+        {newRecipeButton}
+        <EmptyState
+          icon={<Icon name="food" className="w-6 h-6" />}
+          title="Sin recetas"
+          description="No hay recetas registradas aún."
+        />
+        {editorDialog}
+      </>
     );
   }
 
   return (
     <div className="overflow-x-auto">
+      {newRecipeButton}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gold/20 text-ink-soft uppercase text-xs tracking-wider">
@@ -248,20 +274,12 @@ function RecetasTab() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => setEditorTarget(recipe.id)}
                     className="text-ink-soft hover:text-ink hover:bg-cream-dark h-8 px-2 text-xs"
-                    title="Editar"
+                    title="Ver / editar ficha técnica"
                   >
                     <Icon name="edit" className="w-3.5 h-3.5 mr-1" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-ink-soft hover:text-ink hover:bg-cream-dark h-8 px-2 text-xs"
-                    title="Ver detalle"
-                  >
-                    <Icon name="search" className="w-3.5 h-3.5 mr-1" />
-                    Detalle
+                    Ficha técnica
                   </Button>
                   <Button
                     variant="ghost"
@@ -302,6 +320,7 @@ function RecetasTab() {
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
       />
+      {editorDialog}
     </div>
   );
 }

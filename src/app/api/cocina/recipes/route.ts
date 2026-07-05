@@ -6,9 +6,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { queryMany, querySingle } from '@/lib/db';
+import { queryMany, transaction } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
+import { normalizeCategory } from '@/lib/recipeImport';
+import { recomputeFicha } from '@/lib/domain/fichaTecnicaSync';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
@@ -43,6 +45,14 @@ const CreateRecipeSchema = z.object({
   cook_time: z.number().int().nonnegative().optional().nullable(),
   difficulty: z.enum(['facil', 'media', 'dificil']).optional().nullable(),
   active: z.boolean().optional().default(true),
+  // Ficha técnica (PLANTILLA_FICHA_TECNICA_AUTOMATIZADA): merma agregada de
+  // receta (reemplaza al merma_pct por-ingrediente), peso objetivo por
+  // ración (las raciones se derivan de él), autor, alérgenos y foto.
+  merma_pct: z.number().min(0).max(99).optional().default(20),
+  peso_racion: z.number().positive().optional().nullable(),
+  author: z.string().max(200).optional().nullable(),
+  allergens: z.string().max(2000).optional().nullable(),
+  photo_url: z.string().max(2000).optional().nullable(),
 });
 
 const UpdateRecipeSchema = z.object({
@@ -156,30 +166,58 @@ export async function POST(request: NextRequest) {
       cook_time,
       difficulty,
       active,
+      merma_pct,
+      peso_racion,
+      author,
+      allergens,
+      photo_url,
     } = parsed.data;
 
-    const created = await querySingle<any>(
-      `INSERT INTO recipes
-         (name, description, source, servings, category, ingredients, instructions,
-          prep_time, cook_time, difficulty, version, active, published)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13)
-       RETURNING *`,
-      [
-        name.trim(),
-        description ?? null,
-        source ?? null,
-        servings ?? null,
-        category ?? null,
-        JSON.stringify(ingredients),
-        instructions ?? null,
-        prep_time ?? null,
-        cook_time ?? null,
-        difficulty ?? null,
-        1,
-        active,
-        false,
-      ]
-    );
+    const catCategory = normalizeCategory(category);
+
+    // La ficha técnica ya no pasa por un "publicar" aparte: el catalog_item
+    // se crea a la vez que la receta, para que las líneas de ingrediente
+    // (recipe_items) tengan dónde engancharse desde el primer guardado.
+    const created = await transaction(async (client) => {
+      const recipe = (await client.query(
+        `INSERT INTO recipes
+           (name, description, source, servings, category, ingredients, instructions,
+            prep_time, cook_time, difficulty, version, active, published,
+            merma_pct, peso_racion, author, allergens, photo_url)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+         RETURNING *`,
+        [
+          name.trim(),
+          description ?? null,
+          source ?? null,
+          servings ?? null,
+          catCategory,
+          JSON.stringify(ingredients),
+          instructions ?? null,
+          prep_time ?? null,
+          cook_time ?? null,
+          difficulty ?? null,
+          1,
+          active,
+          false,
+          merma_pct,
+          peso_racion ?? null,
+          author ?? null,
+          allergens ?? null,
+          photo_url ?? null,
+        ]
+      )).rows[0];
+
+      const catalogItem = (await client.query(
+        `INSERT INTO catalog_items (name, category, pvp, cost, ingredients, active)
+         VALUES ($1, $2, 0, 0, '[]'::jsonb, true) RETURNING id`,
+        [recipe.name, catCategory]
+      )).rows[0];
+      await client.query(`UPDATE recipes SET catalog_item_id = $1 WHERE id = $2`, [catalogItem.id, recipe.id]);
+      recipe.catalog_item_id = catalogItem.id;
+
+      return recipe;
+    });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {

@@ -10,6 +10,8 @@ import { z } from 'zod';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { sanitizeError, isValidUUID } from '@/lib/security';
+import { ensureCatalogItem, recomputeFicha } from '@/lib/domain/fichaTecnicaSync';
+import { computeFichaTotales } from '@/lib/fichaTecnica';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
@@ -66,7 +68,44 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ success: true, data: recipe });
+    // Ficha técnica: líneas de ingrediente + precio/coste del catalog_item +
+    // multiplicador de precio mínimo, todo en una sola llamada para el editor.
+    let catalogItem = null;
+    let lineas: any[] = [];
+    if (recipe.catalog_item_id) {
+      catalogItem = await querySingle<any>(
+        `SELECT id, pvp, cost, category FROM catalog_items WHERE id = $1`,
+        [recipe.catalog_item_id]
+      );
+      lineas = await queryMany<any>(
+        `SELECT ri.id, ri.ingredient_id, i.name AS ingredient_name, ri.quantity, ri.unit,
+                COALESCE(i.unit_cost, 0) AS unit_cost, ri.notes
+         FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
+         WHERE ri.catalog_item_id = $1
+         ORDER BY i.name ASC`,
+        [recipe.catalog_item_id]
+      );
+    }
+    const settings = await querySingle<any>(`SELECT min_price_multiplier FROM business_settings LIMIT 1`);
+    const minPriceMultiplier = Number(settings?.min_price_multiplier) || 3;
+    const totales = computeFichaTotales(
+      lineas.map((l) => ({ quantity: Number(l.quantity), unitCost: Number(l.unit_cost) })),
+      Number(recipe.merma_pct) || 0,
+      recipe.peso_racion != null ? Number(recipe.peso_racion) : null,
+      minPriceMultiplier,
+      catalogItem?.pvp != null ? Number(catalogItem.pvp) : null
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        recipe,
+        catalogItem,
+        lineas,
+        minPriceMultiplier,
+        totales,
+      },
+    });
   } catch (error) {
     const message = sanitizeError(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
@@ -95,6 +134,15 @@ const UpdateRecipeSchema = z.object({
   cook_time: z.number().int().nonnegative().optional().nullable(),
   difficulty: z.enum(['facil', 'media', 'dificil']).optional().nullable(),
   active: z.boolean().optional(),
+  published: z.boolean().optional(),
+  // Ficha técnica
+  merma_pct: z.number().min(0).max(99).optional(),
+  peso_racion: z.number().positive().optional().nullable(),
+  author: z.string().max(200).optional().nullable(),
+  allergens: z.string().max(2000).optional().nullable(),
+  photo_url: z.string().max(2000).optional().nullable(),
+  // Vive en catalog_items, no en recipes — se sincroniza aparte en el PUT.
+  pvp: z.number().min(0).optional(),
 });
 
 export async function PUT(
@@ -145,7 +193,11 @@ export async function PUT(
       );
     }
 
-    const { name, description, source, servings, category, ingredients, instructions, prep_time, cook_time, difficulty, active } = parsed.data;
+    const {
+      name, description, source, servings, category, ingredients, instructions,
+      prep_time, cook_time, difficulty, active, published,
+      merma_pct, peso_racion, author, allergens, photo_url, pvp,
+    } = parsed.data;
 
     // Build dynamic SET
     const sets: string[] = [];
@@ -163,32 +215,58 @@ export async function PUT(
     if (cook_time !== undefined) { sets.push(`cook_time = $${idx++}`); values.push(cook_time ?? null); }
     if (difficulty !== undefined) { sets.push(`difficulty = $${idx++}`); values.push(difficulty ?? null); }
     if (active !== undefined) { sets.push(`active = $${idx++}`); values.push(active); }
+    // "published" nunca fue un campo reconocido por este schema — el botón
+    // Publicar/Retirar de CocinaPanel.tsx enviaba solo {published} y zod lo
+    // descartaba en silencio, dejando `sets` vacío → 400 "Nada que
+    // actualizar" en todos los casos. Ahora sí es un campo válido.
+    if (published !== undefined) { sets.push(`published = $${idx++}`); values.push(published); }
+    if (merma_pct !== undefined) { sets.push(`merma_pct = $${idx++}`); values.push(merma_pct); }
+    if (peso_racion !== undefined) { sets.push(`peso_racion = $${idx++}`); values.push(peso_racion ?? null); }
+    if (author !== undefined) { sets.push(`author = $${idx++}`); values.push(author ?? null); }
+    if (allergens !== undefined) { sets.push(`allergens = $${idx++}`); values.push(allergens ?? null); }
+    if (photo_url !== undefined) { sets.push(`photo_url = $${idx++}`); values.push(photo_url ?? null); }
 
-    if (sets.length === 0) {
+    if (sets.length === 0 && pvp === undefined) {
       return NextResponse.json(
         { success: false, error: 'Nada que actualizar' },
         { status: 400 }
       );
     }
 
-    sets.push(`updated_at = now()`);
-    values.push(id);
+    const result = await transaction(async (client) => {
+      if (sets.length > 0) {
+        sets.push(`updated_at = now()`);
+        values.push(id);
+        await client.query(`UPDATE recipes SET ${sets.join(', ')} WHERE id = $${idx}`, values);
+      }
 
-    const updated = await querySingle<any>(
-      `UPDATE recipes SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
+      // La ficha técnica siempre tiene catalog_item_id desde que se crea;
+      // esto solo cubre filas antiguas (import CSV / seed) que no pasaron
+      // por el flujo nuevo.
+      const catalogItemId = await ensureCatalogItem(client, id);
+      if (pvp !== undefined) {
+        await client.query(`UPDATE catalog_items SET pvp = $1 WHERE id = $2`, [pvp, catalogItemId]);
+      }
+
+      const totales = await recomputeFicha(client, id);
+      const updated = (await client.query(`SELECT * FROM recipes WHERE id = $1`, [id])).rows[0];
+      const catalogItem = (await client.query(
+        `SELECT id, pvp, cost, category FROM catalog_items WHERE id = $1`, [catalogItemId]
+      )).rows[0];
+
+      return { recipe: updated, catalogItem, totales };
+    });
 
     // Parsear ingredients si viene como string JSON
-    if (updated && typeof updated.ingredients === 'string') {
+    if (result.recipe && typeof result.recipe.ingredients === 'string') {
       try {
-        updated.ingredients = JSON.parse(updated.ingredients);
+        result.recipe.ingredients = JSON.parse(result.recipe.ingredients);
       } catch {
-        updated.ingredients = [];
+        result.recipe.ingredients = [];
       }
     }
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
     const message = sanitizeError(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });

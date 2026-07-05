@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const settings = await querySingle<any>(
       `SELECT business_name, address, cif, phone, email, logo_url, bar_price_per_hour, iva_pct,
               block_accept_on_stock_shortage, asientos_por_mesa, asientos_por_mesa_infantil,
-              pax_por_camarero_coctel, pax_por_camarero_menu, refuerzo_cada
+              pax_por_camarero_coctel, pax_por_camarero_menu, refuerzo_cada, min_price_multiplier
        FROM business_settings LIMIT 1`
     );
     return NextResponse.json({ success: true, data: settings || {} });
@@ -59,6 +59,9 @@ export async function PUT(request: NextRequest) {
       pax_por_camarero_coctel: body.pax_por_camarero_coctel != null ? Math.max(1, Math.round(Number(body.pax_por_camarero_coctel))) : undefined,
       pax_por_camarero_menu: body.pax_por_camarero_menu != null ? Math.max(1, Math.round(Number(body.pax_por_camarero_menu))) : undefined,
       refuerzo_cada: body.refuerzo_cada != null ? Math.max(1, Math.round(Number(body.refuerzo_cada))) : undefined,
+      // Multiplicador del precio mínimo de venta de la ficha técnica
+      // (Excel: coste unitario × 3 fijo) — configurable en vez de hardcodeado.
+      min_price_multiplier: body.min_price_multiplier != null ? Math.max(1, Number(body.min_price_multiplier)) : undefined,
     };
 
     for (const [key, val] of Object.entries(updatable)) {
