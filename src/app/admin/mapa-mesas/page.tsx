@@ -17,7 +17,7 @@ export default function MapaMesasAdminPage() {
   return (
     <AdminLayout>
       <div className="h-[calc(100vh-60px)]">
-        <Suspense fallback={<div className="text-center py-16 text-stone-500">Cargando...</div>}>
+        <Suspense fallback={<div className="text-center py-16 text-ink-soft">Cargando...</div>}>
           <LoadedMapaMesas />
         </Suspense>
       </div>

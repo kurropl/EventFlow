@@ -69,14 +69,14 @@ const statusLabel: Record<string, string> = {
 };
 
 const statusColor: Record<string, string> = {
-  draft: 'bg-stone-400',
-  quoted: 'bg-amber-500',
-  accepted: 'bg-emerald-500',
-  confirmed: 'bg-emerald-600',
+  draft: 'bg-ink-soft',
+  quoted: 'bg-warning',
+  accepted: 'bg-success',
+  confirmed: 'bg-success',
   in_progress: 'bg-blue-500',
   completed: 'bg-sky-500',
-  lost: 'bg-red-400',
-  cancelled: 'bg-stone-300',
+  lost: 'bg-danger/60',
+  cancelled: 'bg-ink-soft/50',
 };
 
 export default function RentabilidadPage() {

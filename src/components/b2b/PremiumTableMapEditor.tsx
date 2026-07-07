@@ -409,61 +409,7 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
           }
         }
       `}</style>
-      {/* ── Header ── */}
-      <header className="bg-[#0D0A06] border-b-2 border-[#D4A548] px-6 py-3 flex items-center justify-between z-20 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full border border-[#D4A548] flex items-center justify-center
-            font-serif italic text-lg text-[#D4A548] font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-            J
-          </div>
-          <div>
-            <h1 className="font-serif text-lg text-[#D4A548] font-semibold" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Mapa de Mesas
-            </h1>
-            <p className="text-[10px] text-[#D4A548] opacity-60 tracking-widest uppercase">
-              {name}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {saveMessage && (
-            <span className="text-[#D4A548] text-xs font-medium bg-[#D4A548]/10 px-3 py-1 rounded-lg">
-              {saveMessage}
-            </span>
-          )}
-          {guestCount > 0 && (
-            <span className="text-[#D4A548]/60 text-xs hidden sm:inline">
-              {guestCount} invitados
-            </span>
-          )}
-          {loading && <span className="text-[#D4A548]/40 text-xs">Cargando...</span>}
-          {!readOnly && (
-            <>
-              {eventId && tables.length > 0 && (
-                <button onClick={handleAutoAssign} disabled={autoAssigning}
-                  className="px-3 py-1.5 rounded border border-[#D4A548]/40 text-[#D4A548] text-[10px] uppercase tracking-wider
-                    hover:bg-[#D4A548]/15 disabled:opacity-50 transition-colors">
-                  {autoAssigning ? 'Asignando...' : 'Auto-asignar'}
-                </button>
-              )}
-              <button onClick={() => window.print()}
-                className="px-3 py-1.5 rounded border border-stone-500/30 text-stone-400 text-[10px] uppercase tracking-wider
-                  hover:bg-stone-800 transition-colors hidden md:inline-flex items-center gap-1.5">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
-                </svg>
-                PDF
-              </button>
-              <button onClick={handleSave} disabled={saving}
-                className="px-4 py-2 rounded bg-[#D4A548] text-[#1A1208] text-xs font-bold uppercase tracking-wider
-                  hover:bg-[#F0C060] disabled:opacity-50 transition-colors">
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+      {/* ponytail: header removed — AdminLayout renders the standard header */}
 
       {/* ── Main ── */}
       <main className="flex-1 grid grid-cols-[280px_1fr_280px] max-md:grid-cols-[1fr] overflow-hidden">
@@ -540,6 +486,29 @@ export default function PremiumTableMapEditor({ eventId, eventName, readOnly, on
           {/* Toolbar */}
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1
             bg-[#FBF8F1] border border-[#C9A84C]/30 rounded-md px-1 py-1 shadow-lg">
+            {!readOnly && (
+              <>
+                {eventId && tables.length > 0 && (
+                  <button onClick={handleAutoAssign} disabled={autoAssigning}
+                    className="px-2 h-8 flex items-center justify-center rounded hover:bg-[#EFE7D6] text-[#5A4A38] text-[10px] uppercase tracking-wider disabled:opacity-50">
+                    {autoAssigning ? 'Asignando...' : 'Auto'}
+                  </button>
+                )}
+                <div className="w-px h-5 bg-[#C9A84C]/30 mx-1" />
+                <button onClick={() => window.print()}
+                  className="px-2 h-8 flex items-center justify-center rounded hover:bg-[#EFE7D6] text-[#5A4A38] text-[10px] uppercase tracking-wider">
+                  PDF
+                </button>
+                <button onClick={handleSave} disabled={saving}
+                  className="px-3 h-8 flex items-center justify-center rounded bg-[#C9A84C] text-[#1A1208] text-[10px] font-bold uppercase tracking-wider hover:bg-[#F0C060] disabled:opacity-50">
+                  {saving ? '...' : 'Guardar'}
+                </button>
+                <div className="w-px h-5 bg-[#C9A84C]/30 mx-1" />
+              </>
+            )}
+            {saveMessage && (
+              <span className="text-xs font-medium bg-gold/10 px-2 py-1 rounded whitespace-nowrap">{saveMessage}</span>
+            )}
             <button
               onClick={() => setZoom(z => Math.min(2, z + 0.1))}
               className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#EFE7D6] text-[#5A4A38] text-sm font-medium"

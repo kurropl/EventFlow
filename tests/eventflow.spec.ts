@@ -60,7 +60,7 @@ test.describe('B2C Public Portal — Menu Configurator (Alboroto Eventos)', () =
     await page.fill('input[type="date"]', '2026-09-15');
     await page.fill('input[name="guests"], input[name="guest_count"]', '100');
     
-    const nextBtn = page.getByRole('button', { name: /Siguiente|Continuar|Next|Siguiente \d+/\i });
+    const nextBtn = page.getByRole('button', { name: /Siguiente|Continuar|Next/ });
     await nextBtn.click();
     
     // Step 2: proposed menus (from PDF)
