@@ -99,6 +99,7 @@ async function fwd2(event: any, motivo?: string) {
 async function fwd3(event: any, motivo: string | undefined, req: NextRequest) {
   const pool = await getPool();
   const cli = await pool.connect();
+  let quote: any = null;
   try {
     await cli.query('BEGIN');
 
@@ -117,24 +118,22 @@ async function fwd3(event: any, motivo: string | undefined, req: NextRequest) {
     if (!quoteRes.rows.length) throw new Error('No quote to accept');
 
     // 2. If quote has deposit_*, also create the payments (40/60)
-    const quote = quoteRes.rows[0];
+    quote = quoteRes.rows[0];
     if (quote.deposit_pct && quote.deposit_pct > 0) {
       const totalCost = parseFloat(quote.total_cost || quote.total_price || 0);
       const depositAmount = totalCost * (quote.deposit_pct / 100);
 
-      // Check if deposit payment already exists
       const existingPayment = await cli.query(
         `SELECT id FROM payments WHERE event_id = $1 AND type = 'deposit'`, [event.id]
       );
       if (!existingPayment.rows.length) {
         await cli.query(
           `INSERT INTO payments (event_id, type, amount, method, notes)
-           VALUES ($1, 'deposit', $2, 'transfer', 'Señal automática (${quote.deposit_pct}%)')`,
+           VALUES ($1, 'deposit', $2, 'transfer', 'Señal automática')`,
           [event.id, depositAmount]
         );
       }
 
-      // Mark deposit as paid on quote
       await cli.query(
         `UPDATE quotes SET deposit_paid = true, deposit_amount = $1 WHERE id = $2`,
         [depositAmount, quote.id]
@@ -142,21 +141,25 @@ async function fwd3(event: any, motivo: string | undefined, req: NextRequest) {
     }
 
     await cli.query('COMMIT');
+    cli.release();
 
     await audit(event.id, 'event', event.id, 'FWD-3', 'sent', 'accepted', 'admin', motivo, { quote_id: quote.id });
 
+    // Auto-generate escandallo from recipe_items
+    try {
+      const { recalcEventEscandallo } = await import('@/lib/recalcEscandallo');
+      await recalcEventEscandallo(event.id);
+    } catch (e: any) {
+      console.warn('[FWD-3] Escandallo recalc skipped:', e.message);
+    }
+
+    const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
+    return NextResponse.json({ success: true, data: updated, transition: 'FWD-3', stockWarnings: [] });
+  } catch (e) {
+    await cli.query('ROLLBACK').catch(() => {});
     cli.release();
-
-  // Auto-generate escandallo from recipe_items
-  try {
-    const { recalcEventEscandallo } = await import('@/lib/recalcEscandallo');
-    await recalcEventEscandallo(event.id);
-  } catch (e: any) {
-    console.warn('[FWD-3] Escandallo recalc skipped:', e.message);
+    throw e;
   }
-
-  const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
-  return NextResponse.json({ success: true, data: updated, transition: 'FWD-3', stockWarnings: data.stockWarnings });
 }
 
 // ═══════════════════════════════════════════════════════════════
