@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, getPool } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
-import { calcMesas, calcCamareros, type ServiceType } from '@/lib/operations';
+import { calcMesas, calcCamareros, calcMesasInfantiles, type ServiceType } from '@/lib/operations';
 import { getOperationRatios } from '@/lib/domain/operationRatios';
 import { upsertEventOrderStaffing } from '@/lib/domain/upsertEventOrderStaffing';
 import { upsertStaffingLines } from '@/lib/domain/staffingSizing';
@@ -28,9 +28,13 @@ export async function POST(
     }
 
     const guestCount = Number((ev.rows[0] as any).guest_count) || 1;
+    const kidsCount = Number((ev.rows[0] as any).kids_count) || 0;
+    const adultCount = Math.max(1, guestCount - kidsCount);
     const serviceType: ServiceType = (ev.rows[0] as any).service_type === 'coctel' ? 'coctel' : 'menu';
     const ratios = await getOperationRatios();
-    const tablesNeeded = calcMesas(guestCount, ratios);
+    const adultTables = calcMesas(adultCount, ratios);
+    const kidsTables = calcMesasInfantiles(kidsCount, ratios);
+    const tablesNeeded = adultTables + kidsTables;
     const waitersNeeded = calcCamareros(guestCount, serviceType, ratios);
 
     await upsertEventOrderStaffing(getPool(), {
@@ -48,6 +52,9 @@ export async function POST(
       success: true,
       data: {
         guest_count: guestCount,
+        kids_count: kidsCount,
+        adult_tables: adultTables,
+        kids_tables: kidsTables,
         tables_needed: tablesNeeded,
         waiters_needed: waitersNeeded,
         capacity_used: Math.round((guestCount / (tablesNeeded * 10)) * 100),

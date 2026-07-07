@@ -97,22 +97,55 @@ async function fwd2(event: any, motivo?: string) {
 // FWD-3: Aceptar presupuesto (sent → accepted) — delegates to existing logic
 // ═══════════════════════════════════════════════════════════════
 async function fwd3(event: any, motivo: string | undefined, req: NextRequest) {
-  const quote = await querySingle<any>(
-    `SELECT * FROM quotes WHERE event_id = $1 AND status IN ('sent','draft') LIMIT 1`, [event.id]
-  );
-  if (!quote) return NextResponse.json({ success: false, error: 'No quote found' }, { status: 400 });
+  const pool = await getPool();
+  const cli = await pool.connect();
+  try {
+    await cli.query('BEGIN');
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const cookie = req.headers.get('cookie') || '';
-  const res = await fetch(`${baseUrl}/api/quotes/${quote.id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', cookie },
-    body: JSON.stringify({ status: 'accepted' }),
-  });
-  const data = await res.json();
-  if (!data.success) return NextResponse.json({ success: false, error: data.error }, { status: res.status });
+    const eventRow = await cli.query(
+      `SELECT * FROM events WHERE id = $1`, [event.id]
+    );
+    if (!eventRow.rows.length) throw new Error('Event not found');
+    const ev = eventRow.rows[0];
 
-  await audit(event.id, 'event', event.id, 'FWD-3', 'sent', 'accepted', 'admin', motivo, { quote_id: quote.id });
+    // 1. Accept quote atomically
+    const quoteRes = await cli.query(
+      `UPDATE quotes SET status = 'accepted', accepted_at = now()
+       WHERE event_id = $1 AND status IN ('sent','draft')
+       RETURNING *`, [event.id]
+    );
+    if (!quoteRes.rows.length) throw new Error('No quote to accept');
+
+    // 2. If quote has deposit_*, also create the payments (40/60)
+    const quote = quoteRes.rows[0];
+    if (quote.deposit_pct && quote.deposit_pct > 0) {
+      const totalCost = parseFloat(quote.total_cost || quote.total_price || 0);
+      const depositAmount = totalCost * (quote.deposit_pct / 100);
+
+      // Check if deposit payment already exists
+      const existingPayment = await cli.query(
+        `SELECT id FROM payments WHERE event_id = $1 AND type = 'deposit'`, [event.id]
+      );
+      if (!existingPayment.rows.length) {
+        await cli.query(
+          `INSERT INTO payments (event_id, type, amount, method, notes)
+           VALUES ($1, 'deposit', $2, 'transfer', 'Señal automática (${quote.deposit_pct}%)')`,
+          [event.id, depositAmount]
+        );
+      }
+
+      // Mark deposit as paid on quote
+      await cli.query(
+        `UPDATE quotes SET deposit_paid = true, deposit_amount = $1 WHERE id = $2`,
+        [depositAmount, quote.id]
+      );
+    }
+
+    await cli.query('COMMIT');
+
+    await audit(event.id, 'event', event.id, 'FWD-3', 'sent', 'accepted', 'admin', motivo, { quote_id: quote.id });
+
+    cli.release();
 
   // Auto-generate escandallo from recipe_items
   try {
@@ -176,39 +209,54 @@ async function inv2(event: any, motivo?: string) {
   const inv = await querySingle<any>(`SELECT id FROM invoices WHERE event_id = $1 LIMIT 1`, [event.id]);
   if (inv) return NextResponse.json({ success: false, error: 'Cannot revert: invoice exists. Cancel instead.' }, { status: 409 });
 
-  // 1. Anular payments
-  await querySingle(`UPDATE payments SET paid = false, paid_date = NULL, concept = 'anulado' WHERE event_id = $1 AND paid = true`, [event.id]);
+  const pool = await getPool();
+  const cli = await pool.connect();
+  try {
+    await cli.query('BEGIN');
 
-  // 2. Delete event_order and generated shopping items
-  await querySingle(`DELETE FROM event_shopping_items WHERE event_id = $1`, [event.id]);
-  await querySingle(`DELETE FROM event_orders WHERE event_id = $1`, [event.id]);
-  // G2: sin escandallo, el compromiso de inventario tampoco tiene sentido.
-  await releaseInventoryCommitments(getPool() as any, event.id);
+    // 1. Anular payments
+    await cli.query(`UPDATE payments SET paid = false, paid_date = NULL, concept = 'anulado' WHERE event_id = $1 AND paid = true`, [event.id]);
 
-  // 3. Revoke guest link
-  await querySingle(`UPDATE events SET client_token = NULL WHERE id = $1`, [event.id]);
+    // 2. Delete event_order and generated shopping items
+    await cli.query(`DELETE FROM event_shopping_items WHERE event_id = $1`, [event.id]);
+    await cli.query(`DELETE FROM event_orders WHERE event_id = $1`, [event.id]);
 
-  // 4. Delete staffing lines for this event
-  await querySingle(`DELETE FROM staffing_lines WHERE event_id = $1`, [event.id]);
+    // 3. Revoke guest link
+    await cli.query(`UPDATE events SET client_token = NULL WHERE id = $1`, [event.id]);
 
-  // 5. Event back to sent — total_cost se recalcula vía la fuente única (R2):
-  // sin escandallo queda en Σ gastos previos (no se pierden al revertir).
-  await setEventStatus(event.id, 'sent', { extra: { total_pvp: 0 } });
-  await recalcEventCost(event.id);
+    // 4. Delete staffing lines for this event
+    await cli.query(`DELETE FROM staffing_lines WHERE event_id = $1`, [event.id]);
 
-  // 6. Lead back to presupuestado — G19: vía la FK real, no LOWER(name).
-  await querySingle(
-    `UPDATE leads SET status = 'presupuestado'
-     WHERE id = (SELECT lead_id FROM quotes WHERE id = $1) AND status = 'convertido'`,
-    [event.quote_id]
-  );
+    // 5. Event back to sent
+    await cli.query(
+      `UPDATE events SET status = 'sent', total_pvp = 0 WHERE id = $1 RETURNING *`, [event.id]
+    );
 
-  // 7. Restore quote
-  await querySingle(`UPDATE quotes SET status = 'draft', accepted_at = NULL WHERE event_id = $1 AND status = 'accepted'`, [event.id]);
+    await cli.query('COMMIT');
+    cli.release();
 
-  await audit(event.id, 'event', event.id, 'INV-2', 'accepted', 'sent', 'admin', motivo);
-  const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
-  return NextResponse.json({ success: true, data: updated, transition: 'INV-2' });
+    // Non-transactional after commit
+    await releaseInventoryCommitments(getPool() as any, event.id);
+    await recalcEventCost(event.id);
+
+    // 6. Lead back to presupuestado — non-transactional (different aggregate)
+    await querySingle(
+      `UPDATE leads SET status = 'presupuestado'
+       WHERE id = (SELECT lead_id FROM quotes WHERE id = $1) AND status = 'convertido'`,
+      [event.quote_id]
+    );
+
+    // 7. Restore quote — non-transactional
+    await querySingle(`UPDATE quotes SET status = 'draft', accepted_at = NULL WHERE event_id = $1 AND status = 'accepted'`, [event.id]);
+
+    await audit(event.id, 'event', event.id, 'INV-2', 'accepted', 'sent', 'admin', motivo);
+    const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
+    return NextResponse.json({ success: true, data: updated, transition: 'INV-2' });
+  } catch (e) {
+    await cli.query('ROLLBACK').catch(() => {});
+    cli.release();
+    throw e;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
