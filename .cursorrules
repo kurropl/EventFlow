@@ -1,0 +1,163 @@
+# EventFlow — Reglas para Cursor AI
+
+## Identidad del proyecto
+
+EventFlow es una plataforma brownfield **en producción** de gestión de catering de eventos
+(bodas, celebraciones, corporativo) para **J. Benitez** (Sevilla). Monolito full-stack
+Next.js 14 App Router + TypeScript strict + PostgreSQL.
+
+Documentación canónica (consultar antes de implementar):
+- `specs/constitution.md` — principios no negociables
+- `specs/MASTER-PLAN.md` — plan maestro y estado por requisito
+- `specs/design-system/spec.md` — reglas UI homogéneas
+
+## Stack fijo (no introducir alternativas)
+
+- **Runtime:** Node.js 20
+- **Framework:** Next.js 14 App Router (`src/app/`)
+- **Lenguaje:** TypeScript 5.5 (`strict: true`)
+- **UI:** React 18, Tailwind CSS 3.4, Radix UI, Framer Motion
+- **Estado cliente:** Zustand (`src/store/useWizardStore.ts`)
+- **Validación:** Zod (`src/types/specs.ts`)
+- **BD:** PostgreSQL 16 vía `pg` pool (`src/lib/db.ts`) — sin ORMs
+- **Auth:** JWT + cookie `eventflow_token` httpOnly
+- **Tests:** Vitest (unitarios) + Playwright (E2E) + scripts bash `scripts/verify-*.sh`
+- **Deploy:** Docker Compose + Caddy
+
+## Arquitectura de capas
+
+```
+UI (components/b2b, b2c, ui)
+  → API Routes (src/app/api/**/route.ts)
+    → Domain services (src/lib/domain/*)
+      → lib/db.ts (pg pool + transaction())
+        → PostgreSQL
+```
+
+### Reglas de arquitectura
+
+1. **Lógica de negocio en `src/lib/domain/`**, no en componentes ni rutas sueltas.
+2. **Validación Zod** centralizada en `src/types/specs.ts`.
+3. **Respuestas API uniformes:** `{ success: boolean, data?: T, error?: string }`.
+4. **Transacciones atómicas** con `transaction()` en `db.ts` para operaciones multi-tabla.
+5. **Imports con alias `@/*`** → `./src/*`. Orden: Next → librerías → `@/lib` → `@/types` → `@/components`.
+6. **`'use client'`** solo en componentes interactivos (b2b, b2c, ui).
+
+## Principios no negociables (constitution.md)
+
+1. **Cálculo centralizado:** costes, márgenes, escalado y unidades solo en
+   `src/lib/costing.ts` y `src/lib/units.ts`. Prohibido recalcular en componentes o rutas.
+2. **Dimensiones separadas:** nunca sumar masa + volumen + conteo en un mismo total.
+3. **Ingrediente único:** referenciado por `id`, nunca texto libre.
+4. **RBAC doble capa:** `src/middleware.ts` + `src/lib/rbac.ts` + `src/lib/authz.ts`.
+   Ocultar en UI no basta; cada endpoint valida rol en servidor.
+5. **Test-first en cálculos:** toda feature que toque coste/cantidades incluye tests Vitest.
+6. **Migraciones versionadas:** SQL idempotente en `scripts/` (prefijo fecha). Nunca editar
+   schema a mano en producción.
+7. **Idempotencia de cifras:** mismo coste en presupuesto, escandallo y factura.
+8. **Estados en español:** un único set en BD + API + UI (`borrador → contacto → aceptado → realizado`).
+9. **Iconos = lucide-react** (directo o vía `src/components/shared/Icon.tsx`). Prohibidos
+   `<svg>` inline y emojis como iconos.
+10. **Diseño homogéneo:** paleta gold/cream/ink, Playfair + Inter, primitivos de
+    `src/components/ui/`.
+11. **Transacciones atómicas:** aceptar presupuesto, cerrar evento, etc. = todo o nada.
+
+## Regla crítica B2C
+
+El configurador público (`/configurador`, componentes `b2c/`) **NUNCA muestra precios**.
+El cálculo ocurre en backend; los precios solo se visualizan en el panel B2B (`/admin/*`).
+
+## Convenciones de archivos
+
+| Elemento | Convención | Ubicación |
+|----------|------------|-----------|
+| Paneles admin | PascalCase `.tsx` | `src/components/b2b/` |
+| Wizard/landing B2C | PascalCase `.tsx` | `src/components/b2c/` |
+| Primitivos UI | PascalCase `.tsx` | `src/components/ui/` |
+| Domain services | camelCase `.ts` | `src/lib/domain/` |
+| API routes | kebab-case carpetas | `src/app/api/` |
+| Tests unitarios | `*.test.ts` | `src/lib/__tests__/` o junto al código |
+| Migraciones SQL | `YYYY-MM-DD-*.sql` | `scripts/` |
+
+## Patrón API route
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { queryMany } from '@/lib/db';
+import { sanitizeError } from '@/lib/security';
+
+export async function GET(req: NextRequest) {
+  try {
+    // validar con Zod, consultar dominio/db
+    return NextResponse.json({ success: true, data: result });
+  } catch (e) {
+    return NextResponse.json(
+      { success: false, error: sanitizeError(e) },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Diseño UI (paneles B2B)
+
+- **Paleta:** `gold`, `cream`, `ink`, `paper`, `divider` en `tailwind.config.ts`.
+- **Prohibido en b2b:** colores Tailwind crudos (`stone-*`, `blue-*`, `gray-*`, `amber-*`).
+- **Tipografía:** `font-heading` (Playfair) + `font-body` (Inter). Sin `style={{fontFamily}}`.
+- **Primitivos obligatorios:** `PageHeader`, `Card`, `Button`, `StatStrip`, `EmptyState`, `ErrorState`.
+- **Textos en español con acentos** en UI, errores y estados de negocio.
+
+## RBAC — roles
+
+`admin`, `cocina`, `camareros`, `clientes` — definidos en `src/lib/rbac.ts`.
+El menú admin se filtra con `canSeeNav()`. Matriz de API en `API_RULES`.
+
+## Comandos de desarrollo
+
+```bash
+npm run dev              # Desarrollo local
+npm run build            # Build producción
+npm run test:unit        # Vitest unitarios
+npm test                 # Playwright E2E
+npm run lint             # Next.js lint
+docker compose up        # App :3020 + Postgres + Supabase stack
+BASE=http://localhost:3020 bash scripts/verify-sprint1.sh  # Verificación integración
+```
+
+## Tests obligatorios al tocar
+
+- **Cálculos/costes:** `npm run test:unit` (especialmente `costing.test.ts`, `units.test.ts`)
+- **Feature de sprint:** script `scripts/verify-sprint{N}.sh` correspondiente
+- **UI B2C:** verificar que wizard no expone precios
+
+## Seguridad y configuración
+
+- **Nunca commitear** `.env`, `.env.local`, `.env.production` ni secretos reales.
+- Usar `.env.example` como plantilla. Variables críticas: `JWT_SECRET`, `DATABASE_URL`.
+- `sanitizeError()` en respuestas de error de API (no filtrar stack traces).
+- Validación fail-closed en producción (`src/lib/config.ts`).
+
+## Prohibiciones explícitas
+
+- Recalcular costes fuera de `costing.ts` / `units.ts`
+- Editar `schema.sql` directamente en producción
+- Introducir ORMs, Prisma, Drizzle u otros frameworks de BD
+- SVG inline o emojis como iconos
+- Colores fuera de paleta en paneles b2b
+- Exponer precios en rutas/componentes B2C públicos
+- Commits de archivos `.env*` con credenciales
+
+## Deuda técnica conocida (no empeorar)
+
+- Coexisten estados EN/ES en tests y BD — prioridad: alinear a español único.
+- Migración en curso de ingredientes a `id` único (no reintroducir nombres sueltos).
+- `venue_type` usado por cocina — no romper sin migración.
+- Diseño UI heterogéneo — al tocar un panel, migrar al design system.
+
+## Alcance de cambios
+
+- Cambios mínimos y enfocados; no refactorizar código no relacionado.
+- Reutilizar funciones y patrones existentes antes de crear abstracciones nuevas.
+- Comentarios solo para lógica de negocio no obvia; el código debe ser autoexplicativo.
+- Responder y escribir textos de UI en **español**.
