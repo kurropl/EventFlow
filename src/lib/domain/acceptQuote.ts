@@ -22,12 +22,14 @@ import { reserveVenue, toDateStr, VenueConflictError } from './venueBooking';
 import { commitInventoryForEvent, checkInventoryShortages, type ShortageRow } from './inventoryCommitment';
 import { generateSupplierOrdersForEvent } from './generateSupplierOrders';
 import { upsertStaffingLines } from './staffingSizing';
+import { generatePaymentPlan } from './paymentPlan';
 
 export interface AcceptQuoteResult {
   quote: any;
   event: any;
   eventOrder: any;
   payments: any[];
+  paymentPlan: any;  // WP-21: plan de pago con hitos
   clientToken: string;
   stockWarnings: ShortageRow[];
 }
@@ -117,7 +119,7 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
       )).rows[0];
     }
 
-    // 3) Pagos 40/60 — idempotente por (event_id, concept)
+    // 3) Pagos 40/60 — idempotente por (event_id, concept) + Plan de pagos (WP-21)
     const payments: any[] = [];
     const depositConcept = 'Señal (40% del presupuesto)';
     const finalConcept = 'Saldo (60% del presupuesto)';
@@ -156,6 +158,14 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
       )).rows[0];
     }
     payments.push(finalPayment);
+
+    // 3.5) WP-21: Generar plan de pago con hitos configurables
+    const eventDateForPlan = quote.event_date
+      ? new Date(quote.event_date).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    const paymentPlan = await generatePaymentPlan(
+      client, eventId, quoteId, pvpTotal, eventDateForPlan
+    );
 
     // 4) client_token — idempotente (solo se genera si falta)
     let event = (await client.query(`SELECT * FROM events WHERE id = $1`, [eventId])).rows[0];
@@ -229,6 +239,6 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
       );
     }
 
-    return { quote: updatedQuote, event, eventOrder, payments, clientToken, stockWarnings };
+    return { quote: updatedQuote, event, eventOrder, payments, paymentPlan, clientToken, stockWarnings };
   });
 }

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       `SELECT business_name, address, cif, phone, email, logo_url, bar_price_per_hour, iva_pct,
               block_accept_on_stock_shortage, asientos_por_mesa, asientos_por_mesa_infantil,
               pax_por_camarero_coctel, pax_por_camarero_menu, refuerzo_cada, min_price_multiplier,
-              event_templates
+              event_templates, deposit_pct, deposit_days, final_days_before_event, milestone_reminder_days
        FROM business_settings LIMIT 1`
     );
     return NextResponse.json({ success: true, data: settings || {} });
@@ -65,6 +65,11 @@ export async function PUT(request: NextRequest) {
       min_price_multiplier: body.min_price_multiplier != null ? Math.max(1, Number(body.min_price_multiplier)) : undefined,
       // Plantillas de eventos por venue_type (WP-15) — JSONB editable por Admin
       event_templates: body.event_templates != null ? JSON.stringify(body.event_templates) : undefined,
+      // WP-21: Configuración de hitos de pago
+      deposit_pct: body.deposit_pct != null ? Math.max(0, Math.min(100, Number(body.deposit_pct))) : undefined,
+      deposit_days: body.deposit_days != null ? Math.max(0, Math.round(Number(body.deposit_days))) : undefined,
+      final_days_before_event: body.final_days_before_event != null ? Math.max(0, Math.round(Number(body.final_days_before_event))) : undefined,
+      milestone_reminder_days: body.milestone_reminder_days != null ? Math.max(0, Math.round(Number(body.milestone_reminder_days))) : undefined,
     };
 
     for (const [key, val] of Object.entries(updatable)) {
