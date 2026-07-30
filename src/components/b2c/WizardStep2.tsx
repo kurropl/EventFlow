@@ -2,13 +2,23 @@
 /**
  * J.Benitez — Wizard Step 2: Menu Propuesto
  * 
+ * WP-14: Fetches published menus from API (/api/public/menus)
+ * Falls back to hardcoded PROPOSED_MENUS if API unavailable.
+ * Shows price_per_pax for published menus.
+ * 
  * Colores coherentes: sin rosa chillon para menus infantiles
  * Paleta: cream/gold/ink en todo
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useWizardStore } from '@/store/useWizardStore';
-import { PROPOSED_MENUS } from '@/data/menus';
+import { PROPOSED_MENUS, type ProposedMenu } from '@/data/menus';
+
+// Extended menu type with price from API
+interface PublishedMenu extends ProposedMenu {
+  price_per_pax?: number;
+  db_id?: number;
+}
 
 function getDishCategory(dish: string): string {
   const d = dish.toLowerCase();
@@ -28,8 +38,10 @@ const TAG_STYLES: Record<string, string> = {
   'Premium +': 'bg-stone-800 text-white',
   'Gran Selección': 'bg-[#C9A84C]/15 text-[#C9A84C]',
   'Infantil': 'bg-stone-200 text-stone-600',
+  'Infantil +': 'bg-stone-200 text-stone-600',
   'Esencial': 'bg-stone-100 text-stone-500',
   'Completo': 'bg-[#C9A84C]/15 text-[#C9A84C]',
+  'Canapés': 'bg-stone-700 text-white',
 };
 
 export default function WizardStep2() {
@@ -38,29 +50,55 @@ export default function WizardStep2() {
   const [selectedKidId, setSelectedKidId] = useState<string>(step2?.kid_menu_id || '');
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [menusSource, setMenusSource] = useState<'hardcoded' | 'database'>('hardcoded');
+  const [menusLoading, setMenusLoading] = useState(true);
+
+  // Published menus from API (with fallback to hardcoded)
+  const [publishedMenus, setPublishedMenus] = useState<PublishedMenu[]>([]);
 
   const kids = step1?.kids_count || 0;
 
-  const adultMenus = useMemo(() => PROPOSED_MENUS.filter(m => !m.is_kid), []);
-  const kidMenus = useMemo(() => PROPOSED_MENUS.filter(m => m.is_kid), []);
+  // Fetch published menus from API on mount
+  useEffect(() => {
+    async function fetchMenus() {
+      try {
+        const res = await fetch('/api/public/menus');
+        const data = await res.json();
+        
+        if (data.success && data.data && data.data.length > 0) {
+          // API returned published menus from database
+          setPublishedMenus(data.data);
+          setMenusSource('database');
+        } else {
+          // Fallback to hardcoded menus
+          setPublishedMenus(PROPOSED_MENUS);
+          setMenusSource('hardcoded');
+        }
+      } catch {
+        // API failed, use hardcoded
+        setPublishedMenus(PROPOSED_MENUS);
+        setMenusSource('hardcoded');
+      } finally {
+        setMenusLoading(false);
+      }
+    }
+    fetchMenus();
+  }, []);
+
+  const adultMenus = useMemo(() => publishedMenus.filter(m => !m.is_kid), [publishedMenus]);
+  const kidMenus = useMemo(() => publishedMenus.filter(m => m.is_kid), [publishedMenus]);
 
   const hasAdult = !!selectedAdultId;
   const hasKid = !!selectedKidId;
   const kidsValid = kids === 0 || (hasAdult && hasKid);
   const canUseMenu = kidsValid && (hasAdult || !kids);
 
-  // NO useEffect that auto-saves — we save manually on button click
-
   const handleUseMenu = () => {
     if (!canUseMenu) return;
-    const selectedMenu = PROPOSED_MENUS.find(m => m.id === selectedAdultId);
+    const selectedMenu = publishedMenus.find(m => m.id === selectedAdultId);
     if (!selectedMenu) return;
 
     try {
-      // Fija el precio del menú elegido: rellena selected_items con los
-      // platos reales (igual que handleCustomizeMenu) para que submit()
-      // pueda calcular un total_pvp > 0 contra el catálogo, en vez de
-      // enviar un presupuesto a 0€ sin platos.
       const selectedItems: any[] = [];
       selectedMenu.sections.forEach(section => {
         section.items.forEach(item => {
@@ -82,10 +120,9 @@ export default function WizardStep2() {
 
       setStepData('step2', {
         use_proposed: true,
-        menu_id: selectedAdultId,
+        menu_id: selectedMenu.id,
         kid_menu_id: selectedKidId || '',
       });
-      // Saltar a step4 directamente → menú ya hecho, no necesita personalizar
       setStepData('step3', { selected_items: selectedItems });
       setStep(4);
     } catch (err: any) {
@@ -109,16 +146,14 @@ export default function WizardStep2() {
 
   const handleCustomizeMenu = () => {
     if (!canUseMenu) return;
-    const selectedMenu = PROPOSED_MENUS.find(m => m.id === selectedAdultId);
+    const selectedMenu = publishedMenus.find(m => m.id === selectedAdultId);
     if (!selectedMenu) return;
 
     try {
-      // Cargar todos los items del menú seleccionado en step3
       const selectedItems: any[] = [];
       selectedMenu.sections.forEach(section => {
         section.items.forEach(item => {
           const category = getDishCategory(item);
-          // Estimar cantidad base: 1 por comensal para plato principal, 1/10 para compartir
           const isMain = category === 'carne' || category === 'pescado' || category === 'arroz';
           const onePerGuest = isMain || category === 'compartir-mesa';
           selectedItems.push({
@@ -136,11 +171,10 @@ export default function WizardStep2() {
 
       setStepData('step2', {
         use_proposed: true,
-        menu_id: selectedAdultId,
+        menu_id: selectedMenu.id,
         kid_menu_id: selectedKidId || '',
       });
       setStepData('step3', { selected_items: selectedItems });
-      // Ir a step3 para personalizar
       setStep(3);
     } catch (err: any) {
       setError(err?.message || 'Error al guardar el menú');
@@ -150,17 +184,39 @@ export default function WizardStep2() {
   const selectedMenu = adultMenus.find(m => m.id === selectedAdultId);
   const selectedKidMenu = kidMenus.find(m => m.id === selectedKidId);
 
-  const cardClass = (active: boolean, accentColor?: string) =>
+  // Calculate estimated total for selected menu
+  const estimatedTotal = useMemo(() => {
+    if (!selectedMenu || !step1?.guest_count) return null;
+    const price = selectedMenu.price_per_pax || 0;
+    if (price === 0) return null;
+    return price * step1.guest_count;
+  }, [selectedMenu, step1?.guest_count]);
+
+  const cardClass = (active: boolean) =>
     `rounded-xl border-2 p-4 transition-all duration-300 cursor-pointer ${
       active
         ? `border-[#C9A84C] bg-[#C9A84C]/6 shadow-md shadow-[#C9A84C]/10`
         : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm'
     }`;
 
+  if (menusLoading) {
+    return (
+      <div className="space-y-8">
+        <div className="text-center">
+          <h2 className="font-serif text-3xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            Elige tu Menu
+          </h2>
+          <p className="text-stone-500 text-sm">Cargando menús disponibles...</p>
+        </div>
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C9A84C]"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="space-y-8"
-    >
+    <div className="space-y-8">
       <div className="text-center">
         <h2 className="font-serif text-3xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
           Elige tu Menu
@@ -168,10 +224,29 @@ export default function WizardStep2() {
         <p className="text-stone-500 text-sm max-w-md mx-auto font-light">
           Selecciona un menu propuesto o personaliza cada plato
         </p>
+        {menusSource === 'database' && (
+          <p className="text-[#C9A84C] text-xs mt-1 font-medium">Menus actualizados</p>
+        )}
       </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">{error}</div>
+      )}
+
+      {/* Estimated total banner when a menu is selected */}
+      {estimatedTotal && (
+        <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-xl p-3 text-center">
+          <p className="text-sm text-stone-600">
+            <span className="font-medium text-[#C9A84C]">{selectedMenu?.name}</span>
+            {' '}&mdash;{' '}
+            <span className="font-semibold">{selectedMenu?.price_per_pax?.toFixed(2)} &euro;/pax</span>
+            {' '}&times;{' '}
+            <span>{step1?.guest_count} comensales</span>
+            {' = '}
+            <span className="font-bold text-[#1A1A1A]">{estimatedTotal.toFixed(2)} &euro;</span>
+          </p>
+          <p className="text-xs text-stone-500 mt-1">Precio orientativo. El presupuesto final se calculará con los platos seleccionados.</p>
+        </div>
       )}
 
       {/* Adult Menus */}
@@ -191,9 +266,16 @@ export default function WizardStep2() {
                   <h4 className="font-serif text-base text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                     {menu.name}
                   </h4>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium mt-0.5 ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-500'}`}>
-                    {menu.tag}
-                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-500'}`}>
+                      {menu.tag}
+                    </span>
+                    {menu.price_per_pax !== undefined && menu.price_per_pax > 0 && (
+                      <span className="text-xs font-semibold text-[#C9A84C]">
+                        {menu.price_per_pax.toFixed(2)} &euro;/pax
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {selectedAdultId === menu.id && (
                   <div className="w-5 h-5 rounded-full bg-[#C9A84C] flex items-center justify-center">
@@ -203,6 +285,10 @@ export default function WizardStep2() {
                   </div>
                 )}
               </div>
+              
+              {menu.description && (
+                <p className="text-xs text-stone-400 mb-2 line-clamp-2">{menu.description}</p>
+              )}
               
               <div className="space-y-1">
                 {menu.sections.map((section, idx) => (
@@ -275,9 +361,16 @@ export default function WizardStep2() {
                     <h4 className="font-serif text-base text-[#1A1A1A]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
                       {menu.name}
                     </h4>
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium mt-0.5 ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-500'}`}>
-                      {menu.tag}
-                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${TAG_STYLES[menu.tag] || 'bg-stone-100 text-stone-500'}`}>
+                        {menu.tag}
+                      </span>
+                      {menu.price_per_pax !== undefined && menu.price_per_pax > 0 && (
+                        <span className="text-xs font-semibold text-[#C9A84C]">
+                          {menu.price_per_pax.toFixed(2)} &euro;/pax
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {selectedKidId === menu.id && (
                     <div className="w-5 h-5 rounded-full bg-[#C9A84C] flex items-center justify-center">
@@ -287,6 +380,10 @@ export default function WizardStep2() {
                     </div>
                   )}
                 </div>
+                
+                {menu.description && (
+                  <p className="text-xs text-stone-400 mb-2 line-clamp-2">{menu.description}</p>
+                )}
                 
                 <div className="space-y-1">
                   {menu.sections.map((section, idx) => (
@@ -338,8 +435,8 @@ export default function WizardStep2() {
                 </div>
               </div>
             ))}
+          </div>
         </div>
-      </div>
       )}
 
       {/* Actions */}
