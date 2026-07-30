@@ -9,7 +9,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import StatusBadge from './StatusBadge';
 import BriefingCamareros from './BriefingCamareros';
+import EventTimeline from './EventTimeline';
 import { PageHeader, EmptyState } from '@/components/ui';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays,
   Users,
@@ -361,6 +363,15 @@ export default function EventDetail({ eventId }: EventDetailProps) {
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       {/* ── Page Title ──────────────────────────────────────────── */}
       <PageHeader title="Ficha del Evento" actions={<StatusBadge status={event.status} />} />
+
+      {/* ── Tabs ────────────────────────────────────────────────── */}
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="space-y-6">
 
       {/* ──────────────────────────────────────────────────────────
          1. DATOS DEL EVENTO
@@ -1212,6 +1223,17 @@ export default function EventDetail({ eventId }: EventDetailProps) {
           </div>
         ) : null}
       </section>
+        </TabsContent>
+
+        <TabsContent value="timeline" className="space-y-6">
+          <section className="bg-cream border border-gold/20 rounded-xl p-6">
+            <SectionHeader icon={History} title="Timeline del Evento" />
+            <div className="bg-cream-dark rounded-lg p-4">
+              <EventTimeline eventId={event.id} />
+            </div>
+          </section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
