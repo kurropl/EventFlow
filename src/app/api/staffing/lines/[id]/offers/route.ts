@@ -9,6 +9,7 @@ import { querySingle, queryMany } from '@/lib/db';
 import { sanitizeError, isValidUUID } from '@/lib/security';
 import { verifyToken } from '@/lib/auth';
 import { getWhatsAppClient, buildStaffingOfferMessage } from '@/lib/whatsapp';
+import crypto from 'crypto';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
@@ -169,28 +170,39 @@ export async function POST(
       );
       if (existing) { skipped++; continue; }
 
+      // Generate unique offer token for public confirmation
+      const offerToken = crypto.randomBytes(32).toString('hex');
+      
+      // Build confirmation URL
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000';
+      const confirmationUrl = `${baseUrl}/turno/${offerToken}`;
+
       const offer = await querySingle<any>(
-        `INSERT INTO staffing_offers (staffing_line_id, worker_id, status, sent_at)
-         VALUES ($1, $2, 'sent', now()) RETURNING *`,
-        [id, worker.id]
+        `INSERT INTO staffing_offers (staffing_line_id, worker_id, status, sent_at, offer_token)
+         VALUES ($1, $2, 'sent', now(), $3) RETURNING *`,
+        [id, worker.id, offerToken]
       );
       if (!offer) continue;
       created.push(offer);
 
-      // Send the WhatsApp offer (best-effort: a failed send never aborts the broadcast).
+      // Send the WhatsApp offer with confirmation link (best-effort)
       try {
-        const res = await wa.sendMessage(
-          worker.phone,
-          buildStaffingOfferMessage({
-            workerName: worker.name,
-            roleName: line.role,
-            eventDate: fmtDate(line.event_date),
-            startTime: fmtTime(line.start_time),
-            endTime: fmtTime(line.end_time),
-            location: line.location || 'Por definir',
-            uniform: line.uniform || 'Uniforme estándar',
-          })
-        );
+        const message = buildStaffingOfferMessage({
+          workerName: worker.name,
+          roleName: line.role,
+          eventDate: fmtDate(line.event_date),
+          startTime: fmtTime(line.start_time),
+          endTime: fmtTime(line.end_time),
+          location: line.location || 'Por definir',
+          uniform: line.uniform || 'Uniforme estándar',
+        });
+        
+        // Append confirmation link to message
+        const fullMessage = `${message}\n\n✅ Para aceptar o rechazar este turno, haz clic en el siguiente enlace:\n${confirmationUrl}`;
+        
+        const res = await wa.sendMessage(worker.phone, fullMessage);
         if (res.success) messaged++;
       } catch (e) {
         console.error('[staffing offers] WhatsApp send failed for worker', worker.id, e);
