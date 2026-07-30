@@ -44,6 +44,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       case 'INV-3': return await inv3(event, motivo);
       case 'INV-4': return await inv4(event, motivo);
       case 'INV-5': return await inv5(event, motivo);
+      case 'OPC-5': return await opc5(event, motivo);
       default:
         return NextResponse.json({ success: false, error: 'Not implemented' }, { status: 501 });
     }
@@ -318,6 +319,89 @@ async function inv4(event: any, motivo?: string) {
   await audit(event.id, 'event', event.id, 'INV-4', 'completed', 'reopened', 'admin', motivo, { has_snapshot: true });
   const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
   return NextResponse.json({ success: true, data: updated, transition: 'INV-4' });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OPC-5: Cierre contable (cerrado_operativo → cerrado_contable)
+// Congela la fila de cierre económico y emite event.financially_closed
+// ═══════════════════════════════════════════════════════════════
+async function opc5(event: any, motivo?: string) {
+  const pool = getPool();
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Verificar que existe un cierre económico previo
+    const closureResult = await client.query(
+      `SELECT id, frozen FROM event_financial_closures WHERE event_id = $1`,
+      [event.id]
+    );
+
+    if (!closureResult.rows[0]) {
+      await client.query('ROLLBACK');
+      return NextResponse.json(
+        { success: false, error: 'No hay cierre económico registrado. Ejecuta primero el cierre operativo.' },
+        { status: 400 }
+      );
+    }
+
+    if (closureResult.rows[0].frozen) {
+      await client.query('ROLLBACK');
+      return NextResponse.json(
+        { success: false, error: 'El cierre económico ya está congelado.' },
+        { status: 409 }
+      );
+    }
+
+    // 2. Congelar la fila de cierre económico
+    await client.query(
+      `UPDATE event_financial_closures
+       SET frozen = true, closed_by = (SELECT id FROM admins LIMIT 1), closed_at = now(), updated_at = now()
+       WHERE event_id = $1`,
+      [event.id]
+    );
+
+    // 3. Cambiar estado del evento a cerrado_contable
+    await client.query(
+      `UPDATE events SET status = 'cerrado_contable', updated_at = now()
+       WHERE id = $1 AND status = 'cerrado_operativo'`,
+      [event.id]
+    );
+
+    await client.query('COMMIT');
+
+    // 4. Emitir event.financially_closed (fuera de la transacción principal)
+    const { emitDomainEvent } = await import('@/domain/events');
+    const closure = closureResult.rows[0];
+    const closureData = await client.query(
+      `SELECT real_margin_pct FROM event_financial_closures WHERE event_id = $1`,
+      [event.id]
+    );
+    const marginPct = closureData.rows[0]?.real_margin_pct || 0;
+
+    await emitDomainEvent(
+      client,
+      'event.financially_closed',
+      'event',
+      event.id,
+      { event_id: event.id, real_margin_pct: marginPct }
+    );
+
+    // 5. Audit log
+    await audit(event.id, 'event', event.id, 'OPC-5', 'cerrado_operativo', 'cerrado_contable', 'admin', motivo, {
+      frozen: true,
+      real_margin_pct: marginPct
+    });
+
+    const updated = await querySingle<any>(`SELECT * FROM events WHERE id = $1`, [event.id]);
+    return NextResponse.json({ success: true, data: updated, transition: 'OPC-5', frozen: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

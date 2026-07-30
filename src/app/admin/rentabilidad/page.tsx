@@ -42,6 +42,19 @@ interface EventProfitability {
   laborCostTotal: number;
   laborCostPending: number;
   totalCostFull: number;
+  // WP-24: Cierre económico
+  financialClosure: {
+    plannedFoodCost: number;
+    realFoodCost: number;
+    plannedStaffCost: number;
+    realStaffCost: number;
+    extrasRevenue: number;
+    totalRevenue: number;
+    realMarginPct: number;
+    frozen: boolean;
+    closedAt: string | null;
+  } | null;
+  hasFinancialClosure: boolean;
 }
 
 interface Totals {
@@ -276,6 +289,56 @@ export default function RentabilidadPage() {
                 {ev.costeRealCongelado > 0 && (
                   <div className="mt-2 text-[10px] text-ink-soft-60 text-right">
                     Coste real congelado: {ev.costeRealCongelado.toFixed(2)}€
+                  </div>
+                )}
+
+                {/* WP-24: Panel de cierre económico */}
+                {ev.hasFinancialClosure && ev.financialClosure && (
+                  <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-[10px] font-semibold text-ink-soft uppercase tracking-wider">
+                        Cierre Económico
+                      </h4>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                        ev.financialClosure.frozen ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {ev.financialClosure.frozen ? '🔒 Contable' : '📋 Operativo'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="text-center">
+                        <p className="text-[10px] text-ink-soft-60">Food (prev→real)</p>
+                        <p className="text-xs font-medium text-ink">
+                          {ev.financialClosure.plannedFoodCost.toFixed(0)}€ → {ev.financialClosure.realFoodCost.toFixed(0)}€
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] text-ink-soft-60">Staff (prev→real)</p>
+                        <p className="text-xs font-medium text-ink">
+                          {ev.financialClosure.plannedStaffCost.toFixed(0)}€ → {ev.financialClosure.realStaffCost.toFixed(0)}€
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] text-ink-soft-60">Extras</p>
+                        <p className="text-xs font-medium text-success">
+                          +{ev.financialClosure.extrasRevenue.toFixed(0)}€
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] text-ink-soft-60">Margen real</p>
+                        <p className={`text-xs font-bold ${
+                          ev.financialClosure.realMarginPct >= 30 ? 'text-success' :
+                          ev.financialClosure.realMarginPct >= 15 ? 'text-warning' : 'text-danger'
+                        }`}>
+                          {ev.financialClosure.realMarginPct.toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+                    {ev.financialClosure.closedAt && (
+                      <p className="text-[9px] text-ink-soft-60 text-right mt-1">
+                        Cerrado: {new Date(ev.financialClosure.closedAt).toLocaleDateString('es-ES')}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
