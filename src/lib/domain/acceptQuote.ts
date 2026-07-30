@@ -62,7 +62,23 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
       throw new AcceptQuoteError('El presupuesto ha expirado', 400);
     }
 
+    // WP-03: Defensa en profundidad — rechazar si ya hay un presupuesto
+    // aceptado/pagado para el mismo evento (el constraint DB lo bloquea
+    // también, pero este chequeo da un error 409 claro al usuario).
     const eventId = quote.event_id;
+    const existingAccepted = (await client.query(
+      `SELECT id FROM quotes
+       WHERE event_id = $1 AND status IN ('accepted', 'paid') AND id != $2
+       LIMIT 1`,
+      [eventId, quoteId]
+    )).rows[0];
+    if (existingAccepted) {
+      throw new AcceptQuoteError(
+        'Ya existe un presupuesto aceptado para este evento. ' +
+        'Solo se permite un presupuesto aceptado por evento.',
+        409
+      );
+    }
     const ratios = await getOperationRatios();
 
     // 1) Marcar quote accepted (idempotente: no-op si ya lo estaba)
