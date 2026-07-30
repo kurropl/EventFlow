@@ -45,6 +45,9 @@ const HACCPPanel = dynamic(() => import('@/components/b2b/HACCPPanel'), {
 // WP-09: Retorno de consumibles
 import ConsumableReturnsPanel from '@/components/b2b/ConsumableReturnsPanel';
 
+// WP-19: Hoja de Servicio
+import ServiceSheetView from '@/components/b2b/ServiceSheetView';
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -823,7 +826,7 @@ function HojasOperativasTab() {
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [loadingEvents, setLoadingEvents] = useState(true);
-const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 'alertas' | 'ocr'>('produccion');
+const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 'hoja_servicio' | 'alertas' | 'ocr'>('produccion');
   const [sheetData, setSheetData] = useState<HojaRow[]>([]);
   const [rawSheet, setRawSheet] = useState<any>(null);
   const [loadingSheet, setLoadingSheet] = useState(false);
@@ -933,6 +936,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
     { id: 'produccion', label: 'Producción' },
     { id: 'carga', label: 'Carga' },
     { id: 'logistica', label: 'Logística' },
+    { id: 'hoja_servicio', label: 'Hoja Servicio' },
     { id: 'alertas', label: 'Alertas' },
     { id: 'ocr', label: 'OCR Scanner' },
   ];
@@ -1021,7 +1025,16 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
           )}
 
           {/* Sheet Content */}
-          {sheetTab === 'alertas' ? (
+          {sheetTab === 'hoja_servicio' ? (
+            <div className="space-y-4">
+              {selectedEventId && (
+                <ServiceSheetView
+                  eventId={selectedEventId}
+                  onBack={() => setSheetTab('produccion')}
+                />
+              )}
+            </div>
+          ) : sheetTab === 'alertas' ? (
             <div className="space-y-4">
               <CocinaAlerts />
             </div>
