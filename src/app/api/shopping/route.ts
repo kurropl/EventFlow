@@ -7,10 +7,14 @@
  * - Numeric bounds on quantities
  * - Rate limiting via middleware
  * - Field whitelist on PUT (no SQL injection)
+ *
+ * WP-09: Al marcar/desmarcar items, se crean movimientos de stock
+ * - completed=true → movimiento 'salida' con event_id (FEFO)
+ * - completed=false → movimiento 'retorno' inverso
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { queryMany, querySingle, query } from '@/lib/db';
+import { queryMany, querySingle, query, getPool } from '@/lib/db';
 import {
   isValidUUID,
   sanitizeText,
@@ -19,6 +23,7 @@ import {
   securityHeaders,
   sanitizeError,
 } from '@/lib/security';
+import { recordConsumption, recordReturn } from '@/lib/domain/eventConsumption';
 
 // ── GET: List items for an event ─────────────────────────────────────
 export async function GET(request: NextRequest) {
@@ -85,12 +90,23 @@ export async function POST(request: NextRequest) {
 }
 
 // ── PUT: Update an item (whitelist-based, no SQL injection) ──────────
+// WP-09: Al cambiar completed, crea movimiento de stock
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const id = body.id;
     if (!id || !isValidUUID(id)) {
       return NextResponse.json({ success: false, error: 'id inválido.' }, { status: 422, headers: securityHeaders() });
+    }
+
+    // Obtener el item actual para detectar cambio en completed
+    const currentItem = await querySingle<any>(
+      `SELECT * FROM event_shopping_items WHERE id = $1`,
+      [id]
+    );
+
+    if (!currentItem) {
+      return NextResponse.json({ success: false, error: 'Item no encontrado.' }, { status: 404, headers: securityHeaders() });
     }
 
     // Field whitelist with sanitizers
@@ -126,6 +142,73 @@ export async function PUT(request: NextRequest) {
       `UPDATE event_shopping_items SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
       values
     );
+
+    // ── WP-09: Manejar cambio en completed ─────────────────────────
+    if (body.completed !== undefined && body.completed !== currentItem.completed) {
+      const pool = getPool();
+      const client = await pool.connect();
+
+      try {
+        await client.query('BEGIN');
+
+        if (body.completed === true && !currentItem.completed) {
+          // Marcar como completado → crear movimiento de salida
+          const quantityBase = calculateQuantityBase(
+            Number(currentItem.total_grams) || 0,
+            Number(currentItem.total_units) || 0,
+            Number(currentItem.total_ml) || 0
+          );
+
+          if (quantityBase > 0 && currentItem.ingredient_id) {
+            await recordConsumption(
+              {
+                eventId: currentItem.event_id,
+                shoppingItemId: id,
+                ingredientId: currentItem.ingredient_id,
+                ingredientName: currentItem.ingredient_name,
+                quantityBase,
+                userId: body.user_id || null,
+              },
+              client
+            );
+          }
+        } else if (body.completed === false && currentItem.completed) {
+          // Desmarcar → crear retorno (movimiento inverso)
+          if (currentItem.stock_movement_id && currentItem.ingredient_id) {
+            // Obtener el movimiento original para saber la cantidad
+            const originalMovement = await querySingle<any>(
+              `SELECT qty_base FROM stock_movements WHERE id = $1`,
+              [currentItem.stock_movement_id]
+            );
+
+            if (originalMovement) {
+              const returnQty = Math.abs(Number(originalMovement.qty_base));
+              await recordReturn(
+                {
+                  eventId: currentItem.event_id,
+                  ingredientId: currentItem.ingredient_id,
+                  ingredientName: currentItem.ingredient_name,
+                  quantityReturned: returnQty,
+                  userId: body.user_id || null,
+                  notes: `Desmarcar item en Carga`,
+                },
+                client
+              );
+            }
+          }
+        }
+
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error en movimiento de stock:', error);
+        // No fallamos la actualización del item por un error en stock
+        // pero registramos el error
+      } finally {
+        client.release();
+      }
+    }
+
     return NextResponse.json({ success: true, data: updated }, { headers: securityHeaders() });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500, headers: securityHeaders() });
@@ -159,4 +242,13 @@ async function regenerateShoppingList(eventId: string) {
     [eventId]
   );
   return inserted;
+}
+
+// ── Helper: Calcular cantidad en unidad base ─────────────────────────
+function calculateQuantityBase(grams: number, units: number, ml: number): number {
+  // Priorizar gramos > unidades > ml
+  if (grams > 0) return grams;
+  if (units > 0) return units;
+  if (ml > 0) return ml;
+  return 0;
 }

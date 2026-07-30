@@ -42,6 +42,9 @@ const HACCPPanel = dynamic(() => import('@/components/b2b/HACCPPanel'), {
   loading: () => <div className="h-32 bg-cream-dark rounded-xl animate-pulse" />,
 });
 
+// WP-09: Retorno de consumibles
+import ConsumableReturnsPanel from '@/components/b2b/ConsumableReturnsPanel';
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -1090,6 +1093,12 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
             </div>
           )}
           {sheetTab === 'logistica' && <EquipmentCheckoutPanel eventId={selectedEventId} />}
+          {/* WP-09: Retorno de consumibles */}
+          {sheetTab === 'logistica' && selectedEventId && (
+            <div className="mt-6">
+              <ConsumableReturnsPanel eventId={selectedEventId} />
+            </div>
+          )}
         </>
       )}
     </div>
