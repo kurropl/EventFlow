@@ -78,6 +78,23 @@ interface ReceivingRecord {
   temp_alert: boolean;
 }
 
+interface PendingOrderLine {
+  line_id: string;
+  order_id: string;
+  supplier_order_id: string;
+  supplier: string;
+  order_status: string;
+  ingredient_id: string;
+  ingredient_name: string;
+  qty_ordered: number;
+  qty_received: number;
+  qty_pending: number;
+  unit: string;
+  unit_cost: number | null;
+  cost_per_unit: number | null;
+  expected_date: string | null;
+}
+
 interface EventOption {
   id: string;
   client_name: string;
@@ -218,6 +235,12 @@ export default function TrazabilidadPanel() {
   const [showIngDropdown, setShowIngDropdown] = useState(false);
   const [showQrScanner, setShowQrScanner] = useState(false);
 
+  // WP-07: Selector de línea OC pendiente
+  const [pendingLines, setPendingLines] = useState<PendingOrderLine[]>([]);
+  const [selectedLineId, setSelectedLineId] = useState('');
+  const [pendingLinesLoading, setPendingLinesLoading] = useState(false);
+  const [receptionResult, setReceptionResult] = useState<any>(null);
+
   /* ── Tab 3: Lotes por evento ── */
   const [selectedEventLot, setSelectedEventLot] = useState('');
   const [lotConsumption, setLotConsumption] = useState<LotConsumption[]>([]);
@@ -335,6 +358,21 @@ export default function TrazabilidadPanel() {
     return () => clearTimeout(timer);
   }, [ingredientSearch, searchIngredients]);
 
+  // WP-07: Cargar líneas OC pendientes cuando se abre el formulario
+  const loadPendingLines = useCallback(async (ingredientId?: string) => {
+    setPendingLinesLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (ingredientId) params.set('ingredient_id', ingredientId);
+      const res = await fetch(`/api/trazabilidad/receiving/pending-lines?${params.toString()}`);
+      const d = await res.json();
+      if (d.success) {
+        setPendingLines(d.data || []);
+      }
+    } catch {}
+    setPendingLinesLoading(false);
+  }, []);
+
   const selectIngredient = (ing: { id: string; name: string; unit: string }) => {
     setRecForm((prev) => ({
       ...prev,
@@ -345,6 +383,9 @@ export default function TrazabilidadPanel() {
     setIngredientSearch(ing.name);
     setIngredientOptions([]);
     setShowIngDropdown(false);
+    setSelectedLineId('');
+    // WP-07: Cargar líneas OC pendientes para este ingrediente
+    loadPendingLines(ing.id);
   };
 
   const handleQrScan = (decodedText: string) => {
@@ -385,27 +426,39 @@ export default function TrazabilidadPanel() {
       return;
     }
     setRecFormLoading(true);
+    setReceptionResult(null);
     try {
+      const body: any = {
+        ingredient_id: recForm.ingredient_id,
+        lot_number: recForm.lot_number,
+        batch_quantity: qty,
+        unit: recForm.unit,
+        received_by: recForm.received_by || undefined,
+        expiry_date: recForm.expiry_date || undefined,
+        temperature: recForm.temperature ? parseFloat(recForm.temperature) : undefined,
+        supplier: recForm.supplier || undefined,
+        qr_code: recForm.qr_code || undefined,
+        condition_ok: recForm.condition_ok,
+        notes: recForm.notes || undefined,
+        source: recForm.source,
+      };
+
+      // WP-07: Si se seleccionó una línea OC, enviarla
+      if (selectedLineId) {
+        body.supplier_order_item_id = selectedLineId;
+      }
+
       const res = await fetch('/api/trazabilidad/receiving', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ingredient_id: recForm.ingredient_id,
-          lot_number: recForm.lot_number,
-          batch_quantity: qty,
-          unit: recForm.unit,
-          received_by: recForm.received_by || undefined,
-          expiry_date: recForm.expiry_date || undefined,
-          temperature: recForm.temperature ? parseFloat(recForm.temperature) : undefined,
-          supplier: recForm.supplier || undefined,
-          qr_code: recForm.qr_code || undefined,
-          condition_ok: recForm.condition_ok,
-          notes: recForm.notes || undefined,
-          source: recForm.source,
-        }),
+        body: JSON.stringify(body),
       });
       const d = await res.json();
       if (d.success) {
+        // WP-07: Mostrar resultado de la recepción unificada si hay línea OC
+        if (d.data.stock_lot || d.data.order_update) {
+          setReceptionResult(d.data);
+        }
         setShowRecForm(false);
         setRecForm({
           ingredient_name: '', ingredient_id: '', lot_number: '', batch_quantity: '',
@@ -413,6 +466,8 @@ export default function TrazabilidadPanel() {
           supplier: '', qr_code: '', notes: '', condition_ok: true, source: 'manual',
         });
         setIngredientSearch('');
+        setSelectedLineId('');
+        setPendingLines([]);
         await loadReceivings();
         await loadInventory();
       } else {
@@ -727,6 +782,55 @@ export default function TrazabilidadPanel() {
               </DialogHeader>
 
               <div className="space-y-4 py-2">
+                {/* WP-07: Selector de línea OC pendiente */}
+                {recForm.ingredient_id && pendingLines.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <label className="block text-xs font-medium text-amber-800 mb-1.5">
+                      <Icon name="truck" className="w-3.5 h-3.5 inline mr-1" />
+                      Línea de OC pendiente (opcional)
+                    </label>
+                    <Select
+                      value={selectedLineId}
+                      onValueChange={(val) => {
+                        setSelectedLineId(val);
+                        if (val) {
+                          const line = pendingLines.find((l) => l.line_id === val);
+                          if (line) {
+                            setRecForm((prev) => ({
+                              ...prev,
+                              supplier: line.supplier || prev.supplier,
+                            }));
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full text-xs h-9">
+                        <SelectValue placeholder="Seleccionar línea de OC..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pendingLines.map((line) => (
+                          <SelectItem key={line.line_id} value={line.line_id} className="text-xs">
+                            <span className="font-medium">{line.supplier}</span>
+                            {' — '}{line.ingredient_name}
+                            {' — '}{Number(line.qty_pending).toLocaleString('es-ES', { maximumFractionDigits: 1 })} {line.unit} pendiente(s)
+                            {line.unit_cost ? ` @ ${Number(line.unit_cost).toFixed(2)}€/${line.unit}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedLineId && (
+                      <p className="text-xs text-amber-700 mt-1.5">
+                        ✓ Al recibir con línea OC se actualizará automáticamente el stock, el lote y el estado del pedido.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {recForm.ingredient_id && pendingLines.length === 0 && !pendingLinesLoading && (
+                  <p className="text-xs text-ink-soft-60 italic">
+                    No hay líneas de OC pendientes para este ingrediente.
+                  </p>
+                )}
+
                 {/* Ingrediente con buscador */}
                 <div className="relative">
                   <label className="block text-xs font-medium text-ink-soft mb-1">Ingrediente *</label>
@@ -928,6 +1032,43 @@ export default function TrazabilidadPanel() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* WP-07: Feedback de recepción unificada */}
+          {receptionResult && (
+            <div className="bg-success/10 border border-success/30 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Icon name="check-circle" className="w-5 h-5 text-success" />
+                <h4 className="text-sm font-semibold text-success">Recepción registrada correctamente</h4>
+              </div>
+              {receptionResult.stock_lot && (
+                <div className="text-xs text-success">
+                  <span className="font-medium">Lote creado:</span> #{receptionResult.stock_lot.id} — {receptionResult.stock_lot.lotCode} ({receptionResult.stock_lot.qtyInitial} unidades base)
+                </div>
+              )}
+              {receptionResult.stock_movement && (
+                <div className="text-xs text-success">
+                  <span className="font-medium">Stock actualizado:</span> {receptionResult.stock_movement.previousQty} → {receptionResult.stock_movement.newQty}
+                </div>
+              )}
+              {receptionResult.order_update && (
+                <div className="text-xs text-success">
+                  <span className="font-medium">OC actualizada:</span> Línea recibida ({receptionResult.order_update.qtyReceived}). Estado pedido: {receptionResult.order_update.orderStatus}
+                </div>
+              )}
+              {receptionResult.price_changed && (
+                <div className="text-xs text-warning">
+                  <Icon name="alertTriangle" className="w-3.5 h-3.5 inline mr-1" />
+                  <span className="font-medium">Precio actualizado:</span> {receptionResult.previous_price}€ → {receptionResult.new_price}€
+                </div>
+              )}
+              <button
+                onClick={() => setReceptionResult(null)}
+                className="text-xs text-success/70 hover:text-success underline"
+              >
+                Cerrar
+              </button>
+            </div>
+          )}
         </TabsContent>
 
         {/* ─────────────────────────────────────────────────────────── */}

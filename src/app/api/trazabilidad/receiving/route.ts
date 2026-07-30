@@ -9,6 +9,7 @@ import { getPool, queryMany, querySingle } from '@/lib/db';
 import { sanitizeError, isValidUUID, sanitizeText } from '@/lib/security';
 import { convertUnit, areSameDimension } from '@/lib/units';
 import { adjustIngredientStock } from '@/lib/domain/stockLedger';
+import { processUnifiedReception } from '@/lib/domain/appccReception';
 
 // ── GET: Listar recepciones ──
 
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
       condition_ok,
       notes,
       source,
+      supplier_order_item_id,
     } = body;
     // Sprint 6 (F1.1): 'scan' cuando el lote/caducidad se auto-rellenaron
     // desde un código de barras/QR — antes esta ruta ignoraba el campo y
@@ -139,6 +141,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validar supplier_order_item_id si se proporciona
+    if (supplier_order_item_id && !isValidUUID(supplier_order_item_id)) {
+      return NextResponse.json(
+        { success: false, error: 'supplier_order_item_id inválido.' },
+        { status: 422 }
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // WP-07: Si se provee supplier_order_item_id → flujo unificado
+    // (recepción APPCC + stock_lots + stock_movements + actualización OC)
+    // ══════════════════════════════════════════════════════════════
+    if (supplier_order_item_id) {
+      const result = await processUnifiedReception({
+        ingredientId: ingredient_id,
+        lotNumber: sanitizeText(lot_number, 200),
+        batchQuantity: finalQuantity,
+        unit: finalUnit,
+        receivedDate: finalDate,
+        receivedBy: received_by || null,
+        expiryDate: expiry_date || null,
+        temperature: temperature !== undefined && temperature !== null ? Number(temperature) : null,
+        supplier: supplier || null,
+        qrCode: qr_code || null,
+        conditionOk: finalCondition,
+        notes: notes || null,
+        source: finalSource,
+        supplierOrderItemId: supplier_order_item_id,
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            receiving: result.receiving,
+            stock_lot: result.stockLot,
+            stock_movement: result.stockMovement,
+            order_update: result.orderUpdate,
+            price_changed: result.priceChanged,
+            previous_price: result.previousPrice,
+            new_price: result.newPrice,
+            temp_alert: temperature !== null && temperature !== undefined && Number(temperature) > 8,
+          },
+        },
+        { status: 201 }
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Comportamiento actual NR-2: sin línea OC, solo receiving_log + inventario
+    // ══════════════════════════════════════════════════════════════
     const pool = getPool();
     const client = await pool.connect();
 
