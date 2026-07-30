@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
     const settings = await querySingle<any>(
       `SELECT business_name, address, cif, phone, email, logo_url, bar_price_per_hour, iva_pct,
               block_accept_on_stock_shortage, asientos_por_mesa, asientos_por_mesa_infantil,
-              pax_por_camarero_coctel, pax_por_camarero_menu, refuerzo_cada, min_price_multiplier
+              pax_por_camarero_coctel, pax_por_camarero_menu, refuerzo_cada, min_price_multiplier,
+              event_templates
        FROM business_settings LIMIT 1`
     );
     return NextResponse.json({ success: true, data: settings || {} });
@@ -62,12 +63,19 @@ export async function PUT(request: NextRequest) {
       // Multiplicador del precio mínimo de venta de la ficha técnica
       // (Excel: coste unitario × 3 fijo) — configurable en vez de hardcodeado.
       min_price_multiplier: body.min_price_multiplier != null ? Math.max(1, Number(body.min_price_multiplier)) : undefined,
+      // Plantillas de eventos por venue_type (WP-15) — JSONB editable por Admin
+      event_templates: body.event_templates != null ? JSON.stringify(body.event_templates) : undefined,
     };
 
     for (const [key, val] of Object.entries(updatable)) {
       if (val !== undefined && val !== null) {
         fields.push(`${key} = $${idx++}`);
-        vals.push(typeof val === 'string' ? sanitizeText(val, 200) : val);
+        // event_templates es JSONB, se inserta como string para que PostgreSQL lo parsee
+        if (key === 'event_templates') {
+          vals.push(val);
+        } else {
+          vals.push(typeof val === 'string' ? sanitizeText(val, 200) : val);
+        }
       }
     }
 
