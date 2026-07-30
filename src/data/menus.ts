@@ -12,6 +12,9 @@ export interface ProposedMenu {
   tag: string;
   is_kid: boolean;
   sections: { section: string; items: string[] }[];
+  price_per_pax?: number;   // WP-14: precio por comensal (solo desde API)
+  description?: string;     // WP-14: descripción del menú (solo desde API)
+  db_id?: number;           // WP-14: ID numérico en la tabla menus
 }
 
 export const PROPOSED_MENUS: ProposedMenu[] = [

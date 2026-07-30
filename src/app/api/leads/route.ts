@@ -23,6 +23,7 @@ interface Lead {
   event_type: string | null;
   guest_count: number | null;
   event_date: string | null;
+  menu_id: string | null;  // WP-14: UUID del menú seleccionado
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
@@ -38,6 +39,7 @@ const CreateLeadSchema = z.object({
   event_type: z.string().optional().nullable(),
   guest_count: z.number().int().positive('Guest count must be > 0').optional().nullable(),
   event_date: z.string().optional().nullable(),
+  menu_id: z.string().uuid('Invalid menu ID').optional().or(z.literal('')).nullable(),  // WP-14
 });
 
 // ── Handlers ────────────────────────────────────────────────────
@@ -101,7 +103,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, phone, source, event_type, guest_count, event_date } = parsed.data;
+    const { name, email, phone, source, event_type, guest_count, event_date, menu_id } = parsed.data;
 
     // G13 (Sprint 4): auto-asigna el lead al usuario autenticado que lo crea
     // (null si viene de un flujo público/no autenticado, p.ej. configurador,
@@ -111,10 +113,10 @@ export async function POST(request: NextRequest) {
     const assignedTo = currentUser?.id && isValidUUID(currentUser.id) ? currentUser.id : null;
 
     const lead = await querySingle<Lead>(
-      `INSERT INTO leads (name, email, phone, source, event_type, guest_count, event_date, assigned_to)
-       VALUES ($1, $2, $3, COALESCE($4, 'manual'), $5, $6, $7, $8)
+      `INSERT INTO leads (name, email, phone, source, event_type, guest_count, event_date, menu_id, assigned_to)
+       VALUES ($1, $2, $3, COALESCE($4, 'manual'), $5, $6, $7, $8, $9)
        RETURNING *`,
-      [name, email || null, phone || null, source || 'manual', event_type || null, guest_count || null, event_date || null, assignedTo]
+      [name, email || null, phone || null, source || 'manual', event_type || null, guest_count || null, event_date || null, menu_id || null, assignedTo]
     );
 
     // Send welcome email to new lead
