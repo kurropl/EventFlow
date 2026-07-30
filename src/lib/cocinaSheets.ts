@@ -12,6 +12,8 @@
 
 import { getPool } from '@/lib/db';
 import { reserveEquipmentForEvent } from '@/lib/domain/equipmentCheckout';
+import { generateVajillaLoadingItems } from '@/lib/vajilla';
+import { generatePackLoadingItems } from '@/lib/packs';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -260,6 +262,8 @@ export async function generateLoadingSheet(
   noPerecedero: LoadingItem[];
   perecederoPasses: { pass: PassInfo; items: LoadingItem[] }[];
   noPerecederoPasses: { pass: PassInfo; items: LoadingItem[] }[];
+  vajilla: { productName: string; quantity: number; unit: string; perishable: boolean; category: string; passName: string }[];
+  packs: { productName: string; quantity: number; unit: string; perishable: boolean; category: string; notes: string | null }[];
 }> {
   const pool = getPool();
 
@@ -288,6 +292,8 @@ export async function generateLoadingSheet(
       noPerecedero: [],
       perecederoPasses: [],
       noPerecederoPasses: [],
+      vajilla: [],
+      packs: [],
     };
   }
 
@@ -368,6 +374,12 @@ export async function generateLoadingSheet(
         return { pass: passInfoOf(passNum), items: [...totals.values()] };
       });
 
+  // WP-20: Añadir vajilla y packs a la hoja de carga
+  const [vajillaItems, packItems] = await Promise.all([
+    generateVajillaLoadingItems(eventId),
+    generatePackLoadingItems(eventId),
+  ]);
+
   return {
     eventName: ev.client_name,
     guestCount,
@@ -377,6 +389,8 @@ export async function generateLoadingSheet(
     noPerecedero,
     perecederoPasses: groupByPass(perecederoByPass),
     noPerecederoPasses: groupByPass(noPerecederoByPass),
+    vajilla: vajillaItems,
+    packs: packItems,
   };
 }
 
