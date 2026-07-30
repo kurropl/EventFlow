@@ -157,6 +157,12 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   const [gastoAmount, setGastoAmount] = useState('');
   const [savingGasto, setSavingGasto] = useState(false);
   const [gastoMsg, setGastoMsg] = useState('');
+  // WP-23: Hitos de pago y facturación por hitos
+  const [milestones, setMilestones] = useState<any[]>([]);
+  const [milestoneMsg, setMilestoneMsg] = useState('');
+  const [generatingMilestone, setGeneratingMilestone] = useState<string | null>(null);
+  const [generatingFinal, setGeneratingFinal] = useState(false);
+  const [finalInvoiceMsg, setFinalInvoiceMsg] = useState('');
 
   const fetchGastosPrevios = useCallback(async () => {
     try {
@@ -173,7 +179,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [eventRes, escRes, staffRes, payRes, quoteRes, contractRes, invRes] = await Promise.allSettled([
+      const [eventRes, escRes, staffRes, payRes, quoteRes, contractRes, invRes, milestoneRes] = await Promise.allSettled([
         fetch(`/api/events/${eventId}`),
         fetch(`/api/stock/escandallos?event_id=${eventId}`),
         fetch(`/api/staffing/lines?event_id=${eventId}`),
@@ -181,6 +187,7 @@ export default function EventDetail({ eventId }: EventDetailProps) {
         fetch(`/api/quotes?event_id=${eventId}`),
         fetch(`/api/events/${eventId}/contract`),
         fetch(`/api/invoices?event_id=${eventId}`),
+        fetch(`/api/events/${eventId}/milestones`),
       ]);
 
       // Event (required)
@@ -232,6 +239,12 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       if (invRes.status === 'fulfilled' && invRes.value.ok) {
         const j = await invRes.value.json();
         setInvoices(j.data || []);
+      }
+
+      // WP-23: Hitos de pago para facturación por hitos
+      if (milestoneRes.status === 'fulfilled' && milestoneRes.value.ok) {
+        const j = await milestoneRes.value.json();
+        setMilestones(j.data || []);
       }
     } catch {
       setError('Error al cargar los datos');
@@ -350,6 +363,52 @@ export default function EventDetail({ eventId }: EventDetailProps) {
       setInvoiceMsg('Error de conexión');
     }
     setInvoicing(false);
+  };
+
+  // WP-23: Generar factura de anticipo por hito pagado
+  const generateAdvanceInvoice = async (milestoneId: string) => {
+    setGeneratingMilestone(milestoneId);
+    setMilestoneMsg('');
+    try {
+      const res = await fetch(`/api/events/${event.id}/milestones/${milestoneId}/invoice`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMilestoneMsg(`✓ ${data.message || 'Factura de anticipo generada'}`);
+        fetchAll();
+      } else {
+        setMilestoneMsg('Error: ' + (data.error || ''));
+      }
+    } catch {
+      setMilestoneMsg('Error de conexión');
+    }
+    setGeneratingMilestone(null);
+  };
+
+  // WP-23: Generar factura final deduciendo anticipos
+  const generateFinalInvoice = async () => {
+    setGeneratingFinal(true);
+    setFinalInvoiceMsg('');
+    try {
+      const res = await fetch(`/api/events/${event.id}/invoice/final`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        const deducted = data.data?.advances_deducted || 0;
+        setFinalInvoiceMsg(
+          `✓ ${data.message || 'Factura final generada'}` +
+          (deducted > 0 ? ` (anticipos deducidos: ${money(deducted)})` : '')
+        );
+        fetchAll();
+      } else {
+        setFinalInvoiceMsg('Error: ' + (data.error || ''));
+      }
+    } catch {
+      setFinalInvoiceMsg('Error de conexión');
+    }
+    setGeneratingFinal(false);
   };
 
   // G5 (Sprint 3): huecos de trazabilidad — se separan del resto de efectos
@@ -1067,6 +1126,99 @@ export default function EventDetail({ eventId }: EventDetailProps) {
           </div>
         )}
       </section>
+
+      {/* ──────────────────────────────────────────────────────────
+         7b. FACTURACIÓN POR HITOS (WP-23)
+         ────────────────────────────────────────────────────────── */}
+      {milestones.length > 0 && (
+        <section className="bg-cream border border-gold/20 rounded-xl p-6">
+          <SectionHeader icon={Receipt} title="Facturación por Hitos" />
+          <div className="bg-cream-dark rounded-lg p-4">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gold/20">
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Hito</th>
+                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Importe</th>
+                  <th className="text-center py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Estado</th>
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Factura</th>
+                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-ink-soft-60 font-semibold">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {milestones.map((ms: any) => (
+                  <tr key={ms.id} className="border-b border-gold/10 last:border-0">
+                    <td className="py-1.5 text-ink font-medium">{ms.label}</td>
+                    <td className="py-1.5 text-right font-semibold text-ink">{money(ms.amount)}</td>
+                    <td className="py-1.5 text-center">
+                      {ms.status === 'pagado' ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/10 px-2 py-0.5 rounded-full">
+                          <Check className="w-3 h-3" />
+                          Pagado
+                        </span>
+                      ) : ms.status === 'vencido' ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-danger bg-danger/10 px-2 py-0.5 rounded-full">
+                          Vencido
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full">
+                          <Clock className="w-3 h-3" />
+                          Pendiente
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-ink-soft-60 text-xs">
+                      {ms.invoice_number ? (
+                        <span className="text-success font-medium">{ms.invoice_number}</span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right">
+                      {ms.status === 'pagado' && !ms.invoice_id && (
+                        <button
+                          onClick={() => generateAdvanceInvoice(ms.id)}
+                          disabled={generatingMilestone === ms.id}
+                          className="text-xs font-medium px-3 py-1 rounded-lg bg-gold text-ink hover:bg-gold-dark disabled:opacity-50 transition-colors"
+                        >
+                          {generatingMilestone === ms.id ? 'Generando...' : 'Facturar anticipo'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {milestoneMsg && (
+              <p className={`text-xs mt-3 ${milestoneMsg.includes('Error') ? 'text-danger' : 'text-success'}`}>{milestoneMsg}</p>
+            )}
+          </div>
+
+          {/* Botón Factura Final */}
+          <div className="mt-4 flex items-center justify-between bg-white rounded-lg border border-cream-dark p-4">
+            <div>
+              <p className="text-sm font-medium text-ink">Factura Final</p>
+              <p className="text-xs text-ink-soft-60">
+                Genera la factura del evento deduciendo los anticipos ya facturados
+              </p>
+              {milestones.filter(m => m.invoice_id).length > 0 && (
+                <p className="text-xs text-success mt-1">
+                  Anticipos facturados: {milestones.filter(m => m.invoice_id).length} ({money(milestones.filter(m => m.invoice_id).reduce((s: number, m: any) => s + Number(m.amount || 0), 0))})
+                </p>
+              )}
+            </div>
+            <button
+              onClick={generateFinalInvoice}
+              disabled={generatingFinal}
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-[#1A1A2E] text-white hover:bg-[#2D2D44] disabled:opacity-50 transition-colors"
+            >
+              {generatingFinal ? 'Generando...' : 'Generar Factura Final'}
+            </button>
+          </div>
+          {finalInvoiceMsg && (
+            <p className={`text-xs mt-2 ${finalInvoiceMsg.includes('Error') ? 'text-danger' : 'text-success'}`}>{finalInvoiceMsg}</p>
+          )}
+        </section>
+      )}
 
       {/* ──────────────────────────────────────────────────────────
          8. HISTORIAL
