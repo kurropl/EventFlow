@@ -1,5 +1,8 @@
 /**
  * EventFlow — Dominio: máquina de estados única para events.status (Spec 001, R3)
+ * 
+ * ACTUALIZADO en WP-04: Importa la máquina de estados ampliada desde
+ * src/domain/eventStateMachine.ts que es la ÚNICA fuente de verdad.
  *
  * `UPDATE events SET ... status = ...` SOLO se escribe aquí, en dos modos:
  *   - `setEventStatus`: escritura directa (sin validar transición), para los
@@ -11,33 +14,33 @@
  */
 import type { PoolClient } from 'pg';
 import { getPool } from '@/lib/db';
+import {
+  VALID_TRANSITIONS as NEW_VALID_TRANSITIONS,
+  ALL_VALID_STATUSES,
+  assertTransition as assertTransitionNew,
+  type EventStatus,
+  type Transition
+} from '@/domain/eventStateMachine';
 
-export const VALID_TRANSITIONS: Record<string, { from: string[]; to: string }> = {
-  'FWD-2': { from: ['draft'],     to: 'sent' },
-  'FWD-3': { from: ['sent'],      to: 'accepted' },
-  'FWD-4': { from: ['accepted'],  to: 'completed' },
-  'INV-1': { from: ['sent'],      to: 'lost' },
-  'INV-2': { from: ['accepted'],  to: 'sent' },
-  'INV-3': { from: ['accepted'],  to: 'cancelled' },
-  'INV-4': { from: ['completed'], to: 'reopened' },
-  'INV-5': { from: ['reopened'],  to: 'completed' },
-  // G17/B6 (Sprint 4): documentan transiciones que ya ocurrían en producción
-  // sin estar representadas aquí (payments/signal/route.ts,
-  // invoices/[id]/route.ts) — no pasan por el dispatcher de
-  // transitions/route.ts, se documentan solo para que sean visibles/auditables.
-  'PAY-1': { from: ['accepted'],  to: 'presupuestado' },
-  'PAY-2': { from: ['completed'], to: 'paid' },
-};
+// Re-exportar la máquina de estados ampliada
+export { ALL_VALID_STATUSES as VALID_EVENT_STATUSES };
+export { NEW_VALID_TRANSITIONS };
 
-/** G17/B6: whitelist cerrada para los puntos de escritura que aceptaban
- *  cualquier string sin validar (events/[id]/route.ts PUT, automation.ts).
- *  No sustituye a VALID_TRANSITIONS (gobernanza completa por transición
- *  queda diferida, ver SPEC Sprint 4 Nivel C) — solo elimina el riesgo de
- *  typos/estados inventados en esos 2 puntos peligrosos. */
-export const VALID_EVENT_STATUSES = new Set([
-  'draft', 'sent', 'accepted', 'in_progress', 'completed',
-  'paid', 'cancelled', 'lost', 'reopened',
-]);
+// Mantener compatibilidad con código existente que usa el formato viejo
+export const VALID_TRANSITIONS: Record<string, { from: string[]; to: string }> = {};
+for (const t of NEW_VALID_TRANSITIONS) {
+  VALID_TRANSITIONS[t.code] = { from: t.from, to: t.to };
+}
+
+// G17/B6: whitelist cerrada para los puntos de escritura que aceptaban
+//  cualquier string sin validar (events/[id]/route.ts PUT, automation.ts).
+//  No sustituye a VALID_TRANSITIONS (gobernanza completa por transición
+//  queda diferida, ver SPEC Sprint 4 Nivel C) — solo elimina el riesgo de
+//  typos/estados inventados en esos 2 puntos peligrosos.
+export const VALID_EVENT_STATUSES_SET = new Set(ALL_VALID_STATUSES);
+
+// Mantener el nombre original para compatibilidad
+export const VALID_EVENT_STATUSES_ORIGINAL = VALID_EVENT_STATUSES_SET;
 
 export class EventStateError extends Error {
   status: number;
@@ -48,6 +51,13 @@ export class EventStateError extends Error {
 }
 
 export function assertTransition(currentStatus: string, code: string) {
+  // Usar la nueva máquina de estados si el código es nuevo
+  const newTransition = assertTransitionNew(currentStatus as EventStatus, code);
+  if (newTransition) {
+    return { from: newTransition.from, to: newTransition.to };
+  }
+  
+  // Fallback al comportamiento legado
   const spec = VALID_TRANSITIONS[code];
   if (!spec) throw new EventStateError(`Invalid transition: ${code}`, 400);
   if (!spec.from.includes(currentStatus)) {
