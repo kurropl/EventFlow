@@ -8,7 +8,11 @@
  * 2. Test-first — los tests fijan los resultados esperados antes de implementar
  * 3. Dimensiones separadas — nunca se suma gramos + ml + ud en un mismo total
  * 4. Redondeo único — ocurre 1 vez en la presentación, nunca en cálculos intermedios
+ *
+ * WP-01: Añadido convertToBase() que consulta conversiones por ingrediente.
  */
+
+import { getPool } from './db';
 
 // ================================================================
 // Tipos y constantes
@@ -218,6 +222,223 @@ export function areSameDimension(a: string, b: string): boolean {
  */
 export function getDimension(unit: string): Dimension | null {
   return UNITS[unit]?.dimension ?? null;
+}
+
+// ================================================================
+// WP-01: Conversión por ingrediente desde la BD
+// ================================================================
+
+/**
+ * Resultado de una conversión de ingrediente.
+ */
+export interface IngredientConversion {
+  ingredient_id: string;
+  unit_name: string;
+  factor_to_base: number;
+  base_unit: string;
+}
+
+/**
+ * Cache en memoria para conversiones de ingredientes (TTL 5 min).
+ * Evita queries a la BD en cada conversión.
+ */
+const conversionCache = new Map<string, { data: IngredientConversion[]; expiry: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Carga las conversiones de un ingrediente desde la BD.
+ * WP-01: consulta ingredient_unit_conversions + base_unit de ingredients.
+ *
+ * @param ingredientId UUID del ingrediente
+ * @returns Array de conversiones disponibles + base_unit
+ */
+export async function loadIngredientConversions(
+  ingredientId: string
+): Promise<IngredientConversion[]> {
+  const cacheKey = ingredientId;
+  const cached = conversionCache.get(cacheKey);
+  
+  if (cached && cached.expiry > Date.now()) {
+    return cached.data;
+  }
+
+  const pool = getPool();
+  const result = await pool.query(
+    `SELECT 
+      c.ingredient_id,
+      c.unit_name,
+      c.factor_to_base,
+      i.base_unit
+    FROM ingredient_unit_conversions c
+    JOIN ingredients i ON i.id = c.ingredient_id
+    WHERE c.ingredient_id = $1`,
+    [ingredientId]
+  );
+
+  const conversions = result.rows;
+  conversionCache.set(cacheKey, { data: conversions, expiry: Date.now() + CACHE_TTL_MS });
+  
+  return conversions;
+}
+
+/**
+ * Limpia la cache de conversiones (útil tras inserts/updates).
+ */
+export function clearConversionCache(ingredientId?: string): void {
+  if (ingredientId) {
+    conversionCache.delete(ingredientId);
+  } else {
+    conversionCache.clear();
+  }
+}
+
+/**
+ * Convierte una cantidad de un ingrediente a su unidad base.
+ *
+ * WP-01: Helper único para conversión de ingredientes.
+ * Prohibido convertir inline en otros archivos.
+ *
+ * Flujo:
+ * 1. Si unit == base_unit → no-op (ya está en base)
+ * 2. Si existe conversión en ingredient_unit_conversions → usar factor_to_base
+ * 3. Si no existe conversión pero la unidad es estándar (kg, l, doc) → usar factor genérico
+ * 4. Si no hay conversión → lanzar error
+ *
+ * @param ingredientId UUID del ingrediente
+ * @param qty Cantidad a convertir
+n * @param unit Unidad de origen
+ * @returns Cantidad en unidad base del ingrediente
+ *
+ * @example convertToBase('uuid-aceite', 2, 'l') → 2000 (ml)
+ * @example convertToBase('uuid-harina', 1.5, 'kg') → 1500 (g)
+ * @example convertToBase('uuid-huevos', 12, 'doc') → 144 (ud)
+ */
+export async function convertToBase(
+  ingredientId: string,
+  qty: number,
+  unit: string
+): Promise<number> {
+  // 1. Cargar conversiones del ingrediente
+  const conversions = await loadIngredientConversions(ingredientId);
+  
+  if (conversions.length === 0) {
+    throw new Error(
+      `Ingrediente ${ingredientId} no tiene conversiones configuradas. ` +
+      `Ejecute la migración WP-01 o añada conversiones manualmente.`
+    );
+  }
+
+  const baseUnit = conversions[0].base_unit;
+
+  // 2. Si ya está en unidad base, no-op
+  if (unit === baseUnit) {
+    return qty;
+  }
+
+  // 3. Buscar conversión específica del ingrediente
+  const specific = conversions.find(c => c.unit_name === unit);
+  if (specific) {
+    return qty * Number(specific.factor_to_base);
+  }
+
+  // 4. Buscar conversión genérica (kg→g, l→ml, doc→ud)
+  const genericFactor = getGenericFactor(unit, baseUnit);
+  if (genericFactor !== null) {
+    return qty * genericFactor;
+  }
+
+  // 5. No hay conversión → error
+  throw new Error(
+    `No existe conversión de '${unit}' a '${baseUnit}' para ingrediente ${ingredientId}. ` +
+    `Añada una conversión en ingredient_unit_conversions.`
+  );
+}
+
+/**
+ * Obtiene el factor de conversión genérico entre unidades estándar.
+ * Retorna null si no hay conversión genérica posible.
+ */
+function getGenericFactor(fromUnit: string, toBaseUnit: string): number | null {
+  // Masa: kg → g
+  if (fromUnit === 'kg' && toBaseUnit === 'g') return 1000;
+  // Volumen: l → ml
+  if (fromUnit === 'l' && toBaseUnit === 'ml') return 1000;
+  // Conteo: doc → ud
+  if (fromUnit === 'doc' && toBaseUnit === 'ud') return 12;
+  
+  return null;
+}
+
+/**
+ * Versión síncrona de convertToBase para usar cuando ya se tiene
+ * el factor cargado (ej: en loops donde ya se hizo loadIngredientConversions).
+ *
+ * @param qty Cantidad
+ * @param factor Factor a unidad base
+ * @returns Cantidad en unidad base
+ */
+export function applyConversionFactor(qty: number, factor: number): number {
+  return qty * factor;
+}
+
+/**
+ * Devuelve la lista de unidades disponibles para un ingrediente.
+ * Útil para formularios de UI.
+ *
+ * @param ingredientId UUID del ingrediente
+ * @returns Array de { unit, label, factor_to_base, isBase }
+ */
+export async function getAvailableUnits(
+  ingredientId: string
+): Promise<Array<{ unit: string; label: string; factor_to_base: number; isBase: boolean }>> {
+  const conversions = await loadIngredientConversions(ingredientId);
+  
+  if (conversions.length === 0) {
+    return [];
+  }
+
+  const baseUnit = conversions[0].base_unit;
+  const units: Array<{ unit: string; label: string; factor_to_base: number; isBase: boolean }> = [];
+
+  // Añadir unidad base
+  const baseInfo = UNITS[baseUnit];
+  if (baseInfo) {
+    units.push({
+      unit: baseUnit,
+      label: baseInfo.label,
+      factor_to_base: 1,
+      isBase: true,
+    });
+  }
+
+  // Añadir conversiones del ingrediente
+  for (const conv of conversions) {
+    if (conv.unit_name !== baseUnit) {
+      units.push({
+        unit: conv.unit_name,
+        label: conv.unit_name,
+        factor_to_base: Number(conv.factor_to_base),
+        isBase: false,
+      });
+    }
+  }
+
+  // Añadir unidades genéricas no duplicadas
+  for (const [unit, info] of Object.entries(UNITS)) {
+    if (unit !== baseUnit && !units.find(u => u.unit === unit)) {
+      const genericFactor = getGenericFactor(unit, baseUnit);
+      if (genericFactor !== null) {
+        units.push({
+          unit,
+          label: info.label,
+          factor_to_base: genericFactor,
+          isBase: false,
+        });
+      }
+    }
+  }
+
+  return units;
 }
 
 export default {

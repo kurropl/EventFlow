@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const rows = await queryMany<any>(
-      `SELECT id, name, unit, cost_per_unit, supplier, active,
+      `SELECT id, name, unit, base_unit, cost_per_unit, supplier, active,
               quantity, min_stock, last_restocked, created_at, updated_at
        FROM ingredients
        ${where}
@@ -115,6 +115,8 @@ export async function POST(request: NextRequest) {
     }
 
     const unit = sanitizeText(body.unit || 'kg', 50);
+    // WP-01: base_unit es la unidad base del ingrediente ('g', 'ml', 'ud')
+    const baseUnit = ['g', 'ml', 'ud'].includes(body.base_unit) ? body.base_unit : 'ud';
     const supplier = body.supplier ? sanitizeText(body.supplier, 200) : null;
     const costPerUnit = body.cost_per_unit != null ? toSafeFloat(body.cost_per_unit, 0, 999999) : 0;
     const quantity = body.quantity != null ? toSafeFloat(body.quantity, 0, 999999) : 0;
@@ -122,10 +124,10 @@ export async function POST(request: NextRequest) {
     const active = body.active !== undefined ? Boolean(body.active) : true;
 
     const created = await querySingle<any>(
-      `INSERT INTO ingredients (name, unit, cost_per_unit, supplier, quantity, min_stock, active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO ingredients (name, unit, base_unit, cost_per_unit, supplier, quantity, min_stock, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [name, unit, costPerUnit, supplier, quantity, minStock, active]
+      [name, unit, baseUnit, costPerUnit, supplier, quantity, minStock, active]
     );
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
@@ -163,6 +165,7 @@ export async function PUT(request: NextRequest) {
     const allowed: Record<string, { transform: (v: any) => any; allowZero?: boolean }> = {
       name:        { transform: (v) => sanitizeText(String(v), 200) },
       unit:        { transform: (v) => sanitizeText(String(v), 50) },
+      base_unit:   { transform: (v) => ['g', 'ml', 'ud'].includes(v) ? v : 'ud' },  // WP-01
       cost_per_unit: { transform: (v) => toSafeFloat(v, 0, 999999) },
       supplier:    { transform: (v) => sanitizeText(String(v), 200) || null },
       quantity:    { transform: (v) => toSafeFloat(v, 0, 999999) },

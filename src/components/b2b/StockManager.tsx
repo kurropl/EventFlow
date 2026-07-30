@@ -13,6 +13,7 @@ interface Ingredient {
   id: string;
   name: string;
   unit: string;
+  base_unit: string;  // WP-01: 'g', 'ml', 'ud'
   quantity: number;
   min_stock: number;
   cost_per_unit: number;
@@ -205,7 +206,7 @@ export default function StockManager() {
 
   // Add ingredient form state
   const [showAddIngredient, setShowAddIngredient] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', unit: 'kg', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' });
+  const [newItem, setNewItem] = useState({ name: '', unit: 'kg', base_unit: 'ud' as string, quantity: '', min_stock: '', cost_per_unit: '', supplier: '' });
   const [savingNewItem, setSavingNewItem] = useState(false);
 
   // Add provider form state
@@ -446,6 +447,7 @@ export default function StockManager() {
         body: JSON.stringify({
           name: newItem.name,
           unit: newItem.unit,
+          base_unit: newItem.base_unit,
           quantity: parseFloat(newItem.quantity) || 0,
           min_stock: parseFloat(newItem.min_stock) || 0,
           cost_per_unit: parseFloat(newItem.cost_per_unit) || 0,
@@ -454,7 +456,7 @@ export default function StockManager() {
       });
       if (res.ok) {
         setShowAddIngredient(false);
-        setNewItem({ name: '', unit: 'kg', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' });
+        setNewItem({ name: '', unit: 'kg', base_unit: 'ud', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' });
         await loadStock();
       }
     } catch { /* ignore */ }
@@ -941,7 +943,7 @@ export default function StockManager() {
                 <Icon name="package" className="w-4 h-4 text-[#C9A84C]" />
                 <h3 className="text-sm font-semibold text-[#1A1A1A]">A&#241;adir ingrediente</h3>
               </div>
-              <button onClick={() => { setShowAddIngredient(false); setNewItem({ name: '', unit: 'kg', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' }); }}
+              <button onClick={() => { setShowAddIngredient(false); setNewItem({ name: '', unit: 'kg', base_unit: 'ud', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' }); }}
                 className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#FEF3F3] hover:text-[#DC2626] transition-colors">
                 <Icon name="close" className="w-4 h-4" />
               </button>
@@ -953,12 +955,19 @@ export default function StockManager() {
                   onChange={(e) => setNewItem((n) => ({ ...n, name: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm placeholder:text-[#A8A8B0] focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Unidad</label>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Unidad compra</label>
                   <select value={newItem.unit} onChange={(e) => setNewItem((n) => ({ ...n, unit: e.target.value }))}
                     className="px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all w-full">
-                    <option value="kg">kg</option><option value="g">g</option><option value="l">l</option><option value="ml">ml</option><option value="ud">ud</option><option value="caja">caja</option>
+                    <option value="kg">kg</option><option value="g">g</option><option value="l">l</option><option value="ml">ml</option><option value="ud">ud</option><option value="caja">caja</option><option value="doc">docena</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#9CA3AF] font-medium mb-1.5">Unidad base *</label>
+                  <select value={newItem.base_unit} onChange={(e) => setNewItem((n) => ({ ...n, base_unit: e.target.value }))}
+                    className="px-3 py-2.5 rounded-xl bg-white border border-[#E5E5EC] text-[#1A1A1A] text-sm focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 focus:outline-none transition-all w-full">
+                    <option value="g">gramos (g)</option><option value="ml">mililitros (ml)</option><option value="ud">unidades (ud)</option>
                   </select>
                 </div>
                 <div>
@@ -992,7 +1001,7 @@ export default function StockManager() {
               </div>
             </div>
             <div className="px-6 py-4 border-t border-[#ECECF1] flex justify-end gap-2">
-              <button onClick={() => { setShowAddIngredient(false); setNewItem({ name: '', unit: 'kg', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' }); }}
+              <button onClick={() => { setShowAddIngredient(false); setNewItem({ name: '', unit: 'kg', base_unit: 'ud', quantity: '', min_stock: '', cost_per_unit: '', supplier: '' }); }}
                 className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#6B7280] hover:bg-[#F5F5F8] transition-colors">
                 Cancelar
               </button>

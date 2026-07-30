@@ -17,6 +17,8 @@ import {
   formatCantidadConUnidad,
   formatMoney,
   areSameDimension,
+  applyConversionFactor,
+  clearConversionCache,
 } from '../units';
 
 // ================================================================
@@ -216,5 +218,36 @@ describe('areSameDimension', () => {
   it('€ no está registrada como unidad convertible', () => {
     // Nota: currency no tiene unidad convertible, solo formateo
     expect(areSameDimension('g', 'eur' as any)).toBe(false);
+  });
+});
+
+// ================================================================
+// WP-01: Conversión por ingrediente (convertToBase)
+// ================================================================
+
+describe('applyConversionFactor (sync helper)', () => {
+  it('aplica factor de conversión correctamente', () => {
+    expect(applyConversionFactor(2, 1000)).toBe(2000);  // 2 l → 2000 ml
+    expect(applyConversionFactor(1.5, 1000)).toBe(1500);  // 1.5 kg → 1500 g
+    expect(applyConversionFactor(12, 12)).toBe(144);  // 12 doc → 144 ud
+  });
+
+  it('factor 1 = no cambio', () => {
+    expect(applyConversionFactor(100, 1)).toBe(100);
+  });
+
+  it('maneja cantidades decimales', () => {
+    expect(applyConversionFactor(0.5, 1000)).toBe(500);
+    expect(applyConversionFactor(1.333, 12)).toBeCloseTo(15.996, 2);
+  });
+});
+
+describe('clearConversionCache', () => {
+  it('funciona sin argumentos (limpia todo)', () => {
+    expect(() => clearConversionCache()).not.toThrow();
+  });
+
+  it('funciona con ingredientId específico', () => {
+    expect(() => clearConversionCache('test-uuid')).not.toThrow();
   });
 });
