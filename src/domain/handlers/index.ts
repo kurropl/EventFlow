@@ -6,8 +6,10 @@
 
 import type { DomainEvent } from '../events';
 import { handleEventConfirmed } from './eventConfirmed';
+import { handleEventConfirmedStaffing } from './eventConfirmedStaffing';
 import { handleIngredientPriceChanged } from './ingredientPriceChanged';
 import { handleStockBelowMinimum } from './stockBelowMinimum';
+import { handleShiftConfirmedPreloadHours } from './shiftConfirmedPreloadHours';
 
 // ============================================================
 // Tipo de handler
@@ -21,6 +23,7 @@ export type EventHandler = (event: DomainEvent) => Promise<void>;
 
 const handlers: Record<string, EventHandler> = {
   'event.confirmed': handleEventConfirmed,
+  'event.confirmed.staffing': handleEventConfirmedStaffing,
   'ingredient.price_changed': handleIngredientPriceChanged,
   // TODO: Registrar aquí los handlers de otros WP
   // 'deposit.paid': handleDepositPaid,
@@ -33,8 +36,7 @@ const handlers: Record<string, EventHandler> = {
   'stock.below_minimum': handleStockBelowMinimum,
   // 'event.operationally_closed': handleEventOperationallyClosed,
   // 'event.financially_closed': handleEventFinanciallyClosed,
-  // 'shift.offered': handleShiftOffered,
-  // 'shift.confirmed': handleShiftConfirmed,
+  'shift.confirmed': handleShiftConfirmedPreloadHours,
 };
 
 // ============================================================
@@ -44,6 +46,9 @@ const handlers: Record<string, EventHandler> = {
 export function getHandler(eventType: string): EventHandler | null {
   return handlers[eventType] || null;
 }
+
+// Export individual handlers for direct invocation
+export { handleEventConfirmedStaffing, handleShiftConfirmedPreloadHours };
 
 /**
  * Handler por defecto para eventos sin handler registrado.

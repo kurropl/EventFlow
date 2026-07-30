@@ -11,6 +11,8 @@
  * Handler idempotente: re-confirmar no duplica.
  */
 
+import { getPool } from '@/lib/db';
+import { emitDomainEvent } from '../events';
 import type { DomainEvent } from '../events';
 import { querySingle, transaction } from '@/lib/db';
 
@@ -174,6 +176,7 @@ export async function handleEventConfirmed(event: DomainEvent): Promise<void> {
   console.log(`[Handler] event.confirmed para evento ${event_id}`);
   console.log(`  Venue: ${venue_type}, Pax: ${pax}, Fecha: ${date}`);
 
+<<<<<<< HEAD
   // 1. Verificar idempotencia: si ya hay templates, no duplicar
   const hasExisting = await hasExistingTemplates(event_id);
   if (hasExisting) {
@@ -261,3 +264,34 @@ export async function handleEventConfirmed(event: DomainEvent): Promise<void> {
     console.log(`[Handler] Total: ${totalItems} items de plantilla creados para evento ${event_id}`);
   });
 }
+=======
+  // Emit event.confirmed.staffing to trigger staffing generation (WP-17)
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await emitDomainEvent(
+      client,
+      'event.confirmed.staffing',
+      'event',
+      payload.event_id,
+      {
+        event_id: payload.event_id,
+        venue_type: payload.venue_type,
+        pax: payload.pax,
+        date: payload.date
+      }
+    );
+    await client.query('COMMIT');
+    console.log(`[Handler] Emitted event.confirmed.staffing for event ${payload.event_id}`);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[Handler] Failed to emit event.confirmed.staffing:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  // TODO: WP-15 - Generar plantillas automáticas por tipo de venue
+}
+>>>>>>> kurropl/wp17-staffing-turnos
