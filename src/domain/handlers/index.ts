@@ -10,6 +10,7 @@ import { handleEventConfirmedStaffing } from './eventConfirmedStaffing';
 import { handleIngredientPriceChanged } from './ingredientPriceChanged';
 import { handleStockBelowMinimum } from './stockBelowMinimum';
 import { handleShiftConfirmedPreloadHours } from './shiftConfirmedPreloadHours';
+import { handleEventOperationallyClosed } from './eventOperationallyClosed';
 
 // ============================================================
 // Tipo de handler
@@ -34,8 +35,7 @@ const handlers: Record<string, EventHandler> = {
   // 'menu.price_changed': handleMenuPriceChanged,
   // 'purchase_order.received': handlePurchaseOrderReceived,
   'stock.below_minimum': handleStockBelowMinimum,
-  // 'event.operationally_closed': handleEventOperationallyClosed,
-  // 'event.financially_closed': handleEventFinanciallyClosed,
+  'event.operationally_closed': handleEventOperationallyClosed,
   'shift.confirmed': handleShiftConfirmedPreloadHours,
 };
 

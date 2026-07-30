@@ -53,6 +53,17 @@ export async function GET(_req: NextRequest) {
           [eventId]
         );
 
+        // WP-24: Cierre económico (event_financial_closures)
+        // Muestra datos reales cuando existen, estimados si no
+        const financialClosureResult = await query(
+          `SELECT planned_food_cost, real_food_cost,
+                  planned_staff_cost, real_staff_cost,
+                  extras_revenue, total_revenue, real_margin_pct,
+                  frozen, closed_at
+           FROM event_financial_closures WHERE event_id = $1`,
+          [eventId]
+        );
+
         // G3 (Sprint 1): coste de personal. D4 → el margen cuenta SOLO las
         // nóminas pagadas; el total asignado (pagado+pendiente) se refleja aparte.
         const laborResult = await query(
@@ -71,6 +82,10 @@ export async function GET(_req: NextRequest) {
         const frozenRealCost = Number(frozenCostResult.rows[0]?.frozen_total || 0);
         const laborCostPaid = Number(laborResult.rows[0]?.paid || 0);   // base del margen (D4)
         const laborCostTotal = Number(laborResult.rows[0]?.total || 0); // informativo
+
+        // WP-24: Datos del cierre económico
+        const closure = financialClosureResult.rows[0] || null;
+        const hasFinancialClosure = !!closure && (closure.frozen || closure.real_margin_pct != null);
 
         // Coste total REAL = comida+extras (events.total_cost) + personal pagado.
         const totalCostFull = cost + laborCostPaid;
@@ -101,6 +116,20 @@ export async function GET(_req: NextRequest) {
           totalCostFull,                   // G3: coste total real (= base del margen)
           grossMargin,                     // ahora descuenta personal pagado
           marginPct: Math.round(marginPct * 10) / 10,
+
+          // WP-24: Cierre económico (estimado si no hay cierre, real si existe)
+          financialClosure: hasFinancialClosure ? {
+            plannedFoodCost: Number(closure.planned_food_cost) || 0,
+            realFoodCost: Number(closure.real_food_cost) || 0,
+            plannedStaffCost: Number(closure.planned_staff_cost) || 0,
+            realStaffCost: Number(closure.real_staff_cost) || 0,
+            extrasRevenue: Number(closure.extras_revenue) || 0,
+            totalRevenue: Number(closure.total_revenue) || 0,
+            realMarginPct: Number(closure.real_margin_pct) || 0,
+            frozen: closure.frozen || false,
+            closedAt: closure.closed_at || null,
+          } : null,
+          hasFinancialClosure,
 
           // Por comensal
           costPerGuest: Math.round(costPerGuest * 100) / 100,
