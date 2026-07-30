@@ -20,6 +20,8 @@
  *   cerrado   → congelado al cerrar el evento (snapshot inmutable)
  */
 import { query } from '@/lib/db';
+import { computeEscandalloCost, classifyIngredient } from '@/domain/escandallo';
+import type { EscandalloCategory } from '@/domain/escandallo';
 
 export type EscandalloEstado = 'borrador' | 'activo' | 'cerrado';
 
@@ -36,6 +38,10 @@ export interface EscandalloLinea {
   desviacion_qty: number;
   desviacion_coste: number;
   congelado: boolean;
+  /** Categoría normalizada del plato de origen (food/beverage/other). */
+  categoria: EscandalloCategory;
+  /** Qty en unidad base del ingrediente (g, ml, ud). WP-01. */
+  qty_base: number;
 }
 
 export interface EscandalloResumen {
@@ -49,6 +55,14 @@ export interface EscandalloResumen {
     coste_real: number;
     desviacion: number;
     desviacion_pct: number;
+    /** Coste total de ingredientes de comida. */
+    food_cost: number;
+    /** Coste total: ingredientes bebida + barra libre. */
+    beverage_cost: number;
+    /** Coste barra libre = bar_price × bar_hours. */
+    bar_service_cost: number;
+    /** Coste por comensal = total / pax. */
+    cost_per_pax: number;
   };
 }
 
@@ -75,18 +89,26 @@ export function lineCost(qtyTeorica: number, qtyReal: number | null, costeUnit: 
 
 /** Calcula el escandallo teórico↔real de un evento (lectura). */
 export async function computeEscandallo(eventId: string): Promise<EscandalloResumen | null> {
-  const ev = (await query(`SELECT id, status FROM events WHERE id = $1`, [eventId])).rows?.[0] as any;
+  const ev = (await query(
+    `SELECT id, status, guest_count, COALESCE(bar_price, 0) AS bar_price, COALESCE(bar_hours, 0) AS bar_hours
+     FROM events WHERE id = $1`,
+    [eventId]
+  )).rows?.[0] as any;
   if (!ev) return null;
+
+  const pax = Math.max(1, Number(ev.guest_count) || 1);
 
   const rows = (await query(
     `SELECT esi.id, esi.ingredient_id, esi.ingredient_name,
             esi.theoretical_qty, esi.theoretical_unit,
             esi.actual_quantity, esi.actual_unit,
             esi.estimated_cost, esi.actual_cost_total,
-            esi.recipe_version, esi.frozen,
-            COALESCE(i.unit_cost, 0) AS unit_cost
+            esi.recipe_version, esi.frozen, esi.category,
+            COALESCE(i.unit_cost, 0) AS unit_cost,
+            COALESCE(ri.qty_base, esi.theoretical_qty) AS qty_base
      FROM event_shopping_items esi
      LEFT JOIN ingredients i ON i.id = esi.ingredient_id
+     LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
      WHERE esi.event_id = $1
      ORDER BY esi.ingredient_name ASC`,
     [eventId]
@@ -97,6 +119,12 @@ export async function computeEscandallo(eventId: string): Promise<EscandalloResu
     const qtyT = Number(r.theoretical_qty) || 0;
     const qtyR = r.actual_quantity != null ? Number(r.actual_quantity) : null;
     const unitCost = Number(r.unit_cost) || 0;
+    const qtyBase = Number(r.qty_base) || qtyT;
+    const dishCategory = r.category || null;
+    const categoria = classifyIngredient(dishCategory);
+
+    // WP-05: coste = qty_base × pax × coste_unitario_base
+    const costeEstimadoCalc = round2(qtyBase * pax * unitCost);
 
     // Congelado → snapshot inmutable. Activo → cálculo vivo (propaga precios, FR-C04).
     const c = frozen
@@ -106,9 +134,14 @@ export async function computeEscandallo(eventId: string): Promise<EscandalloResu
           desviacion_coste: round2(Number(r.actual_cost_total) - Number(r.estimated_cost)),
           desviacion_qty: round2((qtyR != null ? qtyR : qtyT) - qtyT),
         }
-      : lineCost(qtyT, qtyR, unitCost);
-    // Solo cae al estimado almacenado cuando NO hay coste vivo del ingrediente;
-    // un coste vivo legítimamente 0 (ingrediente sin precio o qty 0) se respeta.
+      : {
+          estimado: costeEstimadoCalc,
+          real: qtyR != null ? round2(qtyBase * pax * unitCost) : null,
+          desviacion_coste: 0,
+          desviacion_qty: round2((qtyR != null ? qtyR : qtyT) - qtyT),
+        };
+
+    // Si no hay coste vivo del ingrediente, caer al estimado almacenado.
     const estimado = unitCost > 0 ? c.estimado : round2(r.estimated_cost);
 
     return {
@@ -124,6 +157,8 @@ export async function computeEscandallo(eventId: string): Promise<EscandalloResu
       desviacion_qty: c.desviacion_qty,
       desviacion_coste: c.desviacion_coste,
       congelado: frozen,
+      categoria,
+      qty_base: qtyBase,
     };
   });
 
@@ -137,6 +172,18 @@ export async function computeEscandallo(eventId: string): Promise<EscandalloResu
   const estado: EscandalloEstado = congelado ? 'cerrado' : aceptado && lineas.length > 0 ? 'activo' : 'borrador';
   const version = Math.max(1, ...rows.map((r) => Number(r.recipe_version) || 1));
 
+  // WP-05: desglose food/beverage vía función pura del dominio
+  const costBreakdown = computeEscandalloCost(
+    rows.map((r) => ({
+      qty_base: Number(r.qty_base) || Number(r.theoretical_qty) || 0,
+      unit_cost: Number(r.unit_cost) || 0,
+      dish_category: r.category || null,
+    })),
+    pax,
+    Number(ev.bar_price) || 0,
+    Number(ev.bar_hours) || 0
+  );
+
   return {
     event_id: eventId,
     estado,
@@ -148,6 +195,10 @@ export async function computeEscandallo(eventId: string): Promise<EscandalloResu
       coste_real: costeReal,
       desviacion,
       desviacion_pct: costeEstimado > 0 ? round2((desviacion / costeEstimado) * 100) : 0,
+      food_cost: costBreakdown.food_cost,
+      beverage_cost: costBreakdown.beverage_cost,
+      bar_service_cost: costBreakdown.bar_service_cost,
+      cost_per_pax: costBreakdown.cost_per_pax,
     },
   };
 }
