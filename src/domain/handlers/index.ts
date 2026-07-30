@@ -6,6 +6,7 @@
 
 import type { DomainEvent } from '../events';
 import { handleEventConfirmed } from './eventConfirmed';
+import { handleIngredientPriceChanged } from './ingredientPriceChanged';
 import { handleStockBelowMinimum } from './stockBelowMinimum';
 
 // ============================================================
@@ -20,6 +21,7 @@ export type EventHandler = (event: DomainEvent) => Promise<void>;
 
 const handlers: Record<string, EventHandler> = {
   'event.confirmed': handleEventConfirmed,
+  'ingredient.price_changed': handleIngredientPriceChanged,
   // TODO: Registrar aquí los handlers de otros WP
   // 'deposit.paid': handleDepositPaid,
   // 'payment.milestone_due': handlePaymentMilestoneDue,
@@ -27,7 +29,6 @@ const handlers: Record<string, EventHandler> = {
   // 'portal.updated': handlePortalUpdated,
   // 'menu.published': handleMenuPublished,
   // 'menu.price_changed': handleMenuPriceChanged,
-  // 'ingredient.price_changed': handleIngredientPriceChanged,
   // 'purchase_order.received': handlePurchaseOrderReceived,
   'stock.below_minimum': handleStockBelowMinimum,
   // 'event.operationally_closed': handleEventOperationallyClosed,
