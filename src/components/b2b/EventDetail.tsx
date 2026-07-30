@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import StatusBadge from './StatusBadge';
 import BriefingCamareros from './BriefingCamareros';
 import EventTimeline from './EventTimeline';
+import EventClosure from './EventClosure';
 import { PageHeader, EmptyState } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -366,8 +367,9 @@ export default function EventDetail({ eventId }: EventDetailProps) {
 
       {/* ── Tabs ────────────────────────────────────────────────── */}
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="closure">Cierre</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
         </TabsList>
 
@@ -1223,6 +1225,19 @@ export default function EventDetail({ eventId }: EventDetailProps) {
           </div>
         ) : null}
       </section>
+        </TabsContent>
+
+        <TabsContent value="closure" className="space-y-6">
+          <section className="bg-cream border border-gold/20 rounded-xl p-6">
+            <SectionHeader icon={Check} title="Cierre Operativo" />
+            <div className="bg-cream-dark rounded-lg p-4">
+              <EventClosure
+                eventId={event.id}
+                eventStatus={event.status}
+                onStatusChange={fetchAll}
+              />
+            </div>
+          </section>
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-6">
