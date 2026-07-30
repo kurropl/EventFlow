@@ -10,10 +10,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
 import { sanitizeError, isValidUUID, sanitizeText, toSafeFloat } from '@/lib/security';
 import { verifyToken } from '@/lib/auth';
+import { recordStockMovement } from '@/lib/domain/stockMovements';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
-function requireAuth(request: NextRequest): { authenticated: boolean; error?: string } {
+function requireAuth(request: NextRequest): { authenticated: boolean; error?: string; userId?: string } {
   const token = request.cookies.get('admin_session')?.value || request.cookies.get('eventflow_token')?.value;
   if (!token) {
     return { authenticated: false, error: 'No autenticado' };
@@ -22,7 +23,7 @@ function requireAuth(request: NextRequest): { authenticated: boolean; error?: st
   if (!user) {
     return { authenticated: false, error: 'Token inválido o expirado' };
   }
-  return { authenticated: true };
+  return { authenticated: true, userId: user.id };
 }
 
 // ── GET: List ingredients with stock levels ─────────────────────────
@@ -141,6 +142,8 @@ export async function POST(request: NextRequest) {
 }
 
 // ── PUT: Update an ingredient ──────────────────────────────────────
+// WP-02: si se envía `quantity`, se registra un movimiento 'ajuste' en vez
+// de escribir directamente (libro mayor de movimientos).
 
 export async function PUT(request: NextRequest) {
   try {
@@ -161,23 +164,22 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Whitelist of allowed fields with sanitizers
-    const allowed: Record<string, { transform: (v: any) => any; allowZero?: boolean }> = {
-      name:        { transform: (v) => sanitizeText(String(v), 200) },
-      unit:        { transform: (v) => sanitizeText(String(v), 50) },
-      base_unit:   { transform: (v) => ['g', 'ml', 'ud'].includes(v) ? v : 'ud' },  // WP-01
-      cost_per_unit: { transform: (v) => toSafeFloat(v, 0, 999999) },
-      supplier:    { transform: (v) => sanitizeText(String(v), 200) || null },
-      quantity:    { transform: (v) => toSafeFloat(v, 0, 999999) },
-      min_stock:   { transform: (v) => toSafeFloat(v, 0, 999999) },
-      active:      { transform: (v) => Boolean(v) },
+    // ── Campos que NO pasan por el libro mayor (se escriben directo) ──
+    const directFields: Record<string, (v: any) => any> = {
+      name:        (v) => sanitizeText(String(v), 200),
+      unit:        (v) => sanitizeText(String(v), 50),
+      base_unit:   (v) => ['g', 'ml', 'ud'].includes(v) ? v : 'ud',
+      cost_per_unit: (v) => toSafeFloat(v, 0, 999999),
+      supplier:    (v) => sanitizeText(String(v), 200) || null,
+      min_stock:   (v) => toSafeFloat(v, 0, 999999),
+      active:      (v) => Boolean(v),
     };
 
     const sets: string[] = [];
     const values: any[] = [];
     let idx = 1;
 
-    for (const [key, { transform }] of Object.entries(allowed)) {
+    for (const [key, transform] of Object.entries(directFields)) {
       if (key in body && body[key] !== undefined) {
         sets.push(`${key} = $${idx}`);
         values.push(transform(body[key]));
@@ -185,25 +187,60 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Also allow updating last_restocked on manual restock
     if ('last_restocked' in body) {
       sets.push(`last_restocked = $${idx}`);
       values.push(body.last_restocked ? new Date(body.last_restocked) : null);
       idx++;
     }
 
-    if (sets.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Nada que actualizar.' },
-        { status: 400 }
+    // Ejecutar escritura directa si hay campos no-stock
+    let updated: any = null;
+    if (sets.length > 0) {
+      values.push(id);
+      updated = await querySingle<any>(
+        `UPDATE ingredients SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+        values
       );
     }
 
-    values.push(id);
-    const updated = await querySingle<any>(
-      `UPDATE ingredients SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
+    // ── WP-02: Si se envía quantity, crear movimiento 'ajuste' ──
+    if (body.quantity !== undefined && body.quantity !== null) {
+      const targetQty = toSafeFloat(body.quantity, 0, 999999);
+
+      // Obtener stock actual
+      const current = await querySingle<any>(
+        `SELECT quantity FROM ingredients WHERE id = $1`,
+        [id]
+      );
+      if (!current) {
+        return NextResponse.json(
+          { success: false, error: 'Ingrediente no encontrado.' },
+          { status: 404 }
+        );
+      }
+
+      const currentQty = Number(current.quantity) || 0;
+      const delta = Math.round((targetQty - currentQty) * 10000) / 10000;
+
+      // Solo crear movimiento si hay diferencia real
+      if (Math.abs(delta) > 0.0001) {
+        await recordStockMovement({
+          ingredientId: id,
+          movementType: 'ajuste',
+          qtyBase: Math.abs(delta),
+          reason: body.reason || 'Ajuste manual de stock',
+          userId: auth.userId ?? body.user_id ?? null,
+        });
+      }
+    }
+
+    // Recuperar el ingrediente actualizado
+    if (!updated) {
+      updated = await querySingle<any>(
+        `SELECT * FROM ingredients WHERE id = $1`,
+        [id]
+      );
+    }
 
     if (!updated) {
       return NextResponse.json(

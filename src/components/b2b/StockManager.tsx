@@ -77,7 +77,7 @@ interface Escandallo {
   items: ShoppingItem[];
 }
 
-type Tab = 'stock' | 'escandallos' | 'pedidos' | 'recetas';
+type Tab = 'stock' | 'escandallos' | 'pedidos' | 'recetas' | 'movimientos';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -241,6 +241,15 @@ export default function StockManager() {
   const [priceHistory, setPriceHistory] = useState<Array<{ old_price: number; new_price: number; created_at: string }>>([]);
   const [loadingPriceHistory, setLoadingPriceHistory] = useState(false);
 
+  // WP-02: Movimientos state
+  const [movementsIngredientId, setMovementsIngredientId] = useState<string | null>(null);
+  const [movementsIngredientName, setMovementsIngredientName] = useState('');
+  const [movements, setMovements] = useState<any[]>([]);
+  const [movementsTotal, setMovementsTotal] = useState(0);
+  const [movementsPage, setMovementsPage] = useState(0);
+  const [loadingMovements, setLoadingMovements] = useState(false);
+  const MOVEMENTS_PAGE_SIZE = 20;
+
   // Auto-scroll to providers if URL has #proveedores
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hash === '#proveedores') {
@@ -317,6 +326,29 @@ export default function StockManager() {
     } catch { /* ignore */ }
     finally { setLoadingRecipes(false); }
   }, []);
+
+  // WP-02: Load movements for an ingredient
+  const loadMovements = useCallback(async (ingredientId: string, page = 0) => {
+    setLoadingMovements(true);
+    try {
+      const offset = page * MOVEMENTS_PAGE_SIZE;
+      const res = await fetch(`/api/stock/movements?ingredient_id=${ingredientId}&limit=${MOVEMENTS_PAGE_SIZE}&offset=${offset}`);
+      const data = await res.json();
+      if (data.success) {
+        setMovements(data.data || []);
+        setMovementsTotal(data.total || 0);
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingMovements(false); }
+  }, []);
+
+  const openMovements = (ingredient: Ingredient) => {
+    setMovementsIngredientId(ingredient.id);
+    setMovementsIngredientName(ingredient.name);
+    setMovementsPage(0);
+    setActiveTab('movimientos');
+    loadMovements(ingredient.id, 0);
+  };
 
   const loadPriceHistory = useCallback(async (ingredientId: string) => {
     try {
@@ -708,14 +740,16 @@ export default function StockManager() {
           { key: 'escandallos' as Tab, label: 'Escandallos por Evento', icon: 'layers' },
           { key: 'pedidos' as Tab, label: 'Pedidos a Proveedores', icon: 'truck' },
           { key: 'recetas' as Tab, label: 'Recetas', icon: 'book' },
+        { key: 'movimientos' as Tab, label: 'Movimientos', icon: 'clock', disabled: !movementsIngredientId },
         ]).map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { if (!(tab as any).disabled) setActiveTab(tab.key); }}
+            disabled={(tab as any).disabled}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.key
                 ? 'bg-white text-[#1A1A1A] shadow-sm border border-[#ECECF1]'
-                : 'text-[#6B7280] hover:text-[#1A1A1A] hover:bg-white/50'
+                : (tab as any).disabled ? 'text-[#C9C9CF] cursor-not-allowed' : 'text-[#6B7280] hover:text-[#1A1A1A] hover:bg-white/50'
             }`}
           >
             <Icon name={tab.icon} className="w-4 h-4" />
@@ -866,6 +900,10 @@ export default function StockManager() {
                           <button onClick={() => { setRestockId(item.id); setRestockQty(''); }}
                             className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#EFFAF2] hover:text-[#16A34A] transition-colors" title="Reponer stock">
                             <Icon name="plus" className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => openMovements(item)}
+                            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#EEF2FF] hover:text-[#4F46E5] transition-colors" title="Ver movimientos">
+                            <Icon name="clock" className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       )
@@ -1933,6 +1971,123 @@ export default function StockManager() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/*  MOVEMENTS TAB (WP-02)                                         */}
+      {/* ============================================================= */}
+      {activeTab === 'movimientos' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon name="clock" className="w-4 h-4 text-[#C9A84C]" />
+              <h3 className="text-sm font-semibold text-[#1A1A1A]">Movimientos de Stock</h3>
+              <span className="text-xs text-[#9CA3AF] ml-1">{movementsIngredientName}</span>
+            </div>
+            <button
+              onClick={() => { setActiveTab('stock'); setMovementsIngredientId(null); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#6B7280] hover:bg-[#F5F5F8] transition-colors border border-[#E5E5EC]">
+              <Icon name="arrowLeft" className="w-3 h-3" />
+              Volver a Stock
+            </button>
+          </div>
+
+          {movementsIngredientId && (
+            <div className="bg-white rounded-2xl border border-[#ECECF1] overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              {loadingMovements ? (
+                <div className="text-center py-12 text-[#9CA3AF]">
+                  <Icon name="spinner" className="w-5 h-5 animate-spin mx-auto mb-2" />
+                  Cargando movimientos...
+                </div>
+              ) : movements.length === 0 ? (
+                <div className="text-center py-12 text-[#9CA3AF]">
+                  <Icon name="clock" className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">No hay movimientos registrados</p>
+                  <p className="text-xs text-[#A8A8B0] mt-1">Los movimientos aparecen al ajustar stock</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-[#FAFAFC] z-10">
+                        <tr className="border-b border-[#ECECF1]">
+                          <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Fecha</th>
+                          <th className="text-center px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Tipo</th>
+                          <th className="text-right px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Cantidad</th>
+                          <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Evento</th>
+                          <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Usuario</th>
+                          <th className="text-left px-4 py-3 text-[#9CA3AF] font-medium text-[11px] uppercase tracking-wider">Motivo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {movements.map((mov) => {
+                          const typeBadge: Record<string, { label: string; bg: string; color: string }> = {
+                            entrada:  { label: 'Entrada',  bg: 'bg-[#D1FAE5]', color: 'text-[#16A34A]' },
+                            salida:   { label: 'Salida',   bg: 'bg-[#FEE2E2]', color: 'text-[#DC2626]' },
+                            merma:    { label: 'Merma',    bg: 'bg-[#FEF3C7]', color: 'text-[#D97706]' },
+                            ajuste:   { label: 'Ajuste',   bg: 'bg-[#E0E7FF]', color: 'text-[#4F46E5]' },
+                            retorno:  { label: 'Retorno',  bg: 'bg-[#DBEAFE]', color: 'text-[#2563EB]' },
+                          };
+                          const badge = typeBadge[mov.movement_type] || { label: mov.movement_type, bg: 'bg-[#F3F4F6]', color: 'text-[#6B7280]' };
+                          const isPositive = mov.qty_base > 0;
+                          return (
+                            <tr key={mov.id} className="border-b border-[#F2F2F5] last:border-b-0 hover:bg-[#FAFCFE] transition-colors">
+                              <td className="px-4 py-2.5 text-[#6B7280] text-[12px]">
+                                {mov.created_at ? new Date(mov.created_at).toLocaleDateString('es-ES', {
+                                  day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                                }) : '—'}
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full ${badge.bg} ${badge.color}`}>
+                                  {badge.label}
+                                </span>
+                              </td>
+                              <td className={`px-4 py-2.5 text-right font-semibold tabular-nums text-[13px] ${isPositive ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
+                                {isPositive ? '+' : ''}{Number(mov.qty_base).toLocaleString('es-ES', { maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="px-4 py-2.5 text-[#1A1A1A] text-[13px]">
+                                {mov.event_name || <span className="text-[#C9C9CF]">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5 text-[#6B7280] text-[12px]">
+                                {mov.user_name || <span className="text-[#C9C9CF]">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5 text-[#6B7280] text-[12px] max-w-[200px] truncate">
+                                {mov.reason || <span className="text-[#C9C9CF]">—</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {movementsTotal > MOVEMENTS_PAGE_SIZE && (
+                    <div className="px-4 py-3 border-t border-[#F2F2F5] flex items-center justify-between">
+                      <span className="text-[12px] text-[#9CA3AF]">
+                        Mostrando {movementsPage * MOVEMENTS_PAGE_SIZE + 1}–{Math.min((movementsPage + 1) * MOVEMENTS_PAGE_SIZE, movementsTotal)} de {movementsTotal}
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => { const p = movementsPage - 1; setMovementsPage(p); loadMovements(movementsIngredientId!, p); }}
+                          disabled={movementsPage === 0}
+                          className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-[#6B7280] hover:bg-[#F5F5F8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                          Anterior
+                        </button>
+                        <button
+                          onClick={() => { const p = movementsPage + 1; setMovementsPage(p); loadMovements(movementsIngredientId!, p); }}
+                          disabled={(movementsPage + 1) * MOVEMENTS_PAGE_SIZE >= movementsTotal}
+                          className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-[#6B7280] hover:bg-[#F5F5F8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                          Siguiente
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
