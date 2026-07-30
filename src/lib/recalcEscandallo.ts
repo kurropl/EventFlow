@@ -22,15 +22,17 @@ export async function recalcEventEscandallo(
   if (!event.rows.length) return;
   const gc = guestCount ?? Number(event.rows[0].guest_count) ?? 1;
 
+  // WP-05: usar qty_base (unidad base del ingrediente) en vez de quantity (unidad nativa)
+  // para que unit_cost (€/unidad base) cuadre correctamente.
   await pool.query(
     `UPDATE event_shopping_items esi
      SET theoretical_qty = (
-       SELECT COALESCE(ri.quantity_override, ri.quantity) * $1
+       SELECT COALESCE(ri.qty_base, ri.quantity_override, ri.quantity) * $1
        FROM recipe_items ri WHERE ri.id = esi.recipe_item_id AND ri.catalog_item_id IS NOT NULL
      ),
-     theoretical_unit = (SELECT ri.unit FROM recipe_items ri WHERE ri.id = esi.recipe_item_id),
+     theoretical_unit = (SELECT i.base_unit FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id WHERE ri.id = esi.recipe_item_id),
      estimated_cost = (
-       SELECT COALESCE(ri.quantity_override, ri.quantity) * $1 * (
+       SELECT COALESCE(ri.qty_base, ri.quantity_override, ri.quantity) * $1 * (
          SELECT COALESCE(i.unit_cost, 0) FROM ingredients i WHERE i.id = esi.ingredient_id
        )
        FROM recipe_items ri WHERE ri.id = esi.recipe_item_id

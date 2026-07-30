@@ -40,6 +40,10 @@ export async function GET(
       data: escandallo.lineas,      // compat: lista de líneas
       escandallo,                   // resumen teórico↔real + totales + estado/versión
       event,
+      // WP-05: desglose de coste para la página de escandallos
+      food_cost: escandallo.totales.food_cost,
+      beverage_cost: escandallo.totales.beverage_cost,
+      cost_per_pax: escandallo.totales.cost_per_pax,
     });
   } catch (e: unknown) {
     return NextResponse.json({ success: false, error: sanitizeError(e) }, { status: 500 });
