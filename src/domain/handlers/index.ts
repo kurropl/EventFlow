@@ -6,6 +6,7 @@
 
 import type { DomainEvent } from '../events';
 import { handleEventConfirmed } from './eventConfirmed';
+import { handleStockBelowMinimum } from './stockBelowMinimum';
 
 // ============================================================
 // Tipo de handler
@@ -28,7 +29,7 @@ const handlers: Record<string, EventHandler> = {
   // 'menu.price_changed': handleMenuPriceChanged,
   // 'ingredient.price_changed': handleIngredientPriceChanged,
   // 'purchase_order.received': handlePurchaseOrderReceived,
-  // 'stock.below_minimum': handleStockBelowMinimum,
+  'stock.below_minimum': handleStockBelowMinimum,
   // 'event.operationally_closed': handleEventOperationallyClosed,
   // 'event.financially_closed': handleEventFinanciallyClosed,
   // 'shift.offered': handleShiftOffered,
