@@ -1443,16 +1443,37 @@ const MAIN_TABS = [
 
 export default function CocinaPanel() {
   const [activeTab, setActiveTab] = useState('guia');
+  const [repositionCount, setRepositionCount] = useState(0);
+
+  useEffect(() => {
+    fetch('/api/stock/supplier-orders?status=pending')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.data)) {
+          const autoCount = d.data.filter((o: any) => o.origin === 'auto_reposicion' && !o.event_id).length;
+          setRepositionCount(autoCount);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-cream text-ink">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-gold flex items-center gap-2 font-serif">
-            <Icon name="food" className="w-5 h-5 text-gold" />
-            Cocina
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-gold flex items-center gap-2 font-serif">
+              <Icon name="food" className="w-5 h-5 text-gold" />
+              Cocina
+            </h1>
+            {repositionCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-semibold">
+                <Icon name="warning" className="w-3.5 h-3.5" />
+                {repositionCount} {repositionCount === 1 ? 'reposición pendiente' : 'reposiciones pendientes'}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-ink-soft-60 mt-1">
             Gestión de recetas, equipamiento, pases y hojas operativas
           </p>
