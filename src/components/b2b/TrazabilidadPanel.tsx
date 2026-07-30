@@ -128,6 +128,72 @@ interface AppccTraceItem {
   temp_alert: boolean;
 }
 
+interface LotOption {
+  id: string;
+  lot_number: string;
+  ingredient_name: string;
+  supplier: string | null;
+  received_date: string;
+  expiry_date: string | null;
+  batch_quantity: number;
+  unit: string;
+}
+
+interface LotTraceability {
+  lot: {
+    id: string;
+    lot_number: string;
+    batch_quantity: number;
+    unit: string;
+    received_date: string;
+    received_by: string | null;
+    expiry_date: string | null;
+    temperature: number | null;
+    supplier: string | null;
+    condition_ok: boolean;
+    source: string | null;
+    qr_code: string | null;
+    notes: string | null;
+    created_at: string;
+    ingredient: {
+      id: string;
+      name: string;
+      category: string;
+      unit: string;
+    };
+    supplier_order: {
+      id: string;
+      status: string;
+    } | null;
+  };
+  summary: {
+    total_received: number;
+    total_consumed: number;
+    remaining: number;
+    consumption_count: number;
+    unit: string;
+  };
+  alerts: {
+    temperature: string | null;
+    expiry: string | null;
+  };
+  consumptions: Array<{
+    consumption_id: string;
+    quantity_consumed: number;
+    unit: string;
+    consumed_at: string;
+    event: {
+      id: string;
+      client_name: string;
+      event_date: string;
+      event_type: string;
+      guest_count: number;
+      status: string;
+      venue_type: string;
+    };
+  }>;
+}
+
 interface AppccAlert {
   temperature: string | null;
 }
@@ -228,6 +294,13 @@ export default function TrazabilidadPanel() {
   const [selectedEventAppcc, setSelectedEventAppcc] = useState('');
   const [appccData, setAppccData] = useState<AppccResponse | null>(null);
   const [appccLoading, setAppccLoading] = useState(false);
+
+  /* ── Tab 5: Trazabilidad por Lote ── */
+  const [lotOptions, setLotOptions] = useState<LotOption[]>([]);
+  const [selectedLotId, setSelectedLotId] = useState('');
+  const [lotTraceData, setLotTraceData] = useState<LotTraceability | null>(null);
+  const [lotTraceLoading, setLotTraceLoading] = useState(false);
+  const [lotFilterSearch, setLotFilterSearch] = useState('');
 
   /* ================================================================ */
   /*  Cargar eventos al inicio                                         */
@@ -472,6 +545,184 @@ export default function TrazabilidadPanel() {
   useEffect(() => { loadAppcc(); }, [loadAppcc]);
 
   /* ================================================================ */
+  /*  Tab 5: Trazabilidad por Lote                                    */
+  /* ================================================================ */
+
+  // Cargar lista de lotes disponibles
+  useEffect(() => {
+    fetch('/api/trazabilidad/receiving')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          setLotOptions(
+            (d.data || []).map((r: any) => ({
+              id: r.id,
+              lot_number: r.lot_number,
+              ingredient_name: r.ingredient_name,
+              supplier: r.supplier,
+              received_date: r.received_date,
+              expiry_date: r.expiry_date,
+              batch_quantity: Number(r.batch_quantity),
+              unit: r.unit,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const loadLotTraceability = useCallback(async () => {
+    if (!selectedLotId) return;
+    setLotTraceLoading(true);
+    try {
+      const res = await fetch(`/api/trazabilidad/lot/${selectedLotId}`);
+      const d = await res.json();
+      if (d.success) {
+        setLotTraceData(d.data);
+      } else {
+        setError(d.error || 'Error al cargar trazabilidad del lote');
+      }
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setLotTraceLoading(false);
+  }, [selectedLotId]);
+
+  useEffect(() => { loadLotTraceability(); }, [loadLotTraceability]);
+
+  // Filtrar lotes por búsqueda
+  const filteredLots = lotOptions.filter((lot) => {
+    if (!lotFilterSearch) return true;
+    const search = lotFilterSearch.toLowerCase();
+    return (
+      lot.lot_number.toLowerCase().includes(search) ||
+      lot.ingredient_name.toLowerCase().includes(search) ||
+      (lot.supplier && lot.supplier.toLowerCase().includes(search))
+    );
+  });
+
+  // Generar PDF de trazabilidad del lote
+  const generateLotPdf = async () => {
+    if (!lotTraceData) return;
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+      const { lot, summary, alerts, consumptions } = lotTraceData;
+
+      // Cabecera
+      doc.setFontSize(18);
+      doc.text('Informe de Trazabilidad por Lote', 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 14, 28);
+
+      // Datos del lote
+      doc.setFontSize(12);
+      doc.text('Datos del Lote', 14, 40);
+      doc.setFontSize(10);
+      let y = 48;
+      const addLine = (label: string, value: string) => {
+        doc.setFont(undefined, 'bold');
+        doc.text(`${label}:`, 14, y);
+        doc.setFont(undefined, 'normal');
+        doc.text(value, 70, y);
+        y += 6;
+      };
+
+      addLine('Nº de Lote', lot.lot_number);
+      addLine('Ingrediente', lot.ingredient.name);
+      addLine('Proveedor', lot.supplier || '—');
+      addLine('Cantidad recibida', `${summary.total_received} ${summary.unit}`);
+      addLine('Fecha de recepción', lot.received_date ? new Date(lot.received_date).toLocaleDateString('es-ES') : '—');
+      addLine('Recibido por', lot.received_by || '—');
+      addLine('Caducidad', lot.expiry_date ? new Date(lot.expiry_date).toLocaleDateString('es-ES') : '—');
+      addLine('Temperatura', lot.temperature !== null ? `${lot.temperature}°C` : '—');
+      addLine('Estado', lot.condition_ok ? 'Aceptado' : 'Rechazado');
+      if (lot.qr_code) addLine('Código QR', lot.qr_code);
+      if (lot.notes) addLine('Notas', lot.notes);
+
+      // Alertas
+      if (alerts.temperature || alerts.expiry) {
+        y += 4;
+        doc.setFontSize(12);
+        doc.text('Alertas', 14, y);
+        y += 8;
+        doc.setFontSize(10);
+        if (alerts.temperature) {
+          doc.setTextColor(200, 0, 0);
+          doc.text(`⚠ ${alerts.temperature}`, 14, y);
+          y += 6;
+        }
+        if (alerts.expiry) {
+          doc.setTextColor(200, 0, 0);
+          doc.text(`⚠ ${alerts.expiry}`, 14, y);
+          y += 6;
+        }
+        doc.setTextColor(0, 0, 0);
+      }
+
+      // Resumen
+      y += 4;
+      doc.setFontSize(12);
+      doc.text('Resumen de Consumo', 14, y);
+      y += 8;
+      doc.setFontSize(10);
+      addLine('Total recibido', `${summary.total_received} ${summary.unit}`);
+      addLine('Total consumido', `${summary.total_consumed} ${summary.unit}`);
+      addLine('Restante', `${summary.remaining} ${summary.unit}`);
+      addLine('Eventos que consumieron', `${summary.consumption_count}`);
+
+      // Detalle de consumos por evento
+      if (consumptions.length > 0) {
+        y += 4;
+        doc.setFontSize(12);
+        doc.text('Detalle por Evento', 14, y);
+        y += 8;
+
+        // Cabecera de tabla
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.text('Fecha', 14, y);
+        doc.text('Evento', 44, y);
+        doc.text('Tipo', 100, y);
+        doc.text('Pax', 120, y);
+        doc.text('Consumido', 135, y);
+        y += 5;
+        doc.setFont(undefined, 'normal');
+
+        for (const c of consumptions) {
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+          const eventDate = c.event.event_date
+            ? new Date(c.event.event_date).toLocaleDateString('es-ES')
+            : '—';
+          doc.text(eventDate, 14, y);
+          doc.text(c.event.client_name?.substring(0, 25) || '—', 44, y);
+          doc.text(c.event.event_type || '—', 100, y);
+          doc.text(String(c.event.guest_count || '—'), 120, y);
+          doc.text(`${c.quantity_consumed} ${c.unit}`, 135, y);
+          y += 5;
+        }
+      }
+
+      // Pie de página
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(
+        'EventFlow — Sistema de Gestión de Catering — Documento generado para inspección sanitaria',
+        14,
+        290
+      );
+
+      // Guardar
+      doc.save(`trazabilidad-lote-${lot.lot_number}.pdf`);
+    } catch (err) {
+      setError('Error al generar el PDF');
+    }
+  };
+
+  /* ================================================================ */
   /*  Render                                                           */
   /* ================================================================ */
 
@@ -515,6 +766,10 @@ export default function TrazabilidadPanel() {
           <TabsTrigger value="appcc" className="data-[state=active]:bg-white data-[state=active]:text-warning data-[state=active]:shadow-sm text-xs sm:text-sm">
             <Icon name="clipboardCheck" className="w-4 h-4 mr-1.5" />
             Informe APPCC
+          </TabsTrigger>
+          <TabsTrigger value="lot-trace" className="data-[state=active]:bg-white data-[state=active]:text-warning data-[state=active]:shadow-sm text-xs sm:text-sm">
+            <Icon name="search" className="w-4 h-4 mr-1.5" />
+            Trazabilidad por Lote
           </TabsTrigger>
         </TabsList>
 
@@ -1204,6 +1459,254 @@ export default function TrazabilidadPanel() {
                   {appccData.trace.filter((t) => t.temp_alert).length} alerta{appccData.trace.filter((t) => t.temp_alert).length !== 1 ? 's' : ''} de temperatura
                 </p>
               </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ─────────────────────────────────────────────────────────── */}
+        {/*  TAB 5: TRAZABILIDAD POR LOTE                             */}
+        {/* ─────────────────────────────────────────────────────────── */}
+        <TabsContent value="lot-trace" className="space-y-4">
+          {/* Selector de lote */}
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex-1 w-full sm:w-auto">
+              <Select value={selectedLotId} onValueChange={setSelectedLotId}>
+                <SelectTrigger className="w-full sm:w-96">
+                  <SelectValue placeholder="Selecciona un lote..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredLots.map((lot) => (
+                    <SelectItem key={lot.id} value={lot.id}>
+                      {lot.lot_number} — {lot.ingredient_name}
+                      {lot.supplier ? ` (${lot.supplier})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="relative w-full sm:w-48">
+              <Input
+                placeholder="Buscar lote..."
+                value={lotFilterSearch}
+                onChange={(e) => setLotFilterSearch(e.target.value)}
+                className="h-9 text-xs pl-8"
+              />
+              <Icon name="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-soft-60" />
+            </div>
+          </div>
+
+          {!selectedLotId && (
+            <EmptyState
+              icon={<Icon name="search" className="w-6 h-6" />}
+              title="Selecciona un lote"
+              description="Elige un lote para ver su trazabilidad completa: proveedor, recepción APPCC y eventos donde fue consumido."
+            />
+          )}
+
+          {lotTraceLoading && (
+            <div className="animate-pulse space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-cream-dark rounded-lg" />
+              ))}
+            </div>
+          )}
+
+          {selectedLotId && !lotTraceLoading && lotTraceData && (
+            <div className="space-y-6">
+              {/* Cabecera del lote */}
+              <div className="bg-warning/10 rounded-xl p-4 border border-amber-200">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold text-warning text-lg">
+                      Lote: {lotTraceData.lot.lot_number}
+                    </h3>
+                    <p className="text-sm text-warning mt-1">
+                      {lotTraceData.lot.ingredient.name}
+                      {lotTraceData.lot.supplier ? ` · Proveedor: ${lotTraceData.lot.supplier}` : ''}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={generateLotPdf}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    <Icon name="download" className="w-3.5 h-3.5 mr-1.5" />
+                    Exportar PDF
+                  </Button>
+                </div>
+              </div>
+
+              {/* Alertas */}
+              {(lotTraceData.alerts.temperature || lotTraceData.alerts.expiry) && (
+                <div className="space-y-2">
+                  {lotTraceData.alerts.temperature && (
+                    <div className="bg-danger/10 border border-danger/30 rounded-xl px-4 py-3 flex items-center gap-2">
+                      <Icon name="alertTriangle" className="w-5 h-5 text-danger flex-shrink-0" />
+                      <p className="text-sm text-danger">{lotTraceData.alerts.temperature}</p>
+                    </div>
+                  )}
+                  {lotTraceData.alerts.expiry && (
+                    <div className="bg-danger/10 border border-danger/30 rounded-xl px-4 py-3 flex items-center gap-2">
+                      <Icon name="alertTriangle" className="w-5 h-5 text-danger flex-shrink-0" />
+                      <p className="text-sm text-danger">{lotTraceData.alerts.expiry}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Datos del lote */}
+              <div className="bg-white rounded-xl border border-cream-dark p-4">
+                <h4 className="text-sm font-semibold text-ink mb-3">Datos de Recepción</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-ink-soft text-xs">Ingrediente</span>
+                    <p className="font-medium text-ink">{lotTraceData.lot.ingredient.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft text-xs">Categoría</span>
+                    <p className="font-medium text-ink">{lotTraceData.lot.ingredient.category || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft text-xs">Proveedor</span>
+                    <p className="font-medium text-ink">{lotTraceData.lot.supplier || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft text-xs">Fecha de recepción</span>
+                    <p className="font-medium text-ink">{lotTraceData.lot.received_date ? formatDate(lotTraceData.lot.received_date) : '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft text-xs">Recibido por</span>
+                    <p className="font-medium text-ink">{lotTraceData.lot.received_by || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft text-xs">Temperatura</span>
+                    <p className={`font-medium ${lotTraceData.lot.temperature !== null && lotTraceData.lot.temperature > 8 ? 'text-danger' : 'text-ink'}`}>
+                      {formatTemp(lotTraceData.lot.temperature)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft text-xs">Caducidad</span>
+                    <p className={`font-medium ${lotTraceData.alerts.expiry ? 'text-danger' : 'text-ink'}`}>
+                      {lotTraceData.lot.expiry_date ? formatDate(lotTraceData.lot.expiry_date) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft text-xs">Estado</span>
+                    <p className="font-medium text-ink">
+                      {lotTraceData.lot.condition_ok ? (
+                        <span className="text-success">Aceptado</span>
+                      ) : (
+                        <span className="text-danger">Rechazado</span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft text-xs">Código QR</span>
+                    <p className="font-medium text-ink font-mono text-xs">{lotTraceData.lot.qr_code || '—'}</p>
+                  </div>
+                  {lotTraceData.lot.notes && (
+                    <div className="col-span-2 sm:col-span-3">
+                      <span className="text-ink-soft text-xs">Notas</span>
+                      <p className="font-medium text-ink">{lotTraceData.lot.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Resumen de consumo */}
+              <div className="bg-success/10 rounded-xl p-4 border border-green-200">
+                <h4 className="text-sm font-semibold text-success mb-2">Resumen de Consumo</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-success/70 text-xs">Recibido</span>
+                    <p className="font-bold text-success text-lg">
+                      {lotTraceData.summary.total_received.toLocaleString('es-ES')} {lotTraceData.summary.unit}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-success/70 text-xs">Consumido</span>
+                    <p className="font-bold text-success text-lg">
+                      {lotTraceData.summary.total_consumed.toLocaleString('es-ES')} {lotTraceData.summary.unit}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-success/70 text-xs">Restante</span>
+                    <p className="font-bold text-success text-lg">
+                      {lotTraceData.summary.remaining.toLocaleString('es-ES')} {lotTraceData.summary.unit}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-success/70 text-xs">Eventos</span>
+                    <p className="font-bold text-success text-lg">
+                      {lotTraceData.summary.consumption_count}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detalle de consumos por evento */}
+              {lotTraceData.consumptions.length === 0 ? (
+                <EmptyState
+                  icon={<Icon name="package" className="w-6 h-6" />}
+                  title="Sin consumos registrados"
+                  description="Este lote aún no ha sido consumido en ningún evento."
+                />
+              ) : (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-ink-light">
+                    Consumos por Evento ({lotTraceData.consumptions.length})
+                  </h4>
+                  <div className="overflow-x-auto rounded-xl border border-cream-dark bg-white">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-cream text-left text-xs font-semibold text-ink-soft uppercase tracking-wider">
+                          <th className="px-4 py-3">Fecha consumo</th>
+                          <th className="px-4 py-3">Evento</th>
+                          <th className="px-4 py-3">Fecha evento</th>
+                          <th className="px-4 py-3">Tipo</th>
+                          <th className="px-4 py-3">Pax</th>
+                          <th className="px-4 py-3">Cantidad</th>
+                          <th className="px-4 py-3">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {lotTraceData.consumptions.map((c) => (
+                          <tr key={c.consumption_id} className="hover:bg-cream/50 transition-colors">
+                            <td className="px-4 py-3 text-ink-soft text-xs whitespace-nowrap">
+                              {formatDate(c.consumed_at)}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-ink">
+                              {c.event.client_name}
+                            </td>
+                            <td className="px-4 py-3 text-ink-soft text-xs whitespace-nowrap">
+                              {c.event.event_date ? formatDate(c.event.event_date) : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-ink-soft">
+                              {c.event.event_type || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-ink-soft">
+                              {c.event.guest_count || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-ink-soft">
+                              {c.quantity_consumed.toLocaleString('es-ES', { maximumFractionDigits: 1 })} {c.unit}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                c.event.status === 'completed' ? 'bg-success/10 text-success' :
+                                c.event.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                'bg-cream-dark text-ink-soft'
+                              }`}>
+                                {c.event.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
