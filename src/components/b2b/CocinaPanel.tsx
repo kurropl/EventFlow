@@ -1093,6 +1093,17 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
             </div>
           )}
           {sheetTab === 'logistica' && <EquipmentCheckoutPanel eventId={selectedEventId} />}
+          {/* WP-20: Vajilla y Packs en hoja de carga */}
+          {sheetTab === 'carga' && rawSheet && rawSheet.vajilla && rawSheet.vajilla.length > 0 && (
+            <div className="mt-6">
+              <VajillaSection items={rawSheet.vajilla} pax={rawSheet.guestCount} />
+            </div>
+          )}
+          {sheetTab === 'carga' && rawSheet && rawSheet.packs && rawSheet.packs.length > 0 && (
+            <div className="mt-6">
+              <PacksSection items={rawSheet.packs} />
+            </div>
+          )}
           {/* WP-09: Retorno de consumibles */}
           {sheetTab === 'logistica' && selectedEventId && (
             <div className="mt-6">
@@ -1128,6 +1139,90 @@ function LogisticsGoodsTable({ title, items }: { title: string; items?: { produc
           </tbody>
         </table>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  WP-20: Sección de Vajilla                                         */
+/* ------------------------------------------------------------------ */
+
+function VajillaSection({ items, pax }: { items: { productName: string; quantity: number; unit: string; category: string; passName: string }[]; pax: number }) {
+  // Agrupar por categoría
+  const grouped = new Map<string, { productName: string; quantity: number; unit: string; passName: string }[]>();
+  for (const item of items) {
+    const cat = item.category.replace('vajilla_', '');
+    if (!grouped.has(cat)) grouped.set(cat, []);
+    grouped.get(cat)!.push(item);
+  }
+
+  return (
+    <div className="rounded-xl border border-gold/20 bg-white overflow-hidden">
+      <div className="px-3 py-2 bg-cream-dark border-b border-gold/20 text-xs font-semibold text-ink uppercase tracking-wider flex items-center justify-between">
+        <span>🍽️ Vajilla <span className="text-ink-soft-60 normal-case font-normal">({items.length} ítems)</span></span>
+        <span className="text-gold font-bold">{pax} pax</span>
+      </div>
+      <div className="p-3">
+        {Array.from(grouped.entries()).map(([category, catItems]) => (
+          <div key={category} className="mb-3 last:mb-0">
+            <h4 className="text-xs font-semibold text-ink-soft mb-1 capitalize">{category}</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {catItems.map((item, i) => (
+                <div key={i} className="flex items-center justify-between px-2 py-1.5 rounded bg-cream border border-cream-dark">
+                  <span className="text-xs text-ink truncate">{item.productName}</span>
+                  <span className="text-xs font-mono font-medium text-gold ml-2">{item.quantity}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  WP-20: Sección de Packs                                          */
+/* ------------------------------------------------------------------ */
+
+function PacksSection({ items }: { items: { productName: string; quantity: number; unit: string; category: string; notes: string | null }[] }) {
+  // Agrupar por tipo de pack
+  const grouped = new Map<string, { productName: string; quantity: number; unit: string; notes: string | null }[]>();
+  for (const item of items) {
+    // Extraer tipo de pack del category: pack_camareros_uniforme -> camareros
+    const packType = item.category.split('_')[1] || 'general';
+    if (!grouped.has(packType)) grouped.set(packType, []);
+    grouped.get(packType)!.push(item);
+  }
+
+  const packLabels: Record<string, string> = {
+    camareros: '👥 Pack Camareros',
+    alergenos: '⚠️ Pack Alérgenos',
+    supervivencia: '🆘 Pack Supervivencia',
+  };
+
+  return (
+    <div className="rounded-xl border border-gold/20 bg-white overflow-hidden">
+      <div className="px-3 py-2 bg-cream-dark border-b border-gold/20 text-xs font-semibold text-ink uppercase tracking-wider">
+        📦 Packs Operativos <span className="text-ink-soft-60 normal-case font-normal">({items.length} ítems)</span>
+      </div>
+      <div className="p-3 space-y-3">
+        {Array.from(grouped.entries()).map(([packType, packItems]) => (
+          <div key={packType} className="rounded-lg border border-cream-dark bg-cream p-3">
+            <h4 className="text-xs font-semibold text-ink mb-2">
+              {packLabels[packType] || packType}
+            </h4>
+            <div className="space-y-1">
+              {packItems.map((item, i) => (
+                <div key={i} className="flex items-center justify-between text-xs">
+                  <span className="text-ink truncate flex-1">{item.productName}</span>
+                  <span className="font-mono font-medium text-gold ml-2">×{item.quantity}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
