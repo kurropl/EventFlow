@@ -1475,6 +1475,40 @@ CREATE TRIGGER trg_shopping_updated BEFORE UPDATE ON event_shopping_items
 -- ingredient_id column for unified ingredient reference
 ALTER TABLE event_shopping_items ADD COLUMN IF NOT EXISTS ingredient_id UUID;
 
+-- WP-09: Columnas para tracking de consumo
+ALTER TABLE event_shopping_items ADD COLUMN IF NOT EXISTS actual_qty_base NUMERIC(14,4);
+ALTER TABLE event_shopping_items ADD COLUMN IF NOT EXISTS stock_movement_id BIGINT;
+
+COMMENT ON COLUMN event_shopping_items.actual_qty_base IS 'Cantidad real consumida en unidad base. WP-09.';
+COMMENT ON COLUMN event_shopping_items.stock_movement_id IS 'ID del movimiento de stock asociado. WP-09.';
+
+-- ============================================================
+-- 31a-2. EVENT CONSUMABLE RETURNS (Retornos de consumibles)
+-- WP-09: Retornos de ingredientes no consumidos desde Logística
+-- ============================================================
+CREATE TABLE IF NOT EXISTS event_consumable_returns (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id        UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    ingredient_id   UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+    ingredient_name TEXT NOT NULL,
+    quantity_returned NUMERIC(14,4) NOT NULL DEFAULT 0,
+    unit            TEXT NOT NULL DEFAULT 'g',
+    lot_id          INT,
+    notes           TEXT,
+    created_by      UUID,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_ecr_event ON event_consumable_returns(event_id);
+CREATE INDEX IF NOT EXISTS idx_ecr_ingredient ON event_consumable_returns(ingredient_id);
+ALTER TABLE event_consumable_returns DISABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS trg_ecr_updated ON event_consumable_returns;
+CREATE TRIGGER trg_ecr_updated BEFORE UPDATE ON event_consumable_returns
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+COMMENT ON TABLE event_consumable_returns IS 'Retornos de consumibles por evento. WP-09.';
+COMMENT ON COLUMN event_consumable_returns.quantity_returned IS 'Cantidad devuelta en unidad base del ingrediente.';
+
 -- ============================================================
 -- 31b. INGREDIENTS — definición ÚNICA arriba (sección 20). Se eliminó el
 -- duplicado que aquí redefinía la tabla (drift de esquema + FK a `suppliers`
