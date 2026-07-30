@@ -49,8 +49,9 @@ export async function PUT(
     const { quantity, unit, notes } = parsed.data;
 
     const result = await transaction(async (client) => {
-      const recipe = (await client.query(`SELECT catalog_item_id FROM recipes WHERE id = $1`, [id])).rows[0];
-      if (!recipe?.catalog_item_id) throw new Error('Receta no encontrada o sin ficha técnica');
+      // WP-11: el id de receta ES el catalog_item_id (tabla unificada)
+      const recipe = (await client.query(`SELECT id FROM catalog_items WHERE id = $1`, [id])).rows[0];
+      if (!recipe) throw new Error('Receta no encontrada');
 
       const sets: string[] = [];
       const values: any[] = [];
@@ -60,7 +61,7 @@ export async function PUT(
       if (notes !== undefined) { sets.push(`notes = $${idx++}`); values.push(notes ?? null); }
       if (sets.length === 0) throw new Error('Nada que actualizar');
       sets.push(`updated_at = now()`);
-      values.push(itemId, recipe.catalog_item_id);
+      values.push(itemId, recipe.id);
 
       const updated = (await client.query(
         `UPDATE recipe_items SET ${sets.join(', ')} WHERE id = $${idx} AND catalog_item_id = $${idx + 1} RETURNING id`,
@@ -92,12 +93,13 @@ export async function DELETE(
     }
 
     const result = await transaction(async (client) => {
-      const recipe = (await client.query(`SELECT catalog_item_id FROM recipes WHERE id = $1`, [id])).rows[0];
-      if (!recipe?.catalog_item_id) throw new Error('Receta no encontrada o sin ficha técnica');
+      // WP-11: el id de receta ES el catalog_item_id (tabla unificada)
+      const recipe = (await client.query(`SELECT id FROM catalog_items WHERE id = $1`, [id])).rows[0];
+      if (!recipe) throw new Error('Receta no encontrada');
 
       const deleted = (await client.query(
         `DELETE FROM recipe_items WHERE id = $1 AND catalog_item_id = $2 RETURNING id`,
-        [itemId, recipe.catalog_item_id]
+        [itemId, recipe.id]
       )).rows[0];
       if (!deleted) throw new Error('Línea no encontrada');
 

@@ -16,35 +16,28 @@ import { computeFichaTotales, type FichaTotales } from '@/lib/fichaTecnica';
 import { CATALOG_CATEGORIES } from '@/lib/recipeImport';
 
 export async function ensureCatalogItem(client: PoolClient, recipeId: string): Promise<string> {
+  // WP-11: ahora el id de receta ES el catalog_item_id (tabla unificada)
   const r = (await client.query(
-    `SELECT catalog_item_id, name, category FROM recipes WHERE id = $1`,
+    `SELECT id, name, category FROM catalog_items WHERE id = $1`,
     [recipeId]
   )).rows[0];
   if (!r) throw new Error('Receta no encontrada');
-  if (r.catalog_item_id) return r.catalog_item_id;
-
-  const category = (CATALOG_CATEGORIES as readonly string[]).includes(r.category) ? r.category : 'complemento';
-  const cat = (await client.query(
-    `INSERT INTO catalog_items (name, category, pvp, cost, ingredients, active)
-     VALUES ($1, $2, 0, 0, '[]'::jsonb, true) RETURNING id`,
-    [r.name, category]
-  )).rows[0];
-  await client.query(`UPDATE recipes SET catalog_item_id = $1 WHERE id = $2`, [cat.id, recipeId]);
-  return cat.id;
+  return r.id;
 }
 
 export async function recomputeFicha(client: PoolClient, recipeId: string): Promise<FichaTotales> {
+  // WP-11: la receta ahora vive directamente en catalog_items
   const recipe = (await client.query(
-    `SELECT merma_pct, peso_racion, catalog_item_id FROM recipes WHERE id = $1`,
+    `SELECT merma_pct, peso_racion, id FROM catalog_items WHERE id = $1`,
     [recipeId]
   )).rows[0];
-  if (!recipe?.catalog_item_id) throw new Error('La receta no tiene catalog_item_id (ensureCatalogItem primero)');
+  if (!recipe) throw new Error('La receta no existe en catalog_items');
 
   const lineas = (await client.query(
     `SELECT ri.quantity, COALESCE(i.unit_cost, 0) AS unit_cost
      FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
      WHERE ri.catalog_item_id = $1`,
-    [recipe.catalog_item_id]
+    [recipeId]
   )).rows;
 
   const settings = (await client.query(`SELECT min_price_multiplier FROM business_settings LIMIT 1`)).rows[0];
@@ -57,10 +50,10 @@ export async function recomputeFicha(client: PoolClient, recipeId: string): Prom
   );
 
   await client.query(
-    `UPDATE recipes SET servings = $1 WHERE id = $2`,
+    `UPDATE catalog_items SET servings = $1 WHERE id = $2`,
     [Math.max(1, Math.round(totales.raciones ?? 1)), recipeId]
   );
-  await client.query(`UPDATE catalog_items SET cost = $1 WHERE id = $2`, [totales.costeTotal, recipe.catalog_item_id]);
+  await client.query(`UPDATE catalog_items SET cost = $1 WHERE id = $2`, [totales.costeTotal, recipeId]);
 
   return totales;
 }

@@ -81,9 +81,10 @@ export async function consumeLotsFEFO(
  *  correspondencia única (varias versiones de receta para el mismo plato). */
 export async function resolveRecipeId(client: PoolClient, recipeItemId: string | null): Promise<string | null> {
   if (!recipeItemId) return null;
+  // WP-11: resolver desde catalog_items (tabla unificada)
   const rows = (await client.query(
-    `SELECT r.id FROM recipes r
-     JOIN recipe_items ri ON ri.catalog_item_id = r.catalog_item_id
+    `SELECT ci.id FROM catalog_items ci
+     JOIN recipe_items ri ON ri.catalog_item_id = ci.id
      WHERE ri.id = $1`,
     [recipeItemId]
   )).rows;

@@ -116,8 +116,14 @@ export async function GET(request: NextRequest) {
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+    // WP-11: leer de catalog_items (tabla canónica) en lugar de recipes
     const rows = await queryMany<any>(
-      `SELECT * FROM recipes ${where} ORDER BY updated_at DESC`,
+      `SELECT id, name, description, source, source_file, servings, category,
+              catalog_item_id, published, ingredients, instructions,
+              prep_time, cook_time, difficulty, version, active,
+              created_at, updated_at, merma_pct, peso_racion,
+              author, allergens::text as allergens, photo_url
+       FROM catalog_items ${where} ORDER BY updated_at DESC`,
       values
     );
 
@@ -178,45 +184,38 @@ export async function POST(request: NextRequest) {
     // La ficha técnica ya no pasa por un "publicar" aparte: el catalog_item
     // se crea a la vez que la receta, para que las líneas de ingrediente
     // (recipe_items) tengan dónde engancharse desde el primer guardado.
+    // WP-11: crear directamente en catalog_items (tabla unificada)
     const created = await transaction(async (client) => {
-      const recipe = (await client.query(
-        `INSERT INTO recipes
-           (name, description, source, servings, category, ingredients, instructions,
-            prep_time, cook_time, difficulty, version, active, published,
-            merma_pct, peso_racion, author, allergens, photo_url)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      const catalogItem = (await client.query(
+        `INSERT INTO catalog_items
+           (name, category, description, pvp, cost, ingredients, active,
+            source, servings, instructions, prep_time, cook_time, difficulty,
+            version, published, merma_pct, peso_racion, author, allergens, photo_url)
+         VALUES ($1, $2, $3, 0, 0, $4::jsonb, $5,
+                 $6, $7, $8, $9, $10, $11,
+                 1, false, $12, $13, $14, $15::jsonb, $16)
          RETURNING *`,
         [
           name.trim(),
-          description ?? null,
-          source ?? null,
-          servings ?? null,
           catCategory,
+          description ?? null,
           JSON.stringify(ingredients),
+          active,
+          source ?? 'manual',
+          servings ?? 1,
           instructions ?? null,
           prep_time ?? null,
           cook_time ?? null,
           difficulty ?? null,
-          1,
-          active,
-          false,
           merma_pct,
           peso_racion ?? null,
           author ?? null,
-          allergens ?? null,
+          allergens ? JSON.stringify(allergens) : '[]',
           photo_url ?? null,
         ]
       )).rows[0];
 
-      const catalogItem = (await client.query(
-        `INSERT INTO catalog_items (name, category, pvp, cost, ingredients, active)
-         VALUES ($1, $2, 0, 0, '[]'::jsonb, true) RETURNING id`,
-        [recipe.name, catCategory]
-      )).rows[0];
-      await client.query(`UPDATE recipes SET catalog_item_id = $1 WHERE id = $2`, [catalogItem.id, recipe.id]);
-      recipe.catalog_item_id = catalogItem.id;
-
-      return recipe;
+      return catalogItem;
     });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });

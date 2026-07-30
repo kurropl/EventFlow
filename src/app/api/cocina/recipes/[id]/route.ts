@@ -10,7 +10,6 @@ import { z } from 'zod';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { sanitizeError, isValidUUID } from '@/lib/security';
-import { ensureCatalogItem, recomputeFicha } from '@/lib/domain/fichaTecnicaSync';
 import { computeFichaTotales } from '@/lib/fichaTecnica';
 
 // ── Auth helper ─────────────────────────────────────────────────────
@@ -47,8 +46,14 @@ export async function GET(
       );
     }
 
+    // WP-11: leer de catalog_items (tabla canónica unificada)
     const recipe = await querySingle<any>(
-      `SELECT * FROM recipes WHERE id = $1`,
+      `SELECT id, name, description, source, source_file, servings, category,
+              catalog_item_id, published, ingredients, instructions,
+              prep_time, cook_time, difficulty, version, active,
+              created_at, updated_at, merma_pct, peso_racion,
+              author, allergens::text as allergens, photo_url
+       FROM catalog_items WHERE id = $1`,
       [id]
     );
 
@@ -167,8 +172,9 @@ export async function PUT(
       );
     }
 
+    // WP-11: verificar en catalog_items (tabla canónica)
     const existing = await querySingle<any>(
-      `SELECT id FROM recipes WHERE id = $1`,
+      `SELECT id FROM catalog_items WHERE id = $1`,
       [id]
     );
 
@@ -233,32 +239,56 @@ export async function PUT(
       );
     }
 
+    // WP-11: actualizar directamente en catalog_items (tabla unificada)
     const result = await transaction(async (client) => {
       if (sets.length > 0) {
         sets.push(`updated_at = now()`);
         values.push(id);
-        await client.query(`UPDATE recipes SET ${sets.join(', ')} WHERE id = $${idx}`, values);
+        await client.query(`UPDATE catalog_items SET ${sets.join(', ')} WHERE id = $${idx}`, values);
       }
 
-      // La ficha técnica siempre tiene catalog_item_id desde que se crea;
-      // esto solo cubre filas antiguas (import CSV / seed) que no pasaron
-      // por el flujo nuevo.
-      const catalogItemId = await ensureCatalogItem(client, id);
       if (pvp !== undefined) {
-        await client.query(`UPDATE catalog_items SET pvp = $1 WHERE id = $2`, [pvp, catalogItemId]);
+        await client.query(`UPDATE catalog_items SET pvp = $1 WHERE id = $2`, [pvp, id]);
       }
 
-      const totales = await recomputeFicha(client, id);
-      const updated = (await client.query(`SELECT * FROM recipes WHERE id = $1`, [id])).rows[0];
-      const catalogItem = (await client.query(
-        `SELECT id, pvp, cost, category FROM catalog_items WHERE id = $1`, [catalogItemId]
+      // Recompute ficha técnica
+      const recipe = (await client.query(
+        `SELECT merma_pct, peso_racion FROM catalog_items WHERE id = $1`, [id]
       )).rows[0];
 
-      return { recipe: updated, catalogItem, totales };
+      const lineas = (await client.query(
+        `SELECT ri.quantity, COALESCE(i.unit_cost, 0) AS unit_cost
+         FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
+         WHERE ri.catalog_item_id = $1`, [id]
+      )).rows;
+
+      const settings = (await client.query(`SELECT min_price_multiplier FROM business_settings LIMIT 1`)).rows[0];
+      const { computeFichaTotales } = await import('@/lib/fichaTecnica');
+      const totales = computeFichaTotales(
+        lineas.map((l: any) => ({ quantity: Number(l.quantity), unitCost: Number(l.unit_cost) })),
+        Number(recipe?.merma_pct) || 0,
+        recipe?.peso_racion != null ? Number(recipe.peso_racion) : null,
+        Number(settings?.min_price_multiplier) || 3,
+        pvp != null ? pvp : null
+      );
+
+      await client.query(`UPDATE catalog_items SET servings = $1 WHERE id = $2`,
+        [Math.max(1, Math.round(totales.raciones ?? 1)), id]);
+
+      const updated = (await client.query(
+        `SELECT id, name, description, source, servings, category,
+                catalog_item_id, published, ingredients, instructions,
+                prep_time, cook_time, difficulty, version, active,
+                created_at, updated_at, merma_pct, peso_racion,
+                author, allergens::text as allergens, photo_url
+         FROM catalog_items WHERE id = $1`, [id]
+      )).rows[0];
+
+      return { recipe: updated, catalogItem: { id, pvp: totales.precioMinimo, cost: totales.costeTotal }, totales };
     });
 
     // Parsear ingredients si viene como string JSON
-    if (result.recipe && typeof result.recipe.ingredients === 'string') {
+    if (result?.recipe && typeof result.recipe.ingredients === 'string') {
       try {
         result.recipe.ingredients = JSON.parse(result.recipe.ingredients);
       } catch {
@@ -297,37 +327,30 @@ export async function DELETE(
       );
     }
 
-    const recipe = await querySingle<any>(
-      `SELECT id, catalog_item_id, published FROM recipes WHERE id = $1`,
+    // WP-11: trabajar con catalog_items (tabla canónica)
+    const dish = await querySingle<any>(
+      `SELECT id, published FROM catalog_items WHERE id = $1`,
       [id]
     );
 
-    if (!recipe) {
+    if (!dish) {
       return NextResponse.json(
         { success: false, error: 'Receta no encontrada' },
         { status: 404 }
       );
     }
 
-    // Si está publicada y tiene catalog_item_id, no se puede borrar
-    if (recipe.catalog_item_id !== null && recipe.published === true) {
+    // Si está publicada, no se puede borrar
+    if (dish.published === true) {
       return NextResponse.json(
         { success: false, error: 'Despublica antes de eliminar' },
         { status: 409 }
       );
     }
 
-    // Cascada: si tiene catalog_item_id, borrar el catalog_item (que cascadea a recipe_items)
-    if (recipe.catalog_item_id !== null) {
-      await queryMany(
-        `DELETE FROM catalog_items WHERE id = $1`,
-        [recipe.catalog_item_id]
-      );
-    }
-
     // Soft-delete: marcar como inactiva
     const deleted = await querySingle<any>(
-      `UPDATE recipes SET active = false, updated_at = now() WHERE id = $1 RETURNING id, active`,
+      `UPDATE catalog_items SET active = false, updated_at = now() WHERE id = $1 RETURNING id, active`,
       [id]
     );
 

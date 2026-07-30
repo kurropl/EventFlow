@@ -85,15 +85,14 @@ export async function GET(
       [eventId]
     );
 
-    // 8. Recetas del evento (desde catálogo)
+    // 8. Recetas del evento (WP-11: directo desde catalog_items canónico)
     const recipesResult = await query(
-      `SELECT r.id, r.name, r.category, r.servings, r.version, r.published,
-              r.prep_time, r.cook_time, r.difficulty
-       FROM recipes r
-       JOIN catalog_items ci ON ci.id = r.catalog_item_id
+      `SELECT ci.id, ci.name, ci.category, ci.servings, ci.version, ci.published,
+              ci.prep_time, ci.cook_time, ci.difficulty
+       FROM catalog_items ci
        JOIN event_menu_items emi ON emi.catalog_item_id = ci.id
-       WHERE emi.event_id = $1 AND r.active = true
-       ORDER BY r.category, r.name`,
+       WHERE emi.event_id = $1 AND ci.active = true
+       ORDER BY ci.category, ci.name`,
       [eventId]
     );
 

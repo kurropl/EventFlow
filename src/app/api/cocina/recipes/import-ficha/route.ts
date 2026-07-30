@@ -21,7 +21,7 @@ import { verifyToken } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
 import { normalizeUnit, normalizeCategory } from '@/lib/recipeImport';
 import { parseFichaTecnica, type CellGetter } from '@/lib/fichaTecnicaImport';
-import { ensureCatalogItem, recomputeFicha } from '@/lib/domain/fichaTecnicaSync';
+import { recomputeFicha } from '@/lib/domain/fichaTecnicaSync';
 
 async function verifyAuth(request: NextRequest) {
   const token =
@@ -61,36 +61,35 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await transaction(async (client) => {
+      // WP-11: operar directamente sobre catalog_items (tabla unificada)
       const existing = (await client.query(
-        `SELECT id FROM recipes WHERE name ILIKE $1 LIMIT 1`, [parsed.name]
+        `SELECT id FROM catalog_items WHERE name ILIKE $1 LIMIT 1`, [parsed.name]
       )).rows[0];
 
       let recipeId: string;
       if (existing) {
         recipeId = existing.id;
         await client.query(
-          `UPDATE recipes SET category = $1, instructions = $2, allergens = $3, author = $4,
+          `UPDATE catalog_items SET category = $1, instructions = $2, allergens = $3::jsonb, author = $4,
                               merma_pct = $5, peso_racion = $6, updated_at = now()
            WHERE id = $7`,
-          [category, parsed.instructions, parsed.allergens, parsed.author, parsed.mermaPct, parsed.pesoRacion, recipeId]
+          [category, parsed.instructions, parsed.allergens ? JSON.stringify(parsed.allergens) : '[]', parsed.author, parsed.mermaPct, parsed.pesoRacion, recipeId]
         );
       } else {
         const created = (await client.query(
-          `INSERT INTO recipes
+          `INSERT INTO catalog_items
              (name, category, instructions, allergens, author, merma_pct, peso_racion,
-              version, active, published, ingredients, source)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, 1, true, false, '[]'::jsonb, 'excel')
+              version, active, published, ingredients, source, pvp, cost)
+           VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, 1, true, false, '[]'::jsonb, 'excel', 0, 0)
            RETURNING id`,
-          [parsed.name, category, parsed.instructions, parsed.allergens, parsed.author, parsed.mermaPct, parsed.pesoRacion]
+          [parsed.name, category, parsed.instructions, parsed.allergens ? JSON.stringify(parsed.allergens) : '[]', parsed.author, parsed.mermaPct, parsed.pesoRacion]
         )).rows[0];
         recipeId = created.id;
       }
 
-      const catalogItemId = await ensureCatalogItem(client, recipeId);
-
       // Sustituir las líneas de ingrediente por las del Excel (igual que el
       // import masivo: borrar y recrear, no intentar diffear fila a fila).
-      await client.query(`DELETE FROM recipe_items WHERE catalog_item_id = $1`, [catalogItemId]);
+      await client.query(`DELETE FROM recipe_items WHERE catalog_item_id = $1`, [recipeId]);
 
       let ingredientesCreados = 0;
       for (const line of parsed.lineas) {
@@ -105,20 +104,21 @@ export async function POST(request: NextRequest) {
           )).rows[0];
           ingredientesCreados++;
         }
+        // WP-11: recipeId ES el catalog_item_id (tabla unificada)
         await client.query(
           `INSERT INTO recipe_items (catalog_item_id, ingredient_id, quantity, unit)
            VALUES ($1, $2, $3, $4)`,
-          [catalogItemId, ing.id, line.cantidad, unidad]
+          [recipeId, ing.id, line.cantidad, unidad]
         );
       }
 
       if (parsed.pvp != null) {
-        await client.query(`UPDATE catalog_items SET pvp = $1 WHERE id = $2`, [parsed.pvp, catalogItemId]);
+        await client.query(`UPDATE catalog_items SET pvp = $1 WHERE id = $2`, [parsed.pvp, recipeId]);
       }
 
       const totales = await recomputeFicha(client, recipeId);
 
-      return { recipeId, catalogItemId, ingredientesCreados, actualizada: !!existing };
+      return { recipeId, catalogItemId: recipeId, ingredientesCreados, actualizada: !!existing };
     });
 
     return NextResponse.json({

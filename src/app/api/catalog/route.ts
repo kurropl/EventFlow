@@ -69,8 +69,10 @@ export async function GET(request: NextRequest) {
     const totalItems = countResult[0]?.total || 0;
     const totalPages = Math.ceil(totalItems / limit);
 
+    // WP-11: incluir columnas de cocina en la respuesta
     let items = await queryMany<any>(
-      `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, allergens, description, active, created_at, updated_at
+      `SELECT id, name, category, subcategory, pvp, cost, ingredients, image_url, allergens, description, active, created_at, updated_at,
+              source, servings, instructions, prep_time, cook_time, difficulty, published, version, merma_pct, peso_racion, author, photo_url
        FROM catalog_items
        ${where}
        ORDER BY category, name

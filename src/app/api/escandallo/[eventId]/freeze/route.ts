@@ -45,13 +45,13 @@ export async function POST(
 
       // Obtener recipe_items activos
       const recipeItems = await query(
+        // WP-11: leer directo de catalog_items (tabla unificada)
         `SELECT ri.*, i.name as ingredient_name, i.current_price,
-                COALESCE(r.servings, 1) as servings
+                COALESCE(ci.servings, 1) as servings
          FROM recipe_items ri
          JOIN ingredients i ON i.id = ri.ingredient_id
-         LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
-         LEFT JOIN recipes r ON r.catalog_item_id = ci.id
-         WHERE r.active = true AND r.published = true`,
+         JOIN catalog_items ci ON ci.id = ri.catalog_item_id
+         WHERE ci.active = true AND ci.published = true`,
         []
       );
 
