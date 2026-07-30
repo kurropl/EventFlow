@@ -44,6 +44,7 @@ const HACCPPanel = dynamic(() => import('@/components/b2b/HACCPPanel'), {
 
 // WP-09: Retorno de consumibles
 import ConsumableReturnsPanel from '@/components/b2b/ConsumableReturnsPanel';
+import TransportPanel from '@/components/b2b/TransportPanel';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -77,6 +78,7 @@ interface AppEvent {
   client_name: string;
   event_date: string;
   status: string;
+  venue_type?: string;
 }
 
 interface HojaRow {
@@ -845,6 +847,9 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
     logistica: 'logistics',
   };
 
+  // Get selected event details for venue_type
+  const selectedEvent = events.find(e => e.id === selectedEventId);
+
   function flattenSheet(tab: string, sheet: any): HojaRow[] {
     if (!sheet) return [];
     if (tab === 'produccion') {
@@ -1093,6 +1098,15 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
             </div>
           )}
           {sheetTab === 'logistica' && <EquipmentCheckoutPanel eventId={selectedEventId} />}
+          {/* WP-16: Plan de Transporte (solo para eventos externos) */}
+          {sheetTab === 'logistica' && selectedEventId && (
+            <TransportPanel
+              eventId={selectedEventId}
+              venueType={selectedEvent?.venue_type || null}
+              eventDate={selectedEvent?.event_date || null}
+              clientName={selectedEvent?.client_name || null}
+            />
+          )}
           {/* WP-09: Retorno de consumibles */}
           {sheetTab === 'logistica' && selectedEventId && (
             <div className="mt-6">
