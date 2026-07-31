@@ -7,6 +7,7 @@
 
 import { queryMany, querySingle } from '@/lib/db';
 import { setEventStatus, VALID_EVENT_STATUSES } from '@/lib/domain/eventState';
+import type { EventStatus } from '@/domain/eventStateMachine';
 
 // ============================================================
 // Types
@@ -271,7 +272,7 @@ async function executeAction(
       const eventId = context.event.id as string;
       // G17/B6: whitelist — antes cualquier string configurado por el admin
       // se escribía tal cual, sin ejecutar ningún efecto de negocio asociado.
-      if (eventId && newStatus && VALID_EVENT_STATUSES.has(newStatus)) {
+      if (eventId && newStatus && VALID_EVENT_STATUSES.includes(newStatus as EventStatus)) {
         await setEventStatus(eventId, newStatus);
       }
       break;
@@ -288,7 +289,7 @@ async function executeAction(
       ]);
       // G17/B6: 'status' es el mismo campo peligroso que update_event_status
       // — misma whitelist antes de escribir.
-      if (field === 'status' && !VALID_EVENT_STATUSES.has(String(value))) {
+      if (field === 'status' && !VALID_EVENT_STATUSES.includes(String(value) as EventStatus)) {
         break;
       }
       if (eventId && field && value !== undefined && ALLOWED_FIELDS.has(field)) {

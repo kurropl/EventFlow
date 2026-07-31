@@ -676,9 +676,9 @@ export default function TrazabilidadPanel() {
       doc.setFontSize(10);
       let y = 48;
       const addLine = (label: string, value: string) => {
-        doc.setFont(undefined, 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.text(`${label}:`, 14, y);
-        doc.setFont(undefined, 'normal');
+        doc.setFont('helvetica', 'normal');
         doc.text(value, 70, y);
         y += 6;
       };
@@ -735,14 +735,14 @@ export default function TrazabilidadPanel() {
 
         // Cabecera de tabla
         doc.setFontSize(8);
-        doc.setFont(undefined, 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.text('Fecha', 14, y);
         doc.text('Evento', 44, y);
         doc.text('Tipo', 100, y);
         doc.text('Pax', 120, y);
         doc.text('Consumido', 135, y);
         y += 5;
-        doc.setFont(undefined, 'normal');
+        doc.setFont('helvetica', 'normal');
 
         for (const c of consumptions) {
           if (y > 270) {

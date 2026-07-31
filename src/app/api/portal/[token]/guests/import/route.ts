@@ -240,7 +240,7 @@ function normalizeRsvp(value: string | undefined): string {
     rechazado: 'rechazado',
     declined: 'rechazado',
     no_asistirá: 'rechazado',
-    no asistira: 'rechazado',
+    'no asistira': 'rechazado',
   };
 
   return mappings[lower] || 'pendiente';
@@ -316,8 +316,8 @@ function parseDietary(value: string | undefined): string[] {
       celíaco: 'celiaco',
       celiaco: 'celiaco',
       celiac: 'celiaco',
-      sin gluten: 'sin_gluten',
-      'sin-gluten': 'sin_gluten',
+      "sin gluten": 'sin_gluten',
+      'sin_gluten': 'sin_gluten',
       gluten: 'sin_gluten',
       alérgico: 'alergico',
       alergico: 'alergico',

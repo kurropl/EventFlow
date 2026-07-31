@@ -1119,6 +1119,7 @@ const [sheetTab, setSheetTab] = useState<'produccion' | 'carga' | 'logistica' | 
               eventDate={selectedEvent?.event_date || null}
               clientName={selectedEvent?.client_name || null}
             />
+          )}
           {/* WP-20: Vajilla y Packs en hoja de carga */}
           {sheetTab === 'carga' && rawSheet && rawSheet.vajilla && rawSheet.vajilla.length > 0 && (
             <div className="mt-6">

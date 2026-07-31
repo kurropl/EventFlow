@@ -259,8 +259,8 @@ export async function assignGuestVariant(
   }
 
   // Validar que el guest pertenece al evento
-  const guest = await querySingle<{ id: string; event_id: string; dietary: string[] }>(
-    `SELECT id, event_id, dietary FROM guests WHERE id = $1`,
+  const guest = await querySingle<{ id: string; event_id: string; dietary: string[]; name: string | null }>(
+    `SELECT id, event_id, dietary, name FROM guests WHERE id = $1`,
     [guestId]
   );
 

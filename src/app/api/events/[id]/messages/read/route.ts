@@ -1,6 +1,6 @@
 /**
  * EventFlow — Mark Messages as Read API (WP-30)
- * POST /api/events/[eventId]/messages/read — Marcar mensajes como leídos
+ * POST /api/events/[id]/messages/read — Marcar mensajes como leídos
  *
  * Endpoint autenticado (JWT admin) para marcar mensajes del cliente como leídos.
  */
@@ -15,12 +15,12 @@ import { sanitizeError, isValidUUID } from '@/lib/security';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { eventId } = await params;
+    const { id } = params;
 
-    if (!isValidUUID(eventId)) {
+    if (!isValidUUID(id)) {
       return NextResponse.json(
         { success: false, error: 'ID de evento inválido' },
         { status: 422 }
@@ -49,7 +49,7 @@ export async function POST(
              WHERE event_id = $1 
                AND id IN (${placeholders})
                AND read_at IS NULL`,
-            [eventId, ...validIds]
+            [id, ...validIds]
           );
           updatedCount = result.rowCount || 0;
         }
@@ -61,7 +61,7 @@ export async function POST(
            WHERE event_id = $1 
              AND sender = $2 
              AND read_at IS NULL`,
-          [eventId, sender]
+          [id, sender]
         );
         updatedCount = result.rowCount || 0;
       } else {
@@ -71,7 +71,7 @@ export async function POST(
            SET read_at = now() 
            WHERE event_id = $1 
              AND read_at IS NULL`,
-          [eventId]
+          [id]
         );
         updatedCount = result.rowCount || 0;
       }
@@ -85,7 +85,7 @@ export async function POST(
           COUNT(*) FILTER (WHERE sender = 'equipo' AND read_at IS NULL) AS unread_from_equipo
          FROM event_messages 
          WHERE event_id = $1`,
-        [eventId]
+        [id]
       );
 
       return NextResponse.json({

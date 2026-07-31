@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { validatePortalToken } from '@/lib/portal-auth';
+import { withPortalAuth } from '@/lib/portal-auth';
 import { getPortalMenu } from '@/domain/portal-menu';
 import { sanitizeError, securityHeaders } from '@/lib/security';
 
@@ -21,7 +21,7 @@ export async function GET(
     const { token } = await params;
 
     // 1. Autenticar portal
-    const auth = await validatePortalToken(token);
+    const auth = await withPortalAuth(token);
     if (!auth) {
       return NextResponse.json(
         { success: false, error: 'Enlace no válido o expirado' },

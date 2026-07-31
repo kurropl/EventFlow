@@ -7,6 +7,7 @@
  * WP-27: Portal — Distribución de Mesas
  */
 
+import { NextResponse } from 'next/server';
 import { querySingle } from '@/lib/db';
 
 // ============================================================
@@ -14,6 +15,8 @@ import { querySingle } from '@/lib/db';
 // ============================================================
 
 export interface PortalContext {
+  clientName?: string;
+  eventDate?: string;
   eventId: string;
   portalId: number;
   status: string;
@@ -75,4 +78,14 @@ export async function touchPortalAccess(portalId: number): Promise<void> {
     `UPDATE client_portals SET last_access_at = now() WHERE id = $1`,
     [portalId]
   );
+}
+
+export function checkWritable(context: PortalContext): NextResponse | null {
+  if (context && context.isFrozen) {
+    return NextResponse.json(
+      { success: false, error: 'El portal está congelado: no se pueden realizar cambios' },
+      { status: 423 }
+    );
+  }
+  return null;
 }

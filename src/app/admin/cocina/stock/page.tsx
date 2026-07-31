@@ -183,7 +183,7 @@ export default function StockPage() {
       {/* Items grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {filtered.map(item => (
-          <div key={item.id} className={cn('bg-white rounded-lg border border-divider/50 p-3', item.min_stock && item.stock_quantity <= item.min_stock && 'border-danger/30 bg-danger/5')}>
+          <div key={item.id} className={cn('bg-white rounded-lg border border-divider/50 p-3', item.min_stock && item.stock_quantity <= (item.min_stock ?? 0) && 'border-danger/30 bg-danger/5')}>
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-medium text-ink truncate">{item.name}</p>
@@ -202,8 +202,8 @@ export default function StockPage() {
                 <button onClick={() => adjustStock(item, 1)} className="w-6 h-6 rounded bg-cream hover:bg-divider flex items-center justify-center transition-colors"><Icon name="plus" className="w-3 h-3" /></button>
                 <span className="text-[9px] text-ink-soft">{item.unit}</span>
               </div>
-              {item.min_stock > 0 && (
-                <span className={cn('text-[8px] px-1.5 py-0.5 rounded', item.stock_quantity <= item.min_stock ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success')}>
+              {(item.min_stock ?? 0) > 0 && (
+                <span className={cn('text-[8px] px-1.5 py-0.5 rounded', item.stock_quantity <= (item.min_stock ?? 0) ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success')}>
                   min: {item.min_stock}
                 </span>
               )}

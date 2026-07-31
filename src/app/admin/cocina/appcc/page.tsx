@@ -32,10 +32,11 @@ const TABS = [
 
 export default function AppccPage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState("");
   const [centro, setCentro] = useState('J.Benitez — Cocina Central');
   const [activeTab, setActiveTab] = useState('recepcion');
   const [recepciones, setRecepciones] = useState<ControlRecepcion[]>([{ proveedor: '', producto: '', temp: null, embalajeOk: false, caducidadOk: false, ok: false }]);
-  const [almacenamiento] = useState<ControlAlmacenamiento[]>(CAMARAS.map(c => ({ camara: c, tempManana: null, tempTarde: null, ok: false })));
+  const [almacenamiento, setAlmacenamiento] = useState<ControlAlmacenamiento[]>(CAMARAS.map(c => ({ camara: c, tempManana: null, tempTarde: null, ok: false })));
   const [elaboraciones, setElaboraciones] = useState<ControlElaboracion[]>([]);
   const [servicios, setServicios] = useState<ControlServicio[]>([{ zona: 'Buffet caliente', temp: null, hora: '', ok: false }, { zona: 'Buffet frío', temp: null, hora: '', ok: false }, { zona: 'Barra', temp: null, hora: '', ok: false }]);
   const [limpiezas, setLimpiezas] = useState<TareaLimpieza[]>(ZONAS_LIMPIEZA.flatMap(z => z.tareas.map(t => ({ zona: z.zona, tarea: t, realizada: false, responsable: '' }))));

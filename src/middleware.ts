@@ -94,8 +94,9 @@ function isPublicMethod(method: string, pathname: string): boolean {
   return false;
 }
 
-// =====================================================// Public admin routes (no auth needed to access)
-// =====================================================const PUBLIC_ADMIN_ROUTES = ['/admin/login'];
+// Public admin routes (no auth needed to access)
+// =====================================================
+const PUBLIC_ADMIN_ROUTES = ['/admin/login'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -73,7 +73,7 @@ export async function GET(
 
     // 4. Calcular ocupación por mesa
     const occupiedMap: Record<string, number> = {};
-    for (const a of assignmentsResult) {
+    for (const a of assignmentsResult.rows) {
       occupiedMap[a.table_id] = (occupiedMap[a.table_id] || 0) + 1;
     }
 
@@ -90,7 +90,7 @@ export async function GET(
         floorplanName,
         tables: enrichedTables,
         elements,
-        guests: guestsResult.map(g => ({
+        guests: guestsResult.rows.map(g => ({
           id: g.id,
           name: g.name,
           groupName: g.group_name,
@@ -98,7 +98,7 @@ export async function GET(
           dietary: g.dietary,
           notes: g.notes,
         })),
-        assignments: assignmentsResult.map(a => ({
+        assignments: assignmentsResult.rows.map(a => ({
           id: a.id,
           tableId: a.table_id,
           guestId: a.guest_id,

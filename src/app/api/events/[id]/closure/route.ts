@@ -1,8 +1,8 @@
 /**
  * EventFlow — API Route: Cierre Operativo del Evento (WP-18)
- * GET  /api/events/[eventId]/closure  — Obtener estado del checklist
- * PUT  /api/events/[eventId]/closure  — Actualizar checklist (override)
- * POST /api/events/[eventId]/closure  — Cerrar evento operativamente
+ * GET  /api/events/[id]/closure  — Obtener estado del checklist
+ * PUT  /api/events/[id]/closure  — Actualizar checklist (override)
+ * POST /api/events/[id]/closure  — Cerrar evento operativamente
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,14 +16,14 @@ import {
 } from '@/domain/closure';
 
 interface RouteContext {
-  params: Promise<{ eventId: string }>;
+  params: { id: string };
 }
 
 // ============================================================
 // GET — Obtener estado del checklist
 // ============================================================
 export async function GET(request: NextRequest, context: RouteContext) {
-  const { eventId } = await context.params;
+  const { id } = context.params;
 
   try {
     // Auth
@@ -34,10 +34,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     try {
       // Asegurar que exista el checklist
-      await ensureChecklist(client, eventId);
+      await ensureChecklist(client, id);
 
       // Obtener estado completo
-      const status = await getClosureStatus(eventId);
+      const status = await getClosureStatus(id);
 
       return NextResponse.json({
         success: true,
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 // PUT — Actualizar checklist (override por Gerente)
 // ============================================================
 export async function PUT(request: NextRequest, context: RouteContext) {
-  const { eventId } = await context.params;
+  const { id } = context.params;
 
   try {
     // Auth
@@ -75,12 +75,12 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     try {
       // Asegurar que exista el checklist
-      await ensureChecklist(client, eventId);
+      await ensureChecklist(client, id);
 
       // Actualizar con overrides
       const checklist = await updateClosureChecklist(
         client,
-        eventId,
+        id,
         {
           logistics_override: body.logistics_override,
           waste_override: body.waste_override,
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
 
       // Obtener estado actualizado
-      const status = await getClosureStatus(eventId);
+      const status = await getClosureStatus(id);
 
       return NextResponse.json({
         success: true,
@@ -120,7 +120,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 // POST — Cerrar evento operativamente
 // ============================================================
 export async function POST(request: NextRequest, context: RouteContext) {
-  const { eventId } = await context.params;
+  const { id } = context.params;
 
   try {
     // Auth
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await client.query('BEGIN');
 
       // Ejecutar cierre
-      const result = await closeEventOperationally(client, eventId, user.id);
+      const result = await closeEventOperationally(client, id, user.id);
 
       if (!result.success) {
         await client.query('ROLLBACK');
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         success: true,
         message: 'Evento cerrado operativamente',
         data: {
-          event_id: eventId,
+          event_id: id,
           new_status: 'cerrado_operativo',
         },
       });

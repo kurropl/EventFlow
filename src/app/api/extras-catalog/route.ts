@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, transaction } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
-import { requireAdmin } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth';
 
 interface ExtraCatalogItem {
   id: string;
@@ -76,8 +76,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Require admin auth
-    const authError = await requireAdmin(request);
-    if (authError) return authError;
+    await requireAuth();
 
     const body = await request.json();
     const { category, name, description, photo_url, price, price_unit, sort_order } = body;
@@ -134,8 +133,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const authError = await requireAdmin(request);
-    if (authError) return authError;
+    await requireAuth();
 
     const body = await request.json();
     const { id, category, name, description, photo_url, price, price_unit, active, sort_order } = body;
@@ -190,8 +188,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const authError = await requireAdmin(request);
-    if (authError) return authError;
+    await requireAuth();
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

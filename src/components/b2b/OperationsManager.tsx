@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Icon from '@/components/shared/Icon';
 import EventStaffingPanel from '@/components/b2b/EventStaffingPanel';
 import { PageHeader, StatStrip, DataCard, DataList } from '@/components/ui';
-import { formatMoney, formatCantidad, convertUnit } from '@/lib/units';
+import { formatMoney, formatCantidad, convertUnit } from '@/lib/units-pure';
 
 // ── Status Map (Spanish labels + color variants) ──────────────
 const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = {

@@ -1,10 +1,10 @@
 /**
  * EventFlow — Event Messages API (WP-30)
- * GET  /api/events/[eventId]/messages — Listar mensajes del evento
- * POST /api/events/[eventId]/messages — Enviar mensaje del equipo
+ * GET  /api/events/[id]/messages — Listar mensajes del evento
+ * POST /api/events/[id]/messages — Enviar mensaje del equipo
  *
  * Endpoint autenticado (JWT admin) para el equipo.
- * El cliente usa /api/public/messages/[eventId] con token.
+ * El cliente usa /api/public/messages/[id] con token.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,12 +18,12 @@ import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { eventId } = await params;
+    const { id } = params;
 
-    if (!isValidUUID(eventId)) {
+    if (!isValidUUID(id)) {
       return NextResponse.json(
         { success: false, error: 'ID de evento inválido' },
         { status: 422 }
@@ -49,11 +49,11 @@ export async function GET(
       LEFT JOIN admins a ON a.id = em.created_by
       WHERE em.event_id = $1
     `;
-    const params: any[] = [eventId];
+    const qparams: any[] = [id];
 
     if (sender && ['cliente', 'equipo'].includes(sender)) {
-      query += ` AND em.sender = $${params.length + 1}`;
-      params.push(sender);
+      query += ` AND em.sender = $${qparams.length + 1}`;
+      qparams.push(sender);
     }
 
     if (unreadOnly) {
@@ -62,7 +62,7 @@ export async function GET(
 
     query += ` ORDER BY em.created_at DESC`;
 
-    const messages = await queryMany<any>(query, params);
+    const messages = await queryMany<any>(query, qparams);
 
     // Contadores de no leídos
     const unreadCounts = await querySingle<any>(
@@ -71,7 +71,7 @@ export async function GET(
         COUNT(*) FILTER (WHERE sender = 'equipo' AND read_at IS NULL) AS unread_from_equipo
        FROM event_messages 
        WHERE event_id = $1`,
-      [eventId]
+      [id]
     );
 
     return NextResponse.json({
@@ -98,12 +98,12 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { eventId } = await params;
+    const { id } = params;
 
-    if (!isValidUUID(eventId)) {
+    if (!isValidUUID(id)) {
       return NextResponse.json(
         { success: false, error: 'ID de evento inválido' },
         { status: 422 }
@@ -132,7 +132,7 @@ export async function POST(
        VALUES ($1, 'equipo', $2, $3, $4)
        RETURNING *`,
       [
-        eventId,
+        id,
         sender_name || currentUser?.name || 'Equipo',
         sanitizedBody,
         createdBy,

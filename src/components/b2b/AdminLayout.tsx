@@ -67,7 +67,21 @@ const GROUPS: MenuGroup[] = [
     id: 'cocina',
     label: 'Cocina & Catering',
     items: [
-      { id: 'cocina', label: 'Cocina', sub: 'Guía del evento: producción, carga, logística, APPCC', href: '/admin/cocina' },
+      {
+        id: 'cocina',
+        label: 'Cocina',
+        sub: 'Guía del evento: producción, carga, logística, APPCC',
+        href: '/admin/cocina',
+        children: [
+          { id: 'recetas', label: 'Recetas', sub: 'Recetario y costes', href: '/admin/cocina/recetas' },
+          { id: 'escandallos', label: 'Escandallos', sub: 'Ingredientes × pax y PVP', href: '/admin/cocina/escandallos' },
+          { id: 'produccion', label: 'Producción', sub: 'Timing, zonas y tareas', href: '/admin/cocina/produccion' },
+          { id: 'carga', label: 'Carga', sub: 'Pases y vajilla', href: '/admin/cocina/carga' },
+          { id: 'logistica', label: 'Logística', sub: 'Equipamiento y transporte', href: '/admin/cocina/logistica' },
+          { id: 'appcc', label: 'APPCC', sub: 'Seguridad alimentaria', href: '/admin/cocina/appcc' },
+          { id: 'compras', label: 'Compras', sub: 'Órdenes de compra y proveedores', href: '/admin/cocina/compras' },
+        ],
+      },
     ],
   },
   {

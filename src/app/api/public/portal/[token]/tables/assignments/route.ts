@@ -61,7 +61,7 @@ export async function PUT(
          WHERE event_id = $1 AND id = ANY($2::uuid[]) AND rsvp = 'confirmado'`,
         [ctx.eventId, guestIds]
       );
-      const validIds = new Set(validGuests.map(g => g.id));
+      const validIds = new Set(validGuests.rows.map(g => g.id));
 
       for (const a of assignments) {
         if (!validIds.has(a.guestId)) {

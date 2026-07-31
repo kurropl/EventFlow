@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { validatePortalToken, checkWritable } from '@/lib/portal-auth';
+import { withPortalAuth, checkWritable } from '@/lib/portal-auth';
 import {
   getGuestVariants,
   assignGuestVariant,
@@ -33,7 +33,7 @@ export async function GET(
   try {
     const { token } = await params;
 
-    const auth = await validatePortalToken(token);
+    const auth = await withPortalAuth(token);
     if (!auth) {
       return NextResponse.json(
         { success: false, error: 'Enlace no válido o expirado' },
@@ -70,7 +70,7 @@ export async function POST(
   try {
     const { token } = await params;
 
-    const auth = await validatePortalToken(token);
+    const auth = await withPortalAuth(token);
     if (!auth) {
       return NextResponse.json(
         { success: false, error: 'Enlace no válido o expirado' },
@@ -152,7 +152,7 @@ export async function DELETE(
   try {
     const { token } = await params;
 
-    const auth = await validatePortalToken(token);
+    const auth = await withPortalAuth(token);
     if (!auth) {
       return NextResponse.json(
         { success: false, error: 'Enlace no válido o expirado' },

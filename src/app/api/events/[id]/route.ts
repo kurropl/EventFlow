@@ -122,7 +122,7 @@ export async function PUT(
 
     // G17/B6: whitelist — antes se aceptaba cualquier string como status,
     // sin validar valor ni transición.
-    if (status !== undefined && !VALID_EVENT_STATUSES.has(status)) {
+    if (status !== undefined && !VALID_EVENT_STATUSES.includes(status)) {
       return NextResponse.json(
         { success: false, error: `status inválido: '${status}'` },
         { status: 400 }
