@@ -25,10 +25,8 @@ function roleFromToken(token: string): Role | null {
   }
 }
 
-// ============================================================
-// JWT verification (Edge Runtime compatible — uses Web Crypto)
-// ============================================================
-
+// =====================================================// JWT verification (Edge Runtime compatible — uses Web Crypto)
+// =====================================================
 async function verifyJWT(token: string, secret: string): Promise<boolean> {
   try {
     const parts = token.split('.');
@@ -71,10 +69,8 @@ async function verifyJWT(token: string, secret: string): Promise<boolean> {
   }
 }
 
-// ============================================================
-// Route classification
-// ============================================================
-
+// =====================================================// Route classification
+// =====================================================
 /** Public API routes that don't require authentication */
 function isPublicMethod(method: string, pathname: string): boolean {
   if (pathname.startsWith('/api/cron/')) return true;
@@ -93,13 +89,13 @@ function isPublicMethod(method: string, pathname: string): boolean {
   if (pathname.startsWith('/api/contract/public/')) return true;
   // WP-25: Portal del cliente — autenticación por token, no por JWT admin.
   if (pathname.startsWith('/api/portal/')) return true;
+  // WP-25/27: Portal del cliente — autenticación por token
+  if (pathname.startsWith('/api/public/portal/')) return true;
   return false;
 }
 
-// ============================================================
-// Public admin routes (no auth needed to access)
-// ============================================================
-const PUBLIC_ADMIN_ROUTES = ['/admin/login'];
+// =====================================================// Public admin routes (no auth needed to access)
+// =====================================================const PUBLIC_ADMIN_ROUTES = ['/admin/login'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
