@@ -32,6 +32,7 @@ export interface AcceptQuoteResult {
   paymentPlan: any;  // WP-21: plan de pago con hitos
   clientToken: string;
   stockWarnings: ShortageRow[];
+  extrasTotal: number;  // WP-29: total de extras seleccionados
 }
 
 export class AcceptQuoteError extends Error {
@@ -92,10 +93,15 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
 
     const pvpTotal = Number(updatedQuote.total_pvp) || 0;
 
-    // Proyectar total_pvp a events; total_cost lo fija recalcEventCost al final.
+    // WP-29: Incluir extras seleccionados en el total
+    const { calculateExtrasTotal, addExtrasToPaymentPlan } = await import('./paymentPlan');
+    const extrasTotal = await calculateExtrasTotal(eventId);
+    const finalTotal = pvpTotal + extrasTotal;
+
+    // Proyectar total_pvp a events (incluyendo extras); total_cost lo fija recalcEventCost al final.
     await client.query(
       `UPDATE events SET total_pvp = $2 WHERE id = $1`,
-      [eventId, pvpTotal]
+      [eventId, finalTotal]
     );
 
     // 2) event_order — idempotente por quote_id (1 order por quote)
@@ -164,8 +170,13 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
       ? new Date(quote.event_date).toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0];
     const paymentPlan = await generatePaymentPlan(
-      client, eventId, quoteId, pvpTotal, eventDateForPlan
+      client, eventId, quoteId, finalTotal, eventDateForPlan
     );
+
+    // 3.6) WP-29: Integrar extras en el plan de pagos
+    if (extrasTotal > 0) {
+      await addExtrasToPaymentPlan(client, eventId);
+    }
 
     // 4) client_token — idempotente (solo se genera si falta)
     let event = (await client.query(`SELECT * FROM events WHERE id = $1`, [eventId])).rows[0];
@@ -239,6 +250,6 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
       );
     }
 
-    return { quote: updatedQuote, event, eventOrder, payments, paymentPlan, clientToken, stockWarnings };
+    return { quote: updatedQuote, event, eventOrder, payments, paymentPlan, clientToken, stockWarnings, extrasTotal };
   });
 }
