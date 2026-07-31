@@ -11,6 +11,7 @@ import StatusBadge from './StatusBadge';
 import BriefingCamareros from './BriefingCamareros';
 import EventTimeline from './EventTimeline';
 import EventClosure from './EventClosure';
+import EventMessages from './EventMessages';
 import { PageHeader, EmptyState } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -33,6 +34,7 @@ import {
   FileText,
   Receipt,
   MapPin,
+  MessageCircle,
 } from 'lucide-react';
 
 /* ── Helpers ───────────────────────────────────────────────────── */
@@ -426,8 +428,9 @@ export default function EventDetail({ eventId }: EventDetailProps) {
 
       {/* ── Tabs ────────────────────────────────────────────────── */}
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="messages">Mensajes</TabsTrigger>
           <TabsTrigger value="closure">Cierre</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
         </TabsList>
@@ -1377,6 +1380,15 @@ export default function EventDetail({ eventId }: EventDetailProps) {
           </div>
         ) : null}
       </section>
+        </TabsContent>
+
+        <TabsContent value="messages" className="space-y-6">
+          <section className="bg-cream border border-gold/20 rounded-xl p-6">
+            <SectionHeader icon={MessageCircle} title="Mensajes Cliente ↔ Equipo" />
+            <div className="bg-cream-dark rounded-lg p-4">
+              <EventMessages eventId={event.id} />
+            </div>
+          </section>
         </TabsContent>
 
         <TabsContent value="closure" className="space-y-6">
