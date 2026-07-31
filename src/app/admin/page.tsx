@@ -20,6 +20,7 @@ const ProvidersManager = dynamic(() => import('@/components/b2b/ProvidersManager
 const HACCPPanel = dynamic(() => import('@/components/b2b/HACCPPanel'), { ssr: false });
 const OCRScanner = dynamic(() => import('@/components/b2b/OCRScanner'), { ssr: false });
 const MenusManager = dynamic(() => import('@/components/b2b/MenusManager'), { ssr: false });
+const ExtrasManager = dynamic(() => import('@/components/b2b/ExtrasManager'), { ssr: false });
 
 export default function AdminPage() {
   const [panel, setPanel] = useState<string>('');
@@ -43,6 +44,7 @@ export default function AdminPage() {
     { name: 'Mesas', href: '/admin/mapa-mesas', segment: '/mapa-mesas' },
     { name: 'Catálogo', href: '/admin/catalog', segment: '/catalog' },
     { name: 'Menús', href: '/admin/menus', segment: '/menus' },
+    { name: 'Extras', href: '/admin/extras', segment: '/extras' },
     { name: 'Cocina', href: '/admin/cocina', segment: '/cocina' },
     { name: 'Personal', href: '/admin/staffing', segment: '/staffing' },
     { name: 'Stock', href: '/admin/stock', segment: '/stock' },
@@ -76,6 +78,7 @@ export default function AdminPage() {
   const isAgenda = isActive('/agenda');
   const isCatalog = isActive('/catalog');
   const isMenus = isActive('/menus');
+  const isExtras = isActive('/extras');
   const isCobros = isActive('/cobros');
   const isOperations = isActive('/operations');
   const isCocina = isActive('/cocina');
@@ -109,6 +112,7 @@ export default function AdminPage() {
         {isAgenda && <Suspense fallback={fallback}><CalendarView /></Suspense>}
         {isCatalog && <Suspense fallback={fallback}><CatalogCRUD /></Suspense>}
         {isMenus && <Suspense fallback={fallback}><MenusManager /></Suspense>}
+        {isExtras && <Suspense fallback={fallback}><ExtrasManager /></Suspense>}
         {isCobros && <Suspense fallback={fallback}><BillingPanel /></Suspense>}
         {isOperations && <Suspense fallback={fallback}><OperationsManager /></Suspense>}
         {isCocina && <Suspense fallback={fallback}><CocinaPanel /></Suspense>}

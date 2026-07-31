@@ -57,6 +57,111 @@ export interface PlanAlert {
   days_until_due: number;
 }
 
+// ── Extras Integration (WP-29) ───────────────────────────────────
+
+/**
+ * Calcula el total de extras seleccionados para un evento.
+ */
+export async function calculateExtrasTotal(eventId: string): Promise<number> {
+  const result = await querySingle<{ total: number }>(
+    `SELECT COALESCE(SUM(price_snapshot * qty), 0) AS total
+     FROM event_extras
+     WHERE event_id = $1`,
+    [eventId]
+  );
+  return Number(result?.total ?? 0);
+}
+
+/**
+ * Añade o actualiza el hito de extras en el plan de pagos.
+ * Según la configuración del negocio, puede ser:
+ * - 'incremento_resto': incrementa el importe del hito 'resto'
+ * - 'hito_extra': crea un hito separado de tipo 'extra'
+ */
+export async function addExtrasToPaymentPlan(
+  client: PoolClient,
+  eventId: string
+): Promise<{ milestone?: PaymentMilestone; total_extras: number }> {
+  const extrasTotal = await calculateExtrasTotal(eventId);
+  
+  // Si no hay extras, no hacer nada
+  if (extrasTotal <= 0) {
+    return { total_extras: 0 };
+  }
+
+  // Obtener el plan del evento
+  const plan = await querySingle<PaymentPlan>(
+    `SELECT * FROM payment_plans WHERE event_id = $1 AND status = 'active'`,
+    [eventId]
+  );
+  
+  if (!plan) {
+    // No hay plan activo, no podemos añadir extras
+    return { total_extras: extrasTotal };
+  }
+
+  // Obtener configuración de billing de extras
+  const settings = await querySingle<{ extras_billing_mode: string }>(
+    `SELECT extras_billing_mode FROM business_settings LIMIT 1`
+  );
+  const billingMode = settings?.extras_billing_mode || 'incremento_resto';
+
+  if (billingMode === 'hito_extra') {
+    // Modo hito separado: crear/actualizar hito de tipo 'extra'
+    const existingExtraMilestone = await querySingle<PaymentMilestone>(
+      `SELECT * FROM payment_milestones
+       WHERE plan_id = $1 AND kind = 'extra' AND status != 'anulado'`,
+      [plan.id]
+    );
+
+    if (existingExtraMilestone) {
+      // Actualizar importe existente
+      const milestone = await querySingle<PaymentMilestone>(
+        `UPDATE payment_milestones
+         SET amount = $1, label = $2
+         WHERE id = $3
+         RETURNING *`,
+        [extrasTotal, `Extras y decoración (${extrasTotal.toFixed(2)} €)`, existingExtraMilestone.id]
+      );
+      return { milestone: milestone!, total_extras: extrasTotal };
+    } else {
+      // Crear nuevo hito
+      const milestone = await querySingle<PaymentMilestone>(
+        `INSERT INTO payment_milestones (plan_id, kind, label, pct, amount, due_date, status)
+         VALUES ($1, 'extra', $2, 0, $3, NULL, 'pendiente')
+         RETURNING *`,
+        [plan.id, `Extras y decoración (${extrasTotal.toFixed(2)} €)`, extrasTotal]
+      );
+      return { milestone: milestone!, total_extras: extrasTotal };
+    }
+  } else {
+    // Modo incremento del resto: actualizar el hito 'resto'
+    const restoMilestone = await querySingle<PaymentMilestone>(
+      `SELECT * FROM payment_milestones
+       WHERE plan_id = $1 AND kind = 'resto' AND status != 'anulado'`,
+      [plan.id]
+    );
+
+    if (restoMilestone) {
+      // Recalcular el total del plan incluyendo extras
+      const planTotal = Number(plan.total) + extrasTotal;
+      const restoPct = 100 - 40; // asumimos 40% señal, 40 configurable
+      const newRestoAmount = Math.round(planTotal * (restoPct / 100) * 100) / 100;
+      
+      const milestone = await querySingle<PaymentMilestone>(
+        `UPDATE payment_milestones
+         SET amount = $1, label = $2
+         WHERE id = $3
+         RETURNING *`,
+        [newRestoAmount, `Resto + extras (${restoPct}% del total)`, restoMilestone.id]
+      );
+      return { milestone: milestone!, total_extras: extrasTotal };
+    }
+  }
+
+  return { total_extras: extrasTotal };
+}
+
 // ── Config ──────────────────────────────────────────────────────
 
 /**
