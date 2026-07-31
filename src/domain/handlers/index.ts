@@ -12,6 +12,7 @@ import { handleStockBelowMinimum } from './stockBelowMinimum';
 import { handleShiftConfirmedPreloadHours } from './shiftConfirmedPreloadHours';
 import { handleEventOperationallyClosed } from './eventOperationallyClosed';
 import { handleDepositPaid } from './depositPaid';
+import { handlePortalFrozen } from './portalFrozen';
 
 // ============================================================
 // Tipo de handler
@@ -30,7 +31,7 @@ const handlers: Record<string, EventHandler> = {
   'deposit.paid': handleDepositPaid,
   // TODO: Registrar aquí los handlers de otros WP
   // 'payment.milestone_due': handlePaymentMilestoneDue,
-  // 'portal.frozen': handlePortalFrozen,
+  'portal.frozen': handlePortalFrozen,
   // 'portal.updated': handlePortalUpdated,
   // 'menu.published': handleMenuPublished,
   // 'menu.price_changed': handleMenuPriceChanged,
