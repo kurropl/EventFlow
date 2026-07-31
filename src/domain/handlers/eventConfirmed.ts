@@ -176,7 +176,6 @@ export async function handleEventConfirmed(event: DomainEvent): Promise<void> {
   console.log(`[Handler] event.confirmed para evento ${event_id}`);
   console.log(`  Venue: ${venue_type}, Pax: ${pax}, Fecha: ${date}`);
 
-<<<<<<< HEAD
   // 1. Verificar idempotencia: si ya hay templates, no duplicar
   const hasExisting = await hasExistingTemplates(event_id);
   if (hasExisting) {
@@ -263,9 +262,8 @@ export async function handleEventConfirmed(event: DomainEvent): Promise<void> {
 
     console.log(`[Handler] Total: ${totalItems} items de plantilla creados para evento ${event_id}`);
   });
-}
-=======
-  // Emit event.confirmed.staffing to trigger staffing generation (WP-17)
+
+  // 4. Emit event.confirmed.staffing to trigger staffing generation (WP-17)
   const pool = getPool();
   const client = await pool.connect();
   try {
@@ -291,7 +289,4 @@ export async function handleEventConfirmed(event: DomainEvent): Promise<void> {
   } finally {
     client.release();
   }
-
-  // TODO: WP-15 - Generar plantillas automáticas por tipo de venue
 }
->>>>>>> kurropl/wp17-staffing-turnos

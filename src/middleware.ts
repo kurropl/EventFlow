@@ -91,6 +91,8 @@ function isPublicMethod(method: string, pathname: string): boolean {
   if (pathname.startsWith('/api/webhooks/') && method === 'POST') return true;
   // G8 (Sprint 3): contrato de cliente scoped por client_token, sin sesión.
   if (pathname.startsWith('/api/contract/public/')) return true;
+  // WP-25: Portal del cliente — autenticación por token, no por JWT admin.
+  if (pathname.startsWith('/api/portal/')) return true;
   return false;
 }
 

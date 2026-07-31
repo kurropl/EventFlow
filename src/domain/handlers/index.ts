@@ -11,6 +11,7 @@ import { handleIngredientPriceChanged } from './ingredientPriceChanged';
 import { handleStockBelowMinimum } from './stockBelowMinimum';
 import { handleShiftConfirmedPreloadHours } from './shiftConfirmedPreloadHours';
 import { handleEventOperationallyClosed } from './eventOperationallyClosed';
+import { handleDepositPaid } from './depositPaid';
 
 // ============================================================
 // Tipo de handler
@@ -26,8 +27,8 @@ const handlers: Record<string, EventHandler> = {
   'event.confirmed': handleEventConfirmed,
   'event.confirmed.staffing': handleEventConfirmedStaffing,
   'ingredient.price_changed': handleIngredientPriceChanged,
+  'deposit.paid': handleDepositPaid,
   // TODO: Registrar aquí los handlers de otros WP
-  // 'deposit.paid': handleDepositPaid,
   // 'payment.milestone_due': handlePaymentMilestoneDue,
   // 'portal.frozen': handlePortalFrozen,
   // 'portal.updated': handlePortalUpdated,

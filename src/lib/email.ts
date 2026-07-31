@@ -237,4 +237,59 @@ export const templates = {
       `,
     };
   },
+
+  async portalWelcome(
+    name: string,
+    email: string,
+    eventType: string,
+    eventDate: string,
+    guestCount: number,
+    portalUrl: string,
+    freezeDate: string | null
+  ) {
+    const config = await getBusinessConfig();
+    const formattedDate = eventDate
+      ? new Date(eventDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'por confirmar';
+    const formattedFreeze = freezeDate
+      ? new Date(freezeDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+      : null;
+    
+    return {
+      subject: `${config.business_name} - Tu portal de cliente está listo`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1A1A1A;">
+          <h2 style="color: #C9A84C;">Hola ${name},</h2>
+          <p>¡Tu ${eventType} del <strong>${formattedDate}</strong> está confirmado!</p>
+          <p>Hemos creado tu <strong>portal personalizado</strong> donde podrás gestionar todos los detalles de tu evento:</p>
+          
+          <div style="background: #FAF8F5; border-radius: 12px; padding: 20px; margin: 20px 0;">
+            <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+              <li>📋 <strong>Invitados:</strong> Gestiona tu lista y envía invitaciones</li>
+              <li>🪑 <strong>Mesas:</strong> Distribuye a tus invitados en el salón</li>
+              <li>🍽️ <strong>Menú:</strong> Selecciona variantes para cada invitado</li>
+              <li>✨ <strong>Extras:</strong> Añade centros de mesa, decoración y más</li>
+              <li>💬 <strong>Mensajes:</strong> Comunícate directamente con nuestro equipo</li>
+            </ul>
+          </div>
+
+          ${formattedFreeze ? `
+          <div style="background: #FEF3C7; border-radius: 8px; padding: 12px 16px; margin: 16px 0; border: 1px solid #F59E0B;">
+            <strong style="color: #D97706;">⚠️ Fecha límite:</strong> Las listas se congelarán el <strong>${formattedFreeze}</strong>.<br/>
+            Asegúrate de completar todos los cambios antes de esa fecha.
+          </div>
+          ` : ''}
+
+          <a href="${portalUrl}" style="display: inline-block; background: #C9A84C; color: white; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 20px 0; font-size: 16px;">Acceder a mi portal</a>
+          
+          <p style="color: #6B7280; font-size: 14px; margin-top: 24px;">
+            Guarda este enlace. Lo necesitarás para acceder a tu portal en cualquier momento.<br/>
+            Si tienes ${guestCount > 0 ? `${guestCount} invitados confirmados` : 'invitados pendientes de confirmar'}, puedes empezar a gestionarlos ahora.
+          </p>
+          <br/>
+          <p style="color: #6B7280;">Un saludo,<br/><strong>${config.business_name}</strong><br/>${config.address}</p>
+        </div>
+      `,
+    };
+  },
 };
