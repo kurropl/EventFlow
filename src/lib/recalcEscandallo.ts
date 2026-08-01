@@ -88,8 +88,7 @@ export async function checkMarginAlerts(
      (ci.pvp - esi.estimated_cost) / NULLIF(ci.pvp, 0) * 100 AS current_margin
      FROM event_shopping_items esi
      JOIN recipe_items ri ON ri.id = esi.recipe_item_id
-     JOIN recipes r ON r.id = ri.recipe_id
-     JOIN catalog_items ci ON ci.id = r.catalog_item_id
+     JOIN catalog_items ci ON ci.id = ri.catalog_item_id
      WHERE esi.event_id = $1 AND esi.frozen = false AND esi.estimated_cost > 0
        AND (ci.pvp - esi.estimated_cost) / NULLIF(ci.pvp, 0) * 100 < $2`,
     [eventId, minMarginPct]
