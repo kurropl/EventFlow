@@ -46,6 +46,30 @@ export interface ExcelRecipeData {
 }
 
 /**
+ * Decide si un candidato del catálogo es un match válido para el nombre
+ * del Excel. Exigencia: el nombre del Excel debe contener TODOS los tokens
+ * del candidato como palabras completas (candidato más específico) O ambos
+ * deben tener exactamente el mismo número de tokens con el Excel conten
+ * los tokens del candidato.
+ *
+ * Evita falsos positivos del substring simple: 'sal'→'ensaladilla',
+ * 'sal'→'salmón', 'mantequilla'→'mantequilla trufada' (el Excel es
+ * genérico: el ingrediente debe crearse con el precio de la ficha).
+ */
+export function isIngredientMatch(excelName: string, candidateName: string): boolean {
+  const normName = excelName.trim().toLowerCase();
+  const candName = String(candidateName || '').trim().toLowerCase();
+  if (!normName || !candName) return false;
+  if (normName === candName) return true;
+  const candTokens = candName.split(/\s+/).filter(Boolean);
+  const tokens = normName.split(/\s+/).filter(Boolean);
+  const excelHasAll = tokens.every(t => candName.split(/\s+/).includes(t));
+  const candidateHasAll = candTokens.every(t => normName.split(/\s+/).includes(t));
+  const sameTokenCount = candTokens.length === tokens.length;
+  return (excelHasAll && candidateHasAll) || (sameTokenCount && excelHasAll);
+}
+
+/**
  * Parsea el archivo Excel y extrae los datos de la receta
  */
 export function parseRecipeExcel(fileBuffer: Buffer): ExcelRecipeData {
@@ -194,14 +218,14 @@ export async function saveRecipeFromExcel(
       // o 'MANTEQUILLA'→'mantequilla trufada' cuando el Excel es genérico).
       const normName = ing.name.trim().toLowerCase();
       let ingResult = await client.query(
-        `SELECT id, unit_cost, cost_per_unit FROM ingredients WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1`,
+        `SELECT id, name, unit_cost, cost_per_unit FROM ingredients WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1`,
         [ing.name]
       );
 
       if (ingResult.rows.length === 0) {
         // Match por palabra completa (el nombre del Excel es un token del catálogo)
         ingResult = await client.query(
-          `SELECT id, unit_cost, cost_per_unit FROM ingredients
+          `SELECT id, name, unit_cost, cost_per_unit FROM ingredients
            WHERE LOWER(TRIM(name)) = $1
               OR LOWER(TRIM(name)) LIKE $2
               OR $1 LIKE ('%' || LOWER(TRIM(name)) || '%')
@@ -217,15 +241,8 @@ export async function saveRecipeFromExcel(
       // 'mantequilla'→'mantequilla trufada' (el Excel es genérico: el
       // ingrediente debe crearse con el precio de la ficha).
       if (ingResult.rows.length > 0) {
-        const candName = String(ingResult.rows[0].name || '').trim().toLowerCase();
-        const candTokens = candName.split(/\s+/).filter(Boolean);
-        const tokens = normName.split(/\s+/).filter(Boolean);
-        // El nombre del Excel debe contener TODOS los tokens del candidato
-        // (candidato más específico que el Excel) O ser idéntico por tokens.
-        const excelHasAll = tokens.every(t => candName.split(/\s+/).includes(t));
-        const candidateHasAll = candTokens.every(t => normName.split(/\s+/).includes(t));
-        const sameTokenCount = candTokens.length === tokens.length;
-        if (!(excelHasAll && candidateHasAll) && !(sameTokenCount && excelHasAll)) {
+        const candName = String(ingResult.rows[0].name || '');
+        if (!isIngredientMatch(ing.name, candName)) {
           ingResult.rows = [];
         }
       }

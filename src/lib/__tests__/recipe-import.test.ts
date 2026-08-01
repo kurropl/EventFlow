@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as XLSX from 'xlsx';
-import { parseRecipeExcel } from '@/lib/domain/recipeImport';
+import { parseRecipeExcel, isIngredientMatch } from '@/lib/domain/recipeImport';
 
 const R = (cols: [number, any][]) => {
   const a: any[] = Array(13).fill(null);
@@ -64,5 +64,25 @@ describe('Recipe Import - Parser', () => {
     const result = parseRecipeExcel(buffer);
     expect(result.name.length).toBeGreaterThan(0);  // may be default or parsed
     expect(result.ingredients.length).toBe(0);
+  });
+});
+
+describe('Recipe Import - isIngredientMatch (regresión WP)', () => {
+  it('match exacto HARINA TRIGO', () => {
+    expect(isIngredientMatch('HARINA TRIGO', 'HARINA TRIGO')).toBe(true);
+  });
+  it('rechaza sal -> ensaladilla (substring falso)', () => {
+    expect(isIngredientMatch('SAL', 'ensaladilla')).toBe(false);
+    expect(isIngredientMatch('SAL', 'salmón')).toBe(false);
+    expect(isIngredientMatch('SAL', 'salmón ahumado')).toBe(false);
+  });
+  it('rechaza mantequilla -> mantequilla trufada (Excel genérico)', () => {
+    expect(isIngredientMatch('MANTEQUILLA', 'mantequilla trufada')).toBe(false);
+  });
+  it('rechaza candidato más específico (crear con precio del Excel)', () => {
+    expect(isIngredientMatch('harina trigo', 'harina trigo premium')).toBe(false);
+  });
+  it('candidateName undefined no matchea (regresión MATCHED NAME undefined)', () => {
+    expect(isIngredientMatch('HARINA TRIGO', undefined as unknown as string)).toBe(false);
   });
 });
