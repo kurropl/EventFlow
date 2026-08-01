@@ -42,7 +42,8 @@ export async function GET(
        FROM event_shopping_items esi
        LEFT JOIN ingredients i ON i.id = esi.ingredient_id
        LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
-       LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
+       LEFT JOIN recipes r ON r.id = ri.recipe_id
+       LEFT JOIN catalog_items ci ON ci.id = r.catalog_item_id
        WHERE esi.event_id = $1
        ORDER BY esi.created_at, ci.name`,
       [eventId]
