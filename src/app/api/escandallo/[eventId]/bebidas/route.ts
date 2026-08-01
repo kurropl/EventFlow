@@ -151,13 +151,13 @@ export async function GET(
       [eventId]
     );
     
-    const coste_alimentos = escandallo?.total || 0;
+    const coste_alimentos = Number(escandallo?.total || 0);
     
     // Calculate margin
-    const subtotal = coste_alimentos + total_bebidas + (config.coste_personal || 0) + (config.coste_equipamiento || 0) + (config.coste_otros || 0);
-    const imprevistos = subtotal * ((config.pct_imprevistos || 5) / 100);
+    const subtotal = coste_alimentos + total_bebidas + Number(config.coste_personal || 0) + Number(config.coste_equipamiento || 0) + Number(config.coste_otros || 0);
+    const imprevistos = subtotal * (Number(config.pct_imprevistos || 5) / 100);
     const coste_total = subtotal + imprevistos;
-    const margen = coste_total * ((config.pct_margen || 25) / 100);
+    const margen = coste_total * (Number(config.pct_margen || 25) / 100);
     const pvp_total = coste_total + margen;
     const pvp_pax = pax > 0 ? pvp_total / pax : 0;
     
