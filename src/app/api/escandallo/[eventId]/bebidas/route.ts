@@ -147,7 +147,7 @@ export async function GET(
     
     // Get escandallo cost
     const escandallo = await querySingle<any>(
-      "SELECT COALESCE(SUM(el.costo_total), 0) as total FROM escandallo_lines el WHERE el.event_id = $1",
+      "SELECT COALESCE(SUM(el.costo_total), 0) as total FROM escandallo_lines el JOIN escandallos e ON e.id = el.escandallo_id WHERE e.event_id = $1",
       [eventId]
     );
     
