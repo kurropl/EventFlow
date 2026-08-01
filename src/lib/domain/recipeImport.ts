@@ -189,18 +189,45 @@ export async function saveRecipeFromExcel(
     // 3. Procesar ingredientes
     let imported = 0;
     for (const ing of recipeData.ingredients) {
-      // Buscar ingredient_id por nombre
+      // Buscar ingredient_id por nombre: primero exacto (sin acentos), luego
+      // coincidencia de PALABRA completa (evita 'SAL'→'ensaladilla'/'salmón'
+      // o 'MANTEQUILLA'→'mantequilla trufada' cuando el Excel es genérico).
+      const normName = ing.name.trim().toLowerCase();
       let ingResult = await client.query(
         `SELECT id, unit_cost, cost_per_unit FROM ingredients WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1`,
         [ing.name]
       );
 
       if (ingResult.rows.length === 0) {
-        // Búsqueda parcial
+        // Match por palabra completa (el nombre del Excel es un token del catálogo)
         ingResult = await client.query(
-          `SELECT id, unit_cost, cost_per_unit FROM ingredients WHERE name ILIKE $1 LIMIT 1`,
-          [`%${ing.name}%`]
+          `SELECT id, unit_cost, cost_per_unit FROM ingredients
+           WHERE LOWER(TRIM(name)) = $1
+              OR LOWER(TRIM(name)) LIKE $2
+              OR $1 LIKE ('%' || LOWER(TRIM(name)) || '%')
+           LIMIT 1`,
+          [normName, `${normName} %`]
         );
+      }
+
+      // Solo aceptar el match parcial si el candidato coincide casi por
+      // completo (mismo nombre o el candidato empieza por el nombre del
+      // Excel con algo más detrás: 'HARINA TRIGO' vs 'harina trigo premium').
+      // Evita falsos positivos: 'sal'→'ensaladilla', 'sal'→'salmón',
+      // 'mantequilla'→'mantequilla trufada' (el Excel es genérico: el
+      // ingrediente debe crearse con el precio de la ficha).
+      if (ingResult.rows.length > 0) {
+        const candName = String(ingResult.rows[0].name || '').trim().toLowerCase();
+        const candTokens = candName.split(/\s+/).filter(Boolean);
+        const tokens = normName.split(/\s+/).filter(Boolean);
+        // El nombre del Excel debe contener TODOS los tokens del candidato
+        // (candidato más específico que el Excel) O ser idéntico por tokens.
+        const excelHasAll = tokens.every(t => candName.split(/\s+/).includes(t));
+        const candidateHasAll = candTokens.every(t => normName.split(/\s+/).includes(t));
+        const sameTokenCount = candTokens.length === tokens.length;
+        if (!(excelHasAll && candidateHasAll) && !(sameTokenCount && excelHasAll)) {
+          ingResult.rows = [];
+        }
       }
 
       let ingId: string;
@@ -210,7 +237,7 @@ export async function saveRecipeFromExcel(
         ingId = ingResult.rows[0].id;
         unitCost = Number(ingResult.rows[0].unit_cost || ingResult.rows[0].cost_per_unit || 0);
       } else {
-        // No existe: crearlo automáticamente
+        // No existe: crearlo automáticamente con el precio del Excel
         const newIng = await client.query(
           `INSERT INTO ingredients (name, unit, unit_cost, cost_per_unit, active, created_at, updated_at) VALUES ($1, $2, $3, $3, true, NOW(), NOW()) RETURNING id`,
           [ing.name, ing.unit, ing.unitPrice]
