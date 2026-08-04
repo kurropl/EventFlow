@@ -67,3 +67,26 @@ Fuente de verdad del proceso: `docs/EventFlow-Spec-Agentes.md`.
 - **Idempotencia**: 2 ejecuciones seguidas dejan el mismo estado.
 - **Test**: `tests/traceability-seed.spec.ts` — 3/3 verdes.
 - **Extra**: UI del portal menu implementada (WP-28 quedó con placeholder).
+
+### AUDITORÍA-WORKTREES — Revisión de los 31 WPs con skills superpowers/mattpocock (2026-08-04)
+- **Método**: aplicadas las skills instaladas (verification-before-completion,
+  diagnosing-bugs, code-review) a todo el código mergeado de los worktrees.
+- **Smoke test de 70 rutas API contra prod**: 6 errores 500 → 0 corregidos.
+- **Migración 2026-08-04-audit-tablas-faltantes.sql** (aditiva, idempotente):
+  crea las 6 tablas que el código usaba pero NO existían en prod
+  (venues + seed de 2 salones, venue_bookings, inventory_commitments,
+  event_contracts, briefing_send_log, menu_cost_alerts, provider_invoices)
+  + extension btree_gist + events.venue_id + events.venue_type.
+- **ALTERs aditivos en prod**: payment_plans.status/updated_at,
+  payment_milestones.pct/last_reminder_at, admins.worker_id.
+- **Fixes de query**: workers 'role'→'roles'; event-orders
+  'e.service_type'→'e.venue_type'.
+- **Fixes de UI (React 423)**: toFixed() sobre strings de pg en
+  TrazabilidadPanel (formatTemp), CatalogCRUD (avgMargin), MenusManager
+  (price/cost/margin), OCRScanner (item.cost), StockManager
+  (old/new_price) → Number() defensivo.
+- **WP-06 no mergeable tal cual**: crea purchase_orders paralelo a
+  supplier_orders ya integrado en main (la UI /admin/cocina/compras usa
+  supplier_orders). Se documenta sin mergear.
+- **Verificación final**: 18/18 tests E2E, 51/51 unitarios, 0 errores 500
+  en smoke, dashboard seed sin errores de consola.
