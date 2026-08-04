@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     let sql = `SELECT DISTINCT ON (e.id)
       COALESCE(eo.id, gen_random_uuid()) as id,
       e.id as event_id, e.client_name, e.client_email, e.event_type,
-      e.guest_count, e.kids_count, e.event_date, e.selected_items, e.client_token, e.service_type,
+      e.guest_count, e.kids_count, e.event_date, e.selected_items, e.client_token, e.venue_type,
       c.name as client_name_fiscal, c.fiscal_nif,
       eo.confirmed_price, COALESCE(eo.status, e.status) as status,
       eo.tables_suggested, eo.waiters_suggested, eo.created_at

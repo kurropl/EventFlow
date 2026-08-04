@@ -9,7 +9,7 @@ import { queryMany } from '@/lib/db';
 export async function GET(_request: NextRequest) {
   try {
     const workers = await queryMany<any>(
-      `SELECT id, name, phone, role, active
+      `SELECT id, name, phone, roles, active
        FROM workers
        WHERE active = true
        ORDER BY name ASC`
