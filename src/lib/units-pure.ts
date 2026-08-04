@@ -51,6 +51,26 @@ export function formatCantidad(value: number, unit: string): string {
   return `${value.toFixed(u.dimension === 'count' ? 0 : 2)} ${u.label}`;
 }
 
+/**
+ * Normaliza la unidad de PRESENTACIÓN sin tocar el cálculo: 200000 g → 200 kg,
+ * 5000 ml → 5 l. Mantiene la cantidad en la unidad base si no llega al umbral
+ * de conversión o si la unidad no es convertible (ud, doc, etc.).
+ * Devuelve la cantidad y unidad legibles para mostrar en UI.
+ */
+export function humanizeUnit(value: number, unit: string): { qty: number; unit: string } {
+  const u = UNITS[unit];
+  if (!u) return { qty: value, unit };
+  // masa: g → kg cuando ≥ 1000 g
+  if (u.dimension === 'mass' && unit === 'g' && Math.abs(value) >= 1000) {
+    return { qty: value / 1000, unit: 'kg' };
+  }
+  // volumen: ml → l cuando ≥ 1000 ml
+  if (u.dimension === 'volume' && unit === 'ml' && Math.abs(value) >= 1000) {
+    return { qty: value / 1000, unit: 'l' };
+  }
+  return { qty: value, unit };
+}
+
 export function formatMoney(value: number): string {
   return `${value.toFixed(2)} €`;
 }

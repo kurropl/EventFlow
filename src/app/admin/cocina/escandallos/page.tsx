@@ -5,6 +5,7 @@ import Icon from '@/components/shared/Icon';
 import { cn } from '@/lib/utils';
 
 interface Event { id: string; client_name: string; event_date: string; guest_count: number; }
+interface EscandalloLinea { receta_id: string | null; receta_nombre: string; cantidad_original: number; cantidad_total: number; coste_unitario: number; coste_total: number; unidad: string; }
 interface EscandalloData { evento_id: string; evento_nombre: string; evento_fecha: string; pax: number; total_cost: number; coste_por_pax: number; total_ingredientes: number; total_simples: number; ingredientes: { nombre: string; cantidad_total: number; unidad: string; coste_total: number; platos: string[] }[]; }
 interface DrinkConfig {
   pct_bebedores: number; bebidas_por_persona: number;
@@ -46,9 +47,40 @@ export default function EscandallosPage() {
     if (!selectedEvent) { setEscandallo(null); return; }
     setLoading(true);
     try {
-      const res = await fetch(`/api/escandallo/event/${selectedEvent}`, { credentials: 'include' });
+      // Consume el listado de escandallos (formato con recetas/líneas) y
+      // filtra por evento seleccionado. Las cantidades ya vienen escaladas
+      // por pax y con unidades humanizadas (g→kg, ml→l).
+      const res = await fetch('/api/cocina/escandallos', { credentials: 'include' });
       const data = await res.json();
-      if (data.success) setEscandallo(data.data);
+      if (data.success) {
+        const rows = (data.data || []);
+        const row = rows.find((r: any) => r.event_id === selectedEvent);
+        if (row) {
+          const lineas = row.recetas || [];
+          // Agrupar por ingrediente/plato: cada línea de escandallo es un
+          // ingrediente de un plato (el.cantidad ya es total × pax).
+          const ingredientes: EscandalloData['ingredientes'] = lineas.map((l: EscandalloLinea) => ({
+            nombre: l.receta_nombre || 'Plato',
+            cantidad_total: Number(l.cantidad_total || 0),
+            unidad: l.unidad || 'ud',
+            coste_total: Number(l.coste_total || 0),
+            platos: l.receta_nombre ? [l.receta_nombre] : [],
+          }));
+          setEscandallo({
+            evento_id: row.event_id,
+            evento_nombre: row.evento_nombre,
+            evento_fecha: row.evento_fecha,
+            pax: Number(row.pax || 0),
+            total_cost: Number(row.total_cost || 0),
+            coste_por_pax: Number(row.cost_per_pax || 0),
+            total_ingredientes: ingredientes.length,
+            total_simples: ingredientes.length,
+            ingredientes,
+          });
+        } else {
+          setEscandallo(null);
+        }
+      }
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [selectedEvent]);
@@ -171,7 +203,7 @@ export default function EscandallosPage() {
                       {sorted.map((ing, i) => (
                         <tr key={i} className="hover:bg-cream/30">
                           <td className="px-2 py-1.5 font-medium text-ink">{ing.nombre}</td>
-                          <td className="px-2 py-1.5 text-right">{Number(ing.cantidad_total).toFixed(1)} <span className="text-ink-soft">{ing.unidad}</span></td>
+                          <td className="px-2 py-1.5 text-right">{Number(ing.cantidad_total).toLocaleString('es-ES', { maximumFractionDigits: 2 })} <span className="text-ink-soft">{ing.unidad}</span></td>
                           <td className="px-2 py-1.5 text-right font-medium">{Number(ing.coste_total).toFixed(2)}€</td>
                           <td className="px-2 py-1.5"><div className="flex flex-wrap gap-0.5">{ing.platos.map((p, j) => <span key={j} className="px-1 py-0.5 rounded bg-cream text-[8px] text-ink-soft">{p}</span>)}</div></td>
                         </tr>
