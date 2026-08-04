@@ -5,8 +5,8 @@ import Icon from '@/components/shared/Icon';
 import { cn } from '@/lib/utils';
 
 interface Event { id: string; client_name: string; event_date: string; guest_count: number; }
-interface EscandalloLinea { receta_id: string | null; receta_nombre: string; cantidad_original: number; cantidad_total: number; coste_unitario: number; coste_total: number; unidad: string; }
-interface EscandalloData { evento_id: string; evento_nombre: string; evento_fecha: string; pax: number; total_cost: number; coste_por_pax: number; total_ingredientes: number; total_simples: number; ingredientes: { nombre: string; cantidad_total: number; unidad: string; coste_total: number; platos: string[] }[]; }
+interface EscandalloLinea { line_id: string | null; receta_id: string | null; receta_nombre: string; cantidad_original: number; cantidad_total: number; coste_unitario: number; coste_total: number; unidad: string; }
+interface EscandalloData { evento_id: string; escandallo_id: string; evento_nombre: string; evento_fecha: string; pax: number; total_cost: number; coste_por_pax: number; total_ingredientes: number; total_simples: number; ingredientes: { line_id: string; nombre: string; cantidad_total: number; unidad: string; coste_unitario: number; coste_total: number; platos: string[] }[]; }
 interface DrinkConfig {
   pct_bebedores: number; bebidas_por_persona: number;
   pct_cerveza: number; pct_vino: number; pct_refresco: number; pct_agua: number;
@@ -38,6 +38,9 @@ export default function EscandallosPage() {
   const [bebidas, setBebidas] = useState<DrinkResult[]>([]);
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<EscandalloData['ingredientes']>([]);
+  const [escandalloId, setEscandalloId] = useState('');
   const [showBebidas, setShowBebidas] = useState(false);
   const [showMargen, setShowMargen] = useState(true);
 
@@ -57,17 +60,21 @@ export default function EscandallosPage() {
         const row = rows.find((r: any) => r.event_id === selectedEvent);
         if (row) {
           const lineas = row.recetas || [];
-          // Agrupar por ingrediente/plato: cada línea de escandallo es un
-          // ingrediente de un plato (el.cantidad ya es total × pax).
+          // Cada línea de escandallo es un ingrediente de un plato.
+          // el.cantidad ya es total × pax. Se guarda el line_id para editar.
           const ingredientes: EscandalloData['ingredientes'] = lineas.map((l: EscandalloLinea) => ({
+            line_id: l.line_id || '',
             nombre: l.receta_nombre || 'Plato',
             cantidad_total: Number(l.cantidad_total || 0),
             unidad: l.unidad || 'ud',
+            coste_unitario: Number(l.coste_unitario || 0),
             coste_total: Number(l.coste_total || 0),
             platos: l.receta_nombre ? [l.receta_nombre] : [],
           }));
+          setEscandalloId(row.id);
           setEscandallo({
             evento_id: row.event_id,
+            escandallo_id: row.id,
             evento_nombre: row.evento_nombre,
             evento_fecha: row.evento_fecha,
             pax: Number(row.pax || 0),
@@ -117,7 +124,52 @@ export default function EscandallosPage() {
     setConfig(prev => ({ ...prev, [field]: value }));
   };
 
-  const sorted = escandallo ? [...escandallo.ingredientes].sort((a, b) => b.coste_total - a.coste_total) : [];
+  // ── Edición de líneas de escandallo ──────────────────────────────
+  const startEditing = () => {
+    if (!escandallo) return;
+    setDraft(escandallo.ingredientes.map(i => ({ ...i })));
+    setEditing(true);
+  };
+
+  const updateDraft = (index: number, field: 'cantidad_total' | 'unidad' | 'coste_unitario', value: any) => {
+    setDraft(prev => prev.map((ing, i) => {
+      if (i !== index) return ing;
+      const next = { ...ing, [field]: field === 'unidad' ? value : Number(value || 0) };
+      // Previsualizar coste_total = cantidad × coste_unitario
+      next.coste_total = Number((next.cantidad_total * next.coste_unitario).toFixed(4));
+      return next;
+    }));
+  };
+
+  const saveEdits = async () => {
+    if (!draft.length || !escandalloId) return;
+    setSaving(true);
+    try {
+      const lines = draft
+        .filter(i => i.line_id)
+        .map(i => ({ line_id: i.line_id, cantidad: i.cantidad_total, unit: i.unidad, cost_unit: i.coste_unitario }));
+      const res = await fetch(`/api/cocina/escandallos/${escandalloId}/lines`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ lines }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEditing(false);
+        setEscandallo(prev => prev ? { ...prev, ingredientes: draft, total_cost: Number(data.data.total_cost || 0), coste_por_pax: Number(data.data.cost_per_pax || 0) } : prev);
+        loadBebidas(); // refresca el resumen de bebidas (usa coste_alimentos)
+      } else {
+        alert(data.error || 'Error al guardar');
+      }
+    } catch (e) { console.error(e); alert('Error al guardar'); }
+    setSaving(false);
+  };
+
+  const cancelEditing = () => { setEditing(false); setDraft([]); };
+
+  const current = editing ? draft : (escandallo ? escandallo.ingredientes : []);
+  const sorted = editing
+    ? [...draft].sort((a, b) => b.coste_total - a.coste_total)
+    : [...current].sort((a, b) => b.coste_total - a.coste_total);
   const totalBebidas = bebidas.reduce((s, b) => s + b.coste_total, 0);
 
   return (
@@ -187,7 +239,23 @@ export default function EscandallosPage() {
                     <span className="text-[11px] font-medium text-ink">Ingredientes × pax</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-cream text-ink-soft">{sorted.length} items</span>
                   </div>
-                  <span className="text-[11px] font-bold text-ink">{Number(escandallo.total_cost).toFixed(2)}€</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-ink">{Number(escandallo.total_cost).toFixed(2)}€</span>
+                    {!editing ? (
+                      <button onClick={startEditing} className="px-2 py-1 rounded-lg bg-gold text-white text-[9px] font-medium hover:bg-gold-light transition-colors">
+                        Editar
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <button onClick={saveEdits} disabled={saving} className="px-2 py-1 rounded-lg bg-success text-white text-[9px] font-medium hover:opacity-90 transition-colors">
+                          {saving ? 'Guardando...' : 'Guardar'}
+                        </button>
+                        <button onClick={cancelEditing} disabled={saving} className="px-2 py-1 rounded-lg bg-ink-soft text-white text-[9px] font-medium hover:opacity-90 transition-colors">
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                   <table className="w-full text-[10px]">
@@ -195,6 +263,7 @@ export default function EscandallosPage() {
                       <tr className="text-ink-soft border-b border-divider/50">
                         <th className="px-2 py-1.5 text-left font-medium">Ingrediente</th>
                         <th className="px-2 py-1.5 text-right font-medium">Cant.</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Coste unit.</th>
                         <th className="px-2 py-1.5 text-right font-medium">Coste</th>
                         <th className="px-2 py-1.5 text-left font-medium">Platos</th>
                       </tr>
@@ -203,12 +272,55 @@ export default function EscandallosPage() {
                       {sorted.map((ing, i) => (
                         <tr key={i} className="hover:bg-cream/30">
                           <td className="px-2 py-1.5 font-medium text-ink">{ing.nombre}</td>
-                          <td className="px-2 py-1.5 text-right">{Number(ing.cantidad_total).toLocaleString('es-ES', { maximumFractionDigits: 2 })} <span className="text-ink-soft">{ing.unidad}</span></td>
-                          <td className="px-2 py-1.5 text-right font-medium">{Number(ing.coste_total).toFixed(2)}€</td>
+                          <td className="px-2 py-1.5 text-right">
+                            {editing ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <input
+                                  type="number" step="any" min="0"
+                                  value={ing.cantidad_total}
+                                  onChange={e => updateDraft(i, 'cantidad_total', e.target.value)}
+                                  className="w-20 px-1 py-0.5 rounded border border-divider text-right text-[10px]"
+                                />
+                                <select
+                                  value={ing.unidad}
+                                  onChange={e => updateDraft(i, 'unidad', e.target.value)}
+                                  className="w-14 px-1 py-0.5 rounded border border-divider text-[10px]"
+                                >
+                                  {['kg', 'g', 'l', 'ml', 'ud', 'doc'].map(u => <option key={u} value={u}>{u}</option>)}
+                                </select>
+                              </div>
+                            ) : (
+                              <span>{Number(ing.cantidad_total).toLocaleString('es-ES', { maximumFractionDigits: 2 })} <span className="text-ink-soft">{ing.unidad}</span></span>
+                            )}
+                          </td>
+                          <td className="px-2 py-1.5 text-right">
+                            {editing ? (
+                              <input
+                                type="number" step="any" min="0"
+                                value={ing.coste_unitario}
+                                onChange={e => updateDraft(i, 'coste_unitario', e.target.value)}
+                                className="w-16 px-1 py-0.5 rounded border border-divider text-right text-[10px]"
+                              />
+                            ) : (
+                              <span className="text-ink-soft">{Number(ing.coste_unitario).toLocaleString('es-ES', { maximumFractionDigits: 4 })} €</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-1.5 text-right font-medium">{Number(ing.coste_total).toLocaleString('es-ES', { maximumFractionDigits: 2 })}€</td>
                           <td className="px-2 py-1.5"><div className="flex flex-wrap gap-0.5">{ing.platos.map((p, j) => <span key={j} className="px-1 py-0.5 rounded bg-cream text-[8px] text-ink-soft">{p}</span>)}</div></td>
                         </tr>
                       ))}
                     </tbody>
+                    {editing && (
+                      <tfoot>
+                        <tr className="bg-cream/50 font-medium">
+                          <td colSpan={3} className="px-2 py-1 text-right text-ink-soft">TOTAL ({sorted.length} líneas)</td>
+                          <td className="px-2 py-1 text-right text-ink font-bold">
+                            {sorted.reduce((s, i) => s + (i.coste_total || 0), 0).toLocaleString('es-ES', { maximumFractionDigits: 2 })}€
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               </div>
