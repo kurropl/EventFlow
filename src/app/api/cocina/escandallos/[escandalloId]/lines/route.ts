@@ -92,7 +92,6 @@ export async function PUT(
           sets.push(`cost_total = ROUND($${idx++}::numeric, 4)`);
           vals.push(cantidad * costUnit);
         }
-        vals.push(line.line_id, escandalloId);
 
         await client.query(
           `UPDATE escandallo_lines SET ${sets.join(', ')}
