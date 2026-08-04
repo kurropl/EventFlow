@@ -90,3 +90,25 @@ Fuente de verdad del proceso: `docs/EventFlow-Spec-Agentes.md`.
   supplier_orders). Se documenta sin mergear.
 - **Verificación final**: 18/18 tests E2E, 51/51 unitarios, 0 errores 500
   en smoke, dashboard seed sin errores de consola.
+
+### ESCANDALLOS-CONGELADO — Módulo de escandallos FROZEN (2026-08-04)
+- **Decisión de usuario**: la parte de escandallos queda EDITABLE y se
+  declara CONGELADA — no se tocará más en ninguna iteración.
+- **Funcionalidad final (cerrada)**:
+  - Página `/admin/cocina/escandallos`: selección de evento, KPIs,
+    tabla de ingredientes × pax, motor de bebidas, panel Margen/PVP.
+  - **Edición inline**: botón Editar → inputs de cantidad, unidad
+    (kg/g/l/ml/ud/doc) y coste unitario con previsualización de coste
+    total (cantidad × coste unitario) y total de líneas; Guardar/Cancelar.
+  - PUT `/api/cocina/escandallos/[escandalloId]/lines`: actualiza líneas
+    en transacción y recalcula `cost_total` por línea + `total_cost` y
+    `cost_per_pax` del escandallo (pax del evento).
+  - Cantidades humanizadas (g→kg, ml→l) solo en presentación.
+- **Verificación**: edición probada en prod (20→25 kg HARINA: total
+  1.454,79→1.459,94 €, persistido y restaurado), 19/19 E2E verdes.
+- **⚠️ FROZEN**: cualquier cambio futuro en escandallos requiere
+  autorización explícita del usuario. Archivos cubiertos:
+  `src/app/admin/cocina/escandallos/page.tsx`,
+  `src/app/api/cocina/escandallos/route.ts`,
+  `src/app/api/cocina/escandallos/[escandalloId]/lines/route.ts`,
+  `src/lib/units-pure.ts` (humanizeUnit).
