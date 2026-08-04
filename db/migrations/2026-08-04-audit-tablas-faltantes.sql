@@ -117,9 +117,27 @@ CREATE TABLE IF NOT EXISTS menu_cost_alerts (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ── 7. provider_invoices (finanzas proveedores) ────────────────
+CREATE TABLE IF NOT EXISTS provider_invoices (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider_id  UUID REFERENCES providers(id) ON DELETE CASCADE,
+    concept      TEXT,
+    amount       NUMERIC(12,2) NOT NULL DEFAULT 0,
+    issue_date   DATE NOT NULL DEFAULT CURRENT_DATE,
+    due_date     DATE,
+    status       TEXT NOT NULL DEFAULT 'pendiente' CHECK (status IN ('pendiente','pagado','vencido')),
+    proof_url    TEXT,
+    paid_at      TIMESTAMPTZ,
+    notes        TEXT,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_provider_invoices_provider ON provider_invoices(provider_id);
+CREATE INDEX IF NOT EXISTS idx_provider_invoices_status ON provider_invoices(status);
+
 -- ── Verificación ─────────────────────────────────────────────────
 SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public'
   AND table_name IN ('venue_bookings','inventory_commitments','event_contracts',
-                     'briefing_send_log','menu_cost_alerts')
+                     'briefing_send_log','menu_cost_alerts','provider_invoices')
 ORDER BY table_name;
