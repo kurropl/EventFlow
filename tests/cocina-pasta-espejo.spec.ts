@@ -133,4 +133,70 @@ test.describe('Cocina — Receta PASTA ESPEJO (importada de Excel)', () => {
     const body = await page.locator('body').innerText();
     expect(body.length).toBeGreaterThan(0);
   });
+
+  test('API: listado escandallos con cantidades humanizadas (kg no g)', async ({ page }) => {
+    await loginAsAdmin(page);
+    const res = await page.request.get(`${BASE}/api/cocina/escandallos`);
+    expect(res.ok(), 'GET /api/cocina/escandallos').toBeTruthy();
+    const json = await res.json();
+    expect(json.success).toBeTruthy();
+    const rows = json.data || [];
+    const row = rows.find((r: any) => (r.evento_nombre || '').includes('Test PASTA ESPEJO'));
+    expect(row, 'escandallo del evento Test PASTA ESPEJO').toBeTruthy();
+    const lineas = row.recetas || [];
+    expect(lineas.length, '5 líneas de ingredientes').toBe(5);
+
+    // Verificar unidades humanizadas: kg (no 200000 g), ud intacta
+    const lineasKg = lineas.filter((l: any) => l.unidad === 'kg');
+    expect(lineasKg.length, 'líneas en kg').toBeGreaterThan(0);
+    for (const l of lineasKg) {
+      expect(l.cantidad_total, `cantidad ${l.receta_nombre} en kg`).toBeLessThan(1000);
+    }
+    // Ninguna línea debe ser g con cantidad ≥ 1000 (se humaniza a kg)
+    for (const l of lineas) {
+      if (l.unidad === 'g') expect(l.cantidad_total).toBeLessThan(1000);
+      if (l.unidad === 'ml') expect(l.cantidad_total).toBeLessThan(1000);
+    }
+    // Totales correctos (sin doble escalado): la suma de costes = total
+    const sumCostes = lineas.reduce((s: number, l: any) => s + Number(l.coste_total || 0), 0);
+    expect(sumCostes).toBeCloseTo(Number(row.total_cost), 1);
+  });
+
+  test('API: escandallo por evento con bebidas y márgenes (PVP/pax)', async ({ page }) => {
+    await loginAsAdmin(page);
+    const evRes = await page.request.get(`${BASE}/api/events?limit=50`);
+    const evJson = await evRes.json();
+    const events = evJson.data || evJson.events || [];
+    const evento = events.find((e: any) => (e.client_name || '').includes('Test PASTA ESPEJO'));
+    expect(evento, 'evento Test PASTA ESPEJO').toBeTruthy();
+
+    const bebRes = await page.request.get(`${BASE}/api/escandallo/${evento.id}/bebidas`);
+    expect(bebRes.ok(), 'GET bebidas por evento').toBeTruthy();
+    const beb = await bebRes.json();
+    expect(beb.success, 'bebidas success').toBeTruthy();
+
+    const r = beb.data?.resumen || {};
+    // coste_alimentos = Σ escandallo_lines = 1.454,79 € (100 pax PASTA ESPEJO)
+    expect(Number(r.coste_alimentos || 0), 'coste_alimentos').toBeCloseTo(1454.79, 1);
+    // coste_bebidas > 0 (motor de bebidas con productos activos)
+    expect(Number(r.coste_bebidas || 0)).toBeGreaterThan(0);
+    // subtotal = alimentos + bebidas + personal + equipamiento + otros
+    expect(Number(r.subtotal || 0)).toBeCloseTo(
+      Number(r.coste_alimentos) + Number(r.coste_bebidas) +
+      Number(r.coste_personal || 0) + Number(r.coste_equipamiento || 0) + Number(r.coste_otros || 0),
+      1
+    );
+    // imprevistos = subtotal × 5%
+    expect(Number(r.imprevistos || 0)).toBeCloseTo(Number(r.subtotal) * 0.05, 1);
+    // coste_total = subtotal + imprevistos
+    expect(Number(r.coste_total || 0)).toBeCloseTo(Number(r.subtotal) + Number(r.imprevistos), 1);
+    // margen = coste_total × 25%
+    expect(Number(r.margen || 0)).toBeCloseTo(Number(r.coste_total) * 0.25, 1);
+    // pvp_pax = pvp_total / 100 pax
+    expect(Number(r.pvp_pax || 0)).toBeCloseTo(Number(r.pvp_total) / 100, 1);
+    // valores numéricos (no NaN)
+    for (const key of ['subtotal', 'coste_total', 'margen', 'pvp_total', 'pvp_pax']) {
+      expect(Number.isNaN(Number(r[key])), `${key} no NaN`).toBe(false);
+    }
+  });
 });
