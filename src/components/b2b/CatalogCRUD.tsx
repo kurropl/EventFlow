@@ -261,7 +261,7 @@ export default function CatalogCRUD() {
         stats={
           <StatStrip items={[
             { label: 'Total', value: totalItems, accent: true },
-            { label: 'Margen medio', value: `${avgMargin.toFixed(0)}%` },
+            { label: 'Margen medio', value: `${Number(avgMargin || 0).toFixed(0)}%` },
             { label: 'Activos', value: activeItems },
           ]} />
         }

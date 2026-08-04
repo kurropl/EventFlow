@@ -313,7 +313,7 @@ export default function OCRScanner({ eventId, onResult }: OCRScannerProps) {
                       {item.expiry && <span className="text-[10px] text-red-500">Cad: {item.expiry}</span>}
                     </div>
                     <span className="text-stone-500 text-xs whitespace-nowrap">
-                      {item.quantity} {item.unit} {item.cost > 0 && `— ${item.cost.toFixed(2)}€`}
+                      {item.quantity} {item.unit} {Number(item.cost) > 0 && `— ${Number(item.cost).toFixed(2)}€`}
                     </span>
                   </div>
                 );

@@ -248,9 +248,11 @@ function formatDate(d: string | null | undefined) {
   }
 }
 
-function formatTemp(t: number | null | undefined) {
-  if (t === null || t === undefined) return '—';
-  return `${t.toFixed(1)}°C`;
+function formatTemp(t: number | string | null | undefined) {
+  if (t === null || t === undefined || t === '') return '—';
+  const n = Number(t);
+  if (Number.isNaN(n)) return '—';
+  return `${n.toFixed(1)}°C`;
 }
 
 /* ------------------------------------------------------------------ */

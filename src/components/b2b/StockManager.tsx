@@ -2125,9 +2125,9 @@ export default function StockManager() {
                   {priceHistory.slice(0, 10).map((entry, idx) => (
                     <div key={idx} className="flex items-center justify-between py-2 border-b border-[#F2F2F5] last:border-b-0">
                       <div className="flex items-center gap-2 text-[13px]">
-                        <span className="text-[#6B7280]">{entry.old_price?.toFixed(2) || '0.00'} EUR</span>
+                        <span className="text-[#6B7280]">{Number(entry.old_price) ? Number(entry.old_price).toFixed(2) : '0.00'} EUR</span>
                         <Icon name="arrowRight" className="w-3 h-3 text-[#9CA3AF]" />
-                        <span className="font-semibold text-[#1A1A1A]">{entry.new_price?.toFixed(2) || '0.00'} EUR</span>
+                        <span className="font-semibold text-[#1A1A1A]">{Number(entry.new_price) ? Number(entry.new_price).toFixed(2) : '0.00'} EUR</span>
                       </div>
                       <span className="text-[11px] text-[#9CA3AF]">
                         {entry.created_at ? new Date(entry.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}

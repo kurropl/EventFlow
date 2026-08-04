@@ -396,13 +396,13 @@ export default function MenusManager() {
                 </p>
                 <div className="flex gap-4 mt-2 text-sm">
                   <span className="text-ink">
-                    <strong>€{menu.price_per_pax.toFixed(2)}</strong>/pax
+                    <strong>€{Number(menu.price_per_pax || 0).toFixed(2)}</strong>/pax
                   </span>
                   <span className="text-ink-soft">
-                    Coste: €{menu.cost_per_pax.toFixed(2)}
+                    Coste: €{Number(menu.cost_per_pax || 0).toFixed(2)}
                   </span>
-                  <span className={menu.margin_pct >= 20 ? 'text-green-600' : 'text-red-600'}>
-                    Margen: {menu.margin_pct.toFixed(1)}%
+                  <span className={Number(menu.margin_pct) >= 20 ? 'text-green-600' : 'text-red-600'}>
+                    Margen: {Number(menu.margin_pct || 0).toFixed(1)}%
                   </span>
                 </div>
               </div>
