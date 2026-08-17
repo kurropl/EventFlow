@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
+import { validarAjuste } from '@/lib/domain/regularizaciones';
+import { sanitizeError } from '@/lib/security';
 
 function auth(r: NextRequest) {
   const t = r.cookies.get('admin_session')?.value || r.cookies.get('eventflow_token')?.value;
