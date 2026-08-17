@@ -178,12 +178,13 @@ export async function generateProductionSheet(
   // Obtener todos los items del escandallo con sus ingredientes
   const items = await pool.query(
     `SELECT esi.id AS item_id, esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit,
-            esi.estimated_cost, esi.category, esi.recipe_item_id,
+            esi.estimated_cost, ci.category AS category, esi.recipe_item_id,
             ri.quantity AS recipe_qty, ri.unit AS recipe_unit
      FROM event_shopping_items esi
      LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
+     LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
      WHERE esi.event_id = $1 AND esi.frozen = false
-     ORDER BY esi.category, esi.ingredient_name`,
+     ORDER BY ci.category, esi.ingredient_name`,
     [eventId]
   );
 
@@ -298,10 +299,11 @@ export async function generateLoadingSheet(
   }
 
   const items = await pool.query(
-    `SELECT esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit, esi.category, esi.id,
+    `SELECT esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit, ci.category AS category, esi.id,
             ri.quantity AS recipe_qty, i.is_dry, i.is_equipment
      FROM event_shopping_items esi
      LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
+     LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
      LEFT JOIN ingredients i ON i.id = esi.ingredient_id
      WHERE esi.event_id = $1 AND esi.frozen = false`,
     [eventId]
@@ -427,8 +429,10 @@ export async function generateLogisticsSheet(
 
   // 1. Equipamiento: calcular needed desde equipment_rules + DEFAULT_EQUIPMENT_MAP
   const items = await pool.query(
-    `SELECT DISTINCT esi.category, esi.id
+    `SELECT DISTINCT ci.category AS category, esi.id
      FROM event_shopping_items esi
+     LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
+     LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
      WHERE esi.event_id = $1 AND esi.frozen = false`,
     [eventId]
   );
