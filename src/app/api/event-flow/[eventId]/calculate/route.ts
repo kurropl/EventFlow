@@ -30,7 +30,7 @@ export async function POST(
     const guestCount = Number((ev.rows[0] as any).guest_count) || 1;
     const kidsCount = Number((ev.rows[0] as any).kids_count) || 0;
     const adultCount = Math.max(1, guestCount - kidsCount);
-    const serviceType: ServiceType = (ev.rows[0] as any).service_type === 'coctel' ? 'coctel' : 'menu';
+    const serviceType: ServiceType = (ev.rows[0] as any).event_type === 'coctel' || (ev.rows[0] as any).event_type === 'coctel-cena' ? 'coctel' : 'menu';
     const ratios = await getOperationRatios();
     const adultTables = calcMesas(adultCount, ratios);
     const kidsTables = calcMesasInfantiles(kidsCount, ratios);

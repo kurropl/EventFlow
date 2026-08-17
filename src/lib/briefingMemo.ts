@@ -34,9 +34,8 @@ const fmtTime = (d: string | null) => {
 export async function generateEventMemos(eventId: string): Promise<EventMemos | null> {
   const ev = await querySingle<any>(
     `SELECT id, client_name, event_date, guest_count, kids_count,
-            COALESCE(service_type,'menu') AS service_type,
             COALESCE(venue_type,'benitez') AS venue_type, location,
-            linen_type, centerpiece, bar_hours, notes, protocol_notes
+            linen_type, centerpiece, bar_hours, notes, protocol_notes, event_type
      FROM events WHERE id = $1`,
     [eventId]
   );
@@ -81,7 +80,7 @@ export async function generateEventMemos(eventId: string): Promise<EventMemos | 
       `📍 Lugar: ${lugar}`,
       `🕒 Horario: ${horario}${a.zona ? ` · Zona: ${a.zona}` : ''}`,
       `👤 Puesto: ${a.role}${a.uniform ? ` · Uniforme: ${a.uniform}` : ''}`,
-      `🍽️ Servicio: ${ev.service_type === 'coctel' ? 'cóctel' : 'menú'} · ${ev.guest_count} comensales`,
+      `🍽️ Servicio: ${ev.event_type === 'coctel' || ev.event_type === 'coctel-cena' ? 'cóctel' : 'menú'} · ${ev.guest_count} comensales`,
       menu.length ? `📋 Menú: ${menu.join(', ')}` : null,
       intolerancias.length ? `⚠️ Intolerancias/alérgenos del menú: ${intolerancias.join(', ')}` : null,
       `🍸 Barra: ${barra}`,

@@ -48,15 +48,14 @@ export interface PackCalculation {
 export async function calculatePacks(eventId: string): Promise<PackCalculation | null> {
   // 1. Obtener datos del evento
   const event = await querySingle<any>(
-    `SELECT id, client_name, guest_count, kids_count, 
-            COALESCE(service_type, 'menu') as service_type
+    `SELECT id, client_name, guest_count, kids_count, event_type
      FROM events WHERE id = $1`,
     [eventId]
   );
   if (!event) return null;
 
   const pax = (Number(event.guest_count) || 0) + (Number(event.kids_count) || 0);
-  const serviceType: ServiceType = event.service_type === 'coctel' ? 'coctel' : 'menu';
+  const serviceType: ServiceType = event.event_type === 'coctel' || event.event_type === 'coctel-cena' ? 'coctel' : 'menu';
 
   // 2. Calcular número de camareros
   const numCamareros = calcCamareros(pax, serviceType);

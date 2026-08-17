@@ -81,9 +81,8 @@ const money = (n: number | undefined | null) => Math.round((Number(n) || 0) * 10
 export async function buildCocinaGuia(eventId: string): Promise<CocinaGuia | null> {
   const ev = await querySingle<any>(
     `SELECT id, client_name, event_date, guest_count, kids_count, status,
-            COALESCE(service_type,'menu')  AS service_type,
             COALESCE(venue_type,'benitez') AS venue_type,
-            location, venue_pdf_url, stock_deducted
+            location, venue_pdf_url, stock_deducted, event_type
      FROM events WHERE id = $1`,
     [eventId]
   );
@@ -91,7 +90,9 @@ export async function buildCocinaGuia(eventId: string): Promise<CocinaGuia | nul
 
   const venue: VenueType = ev.venue_type === 'externo' ? 'externo' : 'benitez';
   const esExterno = venue === 'externo';
-  const serviceType: ServiceType = ev.service_type === 'coctel' ? 'coctel' : 'menu';
+  // service_type se deriva de event_type (columna real; service_type no existe)
+  const serviceType: ServiceType =
+    ev.event_type === 'coctel' || ev.event_type === 'coctel-cena' ? 'coctel' : 'menu';
   const adultos = Number(ev.guest_count) || 0;
   const ninos = Number(ev.kids_count) || 0;
   const ratios = await getOperationRatios();

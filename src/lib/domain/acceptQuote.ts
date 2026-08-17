@@ -51,7 +51,7 @@ export class AcceptQuoteError extends Error {
 export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
   return transaction(async (client) => {
     const quote = (await client.query(
-      `SELECT q.*, e.guest_count, e.event_date, e.service_type, e.client_id
+      `SELECT q.*, e.guest_count, e.event_date, e.event_type, e.client_id
        FROM quotes q JOIN events e ON e.id = q.event_id
        WHERE q.id = $1`,
       [quoteId]
@@ -112,7 +112,7 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
 
     if (!eventOrder) {
       const guests = Number(quote.guest_count) || 0;
-      const serviceType: ServiceType = quote.service_type === 'coctel' ? 'coctel' : 'menu';
+      const serviceType: ServiceType = quote.event_type === 'coctel' || quote.event_type === 'coctel-cena' ? 'coctel' : 'menu';
       const tablesSuggested = Math.max(1, calcMesas(guests, ratios));
       const waitersSuggested = Math.max(1, calcCamareros(guests, serviceType, ratios));
 
@@ -219,7 +219,7 @@ export async function acceptQuote(quoteId: string): Promise<AcceptQuoteResult> {
     // idempotente vía upsert — antes solo se generaba si NO existía ninguna
     // línea, dejando cocinero/metre obsoletos tras un cambio de comensales)
     const guests = Number(quote.guest_count) || 0;
-    const serviceType: ServiceType = quote.service_type === 'coctel' ? 'coctel' : 'menu';
+    const serviceType: ServiceType = quote.event_type === 'coctel' || quote.event_type === 'coctel-cena' ? 'coctel' : 'menu';
     if (guests > 0) {
       await upsertStaffingLines(client, eventId, guests, serviceType, ratios);
     }

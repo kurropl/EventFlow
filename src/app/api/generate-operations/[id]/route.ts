@@ -166,7 +166,7 @@ export async function POST(
     }
 
     // Calculate staff
-    const serviceType: ServiceType = event.service_type === 'coctel' ? 'coctel' : 'menu';
+    const serviceType: ServiceType = event.event_type === 'coctel' || event.event_type === 'coctel-cena' ? 'coctel' : 'menu';
     const waitersNeeded = calcCamareros(guestCount, serviceType, ratios);
 
     // Execute all inserts in a single transaction for atomicity

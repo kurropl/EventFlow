@@ -94,7 +94,7 @@ async function getEventData(eventId: string): Promise<EventData | null> {
       e.venue_type,
       e.location,
       COALESCE(e.total_pvp, 0) as total_pvp,
-      COALESCE(e.service_type, 'menu') as service_type
+      e.event_type
      FROM events e
      WHERE e.id = $1`,
     [eventId]
@@ -389,7 +389,7 @@ function generateFreezeSummaryHtml(
             ` : ''}
             <div>
               <span style="color: #6B7280; font-size: 12px;">Tipo de servicio</span>
-              <p style="margin: 2px 0 0 0; font-weight: 600; text-transform: capitalize;">${eventData.service_type}</p>
+              <p style="margin: 2px 0 0 0; font-weight: 600; text-transform: capitalize;">${eventData.event_type === 'coctel' || eventData.event_type === 'coctel-cena' ? 'cóctel' : 'menú'}</p>
             </div>
           </div>
         </div>

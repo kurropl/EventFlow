@@ -110,7 +110,7 @@ export async function generateServiceSheet(eventId: string): Promise<ServiceShee
   const eventResult = await pool.query(
     `SELECT id, client_name, event_date, guest_count, kids_count,
             COALESCE(venue_type, 'benitez') AS venue_type,
-            location, status, COALESCE(service_type, 'menu') AS service_type
+            location, status, event_type
      FROM events WHERE id = $1`,
     [eventId]
   );
@@ -284,7 +284,8 @@ export async function generateServiceSheet(eventId: string): Promise<ServiceShee
       venue_type: ev.venue_type,
       location: ev.location,
       status: ev.status,
-      service_type: ev.service_type,
+      // service_type se deriva de event_type (columna real; service_type no existe)
+      service_type: ev.event_type === 'coctel' || ev.event_type === 'coctel-cena' ? 'coctel' : 'menu',
     },
     timing: timingResult.rows.map((t: any) => ({
       id: t.id,
