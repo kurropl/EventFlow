@@ -28,6 +28,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# gentle-ai / pi local config (machine-specific)
+/.pi/
+/.seed-state.json
+
+# gentle-ai state
+.gentle-ai/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
