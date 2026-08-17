@@ -339,23 +339,30 @@ CERRADO OPERATIVO (OPC-3/OPC-4):
 
 **Lo que YA hace hoy `closeEvent` (src/lib/domain/closeEvent.ts):** freezeEscandallo + deductStockForEvent + setEventStatus('completed' = cerrado_operativo). **Lo que falta:** FIFO/FEFO por lote, vuelta de comida, food cost real persistido.
 
-### 7.3 Cierre CONTABLE (definitivo — SOLO cuando se cobra EN SU TOTALIDAD)
+### 7.3 Cierre CONTABLE (definitivo — cuando se cobra el evento al cliente)
+
+**Flujo real de cobro de un evento (decisión usuario — CORREGIDO):**
 
 ```
-CERRADO CONTABLE (OPC-5):
-├── Se ejecuta SOLO cuando el evento está cobrado EN SU TOTALIDAD
-│   (todas las facturas del evento pagadas, balance_due = 0)
-├── La señal NO cuenta: se paga ANTES de reservar (decisión usuario)
-├── Emite factura(s) pendientes (createInvoice)
-├── Marca hitos pagados → estado 'paid' de hitos
-├── Cierre económico: ventas, cobros, desviación final
-└── El evento queda cerrado definitivamente (cerrado_contable)
+1. SEÑAL (cobro parcial) → se cobra ANTES de reservar el evento
+   · Se descuenta del total del evento (payments_total)
+2. EJECUCIÓN del evento
+3. FACTURA AL CLIENTE → se genera por el evento realizado
+   · La señal ya cobrada se descuenta (balance_due = total − payments_total)
+4. PAGO de esa factura al cliente → COBRO TOTAL
+   · Esto es lo que habilita el cierre contable
 ```
 
-**Regla de cobro (decisión usuario):**
-- **La señal** se cobra antes de reservar el evento (no es "cobro parcial" del cierre — es la reserva)
-- **El cierre contable exige cobro TOTAL**: todas las facturas del evento pagadas (balance_due = 0)
-- Mientras quede saldo pendiente, el evento permanece `cerrado_operativo`
+**Criterio de cierre contable (OPC-5) — CORREGIDO:**
+- El cierre contable se habilita cuando **la factura al cliente del evento está pagada** (`invoices.status = 'paid'`, `paid_at` no nulo, `balance_due = 0`)
+- **La señal SÍ cuenta como cobro parcial**: se descuenta del total en la factura (payments_total)
+- **NO cuenta para el cierre**: las facturas de GASTOS (provider_invoices — proveedores, compras bulk, equipamiento). Son otro tipo de factura y no definen el cobro del evento
+- Mientras la factura al cliente tenga `balance_due > 0`, el evento permanece `cerrado_operativo`
+
+**Sobre facturas que agrupan varios eventos (matiz usuario):**
+- En la práctica hay facturas que no se vinculan 1:1 a un solo evento (compras bulk, equipamiento — gastos, no cobros)
+- El cobro TOTAL se define SIEMPRE por la factura al cliente del evento realizado, no por las facturas de gastos
+- Si una factura al cliente agrupa varios eventos (p.ej. un cliente corporativo), el criterio se aplica sobre la factura emitida para el evento (o su parte prorrateada si agrupa varios) — se define en finanzas
 
 ### 7.3bis Costes directos vs compartidos (gastos que no son de un solo evento)
 
@@ -417,9 +424,9 @@ ALTER TABLE events ADD COLUMN food_cost_teorico numeric;-- del escandallo congel
 
 ### 7.5 Verificación requerida
 
-- **Criterio de cobro (RESUELTO, decisión usuario):** el cierre contable (OPC-5) exige cobro TOTAL — todas las facturas del evento pagadas (balance_due = 0). La señal se cobra antes de reservar (no cuenta como cobro parcial del cierre).
-- **Costes compartidos (RESUELTO, decisión usuario):** los gastos no se vinculan a un solo evento (compras en bulk, equipamiento). Se modelan como gasto compartido y se asignan (ver §7.3bis).
-- Implementar el check `balance_due = 0` en `OPC-5` de `transitions/route.ts`.
+- **Criterio de cobro (RESUELTO, decisión usuario — CORREGIDO):** el cierre contable (OPC-5) se habilita cuando **la factura al cliente del evento está pagada** (`invoices.status='paid'`, `balance_due=0`). La señal cuenta como cobro parcial descontado del total. Las facturas de gastos (proveedores) NO cuentan.
+- Implementar el check en `OPC-5` de `transitions/route.ts`: la factura al cliente del evento (event_id) debe tener `status='paid'` (o `balance_due=0`).
+- **Costes compartidos (RESUELTO, decisión usuario):** los gastos no se vinculan a un solo evento (compras en bulk, equipamiento). Se modelan como gasto compartido y se asignan (ver §7.3bis) — no intervienen en el criterio de cierre contable.
 
 ---
 
