@@ -68,7 +68,27 @@ Fuente de verdad del proceso: `docs/EventFlow-Spec-Agentes.md`.
 - **Test**: `tests/traceability-seed.spec.ts` — 3/3 verdes.
 - **Extra**: UI del portal menu implementada (WP-28 quedó con placeholder).
 
-### AUDITORÍA-WORKTREES — Revisión de los 31 WPs con skills superpowers/mattpocock (2026-08-04)
+### COCINA-V3-F1F2 — Estabilización + modelo stock/cierre (2026-08-17)
+- Fixes 500: production/logistics/service-sheet (esi.category → catalog_items),
+  guia (service_type → event_type). Eliminada dependencia de service_type en
+  7 archivos (acceptQuote, cocinaGuia, serviceSheet, briefingMemo, packs,
+  portal-freeze, event-flow, generate-operations).
+- ALTERs de esquema faltantes en prod: location, venue_pdf_url, is_dry,
+  is_equipment. Migración consolidada 033.
+- Seed kitchen_zones (9 zonas, iconos Phosphor), migración 034.
+- API y panel informativo de disponibilidad por escandallo (necesario vs
+  stock vs comprometido, con margen seguridad). FROZEN intacto.
+- Datos maestros proveedor×ingrediente (migración 035 + API CRUD) con
+  redondeo a unidad de compra.
+- Propuesta de OC con HITL: API necesidades, propuesta-oc, transiciones
+  de estado (enviar/confirmar/recibir/cancelar).
+- Regularizaciones de inventario (migración 036 + API).
+- Decisión técnica: enum supplier_orders conservado
+  (pending/approved/delivered/received/partial/cancelled) — no se renombra
+  por compatibilidad; mapeo documentado en la UI.
+- 17/17 rutas cocina 200, 16/19 E2E (3 seed con túnel local caído).
+- 12 commits en rama kurropl/cocina-v3-f1f2.
+
 - **Método**: aplicadas las skills instaladas (verification-before-completion,
   diagnosing-bugs, code-review) a todo el código mergeado de los worktrees.
 - **Smoke test de 70 rutas API contra prod**: 6 errores 500 → 0 corregidos.
