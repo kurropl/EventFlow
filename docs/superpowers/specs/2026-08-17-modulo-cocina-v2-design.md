@@ -286,37 +286,118 @@ GET  /api/providers/[id]/pricing                   — datos maestros proveedor�
 ```
 1. ESCANDALLO       → crea inventory_commitments (promesa de consumo, no descuenta)
 2. RECEPCIÓN        → entra stock por lote (stock_lots)
-3. PRODUCCIÓN       → al CERRAR la hoja de producción: descuenta stock de las
-                      tareas completadas, por lote FIFO/FEFO (el que caduca antes)
+3. CIERRE OPERATIVO → al CERRAR OPERATIVO el evento (OPC-3, fin del servicio):
+                      descuenta stock de las tareas completadas por lote
+                      FIFO/FEFO (el que caduca antes)
 4. CARGA/VUELTA     → sobrantes que vuelven → reingresan; desechados → ajuste merma
-5. CIERRE EVENTO    → ajuste final real vs teórico
+5. CIERRE CONTABLE  → el evento se cierra DEFINITIVO solo al cobrar (OPC-5)
 ```
 
 **Implementación:**
 - Descuento de stock por lote: `stock_lots.qty_base_remaining -= cantidad_consumida` (FEFO: primero el que caduca antes)
 - `ingredients.quantity` = Σ qty_base_remaining de sus lotes (espejo consistente)
-- El descuento ocurre al **cerrar la hoja de producción** (con `stockDeduct` existente en `src/lib/stockDeduct.ts` — verificar si ya aplica FEFO)
-- **Sobrantes/mermas**: al cerrar, lo no consumido de los lotes abiertos queda como stock; lo declarado merma → `inventory_adjustments`
+- El descuento ocurre en el **cierre operativo** (closeEvent → deductStockForEvent, que YA se llama hoy; falta hacerlo FEFO por lote)
+- **Sobrantes/mermas**: en la vuelta de carga, lo no consumido reingresa; lo declarado merma → `inventory_adjustments`
+- El **cierre contable** (OPC-5, cuando se cobra) NO vuelve a tocar stock — solo finanzas
 
-**Verificación requerida antes de implementar:** revisar `src/lib/stockDeduct.ts` — qué hace hoy, si es por lote FEFO o global, y si el cierre de producción lo invoca.
+**Verificación requerida antes de implementar:** revisar `src/lib/stockDeduct.ts` — hoy descuenta del global `ingredients.quantity` (no por lote FEFO). Y confirmar el criterio de "se ha cobrado" para OPC-5 (ver §7.5).
 
 ---
 
-## 7. 🏁 CIERRE DE EVENTO — Consumo real y food cost (CRÍTICO)
+## 7. 🏁 CIERRE DE EVENTO — Dos etapas: operativo (parcial) y contable (cuando se cobra)
 
-### 7.1 El paso "el evento ha terminado"
+### 7.1 El evento tiene DOS cierres (ya existe en la máquina de estados WP-04)
+
+El evento NO se cierra de golpe. Hay un estado intermedio que hace el cierre parcial (operativo) y el cierre definitivo ocurre cuando se cobra (contable):
 
 ```
-EVENTO CERRADO:
-├── Consumo real por ingrediente (descontado en producción + ajustes de vuelta)
+in_progress → cerrado_operativo → cerrado_contable
+  (día D)     (cierre parcial:      (cierre TOTAL: solo cuando
+               consumo, vuelta,      se cobra el evento)
+               food cost real)
+```
+
+**Transiciones ya definidas en `src/domain/eventStateMachine.ts`:**
+- `OPC-3`: `in_progress → cerrado_operativo` — cierre operativo (checklist completo)
+- `OPC-4`: `en_preparacion → cerrado_operativo` — sin evento físico (se cancela la parte presencial pero se factura)
+- `OPC-5`: `cerrado_operativo → cerrado_contable` — cierre contable (finanzas, cobro)
+- `INV-7`: `cerrado_operativo → in_progress` — reapertura para correcciones
+
+### 7.2 Cierre OPERATIVO (parcial — al terminar el servicio)
+
+```
+CERRADO OPERATIVO (OPC-3/OPC-4):
+├── Consumo real por ingrediente (stockDeduct existente — falta FEFO, ver §6)
+├── Freeze del escandallo (freezeEscandallo — ya existe, congela teórico)
 ├── Vuelta de comida (hoja de carga "vuelta"): retornado / desechado
-├── Food cost real vs teórico  → desviación
+├── Food cost real vs teórico → desviación (event_cost_deviations)
 ├── Coste real por pax
 ├── Lotes consumidos (trazabilidad cerrada)
-└── Cierre económico (ventas, cobros) — se aborda con finanzas después
+├── Cierre del checklist operativo (event_closure_checklists)
+└── EL EVENTO SIGUE ABIERTO para finanzas (no se ha cobrado)
 ```
 
-### 7.2 Datos
+**Lo que YA hace hoy `closeEvent` (src/lib/domain/closeEvent.ts):** freezeEscandallo + deductStockForEvent + setEventStatus('completed' = cerrado_operativo). **Lo que falta:** FIFO/FEFO por lote, vuelta de comida, food cost real persistido.
+
+### 7.3 Cierre CONTABLE (definitivo — SOLO cuando se cobra EN SU TOTALIDAD)
+
+```
+CERRADO CONTABLE (OPC-5):
+├── Se ejecuta SOLO cuando el evento está cobrado EN SU TOTALIDAD
+│   (todas las facturas del evento pagadas, balance_due = 0)
+├── La señal NO cuenta: se paga ANTES de reservar (decisión usuario)
+├── Emite factura(s) pendientes (createInvoice)
+├── Marca hitos pagados → estado 'paid' de hitos
+├── Cierre económico: ventas, cobros, desviación final
+└── El evento queda cerrado definitivamente (cerrado_contable)
+```
+
+**Regla de cobro (decisión usuario):**
+- **La señal** se cobra antes de reservar el evento (no es "cobro parcial" del cierre — es la reserva)
+- **El cierre contable exige cobro TOTAL**: todas las facturas del evento pagadas (balance_due = 0)
+- Mientras quede saldo pendiente, el evento permanece `cerrado_operativo`
+
+### 7.3bis Costes directos vs compartidos (gastos que no son de un solo evento)
+
+**Problema (decisión usuario):** los pagos de facturas NO van vinculados a un solo evento. Ejemplo: un evento necesita 100 g de gambas pero se compran 2 kg; o una freidora que se usa en varios eventos.
+
+**Modelo — dos tipos de gasto:**
+
+```
+GASTO DIRECTO (por evento):
+  · Compras de la OC del evento (supplier_orders.event_id)
+  · Consumo real registrado en producción/cierre operativo
+  → alimenta food_cost_real del evento directamente
+
+GASTO COMPARTIDO (multi-evento):
+  · Compras en bulk (2 kg de gambas para varios eventos)
+  · Equipamiento (freidora, vajilla, menaje)
+  · provider_invoices (hoy SIN event_id — gasto general)
+  → se registran como gasto general y se ASIGNAN a eventos
+```
+
+**Asignación de gastos compartidos (a definir en finanzas):**
+- Por consumo real (lo que cada evento usó del lote)
+- O por prorrateo (peso/coste / nº de eventos que lo usan)
+- El cierre contable del evento incluye: gastos directos + su parte asignada
+
+**Cambio de esquema necesario:**
+```sql
+-- provider_invoices: permitir vincular a OC y/o evento
+ALTER TABLE provider_invoices ADD COLUMN supplier_order_id uuid REFERENCES supplier_orders(id);
+ALTER TABLE provider_invoices ADD COLUMN event_id uuid REFERENCES events(id); -- NULL = compartido
+-- O: tabla de asignación de gastos compartidos
+CREATE TABLE cost_allocations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_invoice_id uuid REFERENCES provider_invoices(id),
+  event_id uuid REFERENCES events(id),
+  cantidad_asignada numeric(12,4),
+  tipo text CHECK (tipo IN ('consumo_real','prorrateo')),
+  created_at timestamptz DEFAULT now()
+);
+```
+
+### 7.4 Datos
 
 ```sql
 -- Ampliar hojas_carga con "vuelta"
@@ -324,14 +405,21 @@ ALTER TABLE items_carga ADD COLUMN retornado numeric DEFAULT 0;
 ALTER TABLE items_carga ADD COLUMN desechado numeric DEFAULT 0;
 ALTER TABLE items_carga ADD COLUMN tipo_vuelta text; -- 'comida','vajilla','equipo'
 
--- Cierre del evento
+-- Cierre del evento (operativo)
 ALTER TABLE events ADD COLUMN closed_at timestamptz;
 ALTER TABLE events ADD COLUMN food_cost_real numeric;   -- Σ consumo real
-ALTER TABLE events ADD COLUMN food_cost_teorico numeric;-- del escandallo
+ALTER TABLE events ADD COLUMN food_cost_teorico numeric;-- del escandallo congelado
 ```
 
 - `event_closure_checklists` (existe) se amplía con la fase de vuelta/consumo
 - `event_cost_deviations` (existe) alimenta la desviación real vs teórica
+- El cierre contable reutiliza `createInvoice` + `payments` (ya existentes)
+
+### 7.5 Verificación requerida
+
+- **Criterio de cobro (RESUELTO, decisión usuario):** el cierre contable (OPC-5) exige cobro TOTAL — todas las facturas del evento pagadas (balance_due = 0). La señal se cobra antes de reservar (no cuenta como cobro parcial del cierre).
+- **Costes compartidos (RESUELTO, decisión usuario):** los gastos no se vinculan a un solo evento (compras en bulk, equipamiento). Se modelan como gasto compartido y se asignan (ver §7.3bis).
+- Implementar el check `balance_due = 0` en `OPC-5` de `transitions/route.ts`.
 
 ---
 
@@ -567,7 +655,7 @@ CREATE TABLE appcc_prerrequisitos (
 
 ### Fase 2 — El modelo monetario/stock (CRÍTICO primero, según revisión)
 1. **Consumo de stock** por lote FIFO/FEFO al cerrar producción (revisar `stockDeduct.ts`)
-2. **Cierre de evento**: vuelta (retornado/desechado) + food cost real vs teórico + desviación
+2. **Cierre de evento en dos etapas**: cierre OPERATIVO al terminar el servicio (vuelta retornado/desechado + food cost real vs teórico + desviación) y cierre CONTABLE solo al cobrar (OPC-5). Ya existe la máquina de estados; falta FIFO/FEFO y la vuelta.
 3. **Datos maestros proveedor×ingrediente** (precio, unidad compra, factor, pedido mínimo, lead time)
 4. **Fecha límite de pedido** (evento − prep_days − lead) en el panel
 5. **Regularizaciones de inventario** (recuento/rotura/merma/caducado)
