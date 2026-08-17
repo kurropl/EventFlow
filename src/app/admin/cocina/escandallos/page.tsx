@@ -41,6 +41,7 @@ export default function EscandallosPage() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<EscandalloData['ingredientes']>([]);
   const [escandalloId, setEscandalloId] = useState('');
+  const [disponibilidad, setDisponibilidad] = useState<any[] | null>(null);
   const [showBebidas, setShowBebidas] = useState(false);
   const [showMargen, setShowMargen] = useState(true);
 
@@ -107,6 +108,15 @@ export default function EscandallosPage() {
 
   useEffect(() => { loadEscandallo(); }, [loadEscandallo]);
   useEffect(() => { loadBebidas(); }, [loadBebidas]);
+
+  // Panel informativo de disponibilidad de stock (solo lectura)
+  useEffect(() => {
+    if (!escandalloId) { setDisponibilidad(null); return; }
+    fetch(`/api/cocina/escandallos/${escandalloId}/disponibilidad`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.success) setDisponibilidad(d.data); })
+      .catch(() => setDisponibilidad(null));
+  }, [escandalloId]);
 
   const saveConfig = async () => {
     setSaving(true);
@@ -226,6 +236,34 @@ export default function EscandallosPage() {
               </div>
             </div>
           </div>
+
+          {/* Panel informativo de disponibilidad de stock */}
+          {disponibilidad && disponibilidad.length > 0 && (
+            <div className="bg-white rounded-lg border border-divider/50 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name="warning" className="w-3.5 h-3.5 text-gold" />
+                <span className="text-[11px] font-medium text-ink">Disponibilidad de stock</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-cream text-ink-soft">
+                  {disponibilidad.filter(d => d.faltante > 0).length} faltantes
+                </span>
+              </div>
+              <div className="space-y-1 max-h-[150px] overflow-y-auto pr-1">
+                {disponibilidad.map((d: any) => (
+                  <div key={d.ingredient_id} className="flex items-center justify-between text-[10px]">
+                    <span className="text-ink">{d.nombre}</span>
+                    <span className={cn('font-medium', d.faltante > 0 ? 'text-red-600' : 'text-success')}>
+                      {d.faltante > 0
+                        ? `Faltan ${Number(d.faltante).toLocaleString('es-ES', { maximumFractionDigits: 2 })} ${d.unidad}`
+                        : `✓ Suficiente (disp. ${Number(d.disponible).toLocaleString('es-ES', { maximumFractionDigits: 2 })} ${d.unidad})`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[9px] text-ink-soft mt-2">
+                Informativo — la compra se gestiona desde Stock/Compras.
+              </p>
+            </div>
+          )}
 
           {/* Content grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
