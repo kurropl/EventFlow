@@ -103,12 +103,13 @@ export async function computeEscandallo(eventId: string): Promise<EscandalloResu
             esi.theoretical_qty, esi.theoretical_unit,
             esi.actual_quantity, esi.actual_unit,
             esi.estimated_cost, esi.actual_cost_total,
-            esi.recipe_version, esi.frozen, esi.category,
+            esi.recipe_version, esi.frozen, ci.category AS category,
             COALESCE(i.unit_cost, 0) AS unit_cost,
             COALESCE(ri.qty_base, esi.theoretical_qty) AS qty_base
      FROM event_shopping_items esi
      LEFT JOIN ingredients i ON i.id = esi.ingredient_id
      LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
+     LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
      WHERE esi.event_id = $1
      ORDER BY esi.ingredient_name ASC`,
     [eventId]

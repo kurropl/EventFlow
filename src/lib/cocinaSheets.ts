@@ -516,9 +516,11 @@ export async function generateLogisticsSheet(
   // ingrediente resuelve; heurístico por nombre/categoría como fallback
   // (ingredientes legacy sin fila resuelta en `ingredients`).
   const shoppingItems = await pool.query(
-    `SELECT esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit, esi.category,
+    `SELECT esi.ingredient_name, esi.theoretical_qty, esi.theoretical_unit, ci.category AS category,
             i.is_dry, i.is_equipment
      FROM event_shopping_items esi
+     LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
+     LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
      LEFT JOIN ingredients i ON i.id = esi.ingredient_id
      WHERE esi.event_id = $1 AND esi.frozen = false`,
     [eventId]
