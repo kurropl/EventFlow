@@ -22,7 +22,8 @@
 #   PROVIDER="github:deepseek-r1"
 #   PROVIDER="minimax"
 #   PROVIDER="minimax:MiniMax-M3"
-PROVIDER="codex"
+# GGA usa opencode CLI → provider nan (deepseek, sin gastar créditos de Claude)
+PROVIDER="opencode:nan/deepseek-v4-flash-0731"
 
 # File patterns to include in review (comma-separated)
 # Default: * (all files)
