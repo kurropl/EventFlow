@@ -58,7 +58,77 @@ export default function ProduccionPage() {
       if (sData.success) setStaffing(sData.data || []);
       if (pData.success) {
         const sheet = pData.data?.sheet;
-        if (sheet?.passes) {
+        // Cargar elaboración desde los recipes del response
+        const recipes = pData.data?.recipes || [];
+        const elabs = recipes.map((r: any) => ({
+          receta: r.name,
+          pasos: (r.preparation_steps || []).map((s: any) => ({ ...s, completado: false })),
+        }));
+        setElaboraciones(elabs);
+
+        // Auto-generar timeline si está vacía
+        if (!tData.data?.length && elabs.length > 0) {
+          const autoTimeline: TimelineEntry[] = [];
+          let orden = 1;
+          // Calcular duración total por fase
+          const fases = ['preparacion', 'coccion', 'finalizacion'];
+          const faseLabels = { preparacion: 'Preparación', coccion: 'Cocción', finalizacion: 'Finalización' };
+          const faseIcons = { preparacion: 'cookingPot', coccion: 'flame', finalizacion: 'checkCircle' };
+          let horaActual = 9 * 60; // 09:00
+          for (const fase of fases) {
+            const pasosFase = elabs[0].pasos.filter((p: any) => p.fase === fase);
+            if (pasosFase.length > 0) {
+              const totalMin = pasosFase.reduce((s: number, p: any) => s + (p.duracion || 0), 0);
+              const hh = String(Math.floor(horaActual / 60)).padStart(2, '0');
+              const mm = String(horaActual % 60).padStart(2, '0');
+              autoTimeline.push({
+                phase: fase,
+                concepto: (faseLabels as any)[fase] + ' - ' + pasosFase.map((p: any) => p.descripcion.split(' ').slice(0, 3).join(' ')).join(', ').slice(0, 60),
+                planned_time: hh + ':' + mm,
+                duration_minutes: totalMin,
+                orden: orden++,
+              });
+              horaActual += totalMin + 5; // +5 min de margen entre fases
+            }
+          }
+          // Servicio y limpieza
+          autoTimeline.push({ phase: 'servicio', concepto: 'Servicio de postres - Pase 4', planned_time: '12:00', duration_minutes: 120, orden: orden++ });
+          autoTimeline.push({ phase: 'limpieza', concepto: 'Limpieza y recogida de cocina', planned_time: '14:00', duration_minutes: 30, orden: orden++ });
+          autoTimeline.push({ phase: 'salida', concepto: 'Salida del equipo', planned_time: '14:30', duration_minutes: 15, orden: orden++ });
+          setTimeline(autoTimeline);
+          // Persistir
+          fetch('/api/cocina/timeline', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ event_id: selectedEvent, entries: autoTimeline }),
+          }).catch(() => {});
+        }
+
+        // Auto-generar staff si vacío
+        if (!sData.data?.length && elabs.length > 0) {
+          const zonas = ['frio', 'caliente'];
+          const zonasLabel = { frio: 'Frío', caliente: 'Caliente' };
+          const autoStaffing: StaffingLine[] = zonas.map((z, i) => ({
+            id: 'auto-' + z,
+            role: 'Cocinero',
+            kitchen_zone: z,
+            previsto: z === 'frio' ? 2 : 1,
+            real: 0,
+            asignado: z === 'frio' ? 'Pendiente' : 'Pendiente',
+          }));
+          setStaffing(autoStaffing);
+        }
+
+        // Reemplazar tareas genéricas por pasos de elaboración
+        if (elabs.length > 0) {
+          const elaborationTasks = elabs[0].pasos.map((p: any) => ({
+            nombre: p.descripcion,
+            asignado_a: '',
+            completado: false,
+            zona: p.zona || '',
+            hora: '',
+          }));
+          setTareas(elaborationTasks);
+        } else if (sheet?.passes) {
           const tasks = sheet.passes.flatMap((p: any) =>
             (p.items || []).map((i: any) => ({
               nombre: i.productName || i.ingredient_name || i.platoName || 'Tarea',
@@ -70,12 +140,6 @@ export default function ProduccionPage() {
           );
           setTareas(tasks);
         }
-        // Cargar elaboración desde los recipes del response
-        const recipes = pData.data?.recipes || [];
-        setElaboraciones(recipes.map((r: any) => ({
-          receta: r.name,
-          pasos: (r.preparation_steps || []).map((s: any) => ({ ...s, completado: false })),
-        })));
       }
     } catch (e) { console.error(e); }
     setLoading(false);
