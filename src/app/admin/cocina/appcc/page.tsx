@@ -48,7 +48,7 @@ export default function AppccPage() {
   useEffect(() => {
     if (!selectedEvent) return;
     fetch(`/api/escandallo/event/${selectedEvent}`).then(r => r.json()).then(d => {
-      if (d.success) setElaboraciones((d.data.ingredientes || []).map((i: any) => ({ plato: i.nombre, tempCoccion: null, horaCoccion: '', responsable: '', ok: false })));
+      if (d.success) setElaboraciones((d.data.theoretical || []).map((i: any) => ({ plato: i.ingredient_name, tempCoccion: null, horaCoccion: '', responsable: '', ok: false })));
     }).catch(() => {});
   }, [selectedEvent]);
 

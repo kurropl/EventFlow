@@ -64,6 +64,22 @@ export default function LogisticaPage() {
     } catch (e) { alert('Error al añadir'); }
   };
 
+  const generateLogistica = async () => {
+    if (!selectedEvent) return;
+    try {
+      const res = await fetch('/api/cocina/logistica/items', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ event_id: selectedEvent, generate: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadItems();
+      } else {
+        alert(data.error || 'Error al generar');
+      }
+    } catch (e) { alert('Error al generar'); }
+  };
+
   const togglePreparado = async (item: ItemLogistica) => {
     try {
       await fetch('/api/cocina/logistica/items', {
@@ -145,6 +161,9 @@ export default function LogisticaPage() {
           <option value="">Seleccionar evento...</option>
           {events.map(e => <option key={e.id} value={e.id}>{e.client_name} — {new Date(e.event_date).toLocaleDateString('es-ES')}</option>)}
         </select>
+        <button onClick={generateLogistica} disabled={!selectedEvent} className="px-3 py-1.5 rounded-lg bg-gold text-white text-[10px] font-medium hover:bg-gold/80 disabled:opacity-50 flex items-center gap-1">
+          <Icon name="magic" className="w-3 h-3" /> Generar
+        </button>
       </div>
 
       {!selectedEvent && (

@@ -56,6 +56,22 @@ export default function CargaPage() {
     } catch (e) { alert('Error al crear'); }
   };
 
+  const generateHoja = async () => {
+    if (!selectedEvent) return;
+    try {
+      const res = await fetch('/api/cocina/carga', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ evento_id: selectedEvent, generate: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadHojas();
+      } else {
+        alert(data.error || 'Error al generar');
+      }
+    } catch (e) { alert('Error al generar'); }
+  };
+
   const addItem = async (hojaId: string) => {
     if (!newItem.nombre.trim()) return;
     try {
@@ -131,6 +147,9 @@ export default function CargaPage() {
         </select>
         <button onClick={createHoja} disabled={!selectedEvent} className="px-3 py-1.5 rounded-lg bg-ink text-white text-[10px] font-medium hover:bg-ink-light disabled:opacity-50 flex items-center gap-1">
           <Icon name="plus" className="w-3 h-3" /> Nueva hoja
+        </button>
+        <button onClick={generateHoja} disabled={!selectedEvent} className="px-3 py-1.5 rounded-lg bg-gold text-white text-[10px] font-medium hover:bg-gold/80 disabled:opacity-50 flex items-center gap-1">
+          <Icon name="magic" className="w-3 h-3" /> Generar
         </button>
       </div>
 
