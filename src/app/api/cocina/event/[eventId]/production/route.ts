@@ -23,12 +23,13 @@ export async function GET(
     const sheet = await generateProductionSheet(eventId);
 
     // Obtener recetas con sus pasos de elaboración
+    // JOIN: event_shopping_items → recipe_items (view) → recipes
     const recipesResult = await pool.query(
       `SELECT DISTINCT r.id, r.name, r.preparation_steps
-       FROM escandallos e
-       JOIN escandallo_lines el ON el.escandallo_id = e.id
-       JOIN recipes r ON r.catalog_item_id = el.catalog_item_id
-       WHERE e.event_id = $1 AND r.preparation_steps IS NOT NULL AND jsonb_array_length(r.preparation_steps) > 0`,
+       FROM event_shopping_items esi
+       JOIN recipe_items ri ON ri.id = esi.recipe_item_id
+       JOIN recipes r ON r.id = ri.recipe_id
+       WHERE esi.event_id = $1 AND r.preparation_steps IS NOT NULL AND jsonb_array_length(r.preparation_steps) > 0`,
       [eventId]
     );
 
