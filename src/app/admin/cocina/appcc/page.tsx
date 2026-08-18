@@ -47,7 +47,7 @@ export default function AppccPage() {
   useEffect(() => { fetch('/api/events?limit=50', { credentials: 'include' }).then(r => r.json()).then(d => { if (d.success) setEvents(d.data || []); }).catch(() => {}); }, []);
   useEffect(() => {
     if (!selectedEvent) return;
-    fetch(`/api/escandallo/event/${selectedEvent}`).then(r => r.json()).then(d => {
+    fetch(`/api/escandallo/event/${selectedEvent}`, { credentials: 'include' }).then(r => r.json()).then(d => {
       if (d.success) setElaboraciones((d.data.theoretical || []).map((i: any) => ({ plato: i.ingredient_name, tempCoccion: null, horaCoccion: '', responsable: '', ok: false })));
     }).catch(() => {});
   }, [selectedEvent]);
