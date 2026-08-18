@@ -8,6 +8,7 @@ interface Event { id: string; client_name: string; event_date: string; guest_cou
 interface TimelineEntry { id?: string; phase: string; concepto: string; planned_time: string; actual_time?: string; duration_minutes?: number; notes?: string; orden: number; }
 interface StaffingLine { id: string; role: string; kitchen_zone?: string; previsto: number; real: number; asignado: string; }
 interface TareaProduccion { id?: string; nombre: string; asignado_a: string; completado: boolean; zona?: string; hora?: string; }
+interface PasoElaboracion { orden: number; descripcion: string; duracion: number; zona: string; alergenos: string[]; controles: string[]; fase: string; completado: boolean; }
 
 const PHASES = [
   { id: 'llegada', label: 'Llegada', icon: 'clock', color: 'blue' },
@@ -35,23 +36,25 @@ export default function ProduccionPage() {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [staffing, setStaffing] = useState<StaffingLine[]>([]);
   const [tareas, setTareas] = useState<TareaProduccion[]>([]);
+  const [elaboraciones, setElaboraciones] = useState<{ receta: string; pasos: PasoElaboracion[] }[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'timeline' | 'distribucion' | 'tareas'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'distribucion' | 'tareas' | 'elaboracion'>('elaboracion');
   const [showTareaForm, setShowTareaForm] = useState(false);
   const [newTarea, setNewTarea] = useState({ nombre: '', asignado_a: '', zona: 'caliente', hora: '' });
 
   useEffect(() => { fetch('/api/events?limit=50', { credentials: 'include' }).then(r => r.json()).then(d => { if (d.success) setEvents(d.data || []); }).catch(() => {}); }, []);
 
   const loadData = useCallback(async () => {
-    if (!selectedEvent) { setTimeline([]); setStaffing([]); setTareas([]); return; }
+    if (!selectedEvent) { setTimeline([]); setStaffing([]); setTareas([]); setElaboraciones([]); return; }
     setLoading(true);
     try {
-      const [tRes, sRes, pRes] = await Promise.all([
+      const [tRes, sRes, pRes, eRes] = await Promise.all([
         fetch(`/api/cocina/timeline?event_id=${selectedEvent}`, { credentials: 'include' }),
         fetch(`/api/staffing/lines?event_id=${selectedEvent}`, { credentials: 'include' }),
         fetch(`/api/cocina/event/${selectedEvent}/production`, { credentials: 'include' }),
+        fetch(`/api/cocina/escandallos?event_id=${selectedEvent}`, { credentials: 'include' }),
       ]);
-      const [tData, sData, pData] = await Promise.all([tRes.json(), sRes.json(), pRes.json()]);
+      const [tData, sData, pData, eData] = await Promise.all([tRes.json(), sRes.json(), pRes.json(), eRes.json()]);
       if (tData.success) setTimeline(tData.data || []);
       if (sData.success) setStaffing(sData.data || []);
       if (pData.success) {
@@ -68,6 +71,24 @@ export default function ProduccionPage() {
           );
           setTareas(tasks);
         }
+      }
+      // Cargar elaboración (preparation_steps) de las recetas del evento
+      if (eData.success) {
+        const recetas = eData.data?.[0]?.recetas || [];
+        const recetaNames = [...new Set<string>(recetas.map((r: any) => r.receta_nombre))];
+        const stepsData = await Promise.all(recetaNames.map(async (name: string) => {
+          const res = await fetch(`/api/cocina/recipes?name=${encodeURIComponent(name)}`, { credentials: 'include' });
+          const d = await res.json();
+          const recipe = d.data?.[0];
+          if (recipe?.preparation_steps?.length) {
+            return {
+              receta: recipe.name,
+              pasos: recipe.preparation_steps.map((s: any) => ({ ...s, completado: false })),
+            };
+          }
+          return null;
+        }));
+        setElaboraciones(stepsData.filter((x): x is { receta: string; pasos: PasoElaboracion[] } => x !== null));
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -169,6 +190,9 @@ export default function ProduccionPage() {
             </button>
             <button onClick={() => setActiveTab('tareas')} className={cn('px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all', activeTab === 'tareas' ? 'bg-ink text-white' : 'bg-cream text-ink-soft')}>
               <Icon name="checkSquare" className="w-3 h-3 inline mr-1" />Tareas ({completedTasks}/{totalTasks})
+            </button>
+            <button onClick={() => setActiveTab('elaboracion')} className={cn('px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all', activeTab === 'elaboracion' ? 'bg-ink text-white' : 'bg-cream text-ink-soft')}>
+              <Icon name="cookingPot" className="w-3 h-3 inline mr-1" />Elaboración
             </button>
           </div>
 
@@ -302,6 +326,82 @@ export default function ProduccionPage() {
                     <button onClick={() => setShowTareaForm(false)} className="px-3 py-1.5 rounded border border-divider text-[10px]">Cancelar</button>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Elaboración Tab */}
+          {activeTab === 'elaboracion' && (
+            <div className="space-y-3">
+              {elaboraciones.length === 0 ? (
+                <div className="bg-white rounded-lg border border-divider/50 p-8 text-center">
+                  <Icon name="cookingPot" className="w-8 h-8 text-divider mx-auto mb-2" />
+                  <p className="text-[11px] text-ink-soft">No hay recetas con pasos de elaboración para este evento</p>
+                </div>
+              ) : (
+                elaboraciones.map((elab, ei) => {
+                  const totalPasos = elab.pasos.length;
+                  const completados = elab.pasos.filter(p => p.completado).length;
+                  const pct = totalPasos > 0 ? Math.round((completados / totalPasos) * 100) : 0;
+                  return (
+                    <div key={ei} className="bg-white rounded-lg border border-divider/50 overflow-hidden">
+                      <div className="px-3 py-2 border-b border-divider/50 bg-cream/30 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon name="cookingPot" className="w-3.5 h-3.5 text-gold" />
+                          <span className="text-[10px] font-medium text-ink">{elab.receta}</span>
+                        </div>
+                        <span className="text-[8px] px-1.5 py-0.5 rounded bg-cream text-ink-soft">{completados}/{totalPasos} pasos</span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="px-3 pt-2 pb-0">
+                        <div className="w-full bg-cream rounded-full h-1.5">
+                          <div className="h-1.5 rounded-full bg-gold transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                      {/* Steps */}
+                      <div className="divide-y divide-divider/30">
+                        {elab.pasos.map((paso, pi) => (
+                          <div key={pi} className={cn('px-3 py-2 flex items-start gap-2 group', paso.completado && 'opacity-50')}>
+                            <button
+                              onClick={() => {
+                                const updated = [...elaboraciones];
+                                updated[ei] = { ...updated[ei], pasos: [...updated[ei].pasos] };
+                                updated[ei].pasos[pi] = { ...paso, completado: !paso.completado };
+                                setElaboraciones(updated);
+                              }}
+                              className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5', paso.completado ? 'bg-success border-success text-white' : 'border-divider hover:border-gold')}
+                            >
+                              {paso.completado && <span className="text-[8px]">✓</span>}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-bold text-gold">{paso.orden}.</span>
+                                <p className={cn('text-[10px] text-ink', paso.completado && 'line-through')}>{paso.descripcion}</p>
+                                <span className="text-[8px] px-1 rounded bg-cream text-ink-soft ml-auto">{paso.duracion} min</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[8px] px-1 rounded bg-blue-50 text-blue-600">{paso.fase == 'coccion' ? '🍳 Cocción' : paso.fase == 'preparacion' ? '🔪 Preparación' : '✅ Finalización'}</span>
+                                <span className="text-[8px] text-ink-soft">{paso.zona == 'frio' ? '❄️ Frío' : '🔥 Caliente'}</span>
+                                {paso.alergenos?.length > 0 && (
+                                  <span className="text-[8px] text-amber-600">⚠️ {paso.alergenos.join(', ')}</span>
+                                )}
+                              </div>
+                              {paso.controles?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {paso.controles.map((c, ci) => (
+                                    <span key={ci} className="text-[7px] px-1 py-0.5 rounded bg-cream/50 text-ink-soft border border-divider/30">
+                                      ✓ {c}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
