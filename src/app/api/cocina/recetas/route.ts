@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const catalogItemId = searchParams.get('catalog_item_id');
 
     let sql = "SELECT r.id, r.name, r.category, ci.pvp, ci.cost, ci.description, r.cost_per_serving, r.published, r.active, r.preparation_steps, COALESCE((SELECT COUNT(*) FROM recipe_ingredients ri WHERE ri.recipe_id = r.id), 0)::int as ingredient_count FROM recipes r LEFT JOIN catalog_items ci ON ci.id = r.catalog_item_id WHERE r.active = true";
     const values: any[] = [];
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
 
     if (category) { sql += " AND r.category = $" + idx; values.push(category); idx++; }
     if (search) { sql += " AND (r.name ILIKE $" + idx + " OR ci.description ILIKE $" + idx + ")"; values.push('%' + search + '%'); idx++; }
+    if (catalogItemId) { sql += " AND r.catalog_item_id = $" + idx; values.push(catalogItemId); idx++; }
     sql += " ORDER BY r.name ASC";
 
     return NextResponse.json({ success: true, data: await queryMany<any>(sql, values) });

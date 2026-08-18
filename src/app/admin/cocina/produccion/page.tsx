@@ -48,13 +48,12 @@ export default function ProduccionPage() {
     if (!selectedEvent) { setTimeline([]); setStaffing([]); setTareas([]); setElaboraciones([]); return; }
     setLoading(true);
     try {
-      const [tRes, sRes, pRes, eRes] = await Promise.all([
+      const [tRes, sRes, pRes] = await Promise.all([
         fetch(`/api/cocina/timeline?event_id=${selectedEvent}`, { credentials: 'include' }),
         fetch(`/api/staffing/lines?event_id=${selectedEvent}`, { credentials: 'include' }),
         fetch(`/api/cocina/event/${selectedEvent}/production`, { credentials: 'include' }),
-        fetch(`/api/cocina/escandallos?event_id=${selectedEvent}`, { credentials: 'include' }),
       ]);
-      const [tData, sData, pData, eData] = await Promise.all([tRes.json(), sRes.json(), pRes.json(), eRes.json()]);
+      const [tData, sData, pData] = await Promise.all([tRes.json(), sRes.json(), pRes.json()]);
       if (tData.success) setTimeline(tData.data || []);
       if (sData.success) setStaffing(sData.data || []);
       if (pData.success) {
@@ -71,24 +70,12 @@ export default function ProduccionPage() {
           );
           setTareas(tasks);
         }
-      }
-      // Cargar elaboración (preparation_steps) de las recetas del evento
-      if (eData.success) {
-        const recetas = eData.data?.[0]?.recetas || [];
-        const recetaNames = [...new Set<string>(recetas.map((r: any) => r.receta_nombre))];
-        const stepsData = await Promise.all(recetaNames.map(async (name: string) => {
-          const res = await fetch(`/api/cocina/recipes?name=${encodeURIComponent(name)}`, { credentials: 'include' });
-          const d = await res.json();
-          const recipe = d.data?.[0];
-          if (recipe?.preparation_steps?.length) {
-            return {
-              receta: recipe.name,
-              pasos: recipe.preparation_steps.map((s: any) => ({ ...s, completado: false })),
-            };
-          }
-          return null;
-        }));
-        setElaboraciones(stepsData.filter((x): x is { receta: string; pasos: PasoElaboracion[] } => x !== null));
+        // Cargar elaboración desde los recipes del response
+        const recipes = pData.data?.recipes || [];
+        setElaboraciones(recipes.map((r: any) => ({
+          receta: r.name,
+          pasos: (r.preparation_steps || []).map((s: any) => ({ ...s, completado: false })),
+        })));
       }
     } catch (e) { console.error(e); }
     setLoading(false);

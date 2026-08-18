@@ -22,9 +22,19 @@ export async function GET(
 
     const sheet = await generateProductionSheet(eventId);
 
+    // Obtener recetas con sus pasos de elaboración
+    const recipesResult = await pool.query(
+      `SELECT DISTINCT r.id, r.name, r.preparation_steps
+       FROM escandallos e
+       JOIN escandallo_lines el ON el.escandallo_id = e.id
+       JOIN recipes r ON r.catalog_item_id = el.catalog_item_id
+       WHERE e.event_id = $1 AND r.preparation_steps IS NOT NULL AND jsonb_array_length(r.preparation_steps) > 0`,
+      [eventId]
+    );
+
     return NextResponse.json({
       success: true,
-      data: { event: eventResult.rows[0], sheet },
+      data: { event: eventResult.rows[0], sheet, recipes: recipesResult.rows },
     });
   } catch (error) {
     console.error('Error generating production sheet:', error);
