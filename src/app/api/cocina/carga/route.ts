@@ -19,11 +19,24 @@ export async function GET(request: NextRequest) {
     if (!auth) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
 
     const fecha = new URL(request.url).searchParams.get('fecha') || new Date().toISOString().split('T')[0];
+    const eventId = new URL(request.url).searchParams.get('event_id');
 
-    return NextResponse.json({ success: true, data: await queryMany<any>(
-      "SELECT hc.id, hc.event_id, e.client_name as evento_nombre, hc.fecha, hc.status as estado, hc.notas, COALESCE((SELECT json_agg(json_build_object('id', ic.id, 'tipo', ic.tipo, 'nombre', ic.nombre, 'cantidad', ic.cantidad, 'unit', ic.unit, 'cargado', ic.cargado)) FROM items_carga ic WHERE ic.hoja_carga_id = hc.id), '[]'::json) as items FROM hojas_carga hc LEFT JOIN events e ON e.id = hc.event_id WHERE hc.fecha = $1::date ORDER BY hc.created_at",
-      [fecha]
-    )});
+    let sql = "SELECT hc.id, hc.event_id, e.client_name as evento_nombre, hc.fecha, hc.status as estado, hc.notas, COALESCE((SELECT json_agg(json_build_object('id', ic.id, 'tipo', ic.tipo, 'nombre', ic.nombre, 'cantidad', ic.cantidad, 'unit', ic.unit, 'cargado', ic.cargado)) FROM items_carga ic WHERE ic.hoja_carga_id = hc.id), '[]'::json) as items FROM hojas_carga hc LEFT JOIN events e ON e.id = hc.event_id";
+    const params: any[] = [];
+    let idx = 1;
+
+    if (eventId) {
+      sql += " WHERE hc.event_id = $" + idx;
+      params.push(eventId);
+      idx++;
+    } else {
+      sql += " WHERE hc.fecha = $" + idx + "::date";
+      params.push(fecha);
+    }
+
+    sql += " ORDER BY hc.created_at";
+
+    return NextResponse.json({ success: true, data: await queryMany<any>(sql, params) });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
   }

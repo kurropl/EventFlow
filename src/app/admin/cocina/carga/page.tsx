@@ -35,9 +35,9 @@ export default function CargaPage() {
     if (!selectedEvent) { setHojas([]); return; }
     setLoading(true);
     try {
-      const res = await fetch(`/api/cocina/carga?fecha=${new Date().toISOString().split('T')[0]}`, { credentials: 'include' });
+      const res = await fetch(`/api/cocina/carga?event_id=${selectedEvent}`, { credentials: 'include' });
       const data = await res.json();
-      if (data.success) setHojas((data.data || []).filter((h: HojaCarga) => h.event_id === selectedEvent));
+      if (data.success) setHojas(data.data || []);
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [selectedEvent]);
