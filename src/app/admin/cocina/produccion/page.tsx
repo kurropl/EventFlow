@@ -46,13 +46,29 @@ export default function ProduccionPage() {
     if (!selectedEvent) { setTimeline([]); setStaffing([]); setTareas([]); return; }
     setLoading(true);
     try {
-      const [tRes, sRes] = await Promise.all([
+      const [tRes, sRes, pRes] = await Promise.all([
         fetch(`/api/cocina/timeline?event_id=${selectedEvent}`, { credentials: 'include' }),
         fetch(`/api/staffing/lines?event_id=${selectedEvent}`, { credentials: 'include' }),
+        fetch(`/api/cocina/event/${selectedEvent}/production`, { credentials: 'include' }),
       ]);
-      const [tData, sData] = await Promise.all([tRes.json(), sRes.json()]);
+      const [tData, sData, pData] = await Promise.all([tRes.json(), sRes.json(), pRes.json()]);
       if (tData.success) setTimeline(tData.data || []);
       if (sData.success) setStaffing(sData.data || []);
+      if (pData.success) {
+        const sheet = pData.data?.sheet;
+        if (sheet?.passes) {
+          const tasks = sheet.passes.flatMap((p: any) =>
+            (p.items || []).map((i: any) => ({
+              nombre: i.productName || i.ingredient_name || i.platoName || 'Tarea',
+              asignado_a: '',
+              completado: false,
+              zona: '',
+              hora: '',
+            }))
+          );
+          setTareas(tasks);
+        }
+      }
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [selectedEvent]);
