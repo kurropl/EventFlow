@@ -21,6 +21,7 @@ import { getPool, queryMany, querySingle } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
 import { calcularDisponibilidad } from '@/lib/domain/disponibilidadStock';
+import { humanizeUnit } from '@/lib/units-pure';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -81,16 +82,23 @@ export async function GET(
 
     const data = neces.map((n: any) => {
       const necesario = Number(n.necesario) || 0;
+      const raw = calcularDisponibilidad({
+        necesidad: necesario,
+        conSeguridad: necesario * (1 + seguridad),
+        stock: stockMap.get(n.ingredient_id) ?? 0,
+        comprometido: compMap.get(n.ingredient_id) ?? 0,
+      });
+      const h = humanizeUnit(raw.necesario, n.unidad || 'ud');
       return {
         ingredient_id: n.ingredient_id,
         nombre: n.name,
-        unidad: n.unidad || 'ud',
-        ...calcularDisponibilidad({
-          necesidad: necesario,
-          conSeguridad: necesario * (1 + seguridad),
-          stock: stockMap.get(n.ingredient_id) ?? 0,
-          comprometido: compMap.get(n.ingredient_id) ?? 0,
-        }),
+        unidad: h.unit,
+        necesario: h.qty,
+        con_seguridad: humanizeUnit(raw.con_seguridad, n.unidad || 'ud').qty,
+        stock: humanizeUnit(raw.stock, n.unidad || 'ud').qty,
+        comprometido: humanizeUnit(raw.comprometido, n.unidad || 'ud').qty,
+        disponible: humanizeUnit(raw.disponible, n.unidad || 'ud').qty,
+        faltante: humanizeUnit(raw.faltante, n.unidad || 'ud').qty,
       };
     });
 
