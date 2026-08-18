@@ -66,8 +66,9 @@ export default function ProduccionPage() {
         }));
         setElaboraciones(elabs);
 
-        // Auto-generar timeline si está vacía
-        if (!tData.data?.length && elabs.length > 0) {
+        // Auto-generar timeline si está vacía o solo tiene 1 entrada genérica
+        const timelineEmpty = !tData.data?.length || (tData.data.length <= 1 && !tData.data[0].concepto);
+        if (timelineEmpty && elabs.length > 0) {
           const autoTimeline: TimelineEntry[] = [];
           let orden = 1;
           // Calcular duración total por fase
@@ -103,8 +104,8 @@ export default function ProduccionPage() {
           }).catch(() => {});
         }
 
-        // Auto-generar staff si vacío
-        if (!sData.data?.length && elabs.length > 0) {
+        // Auto-generar staff si vacío o sin datos
+        if ((!sData.data?.length || sData.data.length < 2) && elabs.length > 0) {
           const zonas = ['frio', 'caliente'];
           const zonasLabel = { frio: 'Frío', caliente: 'Caliente' };
           const autoStaffing: StaffingLine[] = zonas.map((z, i) => ({
