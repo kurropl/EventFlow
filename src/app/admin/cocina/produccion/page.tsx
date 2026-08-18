@@ -78,22 +78,18 @@ export default function ProduccionPage() {
           const faseLabels = { preparacion: 'Preparación', coccion: 'Cocción', finalizacion: 'Finalización' };
           const faseIcons = { preparacion: 'cookingPot', coccion: 'flame', finalizacion: 'checkCircle' };
           let horaActual = 9 * 60; // 09:00
-          for (const fase of fases) {
-            const pasosFase = elabs[0].pasos.filter((p: any) => p.fase === fase);
-            if (pasosFase.length > 0) {
-              const totalMin = pasosFase.reduce((s: number, p: any) => s + (p.duracion || 0), 0);
-              const hh = String(Math.floor(horaActual / 60)).padStart(2, '0');
-              const mm = String(horaActual % 60).padStart(2, '0');
-              autoTimeline.push({
-                phase: fase,
-                concepto: (faseLabels as any)[fase] + ' - ' + pasosFase.map((p: any) => p.descripcion.split(' ').slice(0, 3).join(' ')).join(', ').slice(0, 60),
-                planned_time: hh + ':' + mm,
-                duration_minutes: totalMin,
-                orden: orden++,
-              });
-              horaActual += totalMin + 5; // +5 min de margen entre fases
-            }
-          }
+          // Preparación (incluye todos los pasos previos)
+          const pasoTotal = elabs[0].pasos.reduce((s: number, p: any) => s + (p.duracion || 0), 0);
+          const hh = String(Math.floor(horaActual / 60)).padStart(2, '0');
+          const mm = String(horaActual % 60).padStart(2, '0');
+          autoTimeline.push({
+            phase: 'preparacion',
+            concepto: 'Preparación de PASTA ESPEJO - ' + elabs[0].pasos.map((p: any) => p.descripcion.split(' ').slice(0, 2).join(' ')).join(', ').slice(0, 80),
+            planned_time: hh + ':' + mm,
+            duration_minutes: pasoTotal,
+            orden: orden++,
+          });
+          horaActual += pasoTotal + 5;
           // Servicio y limpieza
           autoTimeline.push({ phase: 'servicio', concepto: 'Servicio de postres - Pase 4', planned_time: '12:00', duration_minutes: 120, orden: orden++ });
           autoTimeline.push({ phase: 'limpieza', concepto: 'Limpieza y recogida de cocina', planned_time: '14:00', duration_minutes: 30, orden: orden++ });
