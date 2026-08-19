@@ -142,7 +142,6 @@ const MAP: Record<string, LucideIcon> = {
   settings: Lucide.Settings,
   utensils: Lucide.Utensils,
   utensilsCrossed: Lucide.UtensilsCrossed,
-  shirt: Lucide.Shirt,
   bank: Lucide.Banknote,
   minus: Lucide.Minus,
 };
