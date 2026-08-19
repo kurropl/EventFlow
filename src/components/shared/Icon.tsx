@@ -127,6 +127,24 @@ const MAP: Record<string, LucideIcon> = {
   receipt: Lucide.Receipt,
   trazabilidad: Lucide.ScanLine,
   printer: Lucide.Printer,
+  // Zonas de cocina
+  snowflake: Lucide.Snowflake,
+  flame: Lucide.Flame,
+  cake: Lucide.CakeSlice,
+  moon: Lucide.Moon,
+  beef: Lucide.Beef,
+  soup: Lucide.Soup,
+  salad: Lucide.Salad,
+  wine: Lucide.Wine,
+  list: Lucide.List,
+  warning: Lucide.AlertTriangle,
+  magic: Lucide.Sparkles,
+  settings: Lucide.Settings,
+  utensils: Lucide.Utensils,
+  utensilsCrossed: Lucide.UtensilsCrossed,
+  shirt: Lucide.Shirt,
+  bank: Lucide.Banknote,
+  minus: Lucide.Minus,
 };
 
 export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProps) {

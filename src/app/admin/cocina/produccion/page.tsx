@@ -19,15 +19,15 @@ const PHASES = [
 ];
 
 const ZONES = [
-  { id: 'aperitivos', label: 'Aperitivos', icon: 'bowlFood', color: 'bg-green-100' },
-  { id: 'frio', label: 'Frío', icon: 'snowflake', color: 'bg-blue-100' },
-  { id: 'caliente', label: 'Caliente', icon: 'flame', color: 'bg-orange-100' },
-  { id: 'frito', label: 'Frito', icon: 'fryingPan', color: 'bg-yellow-100' },
-  { id: 'entrante', label: 'Entrante', icon: 'forkKnife', color: 'bg-purple-100' },
-  { id: 'primero', label: 'Primero', icon: 'bowlFood', color: 'bg-red-100' },
-  { id: 'segundo', label: 'Segundo', icon: 'beef', color: 'bg-pink-100' },
-  { id: 'postre', label: 'Postre', icon: 'cake', color: 'bg-amber-100' },
-  { id: 'recena', label: 'Recena', icon: 'moon', color: 'bg-indigo-100' },
+  { id: 'aperitivos', label: 'Aperitivos', icon: 'salad', color: 'bg-cream' },
+  { id: 'frio', label: 'Frío', icon: 'snowflake', color: 'bg-cream' },
+  { id: 'caliente', label: 'Caliente', icon: 'flame', color: 'bg-cream' },
+  { id: 'frito', label: 'Frito', icon: 'cookingPot', color: 'bg-cream' },
+  { id: 'entrante', label: 'Entrante', icon: 'food', color: 'bg-cream' },
+  { id: 'primero', label: 'Primero', icon: 'soup', color: 'bg-cream' },
+  { id: 'segundo', label: 'Segundo', icon: 'beef', color: 'bg-cream' },
+  { id: 'postre', label: 'Postre', icon: 'cake', color: 'bg-cream' },
+  { id: 'recena', label: 'Recena', icon: 'moon', color: 'bg-cream' },
 ];
 
 export default function ProduccionPage() {

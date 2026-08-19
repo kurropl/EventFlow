@@ -20,13 +20,12 @@ interface StockItem {
 
 const CATEGORIAS = [
   { id: 'mobiliario', label: 'Mobiliario', icon: 'table' },
-  { id: 'maquinaria', label: 'Maquinaria', icon: 'gear' },
+  { id: 'maquinaria', label: 'Maquinaria', icon: 'settings' },
   { id: 'cristaleria', label: 'Cristalería', icon: 'wine' },
   { id: 'equipos', label: 'Equipos', icon: 'package' },
-  { id: 'utensilios', label: 'Utensilios', icon: 'forkKnife' },
-  { id: 'cristaleria', label: 'Cristalería', icon: 'wine' },
-  { id: 'vajilla', label: 'Vajilla', icon: 'bowlFood' },
-  { id: 'textil', label: 'Textil', icon: 'tShirt' },
+  { id: 'utensilios', label: 'Utensilios', icon: 'utensils' },
+  { id: 'vajilla', label: 'Vajilla', icon: 'utensilsCrossed' },
+  { id: 'textil', label: 'Textil', icon: 'shirt' },
   { id: 'otros', label: 'Otros', icon: 'package' },
 ];
 

@@ -9,14 +9,14 @@ interface ItemLogistica { id: string; tipo: string; nombre: string; cantidad: nu
 interface StockItem { id: string; name: string; category: string; stock_quantity: number; unit: string; }
 
 const CATEGORIAS = [
-  { id: 'mobiliario', label: '🪑 Mobiliario', icon: 'table' },
-  { id: 'maquinaria', label: '⚙ Maquinaria', icon: 'gear' },
-  { id: 'cristaleria', label: '🥂 Cristalería', icon: 'wine' },
-  { id: 'equipos', label: '📦 Equipos', icon: 'package' },
-  { id: 'cubertea', label: '🍴 Cubertería', icon: 'forkKnife' },
-  { id: 'vajilla', label: '🍽 Vajilla', icon: 'bowlFood' },
-  { id: 'textil', label: '👔 Textil', icon: 'tShirt' },
-  { id: 'otros', label: '📋 Otros', icon: 'list' },
+  { id: 'mobiliario', label: 'Mobiliario', icon: 'table' },
+  { id: 'maquinaria', label: 'Maquinaria', icon: 'settings' },
+  { id: 'cristaleria', label: 'Cristalería', icon: 'wine' },
+  { id: 'equipos', label: 'Equipos', icon: 'package' },
+  { id: 'cubertea', label: 'Cubertería', icon: 'utensils' },
+  { id: 'vajilla', label: 'Vajilla', icon: 'utensilsCrossed' },
+  { id: 'textil', label: 'Textil', icon: 'shirt' },
+  { id: 'otros', label: 'Otros', icon: 'list' },
 ];
 
 export default function LogisticaPage() {
