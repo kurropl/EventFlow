@@ -19,15 +19,15 @@ const PHASES = [
 ];
 
 const ZONES = [
-  { id: 'aperitivos', label: 'Aperitivos', icon: '🥗', color: 'bg-green-100' },
-  { id: 'frio', label: 'Frío', icon: '❄️', color: 'bg-blue-100' },
-  { id: 'caliente', label: 'Caliente', icon: '🔥', color: 'bg-orange-100' },
-  { id: 'frito', label: 'Frito', icon: '🍟', color: 'bg-yellow-100' },
-  { id: 'entrante', label: 'Entrante', icon: '🍽', color: 'bg-purple-100' },
-  { id: 'primero', label: 'Primero', icon: '🥘', color: 'bg-red-100' },
-  { id: 'segundo', label: 'Segundo', icon: '🥩', color: 'bg-pink-100' },
-  { id: 'postre', label: 'Postre', icon: '🍰', color: 'bg-amber-100' },
-  { id: 'recena', label: 'Recena', icon: '🌙', color: 'bg-indigo-100' },
+  { id: 'aperitivos', label: 'Aperitivos', icon: 'bowlFood', color: 'bg-green-100' },
+  { id: 'frio', label: 'Frío', icon: 'snowflake', color: 'bg-blue-100' },
+  { id: 'caliente', label: 'Caliente', icon: 'flame', color: 'bg-orange-100' },
+  { id: 'frito', label: 'Frito', icon: 'fryingPan', color: 'bg-yellow-100' },
+  { id: 'entrante', label: 'Entrante', icon: 'forkKnife', color: 'bg-purple-100' },
+  { id: 'primero', label: 'Primero', icon: 'bowlFood', color: 'bg-red-100' },
+  { id: 'segundo', label: 'Segundo', icon: 'beef', color: 'bg-pink-100' },
+  { id: 'postre', label: 'Postre', icon: 'cake', color: 'bg-amber-100' },
+  { id: 'recena', label: 'Recena', icon: 'moon', color: 'bg-indigo-100' },
 ];
 
 export default function ProduccionPage() {
@@ -289,11 +289,21 @@ export default function ProduccionPage() {
                   <div className={cn('px-3 py-2 border-b border-divider/50', zone.color)}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm">{zone.icon}</span>
+                        <Icon name={zone.icon} className="w-3.5 h-3.5 text-ink" />
                         <span className="text-[10px] font-medium text-ink">{zone.label}</span>
                       </div>
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/80 font-medium">{zone.workers.length} personas</span>
                     </div>
+                    {/* Platos producidos en esta zona */}
+                    {elaboraciones.length > 0 && elaboraciones[0].pasos.filter((p: any) => p.zona === zone.id).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {elaboraciones[0].pasos.filter((p: any) => p.zona === zone.id).slice(0, 3).map((p: any, pi: number) => (
+                          <span key={pi} className="text-[7px] px-1 py-0.5 rounded bg-white/60 text-ink-soft border border-divider/30">
+                            {p.descripcion.split(' ').slice(0, 3).join(' ')}…
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="p-2 space-y-1">
                     {zone.workers.length === 0 ? (

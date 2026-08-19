@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const catalogItemId = searchParams.get('catalog_item_id');
 
-    let sql = "SELECT r.id, r.name, r.category, ci.pvp, ci.cost, ci.description, r.cost_per_serving, r.published, r.active, r.preparation_steps, COALESCE((SELECT COUNT(*) FROM recipe_ingredients ri WHERE ri.recipe_id = r.id), 0)::int as ingredient_count FROM recipes r LEFT JOIN catalog_items ci ON ci.id = r.catalog_item_id WHERE r.active = true";
+    let sql = "SELECT r.id, r.name, r.category, ROUND(ci.pvp::numeric, 2) as pvp, ROUND(ci.cost::numeric, 2) as cost, ci.description, ROUND(r.cost_per_serving::numeric, 2) as cost_per_serving, r.published, r.active, r.preparation_steps, COALESCE((SELECT COUNT(*) FROM recipe_ingredients ri WHERE ri.recipe_id = r.id), 0)::int as ingredient_count FROM recipes r LEFT JOIN catalog_items ci ON ci.id = r.catalog_item_id WHERE r.active = true";
     const values: any[] = [];
     let idx = 1;
 
