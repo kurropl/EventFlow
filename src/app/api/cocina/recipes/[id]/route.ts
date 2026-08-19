@@ -49,7 +49,7 @@ export async function GET(
     // WP-11: leer de catalog_items (tabla canónica unificada)
     const recipe = await querySingle<any>(
       `SELECT id, name, description, source, source_file, servings, category,
-              catalog_item_id, published, ingredients, instructions,
+              published, ingredients, instructions,
               prep_time, cook_time, difficulty, version, active,
               created_at, updated_at, merma_pct, peso_racion,
               author, allergens::text as allergens, photo_url
@@ -289,7 +289,7 @@ export async function PUT(
 
       const updated = (await client.query(
         `SELECT id, name, description, source, servings, category,
-                catalog_item_id, published, ingredients, instructions,
+                published, ingredients, instructions,
                 prep_time, cook_time, difficulty, version, active,
                 created_at, updated_at, merma_pct, peso_racion,
                 author, allergens::text as allergens, photo_url
