@@ -104,11 +104,22 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: {
-        recipe,
-        catalogItem,
-        lineas,
+        ...recipe,
+        catalogItem: catalogItem ? { ...catalogItem, pvp: Number(Number(catalogItem.pvp).toFixed(2)), cost: Number(Number(catalogItem.cost).toFixed(2)) } : null,
+        lineas: (lineas || []).map((l: any) => ({
+          ...l,
+          quantity: Number(Number(l.quantity).toFixed(2)),
+          unit_cost: Number(Number(l.unit_cost).toFixed(2)),
+        })),
         minPriceMultiplier,
-        totales,
+        totales: totales ? {
+          ...totales,
+          coste_total: Number(totales.coste_total.toFixed(2)),
+          coste_por_racion: Number(totales.coste_por_racion.toFixed(2)),
+          coste_con_merma: Number(totales.coste_con_merma.toFixed(2)),
+          pvp_sugerido: Number(totales.pvp_sugerido.toFixed(2)),
+          margen: Number(totales.margen.toFixed(2)),
+        } : null,
       },
     });
   } catch (error) {
