@@ -50,7 +50,7 @@ export async function POST(
                 COALESCE(ci.servings, 1) as servings
          FROM recipe_items ri
          JOIN ingredients i ON i.id = ri.ingredient_id
-         JOIN catalog_items ci ON ci.id = ri.catalog_item_id
+         JOIN catalog_items ci ON ci.id = catalog_item_id
          WHERE ci.active = true AND ci.published = true`,
         []
       );

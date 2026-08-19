@@ -86,7 +86,7 @@ export async function GET(
         `SELECT ri.id, ri.ingredient_id, i.name AS ingredient_name, ri.quantity, ri.unit,
                 COALESCE(i.unit_cost, 0) AS unit_cost, ri.notes
          FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
-         WHERE ri.catalog_item_id = $1
+         WHERE catalog_item_id = $1
          ORDER BY i.name ASC`,
         [recipe.catalog_item_id]
       );
@@ -271,7 +271,7 @@ export async function PUT(
       const lineas = (await client.query(
         `SELECT ri.quantity, COALESCE(i.unit_cost, 0) AS unit_cost
          FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
-         WHERE ri.catalog_item_id = $1`, [id]
+         WHERE catalog_item_id = $1`, [id]
       )).rows;
 
       const settings = (await client.query(`SELECT min_price_multiplier FROM business_settings LIMIT 1`)).rows[0];
