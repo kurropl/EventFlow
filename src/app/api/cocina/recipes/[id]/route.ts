@@ -114,11 +114,12 @@ export async function GET(
         minPriceMultiplier,
         totales: totales ? {
           ...totales,
-          coste_total: Number(totales.coste_total.toFixed(2)),
-          coste_por_racion: Number(totales.coste_por_racion.toFixed(2)),
-          coste_con_merma: Number(totales.coste_con_merma.toFixed(2)),
-          pvp_sugerido: Number(totales.pvp_sugerido.toFixed(2)),
-          margen: Number(totales.margen.toFixed(2)),
+          costeTotal: Number(totales.costeTotal.toFixed(2)),
+          costeMateriaPrima: Number(totales.costeMateriaPrima.toFixed(2)),
+          costeUnitario: totales.costeUnitario !== null ? Number(totales.costeUnitario.toFixed(2)) : null,
+          precioMinimo: totales.precioMinimo !== null ? Number(totales.precioMinimo.toFixed(2)) : null,
+          beneficioUnitario: totales.beneficioUnitario !== null ? Number(totales.beneficioUnitario.toFixed(2)) : null,
+          beneficioTotal: totales.beneficioTotal !== null ? Number(totales.beneficioTotal.toFixed(2)) : null,
         } : null,
       },
     });
