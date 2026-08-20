@@ -128,7 +128,21 @@ export async function POST(req: NextRequest) {
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [catalogId, ing.id, line.cantidad_bruta, line.unidad, line.notas, line.merma_pct]
         );
-        costePlato += lineCost(line.cantidad_bruta, ing.unit_cost);
+        // C1: resolve price from history (latest) before fallback
+        const priceRow = await pool.query(
+          `SELECT COALESCE(h.new_price, i.unit_cost, 0) AS cost
+             FROM ingredients i
+             LEFT JOIN LATERAL (
+               SELECT hh.new_price
+                 FROM ingredient_price_history hh
+                WHERE hh.ingredient_id = i.id
+                ORDER BY hh.recorded_at DESC NULLS LAST
+                LIMIT 1
+             ) h ON true
+            WHERE i.id = $1`, [ing.id]
+        );
+        const resolvedCost = Number(priceRow.rows[0]?.cost ?? 0);
+        costePlato += lineCost(line.cantidad_bruta, resolvedCost);
       }
       // coste del plato = Σ ingredientes (FR-S03)
       await pool.query(`UPDATE catalog_items SET cost = $2 WHERE id = $1`, [catalogId, round2(costePlato)]);

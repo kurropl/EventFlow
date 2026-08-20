@@ -67,6 +67,22 @@ export default function ComprasPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Flujo HITL de transiciones (worker D, reconstruido tras conflicto multi-agente) ──
+  const [transitioningId, setTransitioningId] = useState<string | null>(null);
+  const transitionOrder = async (orderId: string, accion: string) => {
+    setTransitioningId(orderId);
+    try {
+      const res = await fetch(`/api/stock/supplier-orders/${orderId}/transitions`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ accion }),
+      });
+      const d = await res.json();
+      if (!d.success) { setError(d.error || 'Error en la transición'); } else { setError(null); }
+      load();
+    } catch { setError('Error de red'); }
+    setTransitioningId(null);
+  };
+
   const totalPending = orders.filter(o => o.status === 'pending' || o.status === 'ordered').length;
   const totalReceived = orders.filter(o => o.status === 'received').length;
   const totalValue = orders.reduce((s, o) => s + Number(o.total_cost || o.computed_total || 0), 0);
@@ -123,6 +139,21 @@ export default function ComprasPage() {
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-xs font-bold text-ink">{fmtEUR(Number(o.total_cost || o.computed_total || 0))}</span>
                     <Badge label={STATUS_LABEL[o.status] || o.status} variant={o.status === 'received' ? 'ok' : o.status === 'cancelled' ? 'error' : 'warn'} />
+                    {o.status === 'pending' && (
+                      <button onClick={() => transitionOrder(o.id, 'enviar')} disabled={transitioningId === o.id} className="text-[9px] px-2 py-1 rounded bg-gold/10 text-gold font-medium hover:bg-gold/20 disabled:opacity-50">Enviar</button>
+                    )}
+                    {o.status === 'approved' && (
+                      <>
+                        <button onClick={() => transitionOrder(o.id, 'confirmar')} disabled={transitioningId === o.id} className="text-[9px] px-2 py-1 rounded bg-gold/10 text-gold font-medium hover:bg-gold/20 disabled:opacity-50">Entregar</button>
+                        <button onClick={() => transitionOrder(o.id, 'recibir')} disabled={transitioningId === o.id} className="text-[9px] px-2 py-1 rounded bg-success/10 text-success font-medium hover:bg-success/20 disabled:opacity-50">Recibir</button>
+                      </>
+                    )}
+                    {o.status === 'delivered' && (
+                      <button onClick={() => transitionOrder(o.id, 'recibir')} disabled={transitioningId === o.id} className="text-[9px] px-2 py-1 rounded bg-success/10 text-success font-medium hover:bg-success/20 disabled:opacity-50">Recibir</button>
+                    )}
+                    {(o.status === 'pending' || o.status === 'approved' || o.status === 'delivered') && (
+                      <button onClick={() => { if (confirm('¿Cancelar esta orden de compra?')) transitionOrder(o.id, 'cancelar'); }} disabled={transitioningId === o.id} className="text-[9px] px-2 py-1 rounded bg-danger/10 text-danger font-medium hover:bg-danger/20 disabled:opacity-50">Cancelar</button>
+                    )}
                   </div>
                 </div>
                 {o.items && o.items.length > 0 && (

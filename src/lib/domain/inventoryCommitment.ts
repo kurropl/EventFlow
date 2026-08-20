@@ -75,12 +75,14 @@ export async function checkInventoryShortages(client: PoolClient, eventId: strin
   const shortages: ShortageRow[] = [];
   for (const row of resolved.rows) {
     const needed = Number(row.needed) || 0;
+    // C2: apply 25% merma factor to needed → purchase-ready quantity
+    const brutos = needed / 0.75;
     const available = Math.max(0, Number(row.on_hand) - Number(row.others_committed));
-    if (needed > available) {
+    if (brutos > available) {
       shortages.push({
         ingredient_id: row.ingredient_id, ingredient_name: row.ingredient_name,
         provider_name: row.provider_name, needed, available, unit: row.unit,
-        deficit: Math.round((needed - available) * 1000) / 1000,
+        deficit: Math.round((brutos - available) * 1000) / 1000,
       });
     }
   }

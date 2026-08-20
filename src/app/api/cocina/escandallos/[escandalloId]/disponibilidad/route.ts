@@ -23,6 +23,8 @@ import { sanitizeError } from '@/lib/security';
 import { calcularDisponibilidad } from '@/lib/domain/disponibilidadStock';
 import { humanizeUnit } from '@/lib/units-pure';
 
+const DEFAULT_MERMA_PCT = 0.25;
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
@@ -84,7 +86,6 @@ export async function GET(
       const necesario = Number(n.necesario) || 0;
       const raw = calcularDisponibilidad({
         necesidad: necesario,
-        conSeguridad: necesario * (1 + seguridad),
         stock: stockMap.get(n.ingredient_id) ?? 0,
         comprometido: compMap.get(n.ingredient_id) ?? 0,
       });

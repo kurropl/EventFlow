@@ -98,20 +98,27 @@ export async function computeEscandallo(eventId: string): Promise<EscandalloResu
 
   const pax = Math.max(1, Number(ev.guest_count) || 1);
 
-  const rows = (await query(
+const rows = (await query(
     `SELECT esi.id, esi.ingredient_id, esi.ingredient_name,
             esi.theoretical_qty, esi.theoretical_unit,
             esi.actual_quantity, esi.actual_unit,
             esi.estimated_cost, esi.actual_cost_total,
             esi.recipe_version, esi.frozen, ci.category AS category,
-            COALESCE(i.unit_cost, 0) AS unit_cost,
+            COALESCE(h.new_price, i.unit_cost, 0) AS unit_cost,
             COALESCE(ri.qty_base, esi.theoretical_qty) AS qty_base
-     FROM event_shopping_items esi
-     LEFT JOIN ingredients i ON i.id = esi.ingredient_id
-     LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
-     LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
-     WHERE esi.event_id = $1
-     ORDER BY esi.ingredient_name ASC`,
+      FROM event_shopping_items esi
+      LEFT JOIN ingredients i ON i.id = esi.ingredient_id
+      LEFT JOIN LATERAL (
+        SELECT h.new_price
+          FROM ingredient_price_history h
+         WHERE h.ingredient_id = i.id
+         ORDER BY h.recorded_at DESC NULLS LAST
+         LIMIT 1
+      ) h ON true
+      LEFT JOIN recipe_items ri ON ri.id = esi.recipe_item_id
+      LEFT JOIN catalog_items ci ON ci.id = ri.catalog_item_id
+      WHERE esi.event_id = $1
+      ORDER BY esi.ingredient_name ASC`,
     [eventId]
   )).rows as any[];
 
@@ -215,18 +222,36 @@ export async function recordActuals(
   let updated = 0;
   for (const it of items) {
     if (!it.id || it.actual_quantity == null) continue;
-    const res = await query(
+const res = await query(
       `UPDATE event_shopping_items esi
-       SET actual_quantity = $3,
-           actual_unit = COALESCE($4, theoretical_unit, actual_unit),
-           actual_cost_total = ROUND($3 * COALESCE(
-             (SELECT unit_cost FROM ingredients WHERE id = esi.ingredient_id), 0), 2),
-           deviation_qty = $3 - COALESCE(theoretical_qty, 0),
-           deviation_cost = ROUND($3 * COALESCE(
-             (SELECT unit_cost FROM ingredients WHERE id = esi.ingredient_id), 0), 2) - COALESCE(estimated_cost, 0),
-           updated_at = now()
-       WHERE id = $1 AND event_id = $2 AND frozen = false
-       RETURNING id`,
+        SET actual_quantity = $3,
+            actual_unit = COALESCE($4, theoretical_unit, actual_unit),
+            actual_cost_total = ROUND($3 * COALESCE(
+              (SELECT COALESCE(h.new_price, i.unit_cost, 0)
+                 FROM ingredients i
+                 LEFT JOIN LATERAL (
+                   SELECT hh.new_price
+                     FROM ingredient_price_history hh
+                    WHERE hh.ingredient_id = i.id
+                    ORDER BY hh.recorded_at DESC NULLS LAST
+                    LIMIT 1
+                 ) h ON true
+                WHERE i.id = esi.ingredient_id), 0), 2),
+            deviation_qty = $3 - COALESCE(theoretical_qty, 0),
+            deviation_cost = ROUND($3 * COALESCE(
+              (SELECT COALESCE(h.new_price, i.unit_cost, 0)
+                 FROM ingredients i
+                 LEFT JOIN LATERAL (
+                   SELECT hh.new_price
+                     FROM ingredient_price_history hh
+                    WHERE hh.ingredient_id = i.id
+                    ORDER BY hh.recorded_at DESC NULLS LAST
+                    LIMIT 1
+                 ) h ON true
+                WHERE i.id = esi.ingredient_id), 0), 2) - COALESCE(estimated_cost, 0),
+            updated_at = now()
+        WHERE id = $1 AND event_id = $2 AND frozen = false
+        RETURNING id`,
       [it.id, eventId, it.actual_quantity, it.actual_unit ?? null]
     );
     if (res.rows?.[0]) updated++;

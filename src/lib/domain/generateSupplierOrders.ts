@@ -54,10 +54,22 @@ export async function generateSupplierOrdersForEvent(
 
     let totalCost = 0;
     for (const r of rows) {
-      const unitCost = (await client.query(
-        `SELECT unit_cost FROM ingredients WHERE id = $1`, [r.ingredient_id]
-      )).rows[0]?.unit_cost ?? 0;
-      const lineCost = r.deficit * Number(unitCost);
+      // C1: resolve price from history (latest), fallback to unit_cost
+      const priceRow = (await client.query(
+        `SELECT COALESCE(h.new_price, i.unit_cost, 0) AS resolved_cost
+           FROM ingredients i
+           LEFT JOIN LATERAL (
+             SELECT hh.new_price
+               FROM ingredient_price_history hh
+              WHERE hh.ingredient_id = i.id
+              ORDER BY hh.recorded_at DESC NULLS LAST
+              LIMIT 1
+           ) h ON true
+          WHERE i.id = $1`,
+        [r.ingredient_id]
+      )).rows[0];
+      const unitCost = Number(priceRow?.resolved_cost ?? 0);
+      const lineCost = r.deficit * unitCost;
       totalCost += lineCost;
       await client.query(
         `INSERT INTO supplier_order_items (order_id, ingredient_id, ingredient_name, quantity, unit, unit_cost, cost_per_unit)

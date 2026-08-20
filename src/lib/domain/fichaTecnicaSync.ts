@@ -14,6 +14,7 @@
 import type { PoolClient } from 'pg';
 import { computeFichaTotales, type FichaTotales } from '@/lib/fichaTecnica';
 import { CATALOG_CATEGORIES } from '@/lib/recipeImport';
+import { getLatestIngredientPrice } from '@/lib/ingredientPrice';
 
 export async function ensureCatalogItem(client: PoolClient, recipeId: string): Promise<string> {
   // WP-11: ahora el id de receta ES el catalog_item_id (tabla unificada)
@@ -33,10 +34,20 @@ export async function recomputeFicha(client: PoolClient, recipeId: string): Prom
   )).rows[0];
   if (!recipe) throw new Error('La receta no existe en catalog_items');
 
+  // C1: resolve unit_cost from ingredient_price_history (latest) before falling back to unit_cost
   const lineas = (await client.query(
-    `SELECT ri.quantity, COALESCE(i.unit_cost, 0) AS unit_cost
-     FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
-     WHERE ri.catalog_item_id = $1`,
+    `SELECT ri.quantity,
+            COALESCE(h2.new_price, i.unit_cost, 0)::NUMERIC AS unit_cost
+       FROM recipe_items ri
+       JOIN ingredients i ON i.id = ri.ingredient_id
+       LEFT JOIN LATERAL (
+         SELECT h.new_price
+           FROM ingredient_price_history h
+          WHERE h.ingredient_id = i.id
+          ORDER BY h.recorded_at DESC NULLS LAST
+          LIMIT 1
+       ) h2 ON true
+      WHERE ri.catalog_item_id = $1`,
     [recipeId]
   )).rows;
 

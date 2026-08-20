@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany } from '@/lib/db';
 import { verifyToken, verifyAuth } from '@/lib/auth';
+import { processUnifiedReception } from '@/lib/domain/appccReception';
 import { sanitizeError } from '@/lib/security';
 
 
@@ -34,6 +35,42 @@ export async function GET(request: NextRequest) {
     const c = await queryMany<any>("SELECT COUNT(*)::int as total FROM cleaning_log", []);
     const tr = await queryMany<any>("SELECT COUNT(*)::int as total FROM traceability_log", []);
     return NextResponse.json({ success: true, data: { resumen: { temperaturas: t[0]?.total || 0, limpieza: c[0]?.total || 0, trazabilidad: tr[0]?.total || 0 } } });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
+  }
+}
+
+// ── POST: Registrar recepción APPCC (persiste lote + stock + movimiento) ──
+// Reconstruido tras conflicto multi-agente (worker C): delega en
+// processUnifiedReception (dominio) en una transacción.
+
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await verifyAuth(request);
+    if (!auth) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+
+    const body = await request.json();
+    if (!body.ingredient_name && !body.ingredient_id) {
+      return NextResponse.json({ success: false, error: 'Ingrediente es obligatorio' }, { status: 400 });
+    }
+
+    const result = await processUnifiedReception({
+      ingredientId: body.ingredient_id ?? null,
+      lotNumber: body.lot_number || `LOT-${Date.now().toString(36).toUpperCase()}`,
+      batchQuantity: Number(body.batch_quantity ?? body.cantidad ?? 0) || 0,
+      unit: body.unit || 'ud',
+      receivedDate: body.received_date || new Date().toISOString().split('T')[0],
+      receivedBy: body.received_by || auth.name || 'admin',
+      expiryDate: body.expiry_date || null,
+      temperature: body.temperature ?? body.temp ?? null,
+      supplier: body.supplier || null,
+      conditionOk: body.condition_ok ?? false,
+      notes: body.notes || null,
+      source: 'manual',
+      supplierOrderItemId: body.supplier_order_item_id || null,
+    } as any);
+
+    return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
   }

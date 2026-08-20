@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 /* ─────────────── Types ─────────────── */
 interface Event { id: string; client_name: string; event_date: string; guest_count: number; }
-interface ControlRecepcion { proveedor: string; producto: string; temp: number | null; embalajeOk: boolean; caducidadOk: boolean; ok: boolean; }
+interface ControlRecepcion { proveedor: string; producto: string; temp: number | null; embalajeOk: boolean; caducidadOk: boolean; caducidad?: string | null; ok: boolean; }
 interface ControlAlmacenamiento { camara: string; tempManana: number | null; tempTarde: number | null; ok: boolean; }
 interface ControlElaboracion { plato: string; tempCoccion: number | null; horaCoccion: string; responsable: string; ok: boolean; }
 interface ControlServicio { zona: string; temp: number | null; hora: string; ok: boolean; }
@@ -54,6 +54,36 @@ export default function AppccPage() {
 
   const addRecepcion = () => setRecepciones(p => [...p, { proveedor: '', producto: '', temp: null, embalajeOk: false, caducidadOk: false, ok: false }]);
   const updateRec = (i: number, f: string, v: any) => setRecepciones(p => p.map((r, idx) => idx === i ? { ...r, [f]: v } : r));
+
+  // Guardar una recepción APPCC de forma persistente (crea lote + stock + movimiento)
+  const [guardando, setGuardando] = useState<number | null>(null);
+  const [recError, setRecError] = useState<string | null>(null);
+  const guardarRecepcion = async (i: number) => {
+    const r = recepciones[i];
+    if (!r.producto) return;
+    setGuardando(i); setRecError(null);
+    try {
+      const res = await fetch('/api/cocina/appcc', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({
+          ingredient_name: r.producto,
+          supplier: r.proveedor,
+          temperature: r.temp,
+          batch_quantity: 1,
+          unit: 'ud',
+          expiry_date: r.caducidad ?? null,
+          condition_ok: !!r.embalajeOk,
+          lot_number: `LOT-${Date.now().toString(36).toUpperCase()}`,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) updateRec(i, 'ok', true);
+      else setRecError(data.error || 'Error al guardar');
+    } catch {
+      setRecError('Error de red');
+    }
+    setGuardando(null);
+  };
   const updateAlm = (i: number, f: string, v: any) => setAlmacenamiento(p => p.map((a, idx) => idx === i ? { ...a, [f]: v } : a));
   const updateElab = (i: number, f: string, v: any) => setElaboraciones(p => p.map((e, idx) => idx === i ? { ...e, [f]: v } : e));
   const updateServ = (i: number, f: string, v: any) => setServicios(p => p.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
@@ -101,8 +131,9 @@ export default function AppccPage() {
                 <input value={r.producto} onChange={e => updateRec(i, 'producto', e.target.value)} placeholder="Producto" className="px-2 py-1.5 rounded border border-divider text-[11px]" />
                 <input type="number" step="0.1" value={r.temp ?? ''} onChange={e => updateRec(i, 'temp', e.target.value ? Number(e.target.value) : null)} placeholder="Temp °C" className="px-2 py-1.5 rounded border border-divider text-[11px]" />
                 <div className="flex items-center gap-1"><label onClick={() => updateRec(i, 'embalajeOk', !r.embalajeOk)} className={cn('text-[9px] px-1.5 py-1 rounded cursor-pointer', r.embalajeOk ? 'bg-success/10 text-success' : 'border border-divider')}>Embalaje</label><label onClick={() => updateRec(i, 'caducidadOk', !r.caducidadOk)} className={cn('text-[9px] px-1.5 py-1 rounded cursor-pointer', r.caducidadOk ? 'bg-success/10 text-success' : 'border border-divider')}>Caducidad</label></div>
-                <button onClick={() => updateRec(i, 'ok', !r.ok)} className={cn('px-2 py-1 rounded text-[10px] font-medium', r.ok ? 'bg-success text-white' : 'bg-ink text-white')}>{r.ok ? '✓ OK' : 'Validar'}</button>
+                <button onClick={() => guardarRecepcion(i)} disabled={guardando === i} className={cn('px-2 py-1 rounded text-[10px] font-medium', r.ok ? 'bg-success text-white' : 'bg-ink text-white disabled:opacity-50')}>{guardando === i ? '…' : r.ok ? '✓ OK' : 'Guardar'}</button>
               </div>
+              {recError && <p className="text-[9px] text-danger mt-1">{recError}</p>}
             </div>
           ))}
           <button onClick={addRecepcion} className="px-3 py-1.5 rounded-lg border border-divider text-[10px] text-ink-soft hover:bg-cream flex items-center gap-1"><Icon name="plus" className="w-3 h-3" /> Añadir</button>

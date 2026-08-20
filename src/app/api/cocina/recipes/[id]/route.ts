@@ -75,12 +75,20 @@ export async function GET(
         `SELECT id, pvp, cost, category FROM catalog_items WHERE id = $1`,
         [recipe.catalog_item_id]
       );
-      lineas = await queryMany<any>(
+lineas = await queryMany<any>(
         `SELECT ri.id, ri.ingredient_id, i.name AS ingredient_name, ri.quantity, ri.unit,
-                COALESCE(i.unit_cost, 0) AS unit_cost, ri.notes
-         FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
-         WHERE catalog_item_id = $1
-         ORDER BY i.name ASC`,
+                COALESCE(h.new_price, i.unit_cost, 0) AS unit_cost, ri.notes
+          FROM recipe_items ri
+          JOIN ingredients i ON i.id = ri.ingredient_id
+          LEFT JOIN LATERAL (
+            SELECT hh.new_price
+              FROM ingredient_price_history hh
+             WHERE hh.ingredient_id = i.id
+             ORDER BY hh.recorded_at DESC NULLS LAST
+             LIMIT 1
+          ) h ON true
+          WHERE catalog_item_id = $1
+          ORDER BY i.name ASC`,
         [recipe.catalog_item_id]
       );
     }
@@ -262,9 +270,17 @@ export async function PUT(
       )).rows[0];
 
       const lineas = (await client.query(
-        `SELECT ri.quantity, COALESCE(i.unit_cost, 0) AS unit_cost
-         FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id
-         WHERE catalog_item_id = $1`, [id]
+        `SELECT ri.quantity, COALESCE(h.new_price, i.unit_cost, 0) AS unit_cost
+          FROM recipe_items ri
+          JOIN ingredients i ON i.id = ri.ingredient_id
+          LEFT JOIN LATERAL (
+            SELECT hh.new_price
+              FROM ingredient_price_history hh
+             WHERE hh.ingredient_id = i.id
+             ORDER BY hh.recorded_at DESC NULLS LAST
+             LIMIT 1
+          ) h ON true
+          WHERE catalog_item_id = $1`, [id]
       )).rows;
 
       const settings = (await client.query(`SELECT min_price_multiplier FROM business_settings LIMIT 1`)).rows[0];

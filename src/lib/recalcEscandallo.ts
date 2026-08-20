@@ -31,12 +31,20 @@ export async function recalcEventEscandallo(
        FROM recipe_items ri WHERE ri.id = esi.recipe_item_id AND ri.catalog_item_id IS NOT NULL
      ),
      theoretical_unit = (SELECT i.base_unit FROM recipe_items ri JOIN ingredients i ON i.id = ri.ingredient_id WHERE ri.id = esi.recipe_item_id),
-     estimated_cost = (
-       SELECT COALESCE(ri.qty_base, ri.quantity_override, ri.quantity) * $1 * (
-         SELECT COALESCE(i.unit_cost, 0) FROM ingredients i WHERE i.id = esi.ingredient_id
-       )
-       FROM recipe_items ri WHERE ri.id = esi.recipe_item_id
-     )
+estimated_cost = (
+       SELECT COALESCE(ri.qty_base, ri.quantity_override, ri.quantity) * $1 *
+         COALESCE(h.new_price, i.unit_cost, 0)
+        FROM recipe_items ri
+        JOIN ingredients i ON i.id = ri.ingredient_id
+        LEFT JOIN LATERAL (
+          SELECT hh.new_price
+            FROM ingredient_price_history hh
+           WHERE hh.ingredient_id = i.id
+           ORDER BY hh.recorded_at DESC NULLS LAST
+           LIMIT 1
+        ) h ON true
+        WHERE ri.id = esi.recipe_item_id
+    )
      WHERE esi.event_id = $2 AND esi.frozen = false AND esi.recipe_item_id IS NOT NULL`,
     [gc, eventId]
   );

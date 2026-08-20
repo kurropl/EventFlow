@@ -98,9 +98,18 @@ export async function generateEscandallo(
         usedRecipe = true;
         for (const r of recipe) {
           // coste teórico: qty(receta, en unidad del ingrediente) × raciones × coste/unidad
+          // C1: resolve from price history (latest) instead of static unit_cost
           const qtyNative = (Number(r.quantity) || 0) * raciones;
-          const estimated = r.unit_cost != null
-            ? Math.round(qtyNative * Number(r.unit_cost) * 100) / 100
+          const rowUnitCost = (await client.query(
+            `SELECT h.new_price FROM ingredient_price_history h WHERE h.ingredient_id = $1
+               ORDER BY h.recorded_at DESC NULLS LAST LIMIT 1`,
+            [r.ingredient_id]
+          )).rows[0];
+          const unitCost = rowUnitCost?.new_price != null
+            ? Number(rowUnitCost.new_price)
+            : (r.unit_cost != null ? Number(r.unit_cost) : 0);
+          const estimated = unitCost > 0
+            ? Math.round(qtyNative * unitCost * 100) / 100
             : null;
           await insertShopping({
             ingredientId: r.ingredient_id, recipeItemId: r.recipe_item_id, name: r.name,
