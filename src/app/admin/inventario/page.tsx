@@ -52,6 +52,10 @@ export default function InventarioPage() {
     stock_unit: 'kg', packaging_size: null as number | null,
   });
   const [saving, setSaving] = useState(false);
+  const [expiryTab, setExpiryTab] = useState(false);
+  const [expiryAlerts, setExpiryAlerts] = useState<any[]>([]);
+  const [expiryLoading, setExpiryLoading] = useState(false);
+  const [discardLoading, setDiscardLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/providers', { credentials: 'include' })
@@ -146,6 +150,16 @@ export default function InventarioPage() {
     return true;
   });
 
+  const loadExpiryAlerts = async () => {
+    setExpiryLoading(true);
+    try {
+      const res = await fetch('/api/stock/expiry-alerts?days=30', { credentials: 'include' });
+      const d = await res.json();
+      if (d.success) setExpiryAlerts(d.data || []);
+    } catch (e) { console.error(e); }
+    setExpiryLoading(false);
+  };
+
   // KPIs
   const totalItems = filtered.length;
   const lowStockCount = filtered.filter(i => i.min_stock && (i.quantity ?? 0) <= i.min_stock).length;
@@ -202,6 +216,83 @@ export default function InventarioPage() {
           <input type="checkbox" checked={showLowStock} onChange={e => setShowLowStock(e.target.checked)} className="w-3.5 h-3.5 rounded border-divider" />
           <span className="text-[10px] text-ink-soft">Solo stock bajo</span>
         </label>
+      </div>
+
+      {/* M1: Caducidad próxima */}
+      <div className="bg-white rounded-lg border border-divider/50 overflow-hidden">
+        <div className="px-3 py-2 border-b border-divider/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Icon name="snowflake" className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-[11px] font-semibold text-ink">Próximos a caducar</span>
+            <span className="text-[9px] text-ink-soft bg-cream px-1.5 py-0.5 rounded">FEFO</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setExpiryTab(!expiryTab); if (!expiryTab) loadExpiryAlerts(); }} className={cn('px-2 py-1 rounded text-[9px] font-medium', expiryTab ? 'bg-amber-500 text-white' : 'bg-cream text-ink-soft')}>
+              {expiryTab ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
+        </div>
+        {expiryTab && (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="bg-cream/30 border-b border-divider/30">
+                    <th className="text-left px-3 py-1.5 font-medium text-ink-soft">Lote</th>
+                    <th className="text-left px-3 py-1.5 font-medium text-ink-soft">Ingrediente</th>
+                    <th className="text-left px-3 py-1.5 font-medium text-ink-soft">Caducidad</th>
+                    <th className="text-right px-3 py-1.5 font-medium text-ink-soft">Cant. restante</th>
+                    <th className="text-center px-3 py-1.5 font-medium text-ink-soft">Estado</th>
+                    <th className="text-center px-3 py-1.5 font-medium text-ink-soft">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expiryAlerts.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center py-4 text-ink-soft text-[10px]">No hay lotes próximos a caducar</td></tr>
+                  ) : (
+                    expiryAlerts.map(lot => {
+                      const isCaducado = lot.status === 'caducado';
+                      const isProximo = lot.status === 'próximo';
+                      return (
+                        <tr key={lot.lot_id} className={cn('border-b border-divider/20', isCaducado && 'bg-danger/5', isProximo && 'bg-amber-50/30')}>
+                          <td className="px-3 py-1.5 font-mono text-[10px] text-ink-soft">{lot.lot_code}</td>
+                          <td className="px-3 py-1.5 font-medium text-ink">{lot.ingredient_name}</td>
+                          <td className="px-3 py-1.5 text-ink-soft">{lot.expiry_date ? new Date(lot.expiry_date).toLocaleDateString('es-ES') : '-'}</td>
+                          <td className="px-3 py-1.5 text-right font-medium">{Number(lot.qty_base_remaining).toFixed(2)} {lot.base_unit || ''}</td>
+                          <td className="px-3 py-1.5 text-center">
+                            {isCaducado && <span className="text-[9px] px-1.5 py-0.5 rounded bg-danger/10 text-danger">Caducado</span>}
+                            {isProximo && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600">Próximo</span>}
+                            {!isCaducado && !isProximo && <span className="text-[9px] px-1.5 py-0.5 rounded bg-success/10 text-success">OK</span>}
+                          </td>
+                          <td className="px-3 py-1.5 text-center">
+                            {isCaducado && !isCaducado && (
+                              <button onClick={async () => {
+                                if (!confirm(`¿Dar de baja el lote ${lot.lot_code}?`)) return;
+                                setDiscardLoading(lot.lot_id);
+                                try {
+                                  const res = await fetch(`/api/stock/lots/${lot.lot_id}/discard`, {
+                                    method: 'POST', credentials: 'include',
+                                    headers: { 'Content-Type': 'application/json' },
+                                  });
+                                  const d = await res.json();
+                                  if (d.success) { loadExpiryAlerts(); }
+                                  else alert(d.error);
+                                } catch (e) { alert('Error de red'); }
+                                setDiscardLoading(null);
+                              }} disabled={discardLoading === lot.lot_id} className="px-2 py-0.5 rounded text-[9px] bg-danger/10 text-danger hover:bg-danger/20 disabled:opacity-50">
+                                {discardLoading === lot.lot_id ? '...' : 'Baja'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Table */}

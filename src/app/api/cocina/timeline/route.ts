@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
     const results = [];
     for (const entry of body.entries) {
       const result = await querySingle<any>(
-        `INSERT INTO event_timeline (event_id, phase, concepto, planned_time, actual_time, duration_minutes, notes, orden, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        `INSERT INTO event_timeline (event_id, phase, concepto, planned_time, actual_time, duration_minutes, notes, orden, zona, plato, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
          RETURNING *`,
         [
           body.event_id,
@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
           entry.duration_minutes || null,
           entry.notes || null,
           entry.orden || 0,
+          entry.zona || null,
+          entry.plato || null,
         ]
       );
       results.push(result);
@@ -85,10 +87,12 @@ export async function PUT(request: NextRequest) {
         actual_time = $4,
         duration_minutes = $5,
         notes = $6,
-        orden = COALESCE($7, orden)
-       WHERE id = $8
+        orden = COALESCE($7, orden),
+        zona = COALESCE($8, zona),
+        plato = COALESCE($9, plato)
+       WHERE id = $10
        RETURNING *`,
-      [body.phase, body.concepto, body.planned_time, body.actual_time, body.duration_minutes, body.notes, body.orden, body.id]
+      [body.phase, body.concepto, body.planned_time, body.actual_time, body.duration_minutes, body.notes, body.orden, body.zona, body.plato, body.id]
     );
 
     if (!result) return NextResponse.json({ success: false, error: 'No encontrado' }, { status: 404 });

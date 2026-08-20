@@ -7,6 +7,51 @@ import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
 import { verifyToken, verifyAuth } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
+import { getRecipeAllergensDerived } from '@/lib/allergens';
+
+/**
+ * Recursively computes the total cost of a sub-receta.
+ * @param recipeId - ID of the sub-receta
+ * @param parentRecipeId - ID of the parent recipe (to prevent cycles)
+ * @param visited - Set of already-visited recipe IDs (cycle guard)
+ * @returns { name, cost, items[] }
+ */
+async function computeSubRecetaCost(recipeId: string, parentRecipeId: string, visited: Set<string>): Promise<{ name: string; cost: number; items: any[] }> {
+  if (visited.has(recipeId)) {
+    return { name: '(recursión)', cost: 0, items: [] };
+  }
+  visited.add(recipeId);
+
+  const recipe = await querySingle<any>(
+    'SELECT id, name, merma_pct FROM recipes WHERE id = $1',
+    [recipeId]
+  );
+  if (!recipe) return { name: 'no encontrado', cost: 0, items: [] };
+
+  const lines = await queryMany<any>(
+    "SELECT ri.id, ri.ingredient_id, i.name as ingredient_name, ri.quantity, ri.unit, COALESCE(i.unit_cost, i.cost_per_unit, 0) as unit_price, ri.subrecipe_id FROM recipe_ingredients ri LEFT JOIN ingredients i ON i.id = ri.ingredient_id WHERE ri.recipe_id = $1",
+    [recipeId]
+  );
+
+  let cost = 0;
+  const items: any[] = [];
+  for (const l of lines) {
+    let itemCost = 0;
+    if (l.subrecipe_id) {
+      const sub = await computeSubRecetaCost(l.subrecipe_id, parentRecipeId, visited);
+      itemCost = sub.cost;
+    } else if (l.ingredient_id) {
+      itemCost = (Number(l.quantity) || 0) * (Number(l.unit_price) || 0);
+    }
+    cost += itemCost;
+    items.push({ id: l.id, ingredient_name: l.ingredient_name, quantity: l.quantity, unit: l.unit, cost: itemCost });
+  }
+
+  const mermaPct = Number(recipe.merma_pct || 0.2);
+  const totalCost = cost * (1 + mermaPct);
+
+  return { name: recipe.name, cost: totalCost, items };
+}
 
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -21,22 +66,44 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     if (!recipe) return NextResponse.json({ success: false, error: 'Receta no encontrada' }, { status: 404 });
 
     const ingredients = await queryMany<any>(
-      "SELECT ri.id, ri.ingredient_id, i.name as ingredient_name, ri.quantity, ri.unit, ri.per_guest, ri.cost, COALESCE(i.unit_cost, i.cost_per_unit, 0) as unit_price FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id WHERE ri.recipe_id = $1 ORDER BY ri.id",
+      "SELECT ri.id, ri.ingredient_id, ri.subrecipe_id, i.name as ingredient_name, ri.quantity, ri.unit, ri.per_guest, ri.cost, COALESCE(i.unit_cost, i.cost_per_unit, 0) as unit_price FROM recipe_ingredients ri LEFT JOIN ingredients i ON i.id = ri.ingredient_id WHERE ri.recipe_id = $1 ORDER BY ri.id",
       [params.id]
     );
 
-    // Merma por defecto de la receta o 0.2
+    // ── Sub-recetas: compute cost recursively ──────────────────
+    const subRecetas: any[] = [];
+    for (const line of ingredients) {
+      if (line.subrecipe_id) {
+        const subCost = await computeSubRecetaCost(line.subrecipe_id, params.id, new Set());
+        subRecetas.push({ subrecipe_id: line.subrecipe_id, subrecipe_name: subCost.name, line_cost: subCost.cost, ingredients: subCost.items });
+      }
+    }
+
+    // Sum sub-receta costs into total
+    const subRecetaTotal = subRecetas.reduce((s: number, sr: any) => s + (sr.line_cost || 0), 0);
+
+    // Merma: solo aplica al coste de ingredientes directos (sub-recetas ya llevan su merma)
     const mermaPct = Number(recipe.merma_pct || 0.2);
-    const rawCost = ingredients.reduce((s: number, ing: any) => s + Number(ing.cost || 0), 0);
-    const totalCost = rawCost * (1 + mermaPct);
+    const directIngredientCost = ingredients.reduce((s: number, ing: any) => {
+      if (ing.subrecipe_id) return s; // sub-recetas no cuentan en directIngredientCost
+      return s + (Number(ing.cost) || 0);
+    }, 0);
+    const totalCost = (directIngredientCost + subRecetaTotal) * (1 + mermaPct);
+
+    // Alérgenos derivados (M5)
+    const { alergenos: allergensDerivados, manual: manualAllergens } = await getRecipeAllergensDerived(params.id);
 
     return NextResponse.json({
       success: true,
       data: {
         ...recipe,
         ingredients,
+        subrecetas: subRecetas,
+        allergens_derivados: allergensDerivados,
+        allergens_manuales: manualAllergens,
         computed: {
-          raw_cost: rawCost,
+          direct_ingredient_cost: directIngredientCost,
+          subreceta_cost: subRecetaTotal,
           merma_pct: mermaPct,
           total_cost: totalCost,
           cost_per_unit: recipe.servings > 0 ? totalCost / recipe.servings : totalCost,
@@ -103,11 +170,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         const quantity = Number(ing.cantidad) || 0;
         const cost = quantity * unitCost;
+        const subrecipeId = ing.subrecipe_id || null;
 
         await querySingle(
-          `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, cost, per_guest)
-           VALUES ($1, $2, $3, $4, $5, true)`,
-          [params.id, ingredientId, quantity, ing.medida || 'g', cost]
+          `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, cost, per_guest, subrecipe_id)
+           VALUES ($1, $2, $3, $4, $5, true, $6)`,
+          [params.id, ingredientId, quantity, ing.medida || 'g', cost, subrecipeId]
         );
       }
 

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
 
 interface Event { id: string; client_name: string; event_date: string; guest_count: number; }
-interface TimelineEntry { id?: string; phase: string; concepto: string; planned_time: string; actual_time?: string; duration_minutes?: number; notes?: string; orden: number; }
+interface TimelineEntry { id?: string; phase: string; concepto: string; planned_time: string; actual_time?: string; duration_minutes?: number; notes?: string; orden: number; zona?: string; plato?: string; }
 interface StaffingLine { id: string; role: string; kitchen_zone?: string; previsto: number; real: number; asignado: string; }
 interface TareaProduccion { id?: string; nombre: string; asignado_a: string; completado: boolean; zona?: string; hora?: string; }
 interface PasoElaboracion { orden: number; descripcion: string; duracion: number; zona: string; alergenos: string[]; controles: string[]; fase: string; completado: boolean; }
@@ -266,11 +266,17 @@ export default function ProduccionPage() {
                     <div className="divide-y divide-divider/30">
                       {phase.entries.map((entry, idx) => {
                         const globalIdx = timeline.indexOf(entry);
+                        const zones = ['frio', 'caliente', 'pasteleria', 'ensamblaje', 'carga'];
                         return (
-                          <div key={idx} className="px-3 py-2 flex items-center gap-2">
-                            <input type="time" value={entry.planned_time || ''} onChange={e => updateTimelineEntry(globalIdx, 'planned_time', e.target.value)} className="px-2 py-1 rounded border border-divider text-[10px] w-24" />
-                            <input value={entry.concepto} onChange={e => updateTimelineEntry(globalIdx, 'concepto', e.target.value)} placeholder="Concepto..." className="flex-1 px-2 py-1 rounded border border-divider text-[10px]" />
-                            <input type="number" value={entry.duration_minutes || ''} onChange={e => updateTimelineEntry(globalIdx, 'duration_minutes', parseInt(e.target.value) || null)} placeholder="Min" className="w-16 px-2 py-1 rounded border border-divider text-[10px]" />
+                          <div key={idx} className="px-3 py-1.5 flex items-center gap-1.5 border-b border-divider/20">
+                            <input type="time" value={entry.planned_time || ''} onChange={e => updateTimelineEntry(globalIdx, 'planned_time', e.target.value)} className="px-1.5 py-1 rounded border border-divider text-[9px] w-20" />
+                            <select value={entry.zona || ''} onChange={e => updateTimelineEntry(globalIdx, 'zona', e.target.value)} className="px-1.5 py-1 rounded border border-divider text-[9px] w-24">
+                              <option value="">Zona...</option>
+                              {zones.map(z => <option key={z} value={z}>{z}</option>)}
+                            </select>
+                            <input value={entry.plato || ''} onChange={e => updateTimelineEntry(globalIdx, 'plato', e.target.value)} placeholder="Plato" className="flex-1 px-1.5 py-1 rounded border border-divider text-[9px] max-w-[120px]" />
+                            <input value={entry.concepto || ''} onChange={e => updateTimelineEntry(globalIdx, 'concepto', e.target.value)} placeholder="Concepto..." className="flex-2 px-1.5 py-1 rounded border border-divider text-[9px]" />
+                            <input type="number" value={entry.duration_minutes || ''} onChange={e => updateTimelineEntry(globalIdx, 'duration_minutes', parseInt(e.target.value) || null)} placeholder="Min" className="w-14 px-1.5 py-1 rounded border border-divider text-[9px]" />
                             <button onClick={() => saveTimeline(timeline)} className="text-[9px] text-gold hover:underline">💾</button>
                           </div>
                         );
