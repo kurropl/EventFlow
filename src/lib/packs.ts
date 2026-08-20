@@ -76,7 +76,7 @@ function countDietaryRestrictions(guests: { dietary: unknown }[]): {
 /** Query única de invitados confirmados (dietas) — compartida. */
 async function getDietaryGuests(eventId: string): Promise<{ dietary: unknown }[]> {
   return queryMany<any>(
-    `SELECT dietary FROM guests WHERE event_id = $1 AND status = 'confirmado'`,
+    `SELECT dietary FROM guests WHERE event_id = $1 AND rsvp = 'confirmado'`,
     [eventId]
   );
 }
