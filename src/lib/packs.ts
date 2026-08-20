@@ -45,6 +45,42 @@ export interface PackCalculation {
 /**
  * Calcula los packs necesarios para un evento
  */
+/**
+ * Cuenta restricciones dietarias de un array de invitados confirmados.
+ * Devuelvo un mapa type→count y cuántos invitados tienen restricciones.
+ * Es el motor compartido que usan calculatePacks y getEventDietarySummary
+ * (evita duplicar el bucle de conteo entre ambos).
+ */
+function countDietaryRestrictions(guests: { dietary: unknown }[]): {
+  counts: Map<string, number>;
+  withRestrictions: number;
+} {
+  const counts = new Map<string, number>();
+  let withRestrictions = 0;
+
+  for (const guest of guests) {
+    const dietary = guest.dietary;
+    if (Array.isArray(dietary) && dietary.length > 0) {
+      withRestrictions++;
+      for (const restriction of dietary) {
+        if (typeof restriction === 'string') {
+          counts.set(restriction, (counts.get(restriction) || 0) + 1);
+        }
+      }
+    }
+  }
+
+  return { counts, withRestrictions };
+}
+
+/** Query única de invitados confirmados (dietas) — compartida. */
+async function getDietaryGuests(eventId: string): Promise<{ dietary: unknown }[]> {
+  return queryMany<any>(
+    `SELECT dietary FROM guests WHERE event_id = $1 AND status = 'confirmado'`,
+    [eventId]
+  );
+}
+
 export async function calculatePacks(eventId: string): Promise<PackCalculation | null> {
   // 1. Obtener datos del evento
   const event = await querySingle<any>(
@@ -61,23 +97,8 @@ export async function calculatePacks(eventId: string): Promise<PackCalculation |
   const numCamareros = calcCamareros(pax, serviceType);
 
   // 3. Obtener información de dietas de los invitados
-  const guests = await queryMany<any>(
-    `SELECT dietary FROM guests WHERE event_id = $1 AND status = 'confirmado'`,
-    [eventId]
-  );
-
-  // Contar invitados por tipo de restricción
-  const dietaryCounts = new Map<string, number>();
-  for (const guest of guests) {
-    const dietary = guest.dietary;
-    if (Array.isArray(dietary)) {
-      for (const restriction of dietary) {
-        if (typeof restriction === 'string') {
-          dietaryCounts.set(restriction, (dietaryCounts.get(restriction) || 0) + 1);
-        }
-      }
-    }
-  }
+  const guests = await getDietaryGuests(eventId);
+  const { counts: dietaryCounts } = countDietaryRestrictions(guests);
 
   // 4. Obtener plantillas de packs activas
   const templates = await queryMany<any>(
@@ -187,27 +208,11 @@ export async function getEventDietarySummary(eventId: string): Promise<{
   with_restrictions: number;
   restrictions: { type: string; count: number }[];
 } | null> {
-  const guests = await queryMany<any>(
-    `SELECT dietary FROM guests WHERE event_id = $1 AND status = 'confirmado'`,
-    [eventId]
-  );
+  const guests = await getDietaryGuests(eventId);
 
   if (guests.length === 0) return null;
 
-  const dietaryCounts = new Map<string, number>();
-  let withRestrictions = 0;
-
-  for (const guest of guests) {
-    const dietary = guest.dietary;
-    if (Array.isArray(dietary) && dietary.length > 0) {
-      withRestrictions++;
-      for (const restriction of dietary) {
-        if (typeof restriction === 'string') {
-          dietaryCounts.set(restriction, (dietaryCounts.get(restriction) || 0) + 1);
-        }
-      }
-    }
-  }
+  const { counts: dietaryCounts, withRestrictions } = countDietaryRestrictions(guests);
 
   return {
     total_guests: guests.length,
