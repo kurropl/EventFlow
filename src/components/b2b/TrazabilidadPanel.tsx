@@ -689,9 +689,9 @@ export default function TrazabilidadPanel() {
       addLine('Ingrediente', lot.ingredient.name);
       addLine('Proveedor', lot.supplier || '—');
       addLine('Cantidad recibida', `${summary.total_received} ${summary.unit}`);
-      addLine('Fecha de recepción', lot.received_date ? new Date(lot.received_date).toLocaleDateString('es-ES') : '—');
+      addLine('Fecha de recepción', lot.received_date ? formatDate(lot.received_date) : '—');
       addLine('Recibido por', lot.received_by || '—');
-      addLine('Caducidad', lot.expiry_date ? new Date(lot.expiry_date).toLocaleDateString('es-ES') : '—');
+      addLine('Caducidad', lot.expiry_date ? formatDate(lot.expiry_date) : '—');
       addLine('Temperatura', lot.temperature !== null ? `${lot.temperature}°C` : '—');
       addLine('Estado', lot.condition_ok ? 'Aceptado' : 'Rechazado');
       if (lot.qr_code) addLine('Código QR', lot.qr_code);
@@ -752,7 +752,7 @@ export default function TrazabilidadPanel() {
             y = 20;
           }
           const eventDate = c.event.event_date
-            ? new Date(c.event.event_date).toLocaleDateString('es-ES')
+            ? formatDate(c.event.event_date)
             : '—';
           doc.text(eventDate, 14, y);
           doc.text(c.event.client_name?.substring(0, 25) || '—', 44, y);

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Icon from '../shared/Icon';
 import { DataCard, DataList } from '@/components/ui';
 import { StatStrip } from '@/components/ui/StatStrip';
+import { formatDate } from '@/lib/format';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1115,7 +1116,7 @@ export default function StockManager() {
               <option value="">Seleccionar evento...</option>
               {events.map((ev) => (
                 <option key={ev.id} value={ev.id}>
-                  {ev.client_name} — {ev.event_date ? new Date(ev.event_date).toLocaleDateString('es-ES') : 'Sin fecha'} ({ev.status})
+                  {ev.client_name} — {ev.event_date ? formatDate(ev.event_date) : 'Sin fecha'} ({ev.status})
                 </option>
               ))}
             </select>
@@ -1758,7 +1759,7 @@ export default function StockManager() {
                             </span>
                           </td>
                           <td className="px-4 py-2.5 text-[#6B7280] text-[13px]">
-                            {order.expected_date ? new Date(order.expected_date).toLocaleDateString('es-ES') : '—'}
+                            {order.expected_date ? formatDate(order.expected_date) : '—'}
                           </td>
                           <td className="px-4 py-2.5 text-center">
                             <div className="flex items-center justify-center gap-1">

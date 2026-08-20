@@ -14,6 +14,7 @@
 import type { PoolClient } from 'pg';
 import type { DomainEvent } from '../events';
 import { query, transaction } from '@/lib/db';
+import { formatDate } from '@/lib/format';
 
 // ============================================================
 // Tipos

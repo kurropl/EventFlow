@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Printer, RefreshCw, Send, Users, UtensilsCrossed, Clock, MapPin, ClipboardList, AlertTriangle } from 'lucide-react';
+import { formatDate } from '@/lib/format';
 
 interface BriefingData {
   id: string;
@@ -148,7 +149,7 @@ export default function BriefingCamareros({ eventId }: { eventId: string }) {
         <span className={`px-2 py-0.5 rounded-full font-medium ${
           briefing?.status === 'sent' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
         }`}>
-          {briefing?.status === 'sent' ? '🔵 Enviado ' + new Date(briefing.sent_at!).toLocaleDateString('es-ES') : '⚪ Borrador'}
+          {briefing?.status === 'sent' ? '🔵 Enviado ' + formatDate(briefing.sent_at!) : '⚪ Borrador'}
         </span>
         <span className="text-stone-400">v{briefing?.version || 1} · {new Date(briefing?.generated_at || '').toLocaleString('es-ES')}</span>
       </div>
@@ -168,7 +169,7 @@ export default function BriefingCamareros({ eventId }: { eventId: string }) {
         <div className="border-b-2 border-stone-800 pb-3 mb-2">
           <h1 className="text-lg font-bold tracking-tight">BRIEFING — {content.event?.client_name || 'Evento'}</h1>
           <div className="grid grid-cols-4 gap-4 mt-2 text-[10px]">
-            <div><span className="text-stone-400">Fecha:</span> {new Date(content.event?.event_date).toLocaleDateString('es-ES')}</div>
+            <div><span className="text-stone-400">Fecha:</span> {formatDate(content.event?.event_date)}</div>
             <div><span className="text-stone-400">Tipo:</span> {content.event?.event_type || '-'}</div>
             <div><span className="text-stone-400">Comensales:</span> {content.event?.guest_count || 0} ({content.event?.kids_count || 0} niños)</div>
             <div><span className="text-stone-400">Barra:</span> {content.event?.bar_hours || 0}h</div>

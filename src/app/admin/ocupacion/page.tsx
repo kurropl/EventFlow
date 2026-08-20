@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/b2b/AdminLayout';
 import Link from 'next/link';
 import { PageHeader, Spinner, EmptyState } from '@/components/ui';
+import { formatDate } from '@/lib/format';
 
 interface EventOccupancy {
   id: string;
@@ -136,7 +137,7 @@ export default function OcupacionPage() {
                         {event.clientName}
                       </h3>
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-ink-soft">
-                        <span>{new Date(event.eventDate).toLocaleDateString('es-ES')}</span>
+                        <span>{formatDate(event.eventDate)}</span>
                         <span>{event.guestCount} invitados</span>
                         <span className={`px-2 py-0.5 rounded-full text-white text-[10px] font-medium ${statusColor[event.status] || 'bg-ink-soft'}`}>
                           {statusLabel[event.status] || event.status}

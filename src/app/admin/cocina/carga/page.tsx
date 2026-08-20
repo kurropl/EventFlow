@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/shared/Icon';
 import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/format';
 
 interface Event { id: string; client_name: string; event_date: string; guest_count: number; }
 interface HojaCarga { id: string; event_id: string; evento_nombre: string; fecha: string; estado: string; notas: string | null; items: ItemCarga[]; }
@@ -143,7 +144,7 @@ export default function CargaPage() {
       <div className="bg-white rounded-lg border border-divider/50 p-2 flex flex-wrap items-center gap-2">
         <select value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)} className="flex-1 min-w-[200px] px-2 py-1.5 rounded-lg border border-divider text-[11px] bg-gold/5 border-gold/20 font-medium">
           <option value="">Seleccionar evento...</option>
-          {events.map(e => <option key={e.id} value={e.id}>{e.client_name} — {new Date(e.event_date).toLocaleDateString('es-ES')}</option>)}
+          {events.map(e => <option key={e.id} value={e.id}>{e.client_name} — {formatDate(e.event_date)}</option>)}
         </select>
         <button onClick={createHoja} disabled={!selectedEvent} className="px-3 py-1.5 rounded-lg bg-ink text-white text-[10px] font-medium hover:bg-ink-light disabled:opacity-50 flex items-center gap-1">
           <Icon name="plus" className="w-3 h-3" /> Nueva hoja

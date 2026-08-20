@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/shared/Icon';
+import { formatDate } from '@/lib/format';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -347,7 +348,7 @@ export default function ConsumableReturnsPanel({ eventId }: { eventId: string })
                 <div>
                   <span className="font-medium text-ink">{r.ingredient_name}</span>
                   <span className="text-ink-soft-60 ml-2">
-                    {new Date(r.created_at).toLocaleDateString('es-ES')}
+                    {formatDate(r.created_at)}
                   </span>
                 </div>
                 <span className="font-medium text-success">+{r.quantity_returned} {r.unit}</span>

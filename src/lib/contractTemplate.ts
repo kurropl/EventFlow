@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format';
 /**
  * EventFlow — Plantilla del contrato de servicios de catering (SPEC Sprint 3, G8)
  *
@@ -52,7 +53,7 @@ const TERMS_HTML = `
 
 function fmtDate(d: unknown): string {
   if (!d) return '—';
-  try { return new Date(d as string).toLocaleDateString('es-ES'); } catch { return String(d); }
+  try { return formatDate(d as string); } catch { return String(d); }
 }
 
 export function renderContractHtml(p: { event: any; quote: any; payments: any[] }): string {

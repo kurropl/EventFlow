@@ -3,6 +3,7 @@
 import React from 'react';
 import Icon from '@/components/shared/Icon';
 import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/format';
 
 /* ─── Compact KPI Card ─── */
 export function KpiCard({ icon, label, value, sub, href, onClick, color }: {
@@ -70,7 +71,7 @@ export function EventSelector({ events, value, onChange, label }: {
           <option value="">— Seleccionar —</option>
           {events.map(ev => (
             <option key={ev.id} value={ev.id}>
-              {ev.client_name} — {ev.event_date ? new Date(ev.event_date).toLocaleDateString('es-ES') : ''} ({ev.guest_count}pax)
+              {ev.client_name} — {ev.event_date ? formatDate(ev.event_date) : ''} ({ev.guest_count}pax)
             </option>
           ))}
         </select>

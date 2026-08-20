@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isCronAuthorized } from '@/lib/security';
 import { queryMany, querySingle } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { formatDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
         const tpl = reminderTemplate(
           event.client_name,
           event.event_type,
-          new Date(event.event_date).toLocaleDateString('es-ES'),
+          formatDate(event.event_date),
           event.days
         );
 

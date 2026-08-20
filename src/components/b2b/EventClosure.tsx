@@ -18,6 +18,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+import { formatDate } from '@/lib/format';
+
 // ============================================================
 // Types
 // ============================================================
@@ -446,7 +448,7 @@ export default function EventClosure({ eventId, eventStatus, onStatusChange }: E
       {/* Closed info */}
       {isClosed && status.checklist?.closed_at && (
         <div className="p-3 bg-ink/5 rounded-lg text-sm text-ink-soft">
-          <p>Evento cerrado el {new Date(status.checklist.closed_at).toLocaleDateString('es-ES')}</p>
+          <p>Evento cerrado el {formatDate(status.checklist.closed_at)}</p>
         </div>
       )}
     </div>

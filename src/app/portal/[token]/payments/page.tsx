@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { formatEUR } from '@/lib/format';
+import { formatEUR, formatDate } from '@/lib/format';
 
 // ============================================================
 // Portal Payments — Historial de pagos
@@ -113,7 +113,7 @@ export default function PortalPaymentsPage() {
                   <p className="font-medium text-[#1A1A1A]">{milestone.label}</p>
                   {milestone.due_date && (
                     <p className="text-sm text-[#6B7280]">
-                      Fecha límite: {new Date(milestone.due_date).toLocaleDateString('es-ES')}
+                      Fecha límite: {formatDate(milestone.due_date)}
                     </p>
                   )}
                 </div>
@@ -160,7 +160,7 @@ export default function PortalPaymentsPage() {
                     {payment.concept || 'Pago'}
                   </p>
                   <p className="text-sm text-[#6B7280]">
-                    {new Date(payment.created_at).toLocaleDateString('es-ES')}
+                    {formatDate(payment.created_at)}
                     {payment.method && ` • ${payment.method}`}
                   </p>
                 </div>

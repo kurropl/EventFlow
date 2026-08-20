@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isCronAuthorized } from '@/lib/security';
 import { queryMany, querySingle } from '@/lib/db';
 import { sendEmail, templates } from '@/lib/email';
+import { formatDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
           event.client_name,
           event.client_email,
           event.event_type,
-          new Date(event.event_date).toLocaleDateString('es-ES')
+          formatDate(event.event_date)
         );
 
         // Queue the email

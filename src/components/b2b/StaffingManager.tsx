@@ -2132,7 +2132,7 @@ export default function StaffingManager() {
                                 )}
                               </td>
                               <td className="px-4 py-2.5 text-[12px] text-[#6B7280]">
-                                {p.paid_at ? new Date(p.paid_at).toLocaleDateString('es-ES') : '--'}
+                                {p.paid_at ? formatDate(p.paid_at) : '--'}
                               </td>
                               <td className="px-4 py-2.5 text-[#6B7280] text-[12px]">
                                 {isEditing ? (

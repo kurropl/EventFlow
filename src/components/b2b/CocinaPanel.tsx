@@ -48,6 +48,7 @@ import TransportPanel from '@/components/b2b/TransportPanel';
 
 // WP-19: Hoja de Servicio
 import ServiceSheetView from '@/components/b2b/ServiceSheetView';
+import { formatDate } from '@/lib/format';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1475,7 +1476,7 @@ function GuiaTab() {
           <option value="">Selecciona un evento…</option>
           {events.map(ev => (
             <option key={ev.id} value={ev.id}>
-              {ev.client_name} · {ev.event_date ? new Date(ev.event_date).toLocaleDateString('es-ES') : 's/f'} · {ev.status}
+              {ev.client_name} · {ev.event_date ? formatDate(ev.event_date) : 's/f'} · {ev.status}
             </option>
           ))}
         </select>

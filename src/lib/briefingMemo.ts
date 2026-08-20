@@ -6,6 +6,7 @@
  * hubiera necesitado recomponer). Ambos la consumen.
  */
 import { querySingle, queryMany } from '@/lib/db';
+import { formatDate } from '@/lib/format';
 
 export interface WorkerMemo {
   worker_id: string;
@@ -41,7 +42,7 @@ export async function generateEventMemos(eventId: string): Promise<EventMemos | 
   );
   if (!ev) return null;
 
-  const fecha = ev.event_date ? new Date(ev.event_date).toLocaleDateString('es-ES') : 's/f';
+  const fecha = ev.event_date ? formatDate(ev.event_date) : 's/f';
   const lugar = ev.venue_type === 'externo' ? (ev.location || 'Ubicación externa') : 'Salones Benítez';
   const barra = Number(ev.bar_hours) > 0 ? `${ev.bar_hours} h de barra libre` : 'Sin barra libre';
 

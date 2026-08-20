@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Icon from '@/components/shared/Icon';
-import { formatEUR } from '@/lib/format';
+import { formatEUR, formatDate } from '@/lib/format';
 
 interface PortalDish {
   id: string;
@@ -86,7 +86,7 @@ export default function PortalMenuPage() {
           <div>
             <h2 className="text-xl font-semibold text-ink mb-1">{menu.name}</h2>
             <p className="text-sm text-ink-soft">
-              {menu.client_name || 'Tu evento'} · {menu.event_date ? new Date(menu.event_date).toLocaleDateString('es-ES') : ''}
+              {menu.client_name || 'Tu evento'} · {menu.event_date ? formatDate(menu.event_date) : ''}
             </p>
           </div>
           <div className="text-right">

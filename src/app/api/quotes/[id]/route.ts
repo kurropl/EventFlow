@@ -10,6 +10,7 @@ import { querySingle } from '@/lib/db';
 import { sanitizeError } from '@/lib/security';
 import { isCancellation, canCancel, canEditOnlyPriceAndGuests, toPhase, PHASE_LABEL } from '@/lib/quoteWorkflow';
 import { acceptQuote, AcceptQuoteError } from '@/lib/domain/acceptQuote';
+import { formatDate } from '@/lib/format';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -102,7 +103,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         const event = await querySingle<any>(`SELECT client_name, client_email FROM events WHERE id = $1`, [quote.event_id]);
         if (event?.client_email) {
           const { sendEmail, templates } = await import('@/lib/email');
-          const validUntil = quote.valid_until ? new Date(quote.valid_until).toLocaleDateString('es-ES') : 'No especificada';
+          const validUntil = quote.valid_until ? formatDate(quote.valid_until) : 'No especificada';
           const tpl = await templates.quoteSent(event.client_name, event.client_email, quote.id, Number(quote.total_pvp), validUntil);
           await sendEmail({ to: event.client_email, subject: tpl.subject, html: tpl.html });
         }

@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/b2b/AdminLayout';
 import Link from 'next/link';
 import { PageHeader, Spinner, EmptyState } from '@/components/ui';
+import { formatDate } from '@/lib/format';
 
 interface CostBreakdown {
   [key: string]: number;
@@ -212,7 +213,7 @@ export default function RentabilidadPage() {
                   <div>
                     <h3 className="font-medium text-ink">{ev.clientName}</h3>
                     <div className="flex items-center gap-3 mt-1 text-xs text-ink-soft">
-                      <span>{new Date(ev.eventDate).toLocaleDateString('es-ES')}</span>
+                      <span>{formatDate(ev.eventDate)}</span>
                       <span>{ev.guestCount} invitados</span>
                       <span>{ev.eventType}</span>
                       <span className={`px-2 py-0.5 rounded-full text-white text-[10px] font-medium ${statusColor[ev.status] || 'bg-ink-soft'}`}>
@@ -336,7 +337,7 @@ export default function RentabilidadPage() {
                     </div>
                     {ev.financialClosure.closedAt && (
                       <p className="text-[9px] text-ink-soft-60 text-right mt-1">
-                        Cerrado: {new Date(ev.financialClosure.closedAt).toLocaleDateString('es-ES')}
+                        Cerrado: {formatDate(ev.financialClosure.closedAt)}
                       </p>
                     )}
                   </div>

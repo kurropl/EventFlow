@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/shared/Icon';
 import { KpiCard, SectionCard, Badge, Empty } from '@/components/shared/CocinaUI';
-import { formatEUR } from '@/lib/format';
+import { formatEUR, formatDate } from '@/lib/format';
 
 interface OrderItem {
   id: string;
@@ -115,8 +115,8 @@ export default function ComprasPage() {
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-ink truncate">{o.supplier}</div>
                       <div className="text-[10px] text-ink-soft">
-                        {o.item_count} línea{o.item_count !== 1 ? 's' : ''} · {new Date(o.created_at).toLocaleDateString('es-ES')}
-                        {o.expected_date && ` · entrega ${new Date(o.expected_date).toLocaleDateString('es-ES')}`}
+                        {o.item_count} línea{o.item_count !== 1 ? 's' : ''} · {formatDate(o.created_at)}
+                        {o.expected_date && ` · entrega ${formatDate(o.expected_date)}`}
                       </div>
                     </div>
                   </div>

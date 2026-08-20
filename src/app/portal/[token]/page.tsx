@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { formatEUR } from '@/lib/format';
+import { formatEUR, formatDate } from '@/lib/format';
 
 // ============================================================
 // Portal Home — Página principal del portal del cliente
@@ -230,7 +230,7 @@ export default function PortalHomePage() {
             </p>
             {nextMilestone.due_date && (
               <p className="text-sm text-amber-700 mt-1">
-                Fecha límite: {new Date(nextMilestone.due_date).toLocaleDateString('es-ES')}
+                Fecha límite: {formatDate(nextMilestone.due_date)}
               </p>
             )}
           </div>

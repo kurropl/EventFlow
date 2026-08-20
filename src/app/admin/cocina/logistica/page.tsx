@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/shared/Icon';
 import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/format';
 
 interface Event { id: string; client_name: string; event_date: string; guest_count: number; }
 interface ItemLogistica { id: string; tipo: string; nombre: string; cantidad: number; unit: string; equipment_id: string | null; stock_name: string | null; stock_total: number | null; preparado: boolean; cargado: boolean; notas: string | null; orden: number; }
@@ -159,7 +160,7 @@ export default function LogisticaPage() {
       <div className="bg-white rounded-lg border border-divider/50 p-2 flex flex-wrap items-center gap-2">
         <select value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)} className="flex-1 min-w-[200px] px-2 py-1.5 rounded-lg border border-divider text-[11px] bg-gold/5 border-gold/20 font-medium">
           <option value="">Seleccionar evento...</option>
-          {events.map(e => <option key={e.id} value={e.id}>{e.client_name} — {new Date(e.event_date).toLocaleDateString('es-ES')}</option>)}
+          {events.map(e => <option key={e.id} value={e.id}>{e.client_name} — {formatDate(e.event_date)}</option>)}
         </select>
         <button onClick={generateLogistica} disabled={!selectedEvent} className="px-3 py-1.5 rounded-lg bg-gold text-white text-[10px] font-medium hover:bg-gold/80 disabled:opacity-50 flex items-center gap-1">
           <Icon name="magic" className="w-3 h-3" /> Generar

@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react';
 import { Users, Table, CalendarDays, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { calcMesas } from '@/lib/operations';
+import { formatDate } from '@/lib/format';
 
 export default function ConfirmacionDashboard() {
   const [events, setEvents] = useState<any[]>([]);
@@ -69,7 +70,7 @@ export default function ConfirmacionDashboard() {
                 <h3 className="font-semibold text-stone-800">{ev.client_name}</h3>
                 <p className="text-xs text-stone-500 flex items-center gap-1">
                   <CalendarDays className="w-3 h-3" />
-                  {new Date(ev.event_date).toLocaleDateString('es-ES')} — {ev.event_type}
+                  {formatDate(ev.event_date)} — {ev.event_type}
                 </p>
               </div>
               <ChevronRight className="w-4 h-4 text-stone-400" />

@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Icon from '../shared/Icon';
 import { ROLES, ROLE_LABELS, type Role } from '@/lib/rbac';
+import { formatDate } from '@/lib/format';
 
 interface User {
   id: string;
@@ -108,7 +109,7 @@ export default function UsersManager() {
             <div key={u.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-[#F0F0F4]">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-[#1A1A1A] truncate">{u.name} <span className="text-[#B0B0B8] font-normal">· {u.email}</span></p>
-                <p className="text-[11px] text-[#8A8A92]">{u.last_login ? `Último acceso: ${new Date(u.last_login).toLocaleDateString('es-ES')}` : 'Sin accesos'}</p>
+                <p className="text-[11px] text-[#8A8A92]">{u.last_login ? `Último acceso: ${formatDate(u.last_login)}` : 'Sin accesos'}</p>
               </div>
               <select className="text-xs border border-[#E5E7EB] rounded-lg px-2 py-1.5"
                 value={u.role} onChange={e => update(u.id, { role: e.target.value as Role })}>

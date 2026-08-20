@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import { formatDate } from '@/lib/format';
 
 interface ContractData {
   content_html: string;
@@ -186,7 +187,7 @@ export default function PublicContractPage() {
             </h2>
             <p className="text-sm text-[#9CA3AF]">
               {contract.signed_at
-                ? `Firmado el ${new Date(contract.signed_at).toLocaleDateString('es-ES')}`
+                ? `Firmado el ${formatDate(contract.signed_at)}`
                 : 'Firma recibida correctamente.'}
             </p>
           </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Icon from '@/components/shared/Icon';
 import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/format';
 
 interface Event { id: string; client_name: string; event_date: string; guest_count: number; }
 interface TimelineEntry { id?: string; phase: string; concepto: string; planned_time: string; actual_time?: string; duration_minutes?: number; notes?: string; orden: number; }
@@ -217,7 +218,7 @@ export default function ProduccionPage() {
         <span className="text-[10px] font-medium text-ink">Producción</span>
         <select value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)} className="flex-1 min-w-[200px] px-2 py-1.5 rounded-lg border border-divider text-[11px] bg-gold/5 border-gold/20 font-medium">
           <option value="">Seleccionar evento...</option>
-          {events.map(e => <option key={e.id} value={e.id}>{e.client_name} — {new Date(e.event_date).toLocaleDateString('es-ES')} ({e.guest_count} pax)</option>)}
+          {events.map(e => <option key={e.id} value={e.id}>{e.client_name} — {formatDate(e.event_date)} ({e.guest_count} pax)</option>)}
         </select>
       </div>
 

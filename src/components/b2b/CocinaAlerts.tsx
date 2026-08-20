@@ -13,6 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Clock, Package, ArrowDown, RefreshCw, AlertCircle } from 'lucide-react';
+import { formatDate } from '@/lib/format';
 
 interface ExpiringItem {
   id: string;
@@ -229,7 +230,7 @@ export default function CocinaAlerts() {
                   </div>
                 </div>
                 <div className="text-right shrink-0 ml-3">
-                  <p className="text-[10px] text-stone-500">{new Date(item.receivedDate).toLocaleDateString('es-ES')}</p>
+                  <p className="text-[10px] text-stone-500">{formatDate(item.receivedDate)}</p>
                   {item.lotNumber && <p className="text-[9px] text-stone-400">Lote: {item.lotNumber}</p>}
                 </div>
               </div>

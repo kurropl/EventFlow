@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Thermometer, Droplets, ClipboardCheck, Package, Truck, Wrench, RefreshCw, AlertTriangle, Check, X } from 'lucide-react';
+import { formatDate } from '@/lib/format';
 
 /* ── Types ── */
 interface DashboardData {
@@ -390,7 +391,7 @@ export default function HACCPPanel({ eventId }: { eventId?: string }) {
                 </div>
                 <div className="text-right shrink-0 ml-2">
                   <p className="text-xs font-mono font-bold">{Number(tr.quantity_used).toFixed(2)} {tr.unit}</p>
-                  <p className="text-[9px] text-stone-400">{new Date(tr.used_at).toLocaleDateString('es-ES')}</p>
+                  <p className="text-[9px] text-stone-400">{formatDate(tr.used_at)}</p>
                 </div>
               </div>
             ))
