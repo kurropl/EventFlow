@@ -14,6 +14,7 @@ import EventClosure from './EventClosure';
 import EventMessages from './EventMessages';
 import { PageHeader, EmptyState } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { formatEUR } from '@/lib/format';
 import {
   CalendarDays,
   Users,

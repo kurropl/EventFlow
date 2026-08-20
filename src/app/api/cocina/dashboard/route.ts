@@ -3,14 +3,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, verifyAuth } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
 
-async function verifyAuth(request: NextRequest) {
-  const token = request.cookies.get('admin_session')?.value || request.cookies.get('eventflow_token')?.value;
-  if (!token) return null;
-  return verifyToken(token);
-}
 
 export async function GET(request: NextRequest) {
   try {

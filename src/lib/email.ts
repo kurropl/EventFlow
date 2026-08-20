@@ -7,6 +7,7 @@
  *   or RESEND_API_KEY (uses Resend API)
  */
 import { querySingle } from './db';
+import { formatEUR } from '@/lib/format';
 
 interface EmailMessage {
   to: string;
@@ -189,7 +190,7 @@ export const templates = {
           <h2 style="color: #C9A84C;">Hola ${name},</h2>
           <p>Tu presupuesto personalizado esta listo para revisar:</p>
           <div style="background: #FAF8F5; border-radius: 12px; padding: 20px; margin: 16px 0;">
-            <p style="font-size: 24px; font-weight: bold; color: #C9A84C; margin: 0;">${total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</p>
+            <p style="font-size: 24px; font-weight: bold; color: #C9A84C; margin: 0;">${formatEUR(total)}</p>
             <p style="color: #6B7280; margin: 8px 0 0;">Total presupuesto (IVA incluido)</p>
           </div>
           <p>El presupuesto es valido hasta el <strong>${validUntil}</strong>.</p>
@@ -210,7 +211,7 @@ export const templates = {
           <h2 style="color: #C9A84C;">Hola ${name},</h2>
           <p>Te recordamos que tienes un pago pendiente para tu ${eventType} del <strong>${eventDate}</strong>:</p>
           <div style="background: #FEF3C7; border-radius: 12px; padding: 20px; margin: 16px 0; border: 1px solid #F59E0B;">
-            <p style="font-size: 24px; font-weight: bold; color: #D97706; margin: 0;">${amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</p>
+            <p style="font-size: 24px; font-weight: bold; color: #D97706; margin: 0;">${formatEUR(amount)}</p>
             <p style="color: #92400E; margin: 8px 0 0;">Importe pendiente</p>
           </div>
           <p>Por favor, realiza el pago a la mayor brevedad posible.</p>

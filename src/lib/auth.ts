@@ -172,3 +172,36 @@ export async function requireAuth(): Promise<AdminUser> {
   }
   return user;
 }
+
+// ============================================================
+// API-route auth helpers (shared — replaces 30+ local copies)
+// ============================================================
+
+import type { NextRequest } from 'next/server';
+
+/**
+ * Verify auth from a NextRequest cookie. Returns the AdminUser or null.
+ * Mirrors the pattern that used to be copy-pasted into every API route.
+ */
+export function verifyAuth(request: NextRequest): AdminUser | null {
+  const token =
+    request.cookies.get('admin_session')?.value ||
+    request.cookies.get('eventflow_token')?.value;
+  if (!token) return null;
+  return verifyToken(token);
+}
+
+/**
+ * Require auth from a NextRequest cookie. Returns { authenticated } or
+ * { authenticated: false, error }. Includes userId when authenticated.
+ * Mirrors the requireAuth variant used by supplier-orders and stock APIs.
+ */
+export function requireAuthRequest(request: NextRequest): { authenticated: boolean; error?: string; userId?: string } {
+  const token =
+    request.cookies.get('admin_session')?.value ||
+    request.cookies.get('eventflow_token')?.value;
+  if (!token) return { authenticated: false, error: 'No autenticado' };
+  const user = verifyToken(token);
+  if (!user) return { authenticated: false, error: 'Token inválido' };
+  return { authenticated: true, userId: user.id };
+}

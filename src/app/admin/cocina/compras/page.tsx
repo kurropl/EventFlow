@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/shared/Icon';
 import { KpiCard, SectionCard, Badge, Empty } from '@/components/shared/CocinaUI';
+import { formatEUR } from '@/lib/format';
 
 interface OrderItem {
   id: string;
@@ -35,7 +36,7 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: 'Cancelada',
 };
 
-const fmtEUR = (v: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v || 0);
+const fmtEUR = formatEUR;
 
 export default function ComprasPage() {
   const [orders, setOrders] = useState<SupplierOrder[]>([]);

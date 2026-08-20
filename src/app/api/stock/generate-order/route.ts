@@ -13,29 +13,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { transaction } from '@/lib/db';
 import { sanitizeError, isValidUUID } from '@/lib/security';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, requireAuthRequest } from '@/lib/auth';
 import { checkInventoryShortages } from '@/lib/domain/inventoryCommitment';
 import { generateSupplierOrdersForEvent } from '@/lib/domain/generateSupplierOrders';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
-function requireAuth(request: NextRequest): { authenticated: boolean; error?: string } {
-  const token = request.cookies.get('admin_session')?.value || request.cookies.get('eventflow_token')?.value;
-  if (!token) {
-    return { authenticated: false, error: 'No autenticado' };
-  }
-  const user = verifyToken(token);
-  if (!user) {
-    return { authenticated: false, error: 'Token inválido o expirado' };
-  }
-  return { authenticated: true };
-}
 
 // ── POST: Generate supplier orders from escandallo ──────────────────
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireAuth(request);
+    const auth = requireAuthRequest(request);
     if (!auth.authenticated) {
       return NextResponse.json(
         { success: false, error: auth.error },

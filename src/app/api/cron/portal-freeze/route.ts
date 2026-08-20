@@ -19,6 +19,7 @@ import { getPool } from '@/lib/db';
 import { freezePortal } from '@/domain/portal';
 import { emitDomainEvent } from '@/domain/events';
 import { sendEmail } from '@/lib/email';
+import { formatEUR } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -331,8 +332,8 @@ function generateFreezeSummaryHtml(
               <tr style="border-bottom: 1px solid #F3F4F6;">
                 <td style="padding: 8px;">${e.name}</td>
                 <td style="padding: 8px; text-align: center;">${e.qty}</td>
-                <td style="padding: 8px; text-align: right;">${e.unit_price.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
-                <td style="padding: 8px; text-align: right; font-weight: 500;">${e.total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
+                <td style="padding: 8px; text-align: right;">${formatEUR(e.unit_price)}</td>
+                <td style="padding: 8px; text-align: right; font-weight: 500;">${formatEUR(e.total)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -340,7 +341,7 @@ function generateFreezeSummaryHtml(
             <tr style="background: #F9FAFB;">
               <td colspan="3" style="padding: 8px; text-align: right; font-weight: 600;">Total Extras:</td>
               <td style="padding: 8px; text-align: right; font-weight: 700; color: #C9A84C;">
-                ${extrasTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                ${formatEUR(extrasTotal)}
               </td>
             </tr>
           </tfoot>
@@ -430,7 +431,7 @@ function generateFreezeSummaryHtml(
         <div style="background: white; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid #E5E7EB;">
           <h3 style="color: #374151; margin: 0 0 8px 0; font-size: 14px;">Importe Total</h3>
           <div style="font-size: 28px; font-weight: 700; color: #C9A84C;">
-            ${eventData.total_pvp.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+            ${formatEUR(eventData.total_pvp)}
           </div>
         </div>
         ` : ''}

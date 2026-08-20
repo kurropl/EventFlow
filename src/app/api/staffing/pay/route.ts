@@ -8,20 +8,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryMany, querySingle, getPool } from '@/lib/db';
 import { sanitizeError, isValidUUID, toSafeFloat, sanitizeText } from '@/lib/security';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, requireAuthRequest } from '@/lib/auth';
 import { recalcEventLaborCost } from '@/lib/domain/recalcEventLaborCost';
 
-function requireAuth(request: NextRequest): { authenticated: boolean; error?: string } {
-  const token = request.cookies.get('admin_session')?.value || request.cookies.get('eventflow_token')?.value;
-  if (!token) return { authenticated: false, error: 'No autenticado' };
-  const user = verifyToken(token);
-  if (!user) return { authenticated: false, error: 'Token inválido' };
-  return { authenticated: true };
-}
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = requireAuth(request);
+    const auth = requireAuthRequest(request);
     if (!auth.authenticated) return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
@@ -61,7 +54,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireAuth(request);
+    const auth = requireAuthRequest(request);
     if (!auth.authenticated) return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
 
     const body = await request.json();
@@ -98,7 +91,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const auth = requireAuth(request);
+    const auth = requireAuthRequest(request);
     if (!auth.authenticated) return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
 
     const body = await request.json();
@@ -169,7 +162,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = requireAuth(request);
+    const auth = requireAuthRequest(request);
     if (!auth.authenticated) return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
 
     const { searchParams } = new URL(request.url);

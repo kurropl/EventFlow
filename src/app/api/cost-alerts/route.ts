@@ -6,16 +6,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany, query } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, requireAuthRequest } from '@/lib/auth';
 import { sanitizeError } from '@/lib/security';
 
-function requireAuth(request: NextRequest): boolean {
-  const token =
-    request.cookies.get('admin_session')?.value ||
-    request.cookies.get('eventflow_token')?.value;
-  if (!token) return false;
-  return !!verifyToken(token);
-}
 
 // ============================================================
 // GET /api/cost-alerts — Listar alertas pendientes
@@ -23,7 +16,7 @@ function requireAuth(request: NextRequest): boolean {
 
 export async function GET(request: NextRequest) {
   try {
-    if (!requireAuth(request)) {
+    if (!requireAuthRequest(request).authenticated) {
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
 
@@ -97,7 +90,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    if (!requireAuth(request)) {
+    if (!requireAuthRequest(request).authenticated) {
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
 

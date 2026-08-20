@@ -6,17 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle } from '@/lib/db';
 import { sanitizeError, sanitizeText } from '@/lib/security';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, requireAuthRequest } from '@/lib/auth';
 
-function requireAuth(request: NextRequest): boolean {
-  const token = request.cookies.get('admin_session')?.value || request.cookies.get('eventflow_token')?.value;
-  if (!token) return false;
-  return !!verifyToken(token);
-}
 
 export async function GET(request: NextRequest) {
   try {
-    if (!requireAuth(request)) {
+    if (!requireAuthRequest(request).authenticated) {
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
     const settings = await querySingle<any>(
@@ -34,7 +29,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    if (!requireAuth(request)) {
+    if (!requireAuthRequest(request).authenticated) {
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
     const body = await request.json();

@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatEUR } from '@/lib/format';
 
 interface QuoteData {
   id: string;
@@ -51,7 +52,7 @@ function fmtDate(k: string) {
 }
 
 function fmtEUR(v: number) {
-  return v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+  return formatEUR(v);
 }
 
 export default function PresupuestoPage({ params }: { params: { id: string } }) {

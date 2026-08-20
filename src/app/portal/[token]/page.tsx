@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { formatEUR } from '@/lib/format';
 
 // ============================================================
 // Portal Home — Página principal del portal del cliente
@@ -183,7 +184,7 @@ export default function PortalHomePage() {
           <div className="flex justify-between items-center">
             <span className="text-[#6B7280]">Total del evento</span>
             <span className="text-xl font-bold text-[#1A1A1A]">
-              {event.totalPvp.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              {formatEUR(event.totalPvp)}
             </span>
           </div>
 
@@ -191,7 +192,7 @@ export default function PortalHomePage() {
           <div className="flex justify-between items-center">
             <span className="text-[#6B7280]">Pagado</span>
             <span className="text-lg font-semibold text-green-600">
-              {event.totalPaid.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              {formatEUR(event.totalPaid)}
             </span>
           </div>
 
@@ -200,7 +201,7 @@ export default function PortalHomePage() {
             <div className="flex justify-between items-center">
               <span className="text-[#6B7280]">Pendiente</span>
               <span className="text-lg font-semibold text-amber-600">
-                {event.pendingAmount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                {formatEUR(event.pendingAmount)}
               </span>
             </div>
           )}
@@ -225,7 +226,7 @@ export default function PortalHomePage() {
               Próximo pago: {nextMilestone.label}
             </p>
             <p className="text-lg font-bold text-amber-900">
-              {nextMilestone.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              {formatEUR(nextMilestone.amount)}
             </p>
             {nextMilestone.due_date && (
               <p className="text-sm text-amber-700 mt-1">

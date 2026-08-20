@@ -10,18 +10,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { transaction } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, verifyAuth } from '@/lib/auth';
 import { sanitizeError, isValidUUID } from '@/lib/security';
 import { normalizeUnit } from '@/lib/recipeImport';
 import { ensureCatalogItem, recomputeFicha } from '@/lib/domain/fichaTecnicaSync';
 
-async function verifyAuth(request: NextRequest) {
-  const token =
-    request.cookies.get('admin_session')?.value ||
-    request.cookies.get('eventflow_token')?.value;
-  if (!token) return null;
-  return verifyToken(token);
-}
 
 const AddItemSchema = z.object({
   ingredient_name: z.string().min(1, 'El ingrediente es obligatorio'),

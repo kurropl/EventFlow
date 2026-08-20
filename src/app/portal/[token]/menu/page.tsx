@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Icon from '@/components/shared/Icon';
+import { formatEUR } from '@/lib/format';
 
 interface PortalDish {
   id: string;
@@ -32,7 +33,8 @@ interface PortalMenu {
   is_frozen?: boolean;
 }
 
-const fmtEUR = (v: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v || 0);
+const fmtEUR = formatEUR;
+
 
 export default function PortalMenuPage() {
   const params = useParams();

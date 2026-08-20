@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatEUR } from '@/lib/format';
 
 interface TraceResult {
   quote: any;
@@ -140,7 +141,7 @@ export default function TrazaPanel() {
               <option value="">Selecciona un presupuesto...</option>
               {quotes.map((q: any) => (
                 <option key={q.id} value={q.id}>
-                  {q.status} — {(Number(q.total_pvp) || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  {q.status} — {formatEUR(Number(q.total_pvp) || 0)}
                 </option>
               ))}
             </select>
@@ -161,7 +162,7 @@ export default function TrazaPanel() {
               <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
                 <h2 className="font-semibold text-stone-700 mb-2">Presupuesto</h2>
                 <p className="text-sm text-stone-500">
-                  {trace.quote.status} — {(Number(trace.quote.total_pvp) || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  {trace.quote.status} — {formatEUR(Number(trace.quote.total_pvp) || 0)}
                 </p>
               </div>
 
@@ -229,7 +230,7 @@ export default function TrazaPanel() {
                   <div className="text-sm space-y-1">
                     {trace.payments.map((p: any, i: number) => (
                       <p key={i} className="text-stone-500">
-                        {(Number(p.amount) || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                        {formatEUR(Number(p.amount) || 0)}
                         {p.paid ? ' ✅' : ' ⏳'}
                       </p>
                     ))}

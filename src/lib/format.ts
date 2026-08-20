@@ -1,30 +1,35 @@
 /**
- * EventFlow — Shared formatting utilities
+ * EventFlow — Formato compartido (ES-es)
+ *
+ * Centraliza el formato de moneda/fecha que antes se repetía inline en
+ * decenas de páginas (Intl.NumberFormat es-ES). SALIDA IDÉNTICA a la
+ * original para no cambiar el aspecto visual: "1.234,56 €" (coma decimal,
+ * espacio antes de €, punto de millar).
+ *
+ * NOTA: NO sustituye a formatMoney de units-pure (que usa punto decimal +
+ * espacio "1,234.56 €"). Este helper es para los sitios que ya usaban el
+ * Formato es-ES del Intl y que NO deben cambiar de aspecto.
  */
 
-/** Format a number as Spanish Euro currency: 1.234 € */
-export function money(n: number | string | null | undefined): string {
-  const num = Number(n) || 0;
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-    useGrouping: 'always',
-  }).format(num);
+const EUR_FORMATTER = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+});
+
+/** Formatea un número/string a moneda es-ES ("1.234,56 €"). */
+export function formatEUR(value: number | string | null | undefined): string {
+  const n = typeof value === 'string' ? Number(value) : value;
+  if (n === null || n === undefined || Number.isNaN(n)) return EUR_FORMATTER.format(0);
+  return EUR_FORMATTER.format(n);
 }
 
-/** Format a number as Spanish Euro with decimals: 1.234,50 € */
-export function moneyDecimals(n: number | string | null | undefined): string {
-  const num = Number(n) || 0;
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
-}
-
-/** Format a number with Spanish grouping: 1.234 */
-export function num(n: number | string | null | undefined): string {
-  return new Intl.NumberFormat('es-ES', { useGrouping: 'always' }).format(Number(n) || 0);
+/** Formatea una fecha ISO a dd/mm/yyyy (es-ES). */
+export function formatDate(
+  value: string | Date | null | undefined,
+  opts?: Intl.DateTimeFormatOptions
+): string {
+  if (!value) return '—';
+  const d = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('es-ES', opts);
 }

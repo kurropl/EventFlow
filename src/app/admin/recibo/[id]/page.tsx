@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { formatEUR } from '@/lib/format';
 
 interface Invoice {
   id: string; invoice_number: string; status: string;
@@ -22,7 +23,7 @@ interface Invoice {
   extra_consumptions: any[];
 }
 
-const money = (n: number | string) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
+const money = (n: number | string) => formatEUR(n);
 const fmtDate = (d: string) => {
   if (!d) return '—';
   const [y, m, day] = d.slice(0, 10).split('-');

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { formatEUR } from '@/lib/format';
 
 // ============================================================
 // Portal Payments — Historial de pagos
@@ -78,13 +79,13 @@ export default function PortalPaymentsPage() {
           <div className="bg-green-50 rounded-lg p-4">
             <p className="text-sm text-green-600">Total pagado</p>
             <p className="text-2xl font-bold text-green-700">
-              {totals.paid.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              {formatEUR(totals.paid)}
             </p>
           </div>
           <div className="bg-amber-50 rounded-lg p-4">
             <p className="text-sm text-amber-600">Pendiente</p>
             <p className="text-2xl font-bold text-amber-700">
-              {totals.pending.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              {formatEUR(totals.pending)}
             </p>
           </div>
         </div>
@@ -118,7 +119,7 @@ export default function PortalPaymentsPage() {
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-[#1A1A1A]">
-                    {milestone.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                    {formatEUR(milestone.amount)}
                   </p>
                   <p className={`text-xs font-medium ${
                     milestone.status === 'pagado'
@@ -165,7 +166,7 @@ export default function PortalPaymentsPage() {
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-green-600">
-                    +{payment.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                    +{formatEUR(payment.amount)}
                   </p>
                 </div>
               </div>

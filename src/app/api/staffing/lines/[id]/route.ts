@@ -8,21 +8,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySingle, queryMany } from '@/lib/db';
 import { sanitizeError, isValidUUID, sanitizeText, toSafeInt } from '@/lib/security';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, requireAuthRequest } from '@/lib/auth';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
-function requireAuth(request: NextRequest): { authenticated: boolean; error?: string } {
-  const token = request.cookies.get('admin_session')?.value || request.cookies.get('eventflow_token')?.value;
-  if (!token) {
-    return { authenticated: false, error: 'No autenticado' };
-  }
-  const user = verifyToken(token);
-  if (!user) {
-    return { authenticated: false, error: 'Token inválido o expirado' };
-  }
-  return { authenticated: true };
-}
 
 // ── GET: Single line with full details ─────────────────────────────
 
@@ -31,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = requireAuth(_request);
+    const auth = requireAuthRequest(_request);
     if (!auth.authenticated) {
       return NextResponse.json(
         { success: false, error: auth.error },
@@ -112,7 +101,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = requireAuth(request);
+    const auth = requireAuthRequest(request);
     if (!auth.authenticated) {
       return NextResponse.json(
         { success: false, error: auth.error },
@@ -207,7 +196,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = requireAuth(_request);
+    const auth = requireAuthRequest(_request);
     if (!auth.authenticated) {
       return NextResponse.json(
         { success: false, error: auth.error },

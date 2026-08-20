@@ -8,19 +8,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { querySingle, queryMany, transaction } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, verifyAuth } from '@/lib/auth';
 import { sanitizeError, isValidUUID } from '@/lib/security';
 import { computeFichaTotales } from '@/lib/fichaTecnica';
 
 // ── Auth helper ─────────────────────────────────────────────────────
 
-async function verifyAuth(request: NextRequest) {
-  const token =
-    request.cookies.get('admin_session')?.value ||
-    request.cookies.get('eventflow_token')?.value;
-  if (!token) return null;
-  return verifyToken(token);
-}
 
 // ── GET: Detalle receta ──────────────────────────────────────────────
 
