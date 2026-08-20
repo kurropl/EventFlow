@@ -1,4 +1,12 @@
 -- ============================================================
+-- PASO 0: Ampliar check constraint de units
+-- (BD real no permite 'g' ni 'doc'; necesario para P.1)
+-- ============================================================
+ALTER TABLE ingredients DROP CONSTRAINT IF EXISTS ingredients_unit_check;
+ALTER TABLE ingredients ADD CONSTRAINT ingredients_unit_check
+  CHECK (unit = ANY (ARRAY['gr','g','kg','ml','l','ud','doc','docena','caja','bote']::text[]));
+
+-- ============================================================
 -- WP-C5: Normalización de unidades de medida
 -- Migración: corregir 'gr' → 'g', fijar base_unit correcto
 -- según dimensión del ingrediente (masa/volumen/conteo)
