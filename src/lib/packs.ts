@@ -102,7 +102,7 @@ export async function calculatePacks(eventId: string): Promise<PackCalculation |
 
   // 4. Obtener plantillas de packs activas
   const templates = await queryMany<any>(
-    `SELECT id, name, pack_type, description FROM pack_templates WHERE active = true`
+    `SELECT id, nombre AS name, pack_type, description FROM pack_templates WHERE active = true`
   );
 
   const packs: PackCalculation['packs'] = [];
