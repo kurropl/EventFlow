@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
         [names]
       );
       if (result.rows.length > 0) {
-        ingredientId = result.rows[0].id;
+        ingredientId = (result.rows[0] as any).id;
       }
     }
 
