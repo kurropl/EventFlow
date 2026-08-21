@@ -58,9 +58,9 @@ interface LoadingItem {
   quantity: number;
   unit: string;
   perishable: boolean;
-  passNumber: number;
-  passName: string;
-  catalogItemName: string;
+  passNumber?: number;
+  passName?: string;
+  catalogItemName?: string;
 }
 
 interface LogisticsEquipment {
