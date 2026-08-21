@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
     );
 
     const item = await querySingle<any>(
-      `INSERT INTO items_carga (hoja_carga_id, tipo, nombre, cantidad, unit, cargado, retornado, notas, orden, pass_number, load_order, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, $8, $9, NOW(), NOW())
+      `INSERT INTO items_carga (hoja_carga_id, tipo, nombre, cantidad, unit, cargado, retornado, notas, orden, pass_number, load_order)
+       VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, $8, $9)
        RETURNING *`,
       [
         body.hoja_carga_id,

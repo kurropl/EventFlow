@@ -93,8 +93,8 @@ export async function POST(request: NextRequest) {
       let orden = 1;
       for (const item of allItems) {
         await querySingle<any>(
-          `INSERT INTO items_carga (hoja_carga_id, tipo, nombre, cantidad, unit, cargado, orden, pass_number, load_order, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, false, $6, $7, $8, NOW(), NOW())`,
+          `INSERT INTO items_carga (hoja_carga_id, tipo, nombre, cantidad, unit, cargado, orden, pass_number, load_order)
+           VALUES ($1, $2, $3, $4, $5, false, $6, $7, $8)`,
           [hoja.id, item.tipo, item.nombre, item.cantidad, item.unit, orden, item.passNumber, orden]
         );
         orden++;
