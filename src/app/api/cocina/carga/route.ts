@@ -31,11 +31,20 @@ export async function GET(request: NextRequest) {
 
     sql += " ORDER BY hc.created_at";
 
-    return NextResponse.json({ success: true, data: await queryMany<any>(sql, params) });
+    const rows = await queryMany<any>(sql, params);
+    // Parse JSON columns (json_agg returns strings from pg)
+    for (const row of rows) {
+      if (typeof row.items === 'string') {
+        try { row.items = JSON.parse(row.items); } catch { row.items = []; }
+      }
+    }
+    return NextResponse.json({ success: true, data: rows });
   } catch (error) {
     return NextResponse.json({ success: false, error: sanitizeError(error) }, { status: 500 });
   }
 }
+
+// Helper: parse JSON columns that come back as strings from pg
 
 export async function POST(request: NextRequest) {
   try {
