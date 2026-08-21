@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
            AND sl.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $1
          ORDER BY sl.expiry_date ASC, sl.qty_base_remaining DESC`;
 
-    const result = await pool.query(query, [daysAhead, `%${ingredientName}%`]);
+    const result = await pool.query(query, ingredientName ? [daysAhead, `%${ingredientName}%`] : [daysAhead]);
 
     return NextResponse.json({
       success: true,
