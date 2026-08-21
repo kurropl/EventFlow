@@ -144,6 +144,8 @@ const MAP: Record<string, LucideIcon> = {
   utensilsCrossed: Lucide.UtensilsCrossed,
   bank: Lucide.Banknote,
   minus: Lucide.Minus,
+  camera: Lucide.Camera,
+  qrCode: Lucide.QrCode,
 };
 
 export default function Icon({ name, className = 'w-[18px] h-[18px]' }: IconProps) {
