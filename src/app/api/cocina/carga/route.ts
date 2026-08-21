@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
       const allItems = [
         ...(sheet.perecedero || []).map(i => ({ tipo: 'perecedero', nombre: i.productName || i.catalogItemName || 'Item', cantidad: i.quantity || 0, unit: i.unit || 'ud', passNumber: i.passNumber || null })),
         ...(sheet.noPerecedero || []).map(i => ({ tipo: 'no_perecedero', nombre: i.productName || i.catalogItemName || 'Item', cantidad: i.quantity || 0, unit: i.unit || 'ud', passNumber: i.passNumber || null })),
-        ...(sheet.vajilla || []).map(i => ({ tipo: 'vajilla', nombre: i.productName || 'Item', cantidad: i.quantity || 0, unit: i.unit || 'ud', passNumber: i.passNumber || null })),
-        ...(sheet.packs || []).map(i => ({ tipo: 'pack', nombre: i.productName || 'Item', cantidad: i.quantity || 0, unit: i.unit || 'ud', passNumber: null })),
+        ...(sheet.vajilla as any[] || []).map(i => ({ tipo: 'vajilla', nombre: i.productName || 'Item', cantidad: i.quantity || 0, unit: i.unit || 'ud', passNumber: i.passNumber || null })),
+        ...(sheet.packs as any[] || []).map(i => ({ tipo: 'pack', nombre: i.productName || 'Item', cantidad: i.quantity || 0, unit: i.unit || 'ud', passNumber: null })),
       ];
       let orden = 1;
       for (const item of allItems) {
