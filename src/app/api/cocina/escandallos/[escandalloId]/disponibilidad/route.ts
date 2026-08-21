@@ -52,7 +52,9 @@ export async function GET(
 
     // Margen de seguridad configurable (default 5%)
     const settings = await querySingle<any>(
-      `SELECT COALESCE(escandallo_seguridad_pct, 5)::float AS pct FROM business_settings LIMIT 1`
+      `SELECT COALESCE(CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'business_settings' AND column_name = 'escandallo_seguridad_pct') 
+        THEN (SELECT escandallo_seguridad_pct FROM business_settings LIMIT 1) 
+        ELSE 5 END, 5)::float AS pct`
     ).catch(() => null);
     const seguridad = Number(settings?.pct ?? 5) / 100;
 

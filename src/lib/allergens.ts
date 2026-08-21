@@ -75,24 +75,28 @@ export function getAllergensFromName(ingredientName: string): string[] {
 export async function resolveIngredientAllergens(ingredientId: string): Promise<string[]> {
   const pool = getPool();
 
-  // 1. Leer ingredientes.allergens
-  const ingRes = await pool.query(
-    'SELECT name, allergens FROM ingredients WHERE id = $1',
-    [ingredientId]
-  );
-  if (ingRes.rows.length === 0) return [];
-  const ing = ingRes.rows[0];
+  // 1. Leer ingredientes.allergens (si existe la columna)
+  try {
+    const ingRes = await pool.query(
+      'SELECT name, allergens FROM ingredients WHERE id = $1',
+      [ingredientId]
+    );
+    if (ingRes.rows.length === 0) return [];
+    const ing = ingRes.rows[0];
 
-  // Si tiene allergens explícitos en ingredients, usarlos
-  if (ing.allergens) {
-    try {
-      const allergens = typeof ing.allergens === 'string' ? JSON.parse(ing.allergens) : ing.allergens;
-      if (Array.isArray(allergens) && allergens.length > 0) {
-        return [...new Set(allergens)];
+    // Si tiene allergens explícitos en ingredients, usarlos
+    if (ing.allergens) {
+      try {
+        const allergens = typeof ing.allergens === 'string' ? JSON.parse(ing.allergens) : ing.allergens;
+        if (Array.isArray(allergens) && allergens.length > 0) {
+          return [...new Set(allergens)];
+        }
+      } catch {
+        // JSON parse error → ignorar
       }
-    } catch {
-      // JSON parse error → ignorar
     }
+  } catch {
+    // ingredients.allergens column may not exist — use heuristic only
   }
 
   // 2. Leer catalog_items.allergens

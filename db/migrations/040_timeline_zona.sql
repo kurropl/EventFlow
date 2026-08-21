@@ -12,9 +12,16 @@ DO $$ BEGIN
     ALTER TABLE event_timeline ADD COLUMN plato TEXT;
     COMMENT ON COLUMN event_timeline.plato IS 'Plato asociado a esta entrada de timeline. M4.';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'event_timeline' AND column_name = 'asignado_a') THEN
-    ALTER TABLE event_timeline ADD COLUMN asignado_a UUID REFERENCES auth.users(id);
-    COMMENT ON COLUMN event_timeline.asignado_a IS 'Responsable asignado. M4.';
-  END IF;
+  -- asignado_a: FK solo si existe auth.users (Supabase), si no, columna simple
+  DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+      WHERE table_name = 'event_timeline' AND column_name = 'asignado_a') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'users') THEN
+        ALTER TABLE event_timeline ADD COLUMN asignado_a UUID REFERENCES auth.users(id);
+      ELSE
+        ALTER TABLE event_timeline ADD COLUMN asignado_a UUID;
+      END IF;
+      COMMENT ON COLUMN event_timeline.asignado_a IS 'Responsable asignado. M4.';
+    END IF;
+  END $$;
 END $$;
