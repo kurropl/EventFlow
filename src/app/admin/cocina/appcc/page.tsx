@@ -118,9 +118,10 @@ function ScanModal({ isOpen, onClose, onResult }: ScanModalProps) {
           body: formData,
         });
         const data = await res.json();
-        if (data.success && data.data) {
-          setScanned(data.data);
-          onResult(data.data);
+        if (data.success && (data as any).data) {
+          const d = (data as any).data as ScannedLabel;
+          setScanned(d);
+          onResult(d);
         } else {
           setError(data.error || 'No se pudo leer la etiqueta. Intenta con más luz.');
         }
