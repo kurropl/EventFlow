@@ -133,7 +133,7 @@ export default function InventarioPage() {
   };
 
   const adjustStock = async (item: Ingredient, delta: number) => {
-    const newQty = Math.max(0, (item.quantity ?? 0) + delta);
+    const newQty = Math.max(0, Number(item.quantity ?? 0) + delta);
     try {
       const res = await fetch('/api/inventario/ingredients', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -162,8 +162,8 @@ export default function InventarioPage() {
 
   // KPIs
   const totalItems = filtered.length;
-  const lowStockCount = filtered.filter(i => i.min_stock && (i.quantity ?? 0) <= i.min_stock).length;
-  const totalValue = filtered.reduce((s, i) => s + ((i.quantity ?? 0) * i.cost_per_unit), 0);
+  const lowStockCount = filtered.filter(i => i.min_stock && (i.quantity ?? 0) <= Number(i.min_stock || 0)).length;
+  const totalValue = filtered.reduce((s, i) => s + ((i.quantity ?? 0) * Number(i.cost_per_unit || 0)), 0);
   const linkedToRecipes = filtered.filter(i => (i.recipe_count ?? 0) > 0).length;
 
   return (
@@ -313,7 +313,7 @@ export default function InventarioPage() {
             </thead>
             <tbody>
               {filtered.map(item => {
-                const isLow = item.min_stock && (item.quantity ?? 0) <= item.min_stock;
+                const isLow = item.min_stock && (item.quantity ?? 0) <= Number(item.min_stock || 0);
                 return (
                   <tr key={item.id} className={cn('border-b border-divider/30 hover:bg-cream/30', isLow && 'bg-danger/5')}>
                     <td className="px-3 py-2">
@@ -326,12 +326,12 @@ export default function InventarioPage() {
                     <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => adjustStock(item, -1)} className="w-5 h-5 rounded bg-cream hover:bg-divider flex items-center justify-center"><Icon name="minus" className="w-2.5 h-2.5" /></button>
-                        <span className={cn('w-10 text-center font-medium', isLow && 'text-danger')}>{item.quantity ?? 0}</span>
+                        <span className={cn('w-10 text-center font-medium', isLow && 'text-danger')}>{Number(item.quantity ?? 0)}</span>
                         <button onClick={() => adjustStock(item, 1)} className="w-5 h-5 rounded bg-cream hover:bg-divider flex items-center justify-center"><Icon name="plus" className="w-2.5 h-2.5" /></button>
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right text-ink-soft">{item.min_stock ?? '-'}</td>
-                    <td className="px-3 py-2 text-right font-medium">{item.cost_per_unit.toFixed(2)}€</td>
+                    <td className="px-3 py-2 text-right font-medium">{Number(item.cost_per_unit || 0).toFixed(2)}€</td>
                     <td className="px-3 py-2 text-ink-soft">{item.supplier_name || item.supplier || '-'}</td>
                     <td className="px-3 py-2 text-center">
                       {(item.recipe_count ?? 0) > 0 && (
