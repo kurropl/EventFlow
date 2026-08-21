@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
     );
 
     const item = await querySingle<any>(
-      `INSERT INTO items_carga (hoja_carga_id, tipo, nombre, cantidad, unit, cargado, retornado, notas, orden, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, NOW(), NOW())
+      `INSERT INTO items_carga (hoja_carga_id, tipo, nombre, cantidad, unit, cargado, retornado, notas, orden, pass_number, load_order, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, $8, $9, NOW(), NOW())
        RETURNING *`,
       [
         body.hoja_carga_id,
@@ -52,7 +52,9 @@ export async function POST(request: NextRequest) {
         body.cantidad || 1,
         body.unit || 'ud',
         body.notas || null,
-        maxOrden?.next_orden || 1
+        maxOrden?.next_orden || 1,
+        body.pass_number ?? null,
+        body.load_order ?? (maxOrden?.next_orden || 1)
       ]
     );
 
@@ -82,13 +84,18 @@ export async function PUT(request: NextRequest) {
         retornado = $6,
         notas = $7,
         orden = COALESCE($8, orden),
+        pass_number = COALESCE($9, pass_number),
+        load_order = COALESCE($10, load_order),
         updated_at = NOW()
-       WHERE id = $9
+       WHERE id = $11
        RETURNING *`,
       [
         body.tipo, body.nombre, body.cantidad,
         body.unit, body.cargado, body.retornado,
-        body.notas ?? null, body.orden, body.id
+        body.notas ?? null, body.orden,
+        body.pass_number ?? null,
+        body.load_order ?? null,
+        body.id
       ]
     );
 
