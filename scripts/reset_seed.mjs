@@ -160,8 +160,10 @@ try {
     `SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'`
   )).rows.map(r => r.table_name);
   // Excluir de forma explícita los maestros estructurales que se conservan.
+  // providers/clients se TRUNCA deliberately: WP-0 deja SOLO el proveedor y
+  // cliente de test que el script recrea a continuación (catálogo emergente).
   const KEEP = ['units_of_measure', 'admins', 'business_settings',
-    'kitchen_workcenters', 'work_centers', 'kitchen_zones', 'providers', 'clients'];
+    'kitchen_workcenters', 'work_centers', 'kitchen_zones'];
   const TRUNCATE = existing.filter(t => !KEEP.includes(t));
   await client.query('BEGIN');
   await client.query('SET session_replication_role = replica');
@@ -202,9 +204,15 @@ await q(
 console.log('✔ admins: admin de test asegurado');
 
 // 3. Work center "Cocina Central" (nombres de tabla tolerantes)
-// 3. Work center "Cocina Central": la BD real usa kitchen_zones (única tabla
-// de zonas/workcenter existente en el VPS; no hay kitchen_workcenters/work_centers)
-for (const tbl of ['kitchen_zones', 'kitchen_workcenters', 'work_centers']) {
+// 3. Work center "Cocina Central": la BD real usa kitchen_zones (columna
+// `nombre`, no `name`/`title`). Se vacía y se deja SOLO la zona principal.
+try {
+  await client.query('DELETE FROM kitchen_zones');
+  await q(`INSERT INTO kitchen_zones (nombre, icon, orden) VALUES ('Cocina Central','chefIcon',1)`);
+  console.log('✔ kitchen_zones: "Cocina Central" (única zona)');
+} catch (e) { console.warn(`   ⚠ kitchen_zones: ${e.message}`); }
+// Fallback si kitchen_zones no existiera (nombres de tabla tolerantes)
+for (const tbl of ['kitchen_workcenters', 'work_centers']) {
   try {
     const cols = (await client.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tbl]
@@ -212,23 +220,15 @@ for (const tbl of ['kitchen_zones', 'kitchen_workcenters', 'work_centers']) {
     if (!cols.length) continue;
     const nameCol = cols.includes('name') ? 'name' : (cols.includes('title') ? 'title' : null);
     if (!nameCol) { console.warn(`   ⚠ ${tbl}: sin columna name/title, se omite`); continue; }
+    await q(`DELETE FROM ${tbl}`);
     const activeCol = cols.includes('active') ? 'active' : null;
-    const activeSql = activeCol ? `${activeCol}, ` : '';
-    const activeVal = activeCol ? 'true, ' : '';
-    const descriptionCol = cols.includes('description') ? 'description' : null;
-    const descSql = descriptionCol ? descriptionCol : null;
-    // Verificación manual (sin ON CONFLICT: puede no haber constraint único)
-    const exists = await q1(`SELECT id FROM ${tbl} WHERE ${nameCol} = $1 LIMIT 1`, ['Cocina Central']);
-    if (!exists) {
-      const insCols = descSql ? `${nameCol}, ${activeSql}${descSql}` : `${nameCol}, ${activeSql}`.replace(/,\s*$/, '');
-      const insVals = descSql ? `($1, ${activeVal}$2)` : `($1, ${activeVal})`.replace(/,\s*$/, '');
-      const args = descSql ? ['Cocina Central', 'Workcenter principal'] : ['Cocina Central'];
-      await q(`INSERT INTO ${tbl} (${insCols}) VALUES (${insVals})`, args);
-    }
+    const descCol = cols.includes('description') ? 'description' : null;
+    const insCols = descCol ? `${nameCol}, ${activeCol ? activeCol + ', ' : ''}${descCol}` : (activeCol ? `${nameCol}, ${activeCol}` : nameCol);
+    const insVals = descCol ? `($1, ${activeCol ? 'true, ' : ''}$2)` : (activeCol ? `($1, ${activeCol ? 'true' : ''})` : '($1)');
+    const args = descCol ? ['Cocina Central', 'Workcenter principal'] : ['Cocina Central'];
+    await q(`INSERT INTO ${tbl} (${insCols}) VALUES (${insVals})`, args);
     console.log(`✔ ${tbl}: "Cocina Central"`);
-  } catch (e) {
-    console.warn(`   ⚠ ${tbl}: ${e.message}`);
-  }
+  } catch (e) { console.warn(`   ⚠ ${tbl}: ${e.message}`); }
 }
 
 // 4. Proveedor de test (providers NO tiene unique en name → verificación manual)
