@@ -202,37 +202,53 @@ await q(
 console.log('✔ admins: admin de test asegurado');
 
 // 3. Work center "Cocina Central" (nombres de tabla tolerantes)
-for (const tbl of ['kitchen_workcenters', 'work_centers']) {
+// 3. Work center "Cocina Central": la BD real usa kitchen_zones (única tabla
+// de zonas/workcenter existente en el VPS; no hay kitchen_workcenters/work_centers)
+for (const tbl of ['kitchen_zones', 'kitchen_workcenters', 'work_centers']) {
   try {
     const cols = (await client.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tbl]
     )).rows.map(r => r.column_name);
-    if (cols.length) {
-      const nameCol = cols.includes('name') ? 'name' : 'title';
-      await q(
-        `INSERT INTO ${tbl} (${nameCol}, ${cols.includes('active') ? 'active, ' : ''}${cols.includes('description') ? 'description' : 'fecha'})
-         VALUES ($1, ${cols.includes('active') ? 'true, ' : ''}${cols.includes('description') ? "'Cocina Central'" : 'NOW()'})
-         ON CONFLICT (${nameCol}) DO NOTHING`, ['Cocina Central']
-      );
-      console.log(`✔ ${tbl}: "Cocina Central"`);
+    if (!cols.length) continue;
+    const nameCol = cols.includes('name') ? 'name' : (cols.includes('title') ? 'title' : null);
+    if (!nameCol) { console.warn(`   ⚠ ${tbl}: sin columna name/title, se omite`); continue; }
+    const activeCol = cols.includes('active') ? 'active' : null;
+    const activeSql = activeCol ? `${activeCol}, ` : '';
+    const activeVal = activeCol ? 'true, ' : '';
+    const descriptionCol = cols.includes('description') ? 'description' : null;
+    const descSql = descriptionCol ? descriptionCol : null;
+    // Verificación manual (sin ON CONFLICT: puede no haber constraint único)
+    const exists = await q1(`SELECT id FROM ${tbl} WHERE ${nameCol} = $1 LIMIT 1`, ['Cocina Central']);
+    if (!exists) {
+      const insCols = descSql ? `${nameCol}, ${activeSql}${descSql}` : `${nameCol}, ${activeSql}`.replace(/,\s*$/, '');
+      const insVals = descSql ? `($1, ${activeVal}$2)` : `($1, ${activeVal})`.replace(/,\s*$/, '');
+      const args = descSql ? ['Cocina Central', 'Workcenter principal'] : ['Cocina Central'];
+      await q(`INSERT INTO ${tbl} (${insCols}) VALUES (${insVals})`, args);
     }
-  } catch {}
+    console.log(`✔ ${tbl}: "Cocina Central"`);
+  } catch (e) {
+    console.warn(`   ⚠ ${tbl}: ${e.message}`);
+  }
 }
 
-// 4. Proveedor de test
-await q(
-  `INSERT INTO providers (name, category, contact_name, phone, email, notes, active)
-   VALUES ('Proveedor Test', 'catering', 'Test', '600000000', 'test@proveedor.local', 'reset_seed', true)
-   ON CONFLICT (name) DO NOTHING`
-);
+// 4. Proveedor de test (providers NO tiene unique en name → verificación manual)
+const provExists = await q1(`SELECT id FROM providers WHERE name = $1 LIMIT 1`, ['Proveedor Test']);
+if (!provExists) {
+  await q(
+    `INSERT INTO providers (name, category, contact_name, phone, email, notes, active)
+     VALUES ('Proveedor Test', 'catering', 'Test', '600000000', 'test@proveedor.local', 'reset_seed', true)`
+  );
+}
 console.log('✔ providers: Proveedor Test');
 
-// 5. Cliente de test
-await q(
-  `INSERT INTO clients (name, email, phone, company, notes)
-   VALUES ('Cliente Test', 'cliente@test.local', '600000000', 'Test Corp', 'reset_seed')
-   ON CONFLICT (email) DO NOTHING`
-);
+// 5. Cliente de test (clients no tiene unique en email; verificación manual)
+const cliExists = await q1(`SELECT id FROM clients WHERE email = $1 LIMIT 1`, ['cliente@test.local']);
+if (!cliExists) {
+  await q(
+    `INSERT INTO clients (name, email, phone, company, notes)
+     VALUES ('Cliente Test', 'cliente@test.local', '600000000', 'Test Corp', 'reset_seed')`
+  );
+}
 console.log('✔ clients: Cliente Test');
 
 await pool.end();
