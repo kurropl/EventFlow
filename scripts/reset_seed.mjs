@@ -79,13 +79,24 @@ try {
   const pw = decodeURIComponent(u.password || '');
   const host = u.hostname;
   const port = u.port || '5432';
-  let cmd = `PGPASSWORD="${pw}" pg_dump -h ${host} -p ${port} -U ${user} -d ${dbName} --format=plain --no-owner --file="${dumpPath}"`;
+  let backupDone = false;
+  // 1) pg_dump directo si está en PATH
   try {
     execSync('which pg_dump', { stdio: 'ignore' });
-  } catch {
-    cmd = `docker exec -i eventflow-postgres sh -c 'PGPASSWORD="${pw}" pg_dump -h ${host} -p ${port} -U ${user} -d ${dbName} --format=plain --no-owner' > "${dumpPath}"`;
+    execSync(`PGPASSWORD="${pw}" pg_dump -h ${host} -p ${port} -U ${user} -d ${dbName} --format=plain --no-owner --file="${dumpPath}"`, { stdio: ['ignore', 'pipe', 'inherit'] });
+    backupDone = true;
+  } catch {}
+  // 2) fallback: docker exec (cuando el host tiene docker y el container postgres)
+  if (!backupDone) {
+    try {
+      execSync('docker', { stdio: 'ignore' });
+      execSync(`docker exec eventflow-postgres sh -c 'PGPASSWORD="${pw}" pg_dump -h 127.0.0.1 -p ${port} -U ${user} -d ${dbName} --format=plain --no-owner' > "${dumpPath}"`, { stdio: ['ignore', 'pipe', 'inherit'] });
+      backupDone = true;
+    } catch {}
   }
-  execSync(cmd, { stdio: ['ignore', 'pipe', 'inherit'] });
+  if (!backupDone) {
+    throw new Error('No se pudo crear el backup (sin pg_dump y sin docker exec).');
+  }
   console.log(`✔ Backup creado: ${dumpPath} (${(statSync(dumpPath).size / 1024).toFixed(1)} KB)`);
 } catch (e) {
   console.error('✖ ABORTADO: pg_dump falló. No se borra nada.');
